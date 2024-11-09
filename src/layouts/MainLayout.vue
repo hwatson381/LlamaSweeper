@@ -1,43 +1,28 @@
 <template>
-  <q-layout view="lHh Lpr lFf">
-    <q-header elevated>
+  <q-layout view="hHh lpR fFf">
+    <q-header reveal elevated class="bg-primary text-white" height-hint="98">
       <q-toolbar>
-        <q-btn
-          flat
-          dense
-          round
-          icon="menu"
-          aria-label="Menu"
-          @click="toggleLeftDrawer"
-        />
-
         <q-toolbar-title>
-          Quasar App
+          <q-avatar>
+            <img src="/icons/logo.png" />
+          </q-avatar>
+          LlamaSweeper
         </q-toolbar-title>
-
-        <div>Quasar v{{ $q.version }}</div>
+        <q-toggle
+          v-model="isDark"
+          @update:model-value="toggleDarkMode"
+          color="white"
+          label="Dark Mode"
+        ></q-toggle>
       </q-toolbar>
+
+      <q-tabs align="left">
+        <q-route-tab to="/" label="Home" />
+        <q-route-tab to="/mine" label="My Minesweeper Variants" />
+        <q-route-tab to="/others" label="Other Variants and Resources" />
+        <q-route-tab to="/about" label="About" />
+      </q-tabs>
     </q-header>
-
-    <q-drawer
-      v-model="leftDrawerOpen"
-      show-if-above
-      bordered
-    >
-      <q-list>
-        <q-item-label
-          header
-        >
-          Essential Links
-        </q-item-label>
-
-        <EssentialLink
-          v-for="link in linksList"
-          :key="link.title"
-          v-bind="link"
-        />
-      </q-list>
-    </q-drawer>
 
     <q-page-container>
       <router-view />
@@ -46,61 +31,24 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import EssentialLink from 'components/EssentialLink.vue'
+import { useQuasar } from "quasar";
+import { watch } from "vue";
+import { ref } from "vue";
 
-defineOptions({
-  name: 'MainLayout'
-})
+const $q = useQuasar();
 
-const linksList = [
-  {
-    title: 'Docs',
-    caption: 'quasar.dev',
-    icon: 'school',
-    link: 'https://quasar.dev'
-  },
-  {
-    title: 'Github',
-    caption: 'github.com/quasarframework',
-    icon: 'code',
-    link: 'https://github.com/quasarframework'
-  },
-  {
-    title: 'Discord Chat Channel',
-    caption: 'chat.quasar.dev',
-    icon: 'chat',
-    link: 'https://chat.quasar.dev'
-  },
-  {
-    title: 'Forum',
-    caption: 'forum.quasar.dev',
-    icon: 'record_voice_over',
-    link: 'https://forum.quasar.dev'
-  },
-  {
-    title: 'Twitter',
-    caption: '@quasarframework',
-    icon: 'rss_feed',
-    link: 'https://twitter.quasar.dev'
-  },
-  {
-    title: 'Facebook',
-    caption: '@QuasarFramework',
-    icon: 'public',
-    link: 'https://facebook.quasar.dev'
-  },
-  {
-    title: 'Quasar Awesome',
-    caption: 'Community Quasar projects',
-    icon: 'favorite',
-    link: 'https://awesome.quasar.dev'
+var isDark = ref(true);
+$q.dark.set(isDark.value);
+
+watch(
+  () => $q.dark.isActive,
+  (val) => {
+    console.log(val ? "On dark mode" : "On light mode");
   }
-]
+);
 
-const leftDrawerOpen = ref(false)
-
-function toggleLeftDrawer () {
-  leftDrawerOpen.value = !leftDrawerOpen.value
+function toggleDarkMode(value) {
+  console.log("toggle called and changing to " + value);
+  $q.dark.set(value);
 }
 </script>

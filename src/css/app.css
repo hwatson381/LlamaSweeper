@@ -1,1 +1,22 @@
 /* app global css */
+
+.clearfix::after {
+  content: "";
+  clear: both;
+  display: table;
+}
+
+.q-page a:link {
+  color: #1976d2;
+}
+
+.q-page a:visited {
+  color: #c019d2;
+}
+
+body.body--dark .q-page a:link {
+  color: #52a8ff;
+}
+body.body--dark .q-page a:visited {
+  color: #e788f1;
+}
