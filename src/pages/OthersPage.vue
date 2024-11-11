@@ -8,9 +8,14 @@
         relatively basic clones that don't add much to the game.
       </p>
 
+      <p style="font-weight: bold; color: red">
+        SECRET DEV PAGE: ADD variants with
+        <a href="/#/data-entry">data-entry page</a>
+      </p>
+
       <div class="q-my-md flex flex-center">
         <label class="q-px-md"
-          >Search <input v-model="searchTerm" type="text"
+          >Filter <input v-model="searchTerm" type="text"
         /></label>
         <label class="q-px-md"
           >Tags
@@ -97,10 +102,8 @@
           style="width: 500px"
         >
           <q-card class="my-card" bordered>
-            <q-card-section horizontal>
-              <q-card-section
-                :class="{ 'col-7': !compactView, 'col-10': compactView }"
-              >
+            <q-card-section horizontal class="variant-card-header">
+              <q-card-section style="width: 360px">
                 <q-card-section>
                   <div class="text-h6">{{ variant.name }}</div>
                   <div
@@ -124,19 +127,23 @@
                       :label="tag"
                     />
                   </div>
-                  <template v-if="!compactView">
-                    <br />
-                    <p>
-                      {{ variant.desc }}
-                    </p>
-                  </template>
+                  <q-btn
+                    v-if="compactView"
+                    color="secondary"
+                    label="Details"
+                    size="xs"
+                    style="position: absolute; bottom: -10px; right: -10px"
+                    @click="showVariantDescModal(variant)"
+                  />
                 </q-card-section>
               </q-card-section>
 
-              <q-img
-                :class="{ 'col-5': !compactView, 'col-2': compactView }"
-                :src="variant.image"
-              />
+              <q-img width="140px" height="140px" :src="variant.image" />
+            </q-card-section>
+            <q-card-section v-if="!compactView">
+              <p>
+                {{ variant.desc }}
+              </p>
             </q-card-section>
           </q-card>
 
@@ -173,7 +180,29 @@
       </div>
     </div>
   </q-page>
+
+  <q-dialog v-model="variantDescModal">
+    <q-card>
+      <q-card-section class="row items-center q-pb-none">
+        <div class="text-h6">{{ selectedVariantName }}</div>
+        <q-space />
+        <q-btn icon="close" flat round dense v-close-popup />
+      </q-card-section>
+
+      <q-card-section> {{ selectedVariantDescription }} </q-card-section>
+    </q-card>
+  </q-dialog>
 </template>
+
+<style scoped>
+.variant-card-header {
+  background-color: #e7f4ff;
+}
+
+body.body--dark .variant-card-header {
+  background-color: #161824;
+}
+</style>
 
 <script setup>
 import { computed, ref } from "vue";
@@ -186,6 +215,9 @@ defineOptions({
 let searchTerm = ref("");
 let tagTerm = ref("all");
 let compactView = ref(false);
+let variantDescModal = ref(false);
+let selectedVariantName = ref("");
+let selectedVariantDescription = ref("");
 
 let variantsCopy = ref(
   structuredClone(
@@ -197,9 +229,12 @@ let variantsCopy = ref(
 
 let filteredVariants = computed(() => {
   return variantsCopy.value.filter((variant) => {
+    const lowercaseSearchTerm = searchTerm.value.toLowerCase();
+
     let searchTermMatches =
-      variant.name.includes(searchTerm.value) ||
-      variant.desc.includes(searchTerm.value);
+      variant.name.toLowerCase().includes(lowercaseSearchTerm) ||
+      variant.desc.toLowerCase().includes(lowercaseSearchTerm) ||
+      variant.url.toLowerCase().includes(lowercaseSearchTerm);
 
     let tagTermMatches = false;
 
@@ -224,5 +259,11 @@ function getTagColour(tag) {
   };
 
   return colours[tag] ?? "red";
+}
+
+function showVariantDescModal(variant) {
+  variantDescModal.value = true;
+  selectedVariantName.value = variant.name;
+  selectedVariantDescription.value = variant.desc;
 }
 </script>

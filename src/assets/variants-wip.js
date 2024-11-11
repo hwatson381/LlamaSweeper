@@ -1,43 +1,8 @@
-/*
-  tags:
-    community
-    informational
-    game
-    mobile
-    tool (solver, zini calc)
-
-  properties:
-    ~~rating~~
-    brief desc
-    features
-    image
-    link
-    name
-    tags (see above)
-
-  community:
-    wom, msgame, discord, reddit, saolei
-  info:
-    msgame, minesweeper board museum, metasweeper website, mzrg.com
-  game:
-    sudosweeper, heptesvegmal advent calendar, 14 ms variants, 4D minesweeper, 3D website minesweeper (yellow cubes)
-    square finder, qqwref multisweeper, tathams, mineTGM, demoncrawl, carykh + qq version, mnsw.pro, mamono_sweeper,
-    qqwref mouse control, tetrissweeper, megasweeper, metalogic game (https://butcherberries.itch.io/unveiling), 
-    other variants in icely videos?
-
-    also desktop apps -
-    arbiter, meowsweeper, metasweeper, viennasweeper
-  mobile:
-    msgo, mastermine, LoM, chocolatesweeper
-  tool:
-    qqwref prob calc, mscoach solver, ptta zini calc, mzrg make_board
-*/
-
-let variantList = [
+[
   {
     "name": "Minesweeper Online",
     "url": "https://minesweeper.online/",
-    "desc": "The most popular minesweeper website which regularly has 2000+ people online at any time. Has rankings for lots of different categories (winstreak/time/3bvs/mastery/efficiency/difficulty...). Saves replays of every game. Has no guess mode. Has a global chat. Monthly rankings, monthly events, championships once per month. Previously called World of Minesweeper (WoM). There are plans to add player vs player mode.",
+    "desc": "The most popular minesweeper website which regularly has 2000 people online at any time. Has rankings for lots of different categories (winstreak/time/3bvs/mastery/efficiency/difficulty...). Saves replays of every game. Has no guess mode. Has a global chat. Monthly rankings, monthly events, championships once per month. Previously called World of Minesweeper (WoM). There are plans to add player vs player mode.",
     "image": "/img/variants/wom.png",
     "tags": [
       "community",
@@ -48,7 +13,7 @@ let variantList = [
   {
     "name": "Authoritative Minesweeper",
     "url": "https://minesweepergame.com/",
-    "desc": "This is considered to be the official rankings for minesweeper with rankings for time, 3bv/s and density. It requires playing on specific desktop clones. It also has a mostly inactive forum (but may be of historic interest due to the age of the site). It also has archives of old minesweeper websites/resources and various informational pages.",
+    "desc": "This is considered to be the official rankings for minesweeper with rankings for time, 3bv/s and density. It requires playing on specific desktop clones. It also has a mostly inactive forum (but may be of historic interest due to the age of the site). It also has archives of old minesweeper websites/resources and various informational pages",
     "image": "/img/variants/authms.png",
     "tags": [
       "community",
@@ -115,7 +80,7 @@ let variantList = [
   {
     "name": "Sudo Sweep",
     "url": "https://gamesforcrows.itch.io/sudo-sweep",
-    "desc": "This is a hybrid between Sudoku and Minesweeper. There is a sudoku grid on the left and a minesweeper grid on the right, and you are able to use information from the sudoku side to solve the minesweeper side and vice versa. Logic players will really like this.",
+    "desc": "This is a hybrid between Sudoku and Minesweeper. There is a sudoku grid on the left and a minesweeper grid on the right, and you are able to use information from the sudoku side to solve the minesweeper side and vice versa. Logic players will find this very interesting.",
     "image": "/img/variants/sudosweep.png",
     "tags": [
       "game"
@@ -138,7 +103,85 @@ let variantList = [
     "tags": [
       "game"
     ]
+  }
+]
+
+[
+  {
+    "name": "4D Minesweeper",
+    "url": "https://store.steampowered.com/app/787980/4D_Minesweeper/",
+    "desc": "Play minesweeper in higher dimensions (1D up to 4D). It displays 4D as a \"grid of grids\" and lets you hover your mouse over any square to see which ones are the neighbours. It's free on steam. I haven't played this, but have seen others play it.",
+    "image": "/img/variants/4d.png",
+    "tags": [
+      "game"
+    ]
   },
+  {
+    "name": "Mine3D",
+    "url": "http://egraether.com/mine3d/",
+    "desc": "Minesweeper in true 3D (as in solving the volume of a cube/cuboid rather than just solving the surface). This is quite mindbending to play. It can be quite hard to tell which numbers are next to which blocks. Someone should make something like this in VR (or with crossview 3D).",
+    "image": "/img/variants/mine3d.png",
+    "tags": [
+      "game"
+    ]
+  },
+  {
+    "name": "Square Finder",
+    "url": "https://mzrg.com/js/mine/square_finder.html",
+    "desc": "The greatest minesweeper variant to exist. This variant randomly generates almost completed minesweeper boards, and you have to find the last tile as quickly as possible. It tracks the average time of your last 5/10/100 attempts.",
+    "image": "/img/variants/squarefinder.png",
+    "tags": [
+      "game"
+    ]
+  },
+  {
+    "name": "MultiSweeper",
+    "url": "https://mzrg.com/js/mine/multi.html",
+    "desc": "Minesweeper clone by qqwref with options for different control schemes and rule variations. Examples of the control schemes are drag (which lets you hold down click and move your mouse to uncover squares) and various modes for automatically flagging/chording. Examples of rule variations include having random colours instead of numbers, spider mode (where the board changes as you play it), free openings (where all openings are revealed at the start) and generating boards with high/low 3bv.",
+    "image": "/img/variants/multisweeper.png",
+    "tags": [
+      "game"
+    ]
+  },
+  {
+    "name": "Simon Tatham's Mines",
+    "url": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/js/mines.html",
+    "desc": "A solid minesweeper web clone with left click chord and the ability to generate very high density no guess boards (such as 16x16 99 mines and 30x16 170 mines). Simon Tatham also has many other fun puzzle games in his collection, and there is a mobile app to play them as well. For those who are interested in computers, Simon Tatham also created PuTTY which is a popular SSH client for windows.",
+    "image": "/img/variants/tathams.png",
+    "tags": [
+      "game"
+    ]
+  },
+  {
+    "name": "Minesweeper: The Grand Master",
+    "url": "https://qqwref.github.io/minetgm/",
+    "desc": "Inspired by Tetris: The Grand Master, this variant features a series of increasingly hard minesweeper levels (with difficulty increased by adding various constraints, such as no flags or using colours instead of numbers). After clicking a mine, you will be given a grade for how well you did. There is a speed requirement to reach the later levels.",
+    "image": "/img/variants/minetgm.png",
+    "tags": [
+      "game"
+    ]
+  },
+  {
+    "name": "DemonCrawl",
+    "url": "https://store.steampowered.com/app/1141220/DemonCrawl/",
+    "desc": "A minesweeper roguelite with many different stages, items to collect, rule modifications and more. I've never played this. As of writing, it costs $15.",
+    "image": "/img/variants/demoncrawl.png",
+    "tags": [
+      "game"
+    ]
+  },
+  {
+    "name": "carykh minesweeper (knightsweeper)",
+    "url": "https://htwins.net/minesweeper/",
+    "desc": "Minesweeper, but with different rules for how the neighbouring cells are counted. For example, the numbers could count mines that are a knights move away or that are orthoganally adjacent (no diagonals). There are lots of different rules to choose from. The rules used can be changed by clicking on the box which has the pattern (\"normal\" is the default pattern). This was made by the youtube carykh.",
+    "image": "/img/variants/carykh.png",
+    "tags": [
+      "game"
+    ]
+  }
+]
+
+[
   {
     "name": "4D Minesweeper",
     "url": "https://store.steampowered.com/app/787980/4D_Minesweeper/",
@@ -221,8 +264,8 @@ let variantList = [
     ]
   },
   {
-    "name": "mnsw.pro",
-    "url": "https://mnsw.pro/",
+    "name": "https://mnsw.pro/",
+    "url": "mnsw.pro",
     "desc": "A multiplayer minesweeper version with versus mode and coop mode. Multiplayer allows there to be an arbitrary number of competitors (not just 1v1), it also has no guess board generation, a chat window and allows you to play in a first to x format (e.g. first to beat 5 games wins). In versus mode, competitors will receive the same boards. Coop mode sometimes gets out of sync when many people are playing the same board at the same time. mnsw.pro is used for the chord cup competition.",
     "image": "/img/variants/mnsw-pro.png",
     "tags": [
@@ -264,7 +307,9 @@ let variantList = [
     "tags": [
       "game"
     ]
-  },
+  }
+]
+[
   {
     "name": "Minesweeper Arbiter",
     "url": "https://minesweepergame.com/download/arbiter.php",
@@ -302,5 +347,3 @@ let variantList = [
     ]
   }
 ]
-
-export default variantList;
