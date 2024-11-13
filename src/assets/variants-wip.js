@@ -347,3 +347,84 @@
     ]
   }
 ]
+
+[
+  {
+    "name": "Minesweeper GO - classic game",
+    "url": "https://play.google.com/store/apps/details?id=com.EvolveGames.MinesweeperGo",
+    "desc": "Minesweeper GO is a popular mobile app available on both Android and Apple. It is one of the best mobile apps out there for competitive-minded sweepers. It has all the usual statistics (time/3bvs/efficiency etc), saves replays of games, has competitive global leaderboards and multiplayer mode (in the style of first to x games wins). It also has a no guess campaign with 1000+ levels. It has a lot of different settings for adjusting things such as tap time and scroll behaviour and it has a setting to enable recursive chording (revealed squares get automatically chorded if they have the right number of flags). It's free, but with ads that can be disabled by paying.",
+    "image": "/img/variants/msgo.png",
+    "tags": [
+      "mobile",
+      "game"
+    ]
+  },
+  {
+    "name": "Mastermine",
+    "url": "https://mastermine.app/",
+    "desc": "A 3D minesweeper game where you play on the outside layer of a cube. It's available on Android, Apple and also PC, although I personally think it's better on mobile (the mobile versions are free whereas the PC version costs $3). It has a range of different skins, powerups, achievements and a campaign mode where you solve cubes of increasingly large size, but go down a level if you make a mistake.",
+    "image": "/img/variants/mastermine.png",
+    "tags": [
+      "game",
+      "mobile"
+    ]
+  },
+  {
+    "name": "League of Minesweeper",
+    "url": "http://tapsss.com/",
+    "desc": "An Android only mobile app designed for and by competitive minesweeper players. It has a very active community in China where many of the top players play on it (including JZE, the world record holder). It also features several other games similar to minesweeper such as nonosweeper (similar to picross/nonograms), schulte grid (finding numbers in a grid), sudoku, 2048, 15 puzzle. It has a pvp mode and a (mostly Chinese) community within the app where you can chat with people and see other records. It has a no-guess mode, as well as a mode for playing custom minesweeper puzzles created by other players.",
+    "image": "/img/variants/lom.png",
+    "tags": [
+      "game",
+      "mobile"
+    ]
+  },
+  {
+    "name": "Chocolate Sweeper",
+    "url": "https://nyahoon.com/products/chocolate-sweeper",
+    "desc": "A quirky mobile app with a campaign that generates some of the hardest no guess logic you'll find in all of minesweeper outside of manually created puzzles. It generates no guess puzzles with guaranteed difficult logic, and makes you lose if you tap on a square that cannot be deduced to be safe. It has a leaderboard which adjusts the time of a game based on how hard the logic was that was used to solve the game. Highly recommended for anyone that wants to get very good at logic. It's available on Apple and Android.",
+    "image": "/img/variants/chocolatesweeper.png",
+    "tags": [
+      "game",
+      "mobile"
+    ]
+  }
+]
+[
+  {
+    "name": "qqwref probability calculator",
+    "url": "https://mzrg.com/js/mine/probability.html",
+    "desc": "A tool made by qqwref that allows you to create arbitrary minesweeper positions and shows the probability of each square being a mine. It's possible to place numbers, known mines and known safe squares.",
+    "image": "/img/variants/qqprob.png",
+    "tags": [
+      "tool"
+    ]
+  },
+  {
+    "name": "DavidNHill JS Minesweeper Solver",
+    "url": "https://davidnhill.github.io/JSMinesweeper",
+    "desc": "The current state of the art minesweeper solver made by MSCoach. This solver achieves the highest known win rate of any minesweeper solver program, winning 41% of the time on expert difficulty. It has two different modes. In the player mode, it will generate a game and let you play along aided by the solver. In the analyser mode, you can create your own position (clicking and using scroll wheel to change the numbers), and then see which move the solver thinks is best.",
+    "image": "/img/variants/jsminesweeper.png",
+    "tags": [
+      "tool"
+    ]
+  },
+  {
+    "name": "PTTACGfans ZiNi Calculator",
+    "url": "https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/",
+    "desc": "This is a tool used to calculate the minimum number of clicks that a board can be solved in using flags, chords and left-clicks. Positions can either be created manually by placing the mines on the board, or imported from Minesweeper Online by clicking the arrow next to the ZiNi stat that shows up next to a finished game (ZiNi may need to be enabled in settings for this). This tool was created by PTTACGfans, a well known player on Minesweeper Online. ",
+    "image": "/img/variants/ptta-zini.png",
+    "tags": [
+      "tool"
+    ]
+  },
+  {
+    "name": "qqwref make_board",
+    "url": "https://mzrg.com/js/mine/make_board.html",
+    "desc": "A tool by qqwref for created minesweeper boards and calculating various stats about them. Stats include openings, islands, various ZiNi implementations and the amount of times each number appears. It has various controls for adjusting properties of the board.",
+    "image": "/img/variants/make_board.png",
+    "tags": [
+      "tool"
+    ]
+  }
+]
