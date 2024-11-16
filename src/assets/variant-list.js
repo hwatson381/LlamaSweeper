@@ -294,7 +294,7 @@ let variantList = [
   },
   {
     "name": "Viennasweeper",
-    "url": "https://minesweepergame.com/download/viennasweeper.php",
+    "url": "https://sweeper.wien/",
     "desc": "Viennasweeper is an official desktop clone that can be used for the Authoritative minesweeper rankings. It is created and maintained by Ralokt. It saves replays of games and tracks some statistics (although less than other clones). Whilst it does not currently support zoom, this is being worked on, and once this is out, it will be the only official clone that has this feature.",
     "image": "/img/variants/viennasweeper.png",
     "tags": [
