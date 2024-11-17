@@ -115,7 +115,7 @@ let variantList = [
   {
     "name": "Sudo Sweep",
     "url": "https://gamesforcrows.itch.io/sudo-sweep",
-    "desc": "This is a hybrid between Sudoku and Minesweeper. There is a sudoku grid on the left and a minesweeper grid on the right, and you are able to use information from the sudoku side to solve the minesweeper side and vice versa. Logic players will really like this.",
+    "desc": "This is a hybrid between Sudoku and Minesweeper. There is a sudoku grid on the left and a minesweeper grid on the right, and you are able to use information from the sudoku side to solve the minesweeper side and vice versa. Logic players will love this.",
     "image": "/img/variants/sudosweep.png",
     "tags": [
       "game"
@@ -257,7 +257,7 @@ let variantList = [
     ]
   },
   {
-    "name": "Unveiling (minesweeper with metalogic)",
+    "name": "Unveiling",
     "url": "https://butcherberries.itch.io/unveiling",
     "desc": "A creative variant of minesweeper where you have to deduce all the squares that are safe each turn before being able to proceed. This includes squares that can be deduced to be safe through metalogic.",
     "image": "/img/variants/unveiling.png",
