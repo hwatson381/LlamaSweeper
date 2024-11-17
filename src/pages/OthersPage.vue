@@ -5,7 +5,8 @@
       <p>
         Below is a collection of various minesweeper variants and resources that
         I've come across. I've tried to keep this list diverse, so I've excluded
-        relatively basic clones that don't add much to the game.
+        relatively basic clones that don't add much to the game. Ratings are
+        based on my personal preference, don't take too seriously.
       </p>
 
       <p style="font-weight: bold; color: red">
@@ -41,6 +42,19 @@
           stack-label
           label="Tags"
         ></q-select>
+        <q-select
+          class="q-mx-md q-mb-md"
+          outlined
+          options-dense
+          dense
+          transition-duration="100"
+          input-debounce="0"
+          v-model="sortBy"
+          style="min-width: 175px"
+          :options="['highest rated', 'most well known', 'least well known']"
+          stack-label
+          label="Sort by"
+        ></q-select>
         <q-checkbox
           class="q-mx-md q-mb-md"
           left-label
@@ -49,28 +63,6 @@
           label="Compact View"
         />
       </div>
-
-      <!--
-      <div class="q-my-md flex flex-center">
-        <label class="q-px-md"
-          >Filter <input v-model="searchTerm" type="text"
-        /></label>
-        <label class="q-px-md"
-          >Tags
-          <select v-model="tagTerm">
-            <option value="all">all</option>
-            <option value="community">community</option>
-            <option value="informational">informational</option>
-            <option value="game">game</option>
-            <option value="mobile">mobile</option>
-            <option value="tool">tool</option>
-          </select></label
-        >
-        <label class="q-px-md"
-          >Compact View <input v-model="compactView" type="checkbox"
-        /></label>
-      </div>
-      -->
       <div
         v-if="filteredVariants.length === 0"
         class="text-center text-h5 text-grey-7"
@@ -107,6 +99,7 @@ defineOptions({
 
 let searchTerm = ref("");
 let tagTerm = ref("all");
+let sortBy = ref("highest rated");
 let compactView = ref(false);
 
 let variantsCopy = ref(
@@ -117,24 +110,39 @@ let variantsCopy = ref(
   )
 );
 
+//Sort and filter based on criteria
 let filteredVariants = computed(() => {
-  return variantsCopy.value.filter((variant) => {
-    const lowercaseSearchTerm = searchTerm.value.toLowerCase();
+  return variantsCopy.value
+    .filter((variant) => {
+      const lowercaseSearchTerm = searchTerm.value.toLowerCase();
 
-    let searchTermMatches =
-      variant.name.toLowerCase().includes(lowercaseSearchTerm) ||
-      variant.desc.toLowerCase().includes(lowercaseSearchTerm) ||
-      variant.url.toLowerCase().includes(lowercaseSearchTerm);
+      let searchTermMatches =
+        variant.name.toLowerCase().includes(lowercaseSearchTerm) ||
+        variant.desc.toLowerCase().includes(lowercaseSearchTerm) ||
+        variant.url.toLowerCase().includes(lowercaseSearchTerm);
 
-    let tagTermMatches = false;
+      let tagTermMatches = false;
 
-    if (tagTerm.value === "all") {
-      tagTermMatches = true;
-    } else {
-      tagTermMatches = variant.tags.some((tag) => tag === tagTerm.value);
-    }
+      if (tagTerm.value === "all") {
+        tagTermMatches = true;
+      } else {
+        tagTermMatches = variant.tags.some((tag) => tag === tagTerm.value);
+      }
 
-    return searchTermMatches && tagTermMatches;
-  });
+      return searchTermMatches && tagTermMatches;
+    })
+    .sort((a, b) => {
+      switch (sortBy.value) {
+        //'Highest rated', 'Most well known', 'Least well known'
+        case "highest rated":
+          return b.rating - a.rating;
+        case "most well known":
+          return b.popularity - a.popularity;
+        case "least well known":
+          return a.popularity - b.popularity;
+        default:
+          return 0;
+      }
+    });
 });
 </script>

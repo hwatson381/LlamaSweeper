@@ -2,10 +2,11 @@
   <div style="width: 500px">
     <q-card bordered>
       <q-card-section horizontal class="variant-card-header">
-        <q-card-section style="width: 360px">
+        <div style="width: 360px; padding: 5px">
           <q-card-section>
             <div class="text-h6">{{ variant.name }}</div>
             <div
+              class="text-grey-6"
               style="
                 overflow: hidden;
                 text-overflow: ellipsis;
@@ -15,6 +16,34 @@
               <a class="text-subtitle2 text-grey-6" :href="variant.url">{{
                 variant.url
               }}</a>
+            </div>
+            <div class="flex justify-between">
+              <div style="flex: 1 1 0">
+                <q-rating
+                  :model-value="variant.rating"
+                  max="5"
+                  size="1.2em"
+                  :color="$q.dark.isActive ? 'yellow' : 'yellow-10'"
+                  icon="star_border"
+                  icon-selected="star"
+                  icon-half="star_half"
+                  no-dimming
+                  readonly
+                />
+                <span class="variant-rating-number">
+                  ({{
+                    variant.rating === 0
+                      ? "unrated"
+                      : variant.rating.toFixed(1)
+                  }})</span
+                >
+              </div>
+              <div style="flex: 1 1 0">
+                <q-badge class="awareness-badge" outline
+                  >Knownness:
+                  {{ getPopularityWording(variant.popularity) }}</q-badge
+                >
+              </div>
             </div>
             <div class="text-subtitle2">
               <q-badge
@@ -31,11 +60,11 @@
               color="secondary"
               label="Details"
               size="xs"
-              style="position: absolute; bottom: -10px; right: -10px"
+              style="position: absolute; bottom: 0; right: 0"
               @click="showModal = true"
             />
           </q-card-section>
-        </q-card-section>
+        </div>
 
         <q-img width="140px" height="140px" :src="variant.image" />
       </q-card-section>
@@ -68,6 +97,22 @@
 body.body--dark .variant-card-header {
   background-color: #161824;
 }
+
+.variant-rating-number {
+  color: #616161;
+}
+
+body.body--dark .variant-rating-number {
+  color: #eeeeee;
+}
+
+.awareness-badge {
+  color: black;
+}
+
+body.body--dark .awareness-badge {
+  color: white;
+}
 </style>
 
 <script setup>
@@ -92,14 +137,18 @@ const props = defineProps({
       "url": "",
       "desc": "",
       "image": "",
-      "tags": []
+      "tags": [],
+      "rating": 5,
+      "popularity": 5
     }
   */
 });
 
 import { ref } from "vue";
+import { useQuasar } from "quasar";
 
 let showModal = ref(false);
+const $q = useQuasar();
 
 //Needs memoisation?
 function getTagColour(tag) {
@@ -112,5 +161,11 @@ function getTagColour(tag) {
   };
 
   return colours[tag] ?? "red";
+}
+
+function getPopularityWording(popularity) {
+  const wording = ["Very Low", "Low", "Medium", "High", "Very High"];
+
+  return wording[popularity - 1];
 }
 </script>

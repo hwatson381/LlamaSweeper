@@ -43,7 +43,9 @@ let variantList = [
       "community",
       "informational",
       "game"
-    ]
+    ],
+    "rating": 4.9,
+    "popularity": 5
   },
   {
     "name": "Authoritative Minesweeper",
@@ -53,7 +55,9 @@ let variantList = [
     "tags": [
       "community",
       "informational"
-    ]
+    ],
+    "rating": 3.8,
+    "popularity": 5
   },
   {
     "name": "Minesweeper Community Discord",
@@ -62,7 +66,9 @@ let variantList = [
     "image": "/img/variants/discord.png",
     "tags": [
       "community"
-    ]
+    ],
+    "rating": 5,
+    "popularity": 3
   },
   {
     "name": "r/minesweeper subreddit",
@@ -71,7 +77,9 @@ let variantList = [
     "image": "/img/variants/reddit.png",
     "tags": [
       "community"
-    ]
+    ],
+    "rating": 2,
+    "popularity": 5
   },
   {
     "name": "Saolei",
@@ -81,7 +89,9 @@ let variantList = [
     "tags": [
       "community",
       "informational"
-    ]
+    ],
+    "rating": 4.1,
+    "popularity": 3
   },
   {
     "name": "Minesweeper Board Museum",
@@ -90,7 +100,9 @@ let variantList = [
     "image": "/img/variants/mbm.png",
     "tags": [
       "informational"
-    ]
+    ],
+    "rating": 3.5,
+    "popularity": 1
   },
   {
     "name": "Open Minesweeper",
@@ -99,7 +111,9 @@ let variantList = [
     "image": "/img/variants/openms.png",
     "tags": [
       "informational"
-    ]
+    ],
+    "rating": 3.6,
+    "popularity": 1
   },
   {
     "name": "qqwref personal website",
@@ -110,16 +124,20 @@ let variantList = [
       "informational",
       "game",
       "tool"
-    ]
+    ],
+    "rating": 3.4,
+    "popularity": 2
   },
   {
     "name": "Sudo Sweep",
     "url": "https://gamesforcrows.itch.io/sudo-sweep",
-    "desc": "This is a hybrid between Sudoku and Minesweeper. There is a sudoku grid on the left and a minesweeper grid on the right, and you are able to use information from the sudoku side to solve the minesweeper side and vice versa. Logic players will love this.",
+    "desc": "This is a hybrid between Sudoku and Minesweeper. There is a sudoku grid on the left and a minesweeper grid on the right, and you can use information from the sudoku side to solve the minesweeper side and vice versa. Logic players will love this.",
     "image": "/img/variants/sudosweep.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 4.7,
+    "popularity": 1
   },
   {
     "name": "Minesweeper Advent Calendar",
@@ -128,34 +146,42 @@ let variantList = [
     "image": "/img/variants/advent.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 4.5,
+    "popularity": 2
   },
   {
     "name": "14 Minesweeper Variants",
     "url": "https://store.steampowered.com/app/1865060/14_Minesweeper_Variants/",
-    "desc": "Minesweeper but with different creative twists on the rules. For example, in one of the variants, the numbers lie to you and are off by one (but you don't know which way). I haven't played this, but the people I know who have speak highly of it. Aliensrock (a popular puzzle gaming youtuber) has made several videos on this. As of writing, it costs $7. It also has a sequel called 14 Minesweeper Variants 2.",
+    "desc": "Minesweeper but with different creative twists on the rules. For example, in one of the variants, the numbers lie to you and are off by one (but you don't know which way). I haven't played this but the people I know who have speak highly of it. Aliensrock (a popular puzzle gaming youtuber) has made several videos on this. As of writing, it costs $7. It also has a sequel called 14 Minesweeper Variants 2.",
     "image": "/img/variants/14ms.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 0,
+    "popularity": 4
   },
   {
     "name": "4D Minesweeper",
     "url": "https://store.steampowered.com/app/787980/4D_Minesweeper/",
-    "desc": "Play minesweeper in higher dimensions (1D up to 4D). It displays 4D as a \"grid of grids\" and lets you hover your mouse over any square to see which ones are the neighbours. It's free on steam. I haven't played this, but have seen others play it.",
+    "desc": "Play minesweeper in higher dimensions (1D up to 4D). It displays 4D as a \"grid of grids\" and lets you hover your mouse over any square to see which ones are the neighbours. It's free on steam. I haven't played this but have seen others play it.",
     "image": "/img/variants/4d.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 4,
+    "popularity": 2
   },
   {
     "name": "Mine3D",
     "url": "http://egraether.com/mine3d/",
-    "desc": "Minesweeper in true 3D (as in solving the volume of a cube/cuboid rather than just solving the surface). This is quite mindbending to play. It can be quite hard to tell which numbers are next to which blocks. Someone should make something like this in VR (or with crossview 3D).",
+    "desc": "Minesweeper in true 3D (as in solving the volume of a cube/cuboid rather than just solving the surface). This is quite mind-bending to play. It can be quite hard to tell which numbers are next to which blocks. Someone should make something like this in VR (or with crossview 3D).",
     "image": "/img/variants/mine3d.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 4,
+    "popularity": 2
   },
   {
     "name": "Square Finder",
@@ -164,7 +190,9 @@ let variantList = [
     "image": "/img/variants/squarefinder.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 4.4,
+    "popularity": 1
   },
   {
     "name": "MultiSweeper",
@@ -173,7 +201,9 @@ let variantList = [
     "image": "/img/variants/multisweeper.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 3.9,
+    "popularity": 1
   },
   {
     "name": "Simon Tatham's Mines",
@@ -182,7 +212,9 @@ let variantList = [
     "image": "/img/variants/tathams.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 4.2,
+    "popularity": 5
   },
   {
     "name": "Minesweeper: The Grand Master",
@@ -191,7 +223,9 @@ let variantList = [
     "image": "/img/variants/minetgm.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 3.2,
+    "popularity": 1
   },
   {
     "name": "DemonCrawl",
@@ -200,25 +234,31 @@ let variantList = [
     "image": "/img/variants/demoncrawl.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 0,
+    "popularity": 4
   },
   {
-    "name": "carykh minesweeper (knightsweeper)",
+    "name": "carykh knightsweeper",
     "url": "https://htwins.net/minesweeper/",
-    "desc": "Minesweeper, but with different rules for how the neighbouring cells are counted. For example, the numbers could count mines that are a knights move away or that are orthoganally adjacent (no diagonals). There are lots of different rules to choose from. The rules used can be changed by clicking on the box which has the pattern (\"normal\" is the default pattern). This was made by the youtube carykh.",
+    "desc": "Minesweeper, but with different rules for how the neighbouring cells are counted. For example, the numbers could count mines that are a knights move away or that are orthoganally adjacent (no diagonals). There are lots of different rules to choose from. The rules used can be changed by clicking on the box which has the pattern (\"normal\" is the default pattern). This was made by the youtuber carykh.",
     "image": "/img/variants/carykh.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 4.3,
+    "popularity": 3
   },
   {
-    "name": "qqwref mod of carykh minesweeper",
+    "name": "carykh knightsweeper qqwref mod",
     "url": "https://mzrg.com/mines/carykh.html",
     "desc": "A mod of Carykh minesweeper that adds additional counting rules to choose from. For example, there is the binary rule, where instead of each number being from 1-8, it now goes from 1-255 and converting a number to binary tells you exactly where the mines are (e.g. 5 -> 101 -> mine in top left and top right).",
     "image": "/img/variants/qqwref-carykh.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 4.3,
+    "popularity": 1
   },
   {
     "name": "mnsw.pro",
@@ -227,7 +267,9 @@ let variantList = [
     "image": "/img/variants/mnsw-pro.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 3.7,
+    "popularity": 3
   },
   {
     "name": "qqwref mouse control",
@@ -236,7 +278,9 @@ let variantList = [
     "image": "/img/variants/mouse.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 3,
+    "popularity": 1
   },
   {
     "name": "Tetrisweeper",
@@ -245,7 +289,9 @@ let variantList = [
     "image": "/img/variants/tetrisweeper.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 4,
+    "popularity": 2
   },
   {
     "name": "Mega minesweeper",
@@ -254,7 +300,9 @@ let variantList = [
     "image": "/img/variants/mega.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 3.4,
+    "popularity": 2
   },
   {
     "name": "Unveiling",
@@ -263,7 +311,9 @@ let variantList = [
     "image": "/img/variants/unveiling.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 4.2,
+    "popularity": 2
   },
   {
     "name": "Minesweeper Arbiter",
@@ -272,7 +322,9 @@ let variantList = [
     "image": "/img/variants/arbiter.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 3.4,
+    "popularity": 4
   },
   {
     "name": "meowsweeper",
@@ -281,7 +333,9 @@ let variantList = [
     "image": "/img/variants/meowsweeper.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 3,
+    "popularity": 1
   },
   {
     "name": "Metasweeper",
@@ -290,16 +344,20 @@ let variantList = [
     "image": "/img/variants/metasweeper.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 4.5,
+    "popularity": 2
   },
   {
     "name": "Viennasweeper",
     "url": "https://sweeper.wien/",
-    "desc": "Viennasweeper is an official desktop clone that can be used for the Authoritative minesweeper rankings. It is created and maintained by Ralokt. It saves replays of games and tracks some statistics (although less than other clones). Whilst it does not currently support zoom, this is being worked on, and once this is out, it will be the only official clone that has this feature.",
+    "desc": "Viennasweeper is an official desktop clone that can be used for the Authoritative minesweeper rankings. It is created and maintained by Ralokt. It is a fairly minimal clone that saves replays of games and tracks some statistics (although less than other clones). Whilst the latest full release of Viennasweeper does not support scaling, this is actively being worked on and there are preview versions available that do support scaling through using skins. Once this is fully out, Viennasweeper will be the only official clone that has scaling. Like all official clones, it uses left+right click to chord.",
     "image": "/img/variants/viennasweeper.png",
     "tags": [
       "game"
-    ]
+    ],
+    "rating": 3.8,
+    "popularity": 3
   },
   {
     "name": "Minesweeper GO - classic game",
@@ -309,7 +367,9 @@ let variantList = [
     "tags": [
       "mobile",
       "game"
-    ]
+    ],
+    "rating": 4.7,
+    "popularity": 4
   },
   {
     "name": "Mastermine",
@@ -319,7 +379,9 @@ let variantList = [
     "tags": [
       "game",
       "mobile"
-    ]
+    ],
+    "rating": 2.9,
+    "popularity": 2
   },
   {
     "name": "League of Minesweeper",
@@ -329,7 +391,9 @@ let variantList = [
     "tags": [
       "game",
       "mobile"
-    ]
+    ],
+    "rating": 4.8,
+    "popularity": 3
   },
   {
     "name": "Chocolate Sweeper",
@@ -339,7 +403,9 @@ let variantList = [
     "tags": [
       "game",
       "mobile"
-    ]
+    ],
+    "rating": 4.6,
+    "popularity": 3
   },
   {
     "name": "qqwref probability calculator",
@@ -348,7 +414,9 @@ let variantList = [
     "image": "/img/variants/qqprob.png",
     "tags": [
       "tool"
-    ]
+    ],
+    "rating": 3.6,
+    "popularity": 1
   },
   {
     "name": "DavidNHill JS Minesweeper Solver",
@@ -357,16 +425,20 @@ let variantList = [
     "image": "/img/variants/jsminesweeper.png",
     "tags": [
       "tool"
-    ]
+    ],
+    "rating": 5,
+    "popularity": 3
   },
   {
     "name": "PTTACGfans ZiNi Calculator",
     "url": "https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/",
-    "desc": "This is a tool used to calculate the minimum number of clicks that a board can be solved in using flags, chords and left-clicks. Positions can either be created manually by placing the mines on the board, or imported from Minesweeper Online by clicking the arrow next to the ZiNi stat that shows up next to a finished game (ZiNi may need to be enabled in settings for this). This tool was created by PTTACGfans, a well known player on Minesweeper Online. ",
+    "desc": "This is a tool used to calculate the minimum number of clicks that a board can be solved in using flags, chords and left-clicks. Positions can either be created manually by placing the mines on the board or imported from Minesweeper Online by clicking the arrow next to the ZiNi stat that shows up next to a finished game (ZiNi may need to be enabled in settings for this). This tool was created by PTTACGfans, a well known player on Minesweeper Online. ",
     "image": "/img/variants/ptta-zini.png",
     "tags": [
       "tool"
-    ]
+    ],
+    "rating": 3.8,
+    "popularity": 3
   },
   {
     "name": "qqwref make_board",
@@ -375,7 +447,9 @@ let variantList = [
     "image": "/img/variants/make_board.png",
     "tags": [
       "tool"
-    ]
+    ],
+    "rating": 3.1,
+    "popularity": 1
   }
 ]
 
