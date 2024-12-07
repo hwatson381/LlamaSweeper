@@ -40,9 +40,10 @@
               </div>
               <div style="flex: 1 1 0">
                 <q-badge class="awareness-badge" outline
-                  >Knownness:
-                  {{ getPopularityWording(variant.popularity) }}</q-badge
-                >
+                  ><span
+                    v-html="getPopularityWording(variant.popularity)"
+                  ></span
+                ></q-badge>
               </div>
             </div>
             <div class="text-subtitle2">
@@ -164,8 +165,21 @@ function getTagColour(tag) {
 }
 
 function getPopularityWording(popularity) {
-  const wording = ["Very Low", "Low", "Medium", "High", "Very High"];
+  const word = ["Very Low", "Low", "Medium", "High", "Very High"][
+    popularity - 1
+  ];
 
-  return wording[popularity - 1];
+  let colours;
+
+  //Probably would've been easier to do this colour stuff with classes and specifying colours in <style>. Whoops...
+  if ($q.dark.isActive) {
+    colours = ["#B2B2FF", "#8372A5", "#823478", "#CA2136", "#FF2A00"];
+  } else {
+    colours = ["#0000FF", "#4E0DB1", "#861678", "#CA2136", "#FF2A00"];
+  }
+
+  const colour = colours[popularity - 1];
+
+  return `Knownness: <span style="font-weight: bold; color: ${colour}">&nbsp;${word}</span>`;
 }
 </script>
