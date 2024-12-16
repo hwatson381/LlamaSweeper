@@ -1,11 +1,11 @@
 <template>
   <q-page class="flex flex-center">
-    <p>mine :)</p>
-    <img
-      alt="Quasar logo"
-      src="~assets/quasar-logo-vertical.svg"
-      style="width: 200px; height: 200px"
-    />
+    <h4>So uhhhh, I made some variants.</h4>
+    <p>
+      I put link here, but maybe I change later to be on this page or something
+      idk lmao
+      <a href="/#/play">play page</a>
+    </p>
   </q-page>
 </template>
 
