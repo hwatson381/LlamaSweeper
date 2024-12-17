@@ -8,4 +8,3 @@ first click always opening? (or do NG x?)
 make stats work for lost games as well
 implement zini alg
 add replays
-add hoveredSquare getting depressed if mouseDown pressed

@@ -5,20 +5,14 @@
       style="max-width: 800px"
       @mousedown="game.handleMouseDown($event)"
       @mouseup="game.handleMouseUp($event)"
+      @mousemove="game.handleMouseMove($event)"
     >
       <p>Play Page (textures from minesweeper.online)</p>
       <h4>Beg Eff practise (only 200+ boards)</h4>
       <button @click="settingsModal = true">settings</button>
       <button @click="game.reset">reset board</button><br /><br />
 
-      <canvas
-        ref="main-canvas"
-        id="main-canvas"
-        width="500"
-        height="500"
-        @contextmenu.prevent
-      >
-      </canvas>
+      <canvas ref="main-canvas" id="main-canvas" @contextmenu.prevent> </canvas>
       <div v-if="showStatsBlock" style="background-color: #222222">
         <pre>{{ statsText }}</pre>
       </div>
@@ -139,11 +133,7 @@ class Game {
   }
 
   handleMouseDown(event) {
-    if (this.gameStage !== "running") {
-      return; //Clicks do nothing unless game is running. Notably we restrict pre-placed flags cos why not
-    }
-
-    if (event.target !== mainCanvas.value) {
+    if (this.gameStage !== "pregame" && this.gameStage !== "running") {
       return;
     }
 
@@ -152,26 +142,25 @@ class Game {
     const canvasRawY =
       event.clientY - mainCanvas.value.getBoundingClientRect().top;
 
-    //Check board within canvas is being clicked on (overkill idk?)
-    if (
-      canvasRawX >= boardHorizontalPadding.value &&
-      canvasRawX <
-        this.board.width * this.board.tileSize + boardHorizontalPadding.value &&
-      canvasRawY >= boardVerticalPadding.value &&
-      canvasRawY <
-        this.board.height * this.board.tileSize + boardVerticalPadding.value
-    ) {
-      const boardRawX = canvasRawX - boardHorizontalPadding.value;
-      const boardRawY = canvasRawY - boardVerticalPadding.value;
+    const boardRawX = canvasRawX - boardHorizontalPadding.value;
+    const boardRawY = canvasRawY - boardVerticalPadding.value;
 
-      if (event.button === 2) {
-        this.board.attemptFlag(
-          boardRawX,
-          boardRawY,
-          performance.now() - this.startTime
-        );
-        this.board.draw();
-      }
+    if (event.button === 0) {
+      this.board.holdDownLeftMouse(boardRawX, boardRawY);
+      this.board.draw();
+    }
+
+    if (
+      event.button === 2 &&
+      event.target === mainCanvas.value &&
+      this.gameStage === "running"
+    ) {
+      this.board.attemptFlag(
+        boardRawX,
+        boardRawY,
+        performance.now() - this.startTime
+      );
+      this.board.draw();
     }
   }
 
@@ -180,52 +169,73 @@ class Game {
       return; //Clicks do nothing on win/lose screen
     }
 
-    if (event.target !== mainCanvas.value) {
-      return;
-    }
-
     const canvasRawX =
       event.clientX - mainCanvas.value.getBoundingClientRect().left;
     const canvasRawY =
       event.clientY - mainCanvas.value.getBoundingClientRect().top;
 
-    //Check board within canvas is being clicked on (overkill idk?)
-    if (
-      canvasRawX >= boardHorizontalPadding.value &&
-      canvasRawX <
-        this.board.width * this.board.tileSize + boardHorizontalPadding.value &&
-      canvasRawY >= boardVerticalPadding.value &&
-      canvasRawY <
-        this.board.height * this.board.tileSize + boardVerticalPadding.value
-    ) {
-      const boardRawX = canvasRawX - boardHorizontalPadding.value;
-      const boardRawY = canvasRawY - boardVerticalPadding.value;
+    const boardRawX = canvasRawX - boardHorizontalPadding.value;
+    const boardRawY = canvasRawY - boardVerticalPadding.value;
 
-      if (event.button === 0) {
-        if (this.gameStage === "pregame") {
-          this.gameStage = "running";
-          this.startTime = performance.now();
-        }
-        this.board.attemptChordOrDig(
-          boardRawX,
-          boardRawY,
-          performance.now() - this.startTime
-        );
-        if (this.board.blasted) {
-          this.board.blast();
-          this.gameStage = "lost";
-          this.board.stats.addEndTime(performance.now() - this.startTime);
-          this.board.stats.calcStats();
-          showStatsBlock.value = true;
-        } else if (this.board.checkWin()) {
-          this.board.markRemainingFlags();
-          this.gameStage = "won";
-          this.board.stats.addEndTime(performance.now() - this.startTime);
-          this.board.stats.calcStats();
-          showStatsBlock.value = true;
-        }
-        this.board.draw();
+    if (event.button === 0) {
+      if (this.gameStage === "pregame") {
+        this.gameStage = "running";
+        this.startTime = performance.now();
       }
+      this.board.attemptChordOrDig(
+        boardRawX,
+        boardRawY,
+        performance.now() - this.startTime
+      );
+      if (this.board.blasted) {
+        this.board.blast();
+        this.gameStage = "lost";
+        this.board.stats.addEndTime(performance.now() - this.startTime);
+        this.board.stats.calcStats();
+        showStatsBlock.value = true;
+      } else if (this.board.checkWin()) {
+        this.board.markRemainingFlags();
+        this.gameStage = "won";
+        this.board.stats.addEndTime(performance.now() - this.startTime);
+        this.board.stats.calcStats();
+        showStatsBlock.value = true;
+      }
+      this.board.draw();
+    }
+  }
+
+  handleMouseMove(event) {
+    if (this.gameStage !== "pregame" && this.gameStage !== "running") {
+      return; //only track mouse when game is running or just before
+    }
+
+    //Commented out as we need to track when the canvas is left
+    /*
+    if (event.target !== mainCanvas.value) {
+      return;
+    }
+    */
+
+    //Convert to canvas coords
+    const canvasRawX =
+      event.clientX - mainCanvas.value.getBoundingClientRect().left;
+    const canvasRawY =
+      event.clientY - mainCanvas.value.getBoundingClientRect().top;
+
+    //Convert to board coords
+    const boardRawX = canvasRawX - boardHorizontalPadding.value;
+    const boardRawY = canvasRawY - boardVerticalPadding.value;
+
+    const isPregame = this.gameStage === "pregame";
+    const time = performance.now() - this.startTime;
+    const requiresRedraw = this.board.mouseMove(
+      boardRawX,
+      boardRawY,
+      time,
+      isPregame
+    );
+    if (requiresRedraw) {
+      this.board.draw();
     }
   }
 }
@@ -236,6 +246,9 @@ class Board {
     this.height = height;
     this.mineCount = mineCount;
     this.tileSize = tileSize;
+
+    this.hoveredSquare = { x: null, y: null }; //Square that is being hovered over
+    this.isLeftMouseDown = false;
 
     this.reset();
   }
@@ -260,17 +273,39 @@ class Board {
     this.stats = new BoardStats(this.mines);
   }
 
+  checkCoordsInBounds(tileX, tileY) {
+    if (tileX === null || tileY === null) {
+      //Just in case
+      return false;
+    }
+
+    if (tileX < 0 || tileX >= this.width || tileY < 0 || tileY >= this.height) {
+      return false;
+    }
+
+    return true;
+  }
+
   attemptFlag(boardRawX, boardRawY, time) {
     let tileX = Math.floor(boardRawX / this.tileSize);
     let tileY = Math.floor(boardRawY / this.tileSize);
 
+    if (!this.checkCoordsInBounds(tileX, tileY)) {
+      //Click not on board, exit (doesn't count as wasted click)
+      return;
+    }
+
     if (this.revealedNumbers[tileX][tileY].state === UNREVEALED) {
+      //Flag the square
       this.revealedNumbers[tileX][tileY].state = FLAG;
       this.stats.addRight(tileX, tileY, time);
     } else if (this.revealedNumbers[tileX][tileY].state === FLAG) {
+      //Unflag a square
       this.revealedNumbers[tileX][tileY].state = UNREVEALED;
+      this.stats.makeMostRecentRightWasted(tileX, tileY);
       this.stats.addWastedRight(tileX, tileY, time);
     } else {
+      //Wasted flag input
       this.stats.addWastedRight(tileX, tileY, time);
     }
   }
@@ -278,6 +313,13 @@ class Board {
   attemptChordOrDig(boardRawX, boardRawY, time) {
     let tileX = Math.floor(boardRawX / this.tileSize);
     let tileY = Math.floor(boardRawY / this.tileSize);
+
+    this.updateDepressedSquares(tileX, tileY, false); //Undepress square as we have just done leftMouseUp
+
+    if (!this.checkCoordsInBounds(tileX, tileY)) {
+      //Click not on board, exit (doesn't count as wasted click)
+      return;
+    }
 
     if (typeof this.revealedNumbers[tileX][tileY].state === "number") {
       //Attempt chord tile
@@ -290,8 +332,17 @@ class Board {
     }
   }
 
+  holdDownLeftMouse(boardRawX, boardRawY) {
+    let tileX = Math.floor(boardRawX / this.tileSize);
+    let tileY = Math.floor(boardRawY / this.tileSize);
+
+    //Don't track this in stats yet (but may add in future)
+    //All this does is depress the current square or surrounding squares as the user pressed down left mouse
+    this.updateDepressedSquares(tileX, tileY, true);
+  }
+
   openTile(x, y) {
-    if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
+    if (!this.checkCoordsInBounds(x, y)) {
       return; //ignore squares outside board
     }
 
@@ -314,6 +365,89 @@ class Board {
     }
   }
 
+  mouseMove(boardRawX, boardRawY, time, isPregame) {
+    let unflooredTileX = boardRawX / this.tileSize;
+    let unflooredTileY = boardRawY / this.tileSize;
+
+    let tileX = Math.floor(unflooredTileX);
+    let tileY = Math.floor(unflooredTileY);
+
+    const requiresRedraw = this.updateDepressedSquares(
+      tileX,
+      tileY,
+      this.isLeftMouseDown
+    );
+
+    if (!isPregame) {
+      this.stats.addMouseMove(unflooredTileX, unflooredTileY, time);
+    }
+
+    return requiresRedraw;
+  }
+
+  updateDepressedSquares(tileX, tileY, newIsLeftMouseDownValue) {
+    //Handle depressing squares when left mouse is down and over an square or an number (in which case this "prepares" the chord)
+
+    //Set tileX/tileY to null if out of bounds
+    if (!this.checkCoordsInBounds(tileX, tileY)) {
+      tileX = null;
+      tileY = null;
+    }
+
+    const leftMouseDownChanged =
+      this.isLeftMouseDown !== newIsLeftMouseDownValue;
+
+    const hoveredSquareMoved =
+      tileX !== this.hoveredSquare.x || tileY !== this.hoveredSquare.y;
+
+    if (!hoveredSquareMoved && !leftMouseDownChanged) {
+      const requiresRedraw = false;
+      return requiresRedraw;
+    }
+
+    //Maybe slightly excessive, but easier to clear out hover and reapply each time rather than going through all cases
+
+    //Clear out old hover (3x3 block so we don't have to check whether it was a chord or singleton)
+    for (let x = this.hoveredSquare.x - 1; x <= this.hoveredSquare.x + 1; x++) {
+      for (
+        let y = this.hoveredSquare.y - 1;
+        y <= this.hoveredSquare.y + 1;
+        y++
+      ) {
+        if (this.revealedNumbers[x]?.[y]) {
+          this.revealedNumbers[x][y].depressed = false;
+        }
+      }
+    }
+
+    //Apply new hover
+    if (tileX !== null && tileY !== null && newIsLeftMouseDownValue) {
+      //Single square
+      if (this.revealedNumbers[tileX][tileY].state === UNREVEALED) {
+        this.revealedNumbers[tileX][tileY].depressed = true;
+      }
+
+      //Chord
+      if (typeof this.revealedNumbers[tileX][tileY].state === "number") {
+        for (let x = tileX - 1; x <= tileX + 1; x++) {
+          for (let y = tileY - 1; y <= tileY + 1; y++) {
+            //Note that the middle square automatically gets excluded as it's been revealed
+            if (this.revealedNumbers[x]?.[y]?.state === UNREVEALED) {
+              this.revealedNumbers[x][y].depressed = true;
+            }
+          }
+        }
+      }
+    }
+
+    this.hoveredSquare.x = tileX;
+    this.hoveredSquare.y = tileY;
+    this.isLeftMouseDown = newIsLeftMouseDownValue;
+
+    const requiresRedraw = true;
+    return requiresRedraw;
+  }
+
   getNumberSurroundingMines(x, y) {
     let count = 0;
     for (let i = x - 1; i <= x + 1; i++) {
@@ -321,7 +455,7 @@ class Board {
         if (i === x && j === y) {
           continue; //dont count square itself
         }
-        if (i < 0 || i >= this.width || j < 0 || j >= this.height) {
+        if (!this.checkCoordsInBounds(i, j)) {
           continue; //ignore squares outside board
         }
         if (this.mines[i][j]) {
@@ -340,7 +474,7 @@ class Board {
         if (i === x && j === y) {
           continue; //dont count square itself
         }
-        if (i < 0 || i >= this.width || j < 0 || j >= this.height) {
+        if (!this.checkCoordsInBounds(i, j)) {
           continue; //ignore squares outside board
         }
         if (this.revealedNumbers[i][j].state === FLAG) {
@@ -353,7 +487,7 @@ class Board {
   }
 
   chord(x, y, includeInStats = false, time = 0) {
-    if (x < 0 || x >= this.width || y < 0 || y >= this.height) {
+    if (!this.checkCoordsInBounds(x, y)) {
       return; //ignore squares outside board
     }
 
@@ -370,7 +504,7 @@ class Board {
           if (i === x && j === y) {
             continue; //don't open square itself
           }
-          if (i < 0 || i >= this.width || j < 0 || j >= this.height) {
+          if (!this.checkCoordsInBounds(i, j)) {
             continue; //ignore squares outside board
           }
           if (this.revealedNumbers[i][j].state === UNREVEALED) {
@@ -454,21 +588,11 @@ class Tile {
 
   draw(rawX, rawY, size) {
     const ctx = mainCanvas.value.getContext("2d");
-    /*
-    ctx.font = `${size}px`;
 
-    let drawValue = this.state;
+    //Depressed squares get drawn as an open tile
+    const toDraw = this.depressed ? 0 : this.state;
 
-    if (this.state === UNREVEALED) {
-      drawValue = "#";
-    }
-    if (this.state === FLAG) {
-      drawValue = "F";
-    }
-
-    ctx.strokeText(drawValue, rawX, rawY);
-    */
-    ctx.drawImage(skinManager.getImage(this.state), rawX, rawY, size, size);
+    ctx.drawImage(skinManager.getImage(toDraw), rawX, rawY, size, size);
   }
 }
 
@@ -607,6 +731,7 @@ class BoardStats {
   constructor(minesArray) {
     this.mines = structuredClone(minesArray);
     this.clicks = [];
+    this.moves = []; //Mouse movements, use separate array as this can get quite large
   }
 
   addLeft(x, y, time) {
@@ -654,9 +779,31 @@ class BoardStats {
     });
   }
 
+  makeMostRecentRightWasted(x, y) {
+    //findLast might be too new? Watch out for browsers not having it
+    if (!Array.prototype.findLast) {
+      window.alert("Browser missing Array.prototype.findLast");
+      return;
+    }
+    const mostRecentFlag = this.clicks.findLast((click) => {
+      return click.type === "right" && click.x === x && click.y === y;
+    });
+
+    mostRecentFlag.type = "wasted_right";
+  }
+
   addWastedChord(x, y, time) {
     this.clicks.push({
       type: "wasted_chord",
+      x,
+      y,
+      time,
+    });
+  }
+
+  addMouseMove(x, y, time) {
+    this.moves.push({
+      type: "mouse_move",
       x,
       y,
       time,
