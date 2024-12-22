@@ -191,14 +191,12 @@ class Game {
         this.board.blast();
         this.gameStage = "lost";
         this.board.stats.addEndTime(performance.now() - this.startTime);
-        this.board.stats.calcStats();
-        showStatsBlock.value = true;
+        this.board.calculateAndDisplayStats(false);
       } else if (this.board.checkWin()) {
         this.board.markRemainingFlags();
         this.gameStage = "won";
         this.board.stats.addEndTime(performance.now() - this.startTime);
-        this.board.stats.calcStats();
-        showStatsBlock.value = true;
+        this.board.calculateAndDisplayStats(true);
       }
       this.board.draw();
     }
@@ -557,6 +555,11 @@ class Board {
     }
   }
 
+  calculateAndDisplayStats(isWin) {
+    this.stats.calcStats(isWin, this.revealedNumbers);
+    showStatsBlock.value = true;
+  }
+
   draw() {
     const ctx = mainCanvas.value.getContext("2d");
     ctx.clearRect(0, 0, mainCanvas.value.width, mainCanvas.value.height);
@@ -810,7 +813,7 @@ class BoardStats {
     });
   }
 
-  calc3bv() {
+  calc3bv(revealedNumbers) {
     // Basic idea = generate grid of numbers
     // Do flood fill with the zeros - this will label openings and find which squares touch which openings
     // Maybe can reuse openings in zini calc? (Or not needed?)
@@ -818,71 +821,51 @@ class BoardStats {
     const width = this.mines.length;
     const height = this.mines[0].length;
 
-    const numbersArray = new Array(width)
-      .fill(0)
-      .map(() => new Array(height).fill(0));
+    //Only destructure openingLabels as other properties aren't needed yet
+    const { openingLabels } =
+      algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
+        this.mines
+      );
 
-    for (let x = 0; x < width; x++) {
-      for (let y = 0; y < height; y++) {
-        if (this.mines[x][y]) {
-          continue;
-        }
+    //Find total number of openings. Each opening is labeled with a non-zero number, so we count up the number of unique opening labels
+    const totalNumberOfOpenings = new Set(
+      openingLabels.flat().filter((el) => typeof el === "number" && el !== 0)
+    ).size;
 
-        let number = 0;
-        for (let i = x - 1; i <= x + 1; i++) {
-          for (let j = y - 1; j <= y + 1; j++) {
-            if (this.mines[i]?.[j]) {
-              number++;
-            }
-          }
-        }
-        numbersArray[x][y] = number;
-      }
-    }
-
-    //Generate grid with labelled openings. Like
-    /*
-      11+00x
-      1++x++
-      1+x0+2
-
-      In this grid, 1's are part of the first opening, 2's are part of the 2nd opening.
-      0s are not part of any opening, +'s are on the edge of an opening, x's are mines.
-    */
-    let openingLabels = new Array(width)
-      .fill(0)
-      .map(() => new Array(height).fill(0));
-
-    let nextOpeningLabel = 0;
-
-    for (let x = 0; x < width; x++) {
-      for (let y = 0; y < height; y++) {
-        if (this.mines[x][y]) {
-          openingLabels[x][y] = "x";
-          continue;
-        }
-
-        if (numbersArray[x][y] === 0 && openingLabels[x][y] === 0) {
-          nextOpeningLabel++;
-          this.floodOpeningFor3bv(
-            x,
-            y,
-            openingLabels,
-            numbersArray,
-            nextOpeningLabel
-          );
-        }
-      }
-    }
-
-    const totalNumberOfOpenings = nextOpeningLabel;
     const totalNumberOfProtectedSquares = openingLabels
       .flat()
       .filter((el) => el === 0).length;
 
     this.bbbv = totalNumberOfOpenings + totalNumberOfProtectedSquares;
+
+    //Calculate solved 3bv for when it's a lost game
+    //Scuffed as this includes openings that have not been fully opened
+    //and tiles that were solved from blasted chord
+
+    let solvedProtectedSquares = 0;
+    let solvedOpenings = new Set();
+    //^ Add openings to this set if there is a cell of them opened
+    //Slightly scuffed since this also captures partially opened openings
+    //But not worth the effort of trying to catch these
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (typeof revealedNumbers[x][y].state !== "number") {
+          //Tile has not been opened, so don't include in solved 3bv
+          continue;
+        }
+        if (openingLabels[x][y] === 0) {
+          solvedProtectedSquares++;
+        } else if (typeof openingLabels[x][y] === "number") {
+          solvedOpenings.add(openingLabels[x][y]); //Add the opening to the set as we've seen a zero tile from it
+        }
+      }
+    }
+
+    this.solved3bv = solvedProtectedSquares + solvedOpenings.size;
   }
 
+  /*
   floodOpeningFor3bv(x, y, openingLabels, numbersArray, newLabel) {
     if (openingLabels[x]?.[y] !== 0) {
       //Square outside board or has already been processed
@@ -939,32 +922,49 @@ class BoardStats {
       );
     }
   }
+  */
 
   calcZini() {
-    this.zini = 300;
+    this.zini = algorithms.calcWomZini(this.mines);
   }
 
-  calcStats() {
+  calcStats(isWin, revealedNumbers) {
     const time = this.endTime / 1000;
-    this.calc3bv();
+    this.calc3bv(revealedNumbers);
+    const solved3bv = this.solved3bv;
     const bbbv = this.bbbv;
-    const bbbvs = bbbv / time;
+    const bbbvs = solved3bv / time;
+
+    const estTime = bbbv / bbbvs;
 
     this.calcZini();
     const zini = this.zini;
 
     const clicks = this.clicks.length;
 
-    const eff = (100 * bbbv) / clicks;
+    const eff = (100 * solved3bv) / clicks;
     const maxEff = (100 * bbbv) / zini;
 
-    statsText.value = `Time: ${time.toFixed(3)}s
-    3bv/s: ${bbbvs.toFixed(3)}
-    Eff: ${eff.toFixed(0)}%
-    Max Eff: ${maxEff.toFixed(0)}%
-    Zini: ${zini}
-    3bv: ${bbbv}
-    Clicks: ${clicks}`;
+    if (isWin) {
+      statsText.value = `
+      Time: ${time.toFixed(3)}s
+      3bv: ${bbbv}
+      3bv/s: ${bbbvs.toFixed(3)}
+      Eff: ${eff.toFixed(0)}%
+      Max Eff: ${maxEff.toFixed(0)}%
+      Clicks: ${clicks}
+      Zini (WoM): ${zini}`;
+    } else {
+      statsText.value = `
+      Time: ${time.toFixed(3)}s
+      Est. Time: ${estTime.toFixed(3)}
+      3bv: ${solved3bv}/${bbbv}
+      3bv/s: ${bbbvs.toFixed(3)}
+      Eff: ${eff.toFixed(0)}%
+      Max Eff: ${maxEff.toFixed(0)}%
+      Clicks: ${clicks}
+      Zini (WoM): ${zini}`;
+    }
   }
 
   addEndTime(time) {
@@ -972,8 +972,641 @@ class BoardStats {
   }
 }
 
+class Algorithms {
+  constructor() {}
+
+  calcBasicZini(mines) {
+    //Get various data structures which information about numbers and openings
+    const { numbersArray, openingLabels, preprocessedOpenings } =
+      algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
+
+    const width = mines.length;
+    const height = mines[0].length;
+    const numberOfMines = mines.flat().filter((x) => x).length;
+
+    //false for unrevealed, true for revealed
+    const revealedStates = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(false));
+
+    //false for unflagged, true for flagged
+    const flagStates = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(false));
+
+    //saved info for square about what the neighbours are
+    const squareInfo = new Array(width).fill(0).map(() =>
+      new Array(height).fill(0).map(() => {
+        return {
+          isMine: false,
+          number: null, //Set later
+          is3bv: null, //Set later. Note that this info can also be determined by whether this.number = 0 and this.openingsTouched.size = 0
+          labelIfOpening: null, //Set later if this is a zero square. This gives the "identifier" of the opening this square is part of
+          mineNeighbours: [],
+          safeNeighbours: [],
+          nonOpening3bvNeighbours: [], //i.e. single "protected" squares
+          openingsTouched: new Set(), //These correspond to "3bv" that are openings. Values are the labels of the openings it touches
+        };
+      })
+    );
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        const thisSquare = squareInfo[x][y];
+
+        //Is this square a mine
+        if (mines[x][y]) {
+          thisSquare.isMine = true;
+          continue;
+        }
+        //What number is this square
+        thisSquare.number = numbersArray[x][y];
+
+        //Is the square 3bv
+        if (openingLabels[x][y] === 0 || numbersArray[x][y] === 0) {
+          thisSquare.is3bv = true;
+        } else {
+          thisSquare.is3bv = false;
+        }
+
+        if (numbersArray[x][y] === 0) {
+          thisSquare.labelIfOpening = openingLabels[x][y];
+        }
+
+        //Gather info about the neighbours of this square
+        for (let i = x - 1; i <= x + 1; i++) {
+          for (let j = y - 1; j <= y + 1; j++) {
+            if (i < 0 || i >= width || j < 0 || j >= height) {
+              continue; //Neighbour Square outside board
+            }
+            if (i === x && j === y) {
+              continue; //The square itself is not a neighbour
+            }
+
+            if (mines[i][j]) {
+              thisSquare.mineNeighbours.push({ x: i, y: j });
+              continue;
+            } else {
+              thisSquare.safeNeighbours.push({ x: i, y: j });
+            }
+
+            if (openingLabels[i][j] === 0) {
+              //Neighbour cell is a protected square
+              thisSquare.nonOpening3bvNeighbours.push({ x: i, y: j });
+            } else if (
+              typeof openingLabels[i][j] === "number" &&
+              numbersArray[x][y] !== 0
+            ) {
+              //Neighbour cell belongs to the opening with label openingLabels[i][j]
+              //Note that openingsTouched is a set since a square can have multiple neighbours belonging to the same opening
+              //Also note that we don't track openings touched if the square itself is a zero as this messes up zini calc
+              thisSquare.openingsTouched.add(openingLabels[i][j]);
+            }
+          }
+        }
+      }
+    }
+
+    //store premiums of opening + chording each cell
+    const premiums = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(null));
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (mines[x][y]) {
+          continue;
+        }
+        this.updatePremiumForCoord(
+          x,
+          y,
+          squareInfo,
+          flagStates,
+          revealedStates,
+          premiums,
+          preprocessedOpenings
+        );
+      }
+    }
+
+    //Do stuff with calculating premiums in order to work out zini
+
+    const clicks = []; //Track clicks that get done by ZiNi
+    debugger;
+    while (
+      revealedStates.flat().filter((x) => x).length !==
+      width * height - numberOfMines
+    ) {
+      this.doBasicZiniStep(
+        squareInfo,
+        flagStates,
+        revealedStates,
+        premiums,
+        preprocessedOpenings,
+        clicks,
+        false, //These are for the enumeration order (needed for 8-way zini)
+        false, //These are for the enumeration order (needed for 8-way zini)
+        false //These are for the enumeration order (needed for 8-way zini)
+      );
+    }
+
+    console.log(clicks);
+
+    return clicks.length;
+  }
+
+  doBasicZiniStep(
+    squareInfo,
+    flagStates,
+    revealedStates,
+    premiums,
+    preprocessedOpenings,
+    clicks,
+    xReverse, //If true, prefer the premium with higher x coord
+    yReverse, //If true, prefer the premium with higher y coord
+    xySwap //If true, use y in outer loop instead of x
+  ) {
+    const width = revealedStates.length;
+    const height = revealedStates[0].length;
+
+    //Find move with highest premium
+    //Set up enumeration order
+    const xStart = xReverse ? width - 1 : 0;
+    const xEnd = xReverse ? 0 : width - 1;
+    const yStart = xReverse ? height - 1 : 0;
+    const yEnd = xReverse ? 0 : height - 1;
+    const iStart = xySwap ? yStart : xStart;
+    const iEnd = xySwap ? yEnd : xEnd;
+    const jStart = xySwap ? xStart : yStart;
+    const jEnd = xySwap ? xEnd : yEnd;
+    const iReverse = xySwap ? yReverse : xReverse;
+    const jReverse = xySwap ? xReverse : yReverse;
+
+    let highestPremiumSoFar = -1; //Default to -1 as if all premiums negative we need to click a square
+    let nfClick = null; //This is the first square in the enumeration, which we nf click if no chords are found
+    let chordClick = null; //This is our candidate square for chording
+
+    for (let i = iStart; iReverse ? i >= 0 : i <= iEnd; iReverse ? i-- : i++) {
+      for (
+        let j = jStart;
+        jReverse ? j >= 0 : j <= jEnd;
+        jReverse ? j-- : j++
+      ) {
+        const [x, y] = xySwap ? [j, i] : [i, j];
+        const thisSquare = squareInfo[x][y];
+        if (thisSquare.isMine) {
+          continue;
+        }
+        if (nfClick === null) {
+          //First square enumerated over becomes nfClick
+          if (!revealedStates[x][y]) {
+            nfClick = { x, y };
+          }
+        }
+        if (highestPremiumSoFar < premiums[x][y]) {
+          highestPremiumSoFar = premiums[x][y];
+          chordClick = { x, y };
+        }
+      }
+    }
+
+    //We've found a good move, now do it and update things. The move will either be an nf click or a chord.
+
+    //Track squares that will need premium update after doing the nf click or chord
+    let squaresThatNeedPremiumUpdated = [];
+
+    if (chordClick === null) {
+      ///////////////////////////
+      //DOING AN NF CLICK
+      ///////////////////////////
+
+      //No chord, try nf click
+      if (nfClick === null) {
+        throw new Error("No chords or NF clicks found?");
+      }
+      if (revealedStates[nfClick.x][nfClick.y]) {
+        throw new Error("Square already revealed? Should never happen");
+      }
+      clicks.push({ type: "left", x: nfClick.x, y: nfClick.y });
+      revealedStates[nfClick.x][nfClick.y] = true;
+
+      //Update premiums of neighbour cells as they may go down if this is a 3bv cell
+      for (let safeNeighbour of squareInfo[nfClick.x][nfClick.y]
+        .safeNeighbours) {
+        squaresThatNeedPremiumUpdated.push({
+          x: safeNeighbour.x,
+          y: safeNeighbour.y,
+        });
+      }
+
+      //Also handle if this square is an opening. Both opening the squares and also requesting them to have premiums updated
+      const labelIfOpening = squareInfo[nfClick.x][nfClick.y].labelIfOpening;
+      if (labelIfOpening !== null) {
+        const opening = preprocessedOpenings.get(labelIfOpening);
+        for (let zero of opening.zeros) {
+          revealedStates[zero.x][zero.y] = true;
+          squaresThatNeedPremiumUpdated.push({ x: zero.x, y: zero.y });
+        }
+        for (let edge of opening.edges) {
+          revealedStates[edge.x][edge.y] = true;
+          squaresThatNeedPremiumUpdated.push({ x: edge.x, y: edge.y });
+        }
+      }
+    } else {
+      ///////////////////////////
+      //DOING A CHORD
+      ///////////////////////////
+      const thisSquare = squareInfo[chordClick.x][chordClick.y];
+
+      const unflaggedAdjacentMines = thisSquare.mineNeighbours.filter(
+        (neighbour) => !flagStates[neighbour.x][neighbour.y]
+      );
+
+      //If we need to NF click first then we should do so
+      if (!revealedStates[chordClick.x][chordClick.y]) {
+        clicks.push({ type: "left", x: chordClick.x, y: chordClick.y });
+        revealedStates[chordClick.x][chordClick.y] = true;
+      }
+
+      //Place flags
+      for (let unflaggedMine of unflaggedAdjacentMines) {
+        clicks.push({ type: "right", x: unflaggedMine.x, y: unflaggedMine.y });
+        flagStates[unflaggedMine.x][unflaggedMine.y] = true;
+      }
+
+      //Do the click for the chord
+      clicks.push({ type: "chord", x: chordClick.x, y: chordClick.y });
+
+      //Expand unrevealed openings that it touches
+      //(needs to be done before revealing neighbour cells, as we do some hacky stuff with
+      //checking a single zero of the opening to see if the whole opening is a zero
+      //and if this zero is a neighbour it would otherwise break stuff...)
+      const adjacentUnrevealedOpenings = [...thisSquare.openingsTouched]
+        .map((openingLabel) => preprocessedOpenings.get(openingLabel))
+        .filter((opening) => {
+          //Find a zero tile in the opening and check whether this is open or not
+          const zeroBelongingToOpening = opening.zeros[0];
+          return !revealedStates[zeroBelongingToOpening.x][
+            zeroBelongingToOpening.y
+          ];
+        });
+
+      for (let opening of adjacentUnrevealedOpenings) {
+        //Reveal both the zeros and the edges of this opening, also update premiums for these
+        //Note that we do not need to update premiums for squares that neighbour the opening edges
+        //as opening edges are by definition not 3bv, so don't affect premiums
+        for (let zero of opening.zeros) {
+          revealedStates[zero.x][zero.y] = true;
+          squaresThatNeedPremiumUpdated.push({ x: zero.x, y: zero.y });
+        }
+        for (let edge of opening.edges) {
+          revealedStates[edge.x][edge.y] = true;
+          squaresThatNeedPremiumUpdated.push({ x: edge.x, y: edge.y });
+        }
+      }
+
+      //Open neighbour cells
+      for (let safeNeighbour of thisSquare.safeNeighbours) {
+        //Note - it may already be revealed, but easiest to set anyway rather than checking
+        revealedStates[safeNeighbour.x][safeNeighbour.y] = true;
+      }
+
+      //5x5 block centred on the square we are chording should have premiums updated
+      //Note that bounds check happens in the function for updating premiums, so we can be lazy :)
+      for (let x = chordClick.x - 2; x <= chordClick.x + 2; x++) {
+        for (let y = chordClick.y - 2; y <= chordClick.y + 2; y++) {
+          squaresThatNeedPremiumUpdated.push({ x, y });
+        }
+      }
+    }
+
+    //Now update all the premiums for squares that need to be updated.
+
+    //De-duplicate the list of squaresThatNeedPremiumUpdated as some may be included twice if part of an opening and a neighbour to where we clicked
+    //https://stackoverflow.com/questions/2218999/how-to-remove-all-duplicates-from-an-array-of-objects
+    squaresThatNeedPremiumUpdated = squaresThatNeedPremiumUpdated.filter(
+      (square, index, self) =>
+        index ===
+        self.findIndex(
+          (otherSquare) =>
+            otherSquare.x === square.x && otherSquare.y === square.y
+        )
+    );
+
+    //Update premiums
+    for (let square of squaresThatNeedPremiumUpdated) {
+      this.updatePremiumForCoord(
+        square.x,
+        square.y,
+        squareInfo,
+        flagStates,
+        revealedStates,
+        premiums,
+        preprocessedOpenings
+      );
+    }
+  }
+
+  calcWomZini(mines) {
+    //WoM zini is really 8-way zini
+
+    //Rotate/reflect 8 times or something idk
+
+    return this.calcBasicZini(mines);
+  }
+
+  updatePremiumForCoord(
+    x,
+    y,
+    squareInfo,
+    flagStates,
+    revealedStates,
+    premiums,
+    preprocessedOpenings
+  ) {
+    //https://minesweepergame.com/forum/viewtopic.php?t=70&sid=8bb9f4500da68f4ef4a8989e5a89b6a4
+    /*
+      1. calculate premium for each cell (open or closed) not containing a mine:
+      premium= [adjacent 3bv] - [adjacent unflagged mines] - 1_[if cell is closed] - 1
+      determine the benifit of performing a double click over a left click.
+      '1' represents the double click assuming 1.5 technique
+
+      2. find the (top-left most) cell with the highest premium
+      a. if premium non-negative perform solve:
+      ZiNi=ZiNi+[adjacent unflagged mines] +1
+      a premium of 0 might add evenually benificial flags, which still means a benifit over a left click
+      b. if premium is negative open top left most cell
+      ZiNi=ZiNi+1
+      top-left-most to be unambigous
+
+      3. if closed cells remain start from 1.
+    */
+    const width = revealedStates.length;
+    const height = revealedStates[0].length;
+    if (x < 0 || x >= width || y < 0 || y >= height) {
+      //Exit early as square is outside board
+      return;
+    }
+
+    const thisSquare = squareInfo[x][y];
+    if (thisSquare.isMine) {
+      //Exit early if this square is a mine as it makes no sense to do premiums for this
+      return;
+    }
+
+    const adjacentUnrevealedNonOpening3bv =
+      thisSquare.nonOpening3bvNeighbours.filter(
+        (neighbour) => !revealedStates[neighbour.x][neighbour.y]
+      ).length;
+
+    const adjacentUnrevealedOpenings = [...thisSquare.openingsTouched].filter(
+      (openingLabel) => {
+        //Find a zero tile in the opening and check whether this is revealed or not
+        const zeroBelongingToOpening =
+          preprocessedOpenings.get(openingLabel).zeros[0];
+        return !revealedStates[zeroBelongingToOpening.x][
+          zeroBelongingToOpening.y
+        ];
+      }
+    ).length;
+
+    const bbbvOpenedWithChord =
+      adjacentUnrevealedNonOpening3bv + adjacentUnrevealedOpenings;
+
+    const unflaggedAdjacentMines = thisSquare.mineNeighbours.filter(
+      (neighbour) => !flagStates[neighbour.x][neighbour.y]
+    ).length;
+
+    //Note - the original forum post for zini has premium = [adjacent 3bv] - [adjacent unflagged mines] - 1_[if cell is closed] - 1
+    //I believe this is either wrong or misleading. Since we have a term "- 1_[if cell is closed]". Since we are still tied for clicks saved if the cell needs to be revealed first, with the only exception being if the cell we are click on is not 3bv.
+    let penaltyForFirstClick = 0;
+    if (!thisSquare.is3bv && !revealedStates[x][y]) {
+      penaltyForFirstClick = 1;
+    }
+
+    const clicksSaved =
+      bbbvOpenedWithChord - unflaggedAdjacentMines - 1 - penaltyForFirstClick;
+
+    premiums[x][y] = clicksSaved;
+  }
+
+  //Returns an object wich three structures
+  //Numbers array gives the numbers of each cell.
+  //OpeningLabels tracks which squares are part of the same openings or on opening edges.
+  //Preprocessed openings tracks which squares are the edge and inside of openings
+  getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines) {
+    const width = mines.length;
+    const height = mines[0].length;
+
+    const numbersArray = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(0));
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (mines[x][y]) {
+          numbersArray[x][y] = "x";
+        }
+
+        let number = 0;
+        for (let i = x - 1; i <= x + 1; i++) {
+          for (let j = y - 1; j <= y + 1; j++) {
+            if (mines[i]?.[j]) {
+              number++;
+            }
+          }
+        }
+        numbersArray[x][y] = number;
+      }
+    }
+
+    //Generate grid with labelled openings. Like
+    /*
+      11+00x
+      1++x++
+      1+x0+2
+
+      In this grid, 1's are part of the first opening, 2's are part of the 2nd opening.
+      0s are not part of any opening, +'s are on the edge of an opening, x's are mines.
+    */
+    let openingLabels = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(0));
+
+    let nextOpeningLabel = 0;
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (mines[x][y]) {
+          openingLabels[x][y] = "x";
+          continue;
+        }
+
+        if (numbersArray[x][y] === 0 && openingLabels[x][y] === 0) {
+          nextOpeningLabel++;
+          this.floodOpeningFor3bv(
+            x,
+            y,
+            mines,
+            openingLabels,
+            numbersArray,
+            nextOpeningLabel
+          );
+        }
+      }
+    }
+
+    //Initialise map with entries for each opening that keeps track of which coords below to that opening
+    const preprocessedOpenings = new Map();
+    for (
+      let openingLabelNumber = 1;
+      openingLabelNumber <= nextOpeningLabel;
+      openingLabelNumber++
+    ) {
+      const thisOpening = {
+        zeros: [], //Which coords in this opening have zeros
+        edges: [], //Which coords are on the edge of this opening
+      };
+      preprocessedOpenings.set(openingLabelNumber, thisOpening);
+    }
+
+    //Loop through all squares to populate map of openings, figuring out which squares have which neighbours
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        const thisCellLabel = openingLabels[x][y];
+        if (typeof thisCellLabel === "number" && thisCellLabel !== 0) {
+          //Cell is a zero from an opening. So add this info to the map
+          preprocessedOpenings.get(thisCellLabel).zeros.push({ x, y });
+          continue;
+        }
+
+        if (thisCellLabel === "+") {
+          //Cell is on the edge of an opening(s), so figure out which
+          for (let i = x - 1; i <= x + 1; i++) {
+            for (let j = y - 1; j <= y + 1; j++) {
+              const neighbourCellLabel = openingLabels[i]?.[j]; //Will be undefined if out of bounds
+              if (
+                typeof neighbourCellLabel === "number" &&
+                neighbourCellLabel !== 0
+              ) {
+                //Cell has a neighbour in opening "neighbourCellLabel". Therefore it is an edge of this opening
+                const preprocessedOpening =
+                  preprocessedOpenings.get(neighbourCellLabel);
+
+                //Add to edges of the opening provided it hasn't already been included
+                if (
+                  !preprocessedOpening.edges.some(
+                    (edgeSquare) => edgeSquare.x === x && edgeSquare.y === y
+                  )
+                ) {
+                  preprocessedOpening.edges.push({ x, y });
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      numbersArray,
+      openingLabels,
+      preprocessedOpenings,
+    };
+  }
+
+  floodOpeningFor3bv(x, y, mines, openingLabels, numbersArray, newLabel) {
+    if (openingLabels[x]?.[y] !== 0) {
+      //Square outside board or has already been processed
+      return;
+    }
+
+    if (mines[x]?.[y]) {
+      //Not really needed as this gets set elsewhere, but just in case
+      openingLabels[x][y] = "x";
+      return;
+    }
+
+    //Check if square is on the board
+    if (typeof numbersArray[x]?.[y] === "undefined") {
+      //This check isn't really needed since we check earlier. Defensive programming.
+      return;
+    } else if (numbersArray[x][y] !== 0) {
+      openingLabels[x][y] = "+"; //Squares that are on the edge of an opening
+      return;
+    } else if (numbersArray[x][y] === 0) {
+      openingLabels[x][y] = newLabel;
+      //Flood square
+      this.floodOpeningFor3bv(
+        x - 1,
+        y - 1,
+        mines,
+        openingLabels,
+        numbersArray,
+        newLabel
+      );
+      this.floodOpeningFor3bv(
+        x - 1,
+        y,
+        mines,
+        openingLabels,
+        numbersArray,
+        newLabel
+      );
+      this.floodOpeningFor3bv(
+        x - 1,
+        y + 1,
+        mines,
+        openingLabels,
+        numbersArray,
+        newLabel
+      );
+      this.floodOpeningFor3bv(
+        x,
+        y - 1,
+        mines,
+        openingLabels,
+        numbersArray,
+        newLabel
+      );
+      this.floodOpeningFor3bv(
+        x,
+        y + 1,
+        mines,
+        openingLabels,
+        numbersArray,
+        newLabel
+      );
+      this.floodOpeningFor3bv(
+        x + 1,
+        y - 1,
+        mines,
+        openingLabels,
+        numbersArray,
+        newLabel
+      );
+      this.floodOpeningFor3bv(
+        x + 1,
+        y,
+        mines,
+        openingLabels,
+        numbersArray,
+        newLabel
+      );
+      this.floodOpeningFor3bv(
+        x + 1,
+        y + 1,
+        mines,
+        openingLabels,
+        numbersArray,
+        newLabel
+      );
+    }
+  }
+}
+
 //Need main loop somewhere
 
+const algorithms = new Algorithms();
 const skinManager = new SkinManager();
 const game = new Game();
 </script>
