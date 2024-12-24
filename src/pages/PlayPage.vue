@@ -1,21 +1,177 @@
 <template>
-  <q-page class="flex flex-center">
+  <q-page>
     <div
       class="q-pa-md"
-      style="max-width: 800px"
       @mousedown="game.handleMouseDown($event)"
       @mouseup="game.handleMouseUp($event)"
       @mousemove="game.handleMouseMove($event)"
     >
-      <p>Play Page (textures from minesweeper.online)</p>
       <h4>Beg Eff practise (only 200+ boards)</h4>
-      <button @click="settingsModal = true">settings</button>
-      <button @click="game.reset">reset board</button><br /><br />
-
-      <canvas ref="main-canvas" id="main-canvas" @contextmenu.prevent> </canvas>
-      <div v-if="showStatsBlock" style="background-color: #222222">
-        <pre>{{ statsText }}</pre>
+      <!--<button @click="game.reset">reset board</button>--><br />
+      <q-select
+        class="q-mx-md q-mb-md"
+        outlined
+        options-dense
+        dense
+        transition-duration="100"
+        input-debounce="0"
+        v-model="variant"
+        style="width: 175px"
+        :options="[
+          'normal',
+          'board editor',
+          'mean openings',
+          'eff boards',
+          'zini explorer',
+        ]"
+        stack-label
+        label="Variant"
+      ></q-select>
+      <div class="flex" style="margin: 5px">
+        <div class="q-gutter-sm">
+          <q-radio
+            dense
+            v-model="boardSizePreset"
+            val="beg"
+            label="Beg"
+            @update:model-value="game.resetAndUnfocus()"
+          />
+          <q-radio
+            dense
+            v-model="boardSizePreset"
+            val="int"
+            label="Int"
+            @update:model-value="game.resetAndUnfocus()"
+          />
+          <q-radio
+            dense
+            v-model="boardSizePreset"
+            val="exp"
+            label="Exp"
+            @update:model-value="game.resetAndUnfocus()"
+          />
+          <q-radio
+            dense
+            v-model="boardSizePreset"
+            val="custom"
+            label="Custom"
+            @update:model-value="game.resetAndUnfocus()"
+          />
+        </div>
+        <q-btn
+          @click="settingsModal = true"
+          color="secondary"
+          label="display settings (scale etc.)"
+          style="margin-left: 30px"
+        />
       </div>
+      <template v-if="boardSizePreset === 'custom'">
+        <div class="flex" style="gap: 10px; margin: 5px">
+          <q-input
+            debounce="100"
+            v-model.number="customWidth"
+            label="Width"
+            type="number"
+            dense
+            min="1"
+            max="100"
+            @update:model-value="game.reset()"
+          />
+          <q-input
+            debounce="100"
+            v-model.number="customHeight"
+            label="Height"
+            type="number"
+            dense
+            min="1"
+            max="100"
+            @update:model-value="game.reset()"
+          />
+          <q-input
+            debounce="100"
+            v-model.number="customMines"
+            label="Mines"
+            type="number"
+            dense
+            min="0"
+            max="2500"
+            @update:model-value="game.reset()"
+          />
+        </div>
+        {{ customWarning }}
+      </template>
+
+      <div
+        class="clearfix q-my-md"
+        :style="{ paddingLeft: gameLeftPadding + 'px' }"
+      >
+        <canvas ref="main-canvas" id="main-canvas" @contextmenu.prevent>
+        </canvas>
+        <q-card v-if="showStatsBlock" style="float: left; margin-bottom: 10px">
+          <q-card-section>
+            <pre>{{ statsText }}</pre>
+          </q-card-section>
+        </q-card>
+        <!--
+        <div
+          v-if="showStatsBlock"
+          style="background-color: #222222; float: left; margin: 10px"
+        >
+          <pre>{{ statsText }}</pre>
+        </div>
+        -->
+      </div>
+
+      <div>
+        <q-card>
+          <q-tabs
+            v-model="settingsTab"
+            dense
+            class="text-grey"
+            active-color="primary"
+            indicator-color="primary"
+            align="justify"
+            narrow-indicator
+          >
+            <q-tab name="main" label="Main Settings" />
+            <q-tab name="other" label="Other Settings" />
+          </q-tabs>
+
+          <q-separator />
+
+          <q-tab-panels v-model="settingsTab" animated>
+            <q-tab-panel name="main">
+              <div class="text-h6">Main Settings</div>
+              <div>
+                PttaUrl (VERY HACKY):
+                <input v-model="pttaUrl" type="text" value="" /><br />
+              </div>
+            </q-tab-panel>
+
+            <q-tab-panel name="other">
+              <div class="text-h6">Other Settings</div>
+              <div>
+                Game-left-padding: <br />
+                <q-slider
+                  v-model="gameLeftPadding"
+                  :min="0"
+                  :max="1000"
+                  :step="1"
+                  label
+                  color="light-green"
+                  style="width: 50%"
+                /><br />
+                <button @click="settingsModal = true">
+                  Change board display size
+                </button>
+              </div>
+            </q-tab-panel>
+          </q-tab-panels>
+        </q-card>
+      </div>
+
+      <br />
+      <p>(textures from minesweeper.online)</p>
     </div>
   </q-page>
 
@@ -26,6 +182,7 @@
       </q-card-section>
 
       <q-card-section class="q-pt-none">
+        Tile size
         <q-slider
           v-model="tileSizeSlider"
           :min="10"
@@ -34,6 +191,15 @@
           label
           color="light-green"
           @update:model-value="game.refreshSize()"
+        />
+        Left padding
+        <q-slider
+          v-model="gameLeftPadding"
+          :min="0"
+          :max="1000"
+          :step="1"
+          label
+          color="light-green"
         />
       </q-card-section>
 
@@ -46,8 +212,10 @@
 
 <style scoped>
 #main-canvas {
-  border: 1px solid red;
   user-select: none;
+  float: left;
+  margin-right: 10px;
+  margin-bottom: 10px;
 }
 </style>
 
@@ -76,6 +244,11 @@ function handleKeyDown(event) {
   }
 }
 
+//Utility to restrict number to range
+function clamp(number, min, max) {
+  return Math.max(Math.min(number, max), min);
+}
+
 const mainCanvas = useTemplateRef("main-canvas");
 const UNREVEALED = "UNREVEALED";
 const FLAG = "FLAG";
@@ -93,6 +266,7 @@ Zini: 10
 Clicks: 17`);
 let settingsModal = ref(false);
 let tileSizeSlider = ref(40);
+let gameLeftPadding = ref(30);
 
 let boardHorizontalPadding = computed(() => {
   return Math.floor(tileSizeSlider.value / 2);
@@ -101,11 +275,84 @@ let boardVerticalPadding = computed(() => {
   return Math.floor(tileSizeSlider.value / 2);
 });
 
+//let boardWidth = ref(9);
+//let boardHeight = ref(9);
+//let boardMines = ref(10);
+let pttaUrl = ref("");
+let boardSizePreset = ref("beg"); //beg/int/exp. Mainly just used for showing correct thing in dropdown
+let customWidth = ref(8);
+let customHeight = ref(8);
+let customMines = ref(10);
+let boardWidth = computed(() => {
+  switch (boardSizePreset.value) {
+    case "beg":
+      return 9;
+    case "int":
+      return 16;
+    case "exp":
+      return 30;
+    case "custom":
+      return Math.floor(clamp(customWidth.value, 1, 100));
+    default:
+      throw new Error("Disallowed preset");
+  }
+});
+let boardHeight = computed(() => {
+  switch (boardSizePreset.value) {
+    case "beg":
+      return 9;
+    case "int":
+      return 16;
+    case "exp":
+      return 16;
+    case "custom":
+      return Math.floor(clamp(customHeight.value, 1, 100));
+    default:
+      throw new Error("Disallowed preset");
+  }
+});
+let boardMines = computed(() => {
+  switch (boardSizePreset.value) {
+    case "beg":
+      return 10;
+    case "int":
+      return 40;
+    case "exp":
+      return 99;
+    case "custom":
+      if (customMines.value >= customWidth.value * customHeight.value) {
+        return Math.floor(
+          clamp(customWidth.value * customHeight.value - 1, 0, 2500)
+        );
+      }
+      return Math.floor(clamp(customMines.value, 0, 2500));
+    default:
+      throw new Error("Disallowed preset");
+  }
+});
+let customWarning = computed(() => {
+  if (customMines.value > customWidth.value * customHeight.value - 1) {
+    return "Too many mines!";
+  }
+  if (customWidth.value * customHeight.value >= 900) {
+    return "Large board! May be laggy - sorry! Hope to fix eventually...";
+  }
+  return "";
+});
+
+let variant = ref("normal");
+let settingsTab = ref("main");
+
 class Game {
   constructor() {}
 
   reset() {
-    this.board = new Board(9, 9, 10, tileSizeSlider.value);
+    this.board = new Board(
+      boardWidth.value,
+      boardHeight.value,
+      boardMines.value,
+      tileSizeSlider.value
+    );
     this.gameStage = "pregame";
     showStatsBlock.value = false;
     //this.board.reset();
@@ -119,6 +366,12 @@ class Game {
     this.startTime = 0;
 
     this.board.draw();
+  }
+
+  resetAndUnfocus() {
+    //Only needed for when radio buttons for beg/int/exp are click as otherwise they eat "space" inputs...
+    game.reset();
+    document.activeElement.blur();
   }
 
   refreshSize() {
@@ -253,11 +506,19 @@ class Board {
 
   reset() {
     //Which squares contain mines
-    this.mines = BoardGenerator.basicShuffle(
-      this.width,
-      this.height,
-      this.mineCount
-    );
+    if (pttaUrl.value !== "") {
+      this.mines = BoardGenerator.readFromPtta(
+        this.width,
+        this.height,
+        this.mineCount
+      );
+    } else {
+      this.mines = BoardGenerator.basicShuffle(
+        this.width,
+        this.height,
+        this.mineCount
+      );
+    }
 
     //Which squares have revealed etc
     this.revealedNumbers = new Array(this.width)
@@ -728,6 +989,54 @@ class BoardGenerator {
 
     return minesArray;
   }
+
+  static readFromPtta(width, height, mineCount) {
+    //IGNORE width/height/mineCount if diff in ptta and just assume it is correct...
+    const minesArray = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(false));
+
+    //VERY HACKY. REDO LATER
+    //Mostly lifted from ptta code...
+    let b = "";
+    let s = "";
+
+    if (pttaUrl.value === "") {
+      window.alert("PTTA NOT SET");
+      throw new Error("PTTA NOT SET");
+    }
+
+    if (pttaUrl.value.startsWith("https")) {
+      const pttaAsURL = new URL(pttaUrl.value);
+      let b = pttaAsURL.searchParams.get("b");
+      console.log(b);
+      s = pttaAsURL.searchParams.get("m");
+    } else {
+      window.alert("PTTA NOT URL");
+      throw new Error("PTTA NOT URL");
+    }
+
+    for (var i = 0; i < width * height; i += 5) {
+      var tempN = parseInt(s.charAt(i / 5), 32);
+
+      if (isNaN(tempN)) continue;
+
+      for (var j = i + 4; j >= i; j--) {
+        if (j >= width * height) {
+          tempN >>= 1;
+          continue;
+        }
+
+        //$scope.mines += tempN & 1;
+        if (tempN & (1 === 1)) {
+          minesArray[j % width][Math.floor(j / width)] = true;
+        }
+        tempN >>= 1;
+      }
+    }
+
+    return minesArray;
+  }
 }
 
 class BoardStats {
@@ -953,7 +1262,7 @@ class BoardStats {
       Eff: ${eff.toFixed(0)}%
       Max Eff: ${maxEff.toFixed(0)}%
       Clicks: ${clicks}
-      Zini (WoM): ${zini}`;
+      Zini (not WoM): ${zini}`;
     } else {
       statsText.value = `
       Time: ${time.toFixed(3)}s
@@ -963,7 +1272,7 @@ class BoardStats {
       Eff: ${eff.toFixed(0)}%
       Max Eff: ${maxEff.toFixed(0)}%
       Clicks: ${clicks}
-      Zini (WoM): ${zini}`;
+      Zini (not WoM): ${zini}`;
     }
   }
 
@@ -975,7 +1284,7 @@ class BoardStats {
 class Algorithms {
   constructor() {}
 
-  calcBasicZini(mines) {
+  calcBasicZini(mines, is8Way) {
     //Get various data structures which information about numbers and openings
     const { numbersArray, openingLabels, preprocessedOpenings } =
       algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
@@ -1088,30 +1397,65 @@ class Algorithms {
       }
     }
 
-    //Do stuff with calculating premiums in order to work out zini
-
-    const clicks = []; //Track clicks that get done by ZiNi
-    debugger;
-    while (
-      revealedStates.flat().filter((x) => x).length !==
-      width * height - numberOfMines
-    ) {
-      this.doBasicZiniStep(
-        squareInfo,
-        flagStates,
-        revealedStates,
-        premiums,
-        preprocessedOpenings,
-        clicks,
-        false, //These are for the enumeration order (needed for 8-way zini)
-        false, //These are for the enumeration order (needed for 8-way zini)
-        false //These are for the enumeration order (needed for 8-way zini)
-      );
+    //Set up is done, so now prepare to do zini iterations (find best cell, update premiums, repeat)
+    let enumerationsOrders;
+    if (is8Way) {
+      enumerationsOrders = [
+        [false, false, false],
+        [true, false, false],
+        [false, true, false],
+        [true, true, false],
+        [false, false, true],
+        [true, false, true],
+        [false, true, true],
+        [true, true, true],
+      ];
+    } else {
+      enumerationsOrders = [[false, false, false]];
     }
 
-    console.log(clicks);
+    let currentZiniValue = Infinity; //Set to the best zini we've found so far
+    let currentClicksArray = null; //Set to the clicks array of the best zini solution we've found so far
 
-    return clicks.length;
+    for (const enumeration of enumerationsOrders) {
+      //Take copies of variable that track board state as they need to be re-initialised for each zini direction
+      const thisEnumerationClicks = []; //Track clicks that get done by ZiNi
+      const thisEnumerationFlagStates = structuredClone(flagStates);
+      const thisEnumerationRevealedStates = structuredClone(revealedStates);
+      const thisEnumerationPremiums = structuredClone(premiums);
+
+      while (
+        thisEnumerationRevealedStates.flat().filter((x) => x).length !==
+        width * height - numberOfMines
+      ) {
+        this.doBasicZiniStep(
+          squareInfo,
+          thisEnumerationFlagStates,
+          thisEnumerationRevealedStates,
+          thisEnumerationPremiums,
+          preprocessedOpenings,
+          thisEnumerationClicks,
+          enumeration[0], //iterate x coord in diff order
+          enumeration[1], //iterate y coord in diff order
+          enumeration[2] //affects whether we iterate x or y first
+        );
+      }
+
+      console.log(
+        `Zini with xRev: ${enumeration[0]}, yRev: ${enumeration[1]}, xySwap: ${enumeration[2]} has value ${thisEnumerationClicks.length}`
+      );
+      if (thisEnumerationClicks.length < currentZiniValue) {
+        console.log(
+          `zini improved in a direction. ${currentZiniValue} -> ${thisEnumerationClicks.length}`
+        );
+        currentZiniValue = thisEnumerationClicks.length;
+        currentClicksArray = thisEnumerationClicks;
+      }
+    }
+
+    console.log(currentClicksArray);
+
+    return currentZiniValue; //Consider also returning currentClicksArray
   }
 
   doBasicZiniStep(
@@ -1132,8 +1476,8 @@ class Algorithms {
     //Set up enumeration order
     const xStart = xReverse ? width - 1 : 0;
     const xEnd = xReverse ? 0 : width - 1;
-    const yStart = xReverse ? height - 1 : 0;
-    const yEnd = xReverse ? 0 : height - 1;
+    const yStart = yReverse ? height - 1 : 0;
+    const yEnd = yReverse ? 0 : height - 1;
     const iStart = xySwap ? yStart : xStart;
     const iEnd = xySwap ? yEnd : xEnd;
     const jStart = xySwap ? xStart : yStart;
@@ -1156,7 +1500,7 @@ class Algorithms {
         if (thisSquare.isMine) {
           continue;
         }
-        if (nfClick === null) {
+        if (nfClick === null && thisSquare.is3bv) {
           //First square enumerated over becomes nfClick
           if (!revealedStates[x][y]) {
             nfClick = { x, y };
@@ -1308,10 +1652,9 @@ class Algorithms {
 
   calcWomZini(mines) {
     //WoM zini is really 8-way zini
+    const is8Way = true;
 
-    //Rotate/reflect 8 times or something idk
-
-    return this.calcBasicZini(mines);
+    return this.calcBasicZini(mines, is8Way);
   }
 
   updatePremiumForCoord(
@@ -1334,7 +1677,7 @@ class Algorithms {
       a. if premium non-negative perform solve:
       ZiNi=ZiNi+[adjacent unflagged mines] +1
       a premium of 0 might add evenually benificial flags, which still means a benifit over a left click
-      b. if premium is negative open top left most cell
+      b. if premium is negative open top left most cell (note by llama - top-left-most cell THAT IS 3BV)
       ZiNi=ZiNi+1
       top-left-most to be unambigous
 
