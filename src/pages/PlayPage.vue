@@ -107,7 +107,11 @@
       >
         <canvas ref="main-canvas" id="main-canvas" @contextmenu.prevent>
         </canvas>
-        <q-card v-if="showStatsBlock" style="float: left; margin-bottom: 10px">
+        <q-card
+          square
+          v-if="showStatsBlock"
+          style="float: left; margin-bottom: 10px"
+        >
           <q-card-section>
             <pre>{{ statsText }}</pre>
           </q-card-section>
@@ -432,6 +436,12 @@ class Game {
 
     if (event.button === 0) {
       if (this.gameStage === "pregame") {
+        //Check click in bounds
+        let tileX = Math.floor(boardRawX / this.board.tileSize);
+        let tileY = Math.floor(boardRawY / this.board.tileSize);
+        if (!this.board.checkCoordsInBounds(tileX, tileY)) {
+          return; //Don't start game, click not inbounds
+        }
         this.gameStage = "running";
         this.startTime = performance.now();
       }
@@ -577,7 +587,6 @@ class Board {
 
     if (!this.checkCoordsInBounds(tileX, tileY)) {
       //Click not on board, exit (doesn't count as wasted click)
-      return;
     }
 
     if (typeof this.revealedNumbers[tileX][tileY].state === "number") {
@@ -990,6 +999,70 @@ class BoardGenerator {
     return minesArray;
   }
 
+  static basic2Shuffle(
+    width,
+    height,
+    mineCount,
+    safeCoord = null,
+    isOpening = false
+  ) {
+    let knownSafes = [];
+    if (safeCoord) {
+      knownSafes.push({ x: safeCoord.x, y: safeCoord.y });
+      if (isOpening) {
+        for (let x = safeCoord.x - 1; x <= safeCoord.x + 1; x++) {
+          for (let y = safeCoord.y - 1; y <= safeCoord.y + 1; y++) {
+            if (x === safeCoord.x && y === safeCoord.y) {
+              continue;
+            }
+            if (x >= 0 && x <= width - 1 && y >= 0 && y <= height - 1) {
+              knownSafes.push({ x, y });
+            }
+          }
+        }
+      }
+    }
+
+    if (width * height - knownSafes.length < mineCount) {
+      if (width * height - 1 >= mineCount) {
+        knownSafes = [{ x: safeCoord.x, y: safeCoord.y }]; //Board too dense, so try remove condition about opening start
+      } else {
+        throw new Error(`Cannot generate ${width}x${height}/${mineCount}`);
+      }
+    }
+
+    const flatMinesWithoutKnownSafes = new Array(
+      width * height - knownSafes.length
+    ).fill(false);
+
+    for (let i = 0; i < mineCount; i++) {
+      flatMinesWithoutKnownSafes[i] = true;
+    }
+    BoardGenerator.fisherYatesArrayShuffle(flatMinesWithoutKnownSafes);
+
+    //Generate width x height 2D array
+    const minesArray = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(false));
+
+    let flatIndex = 0;
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (knownSafes.some((square) => square.x === x && square.y === y)) {
+          continue; //False/safe by default as that's how we initialised
+        }
+        minesArray[x][y] = flatMinesWithoutKnownSafes[flatIndex];
+        flatIndex++;
+      }
+    }
+
+    return minesArray;
+  }
+
+  static effBoardShuffle(width, height, mineCount, minEff) {
+    //TODO
+  }
+
   static readFromPtta(width, height, mineCount) {
     //IGNORE width/height/mineCount if diff in ptta and just assume it is correct...
     const minesArray = new Array(width)
@@ -1036,6 +1109,19 @@ class BoardGenerator {
     }
 
     return minesArray;
+  }
+
+  static fisherYatesArrayShuffle(arr) {
+    //https://stackoverflow.com/questions/59810241/how-to-fisher-yates-shuffle-a-javascript-array
+    var i = arr.length,
+      j,
+      temp;
+    while (--i > 0) {
+      j = Math.floor(Math.random() * (i + 1));
+      temp = arr[j];
+      arr[j] = arr[i];
+      arr[i] = temp;
+    }
   }
 }
 
@@ -1397,6 +1483,16 @@ class Algorithms {
       }
     }
 
+    //Work out how many squares need to be revealed for it to be solved (will typically be width * height - mines, but we may add the option to calc zini from current board state in future)
+    let revealedSquaresToSolve = 0;
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (!mines[x][y] && !revealedStates[x][y]) {
+          revealedSquaresToSolve++;
+        }
+      }
+    }
+
     //Set up is done, so now prepare to do zini iterations (find best cell, update premiums, repeat)
     let enumerationsOrders;
     if (is8Way) {
@@ -1423,12 +1519,11 @@ class Algorithms {
       const thisEnumerationFlagStates = structuredClone(flagStates);
       const thisEnumerationRevealedStates = structuredClone(revealedStates);
       const thisEnumerationPremiums = structuredClone(premiums);
+      let squaresSolvedThisRun = 0;
 
-      while (
-        thisEnumerationRevealedStates.flat().filter((x) => x).length !==
-        width * height - numberOfMines
-      ) {
-        this.doBasicZiniStep(
+      benchmark.startTime("full-zini");
+      while (squaresSolvedThisRun !== revealedSquaresToSolve) {
+        squaresSolvedThisRun += this.doBasicZiniStep(
           squareInfo,
           thisEnumerationFlagStates,
           thisEnumerationRevealedStates,
@@ -1440,6 +1535,9 @@ class Algorithms {
           enumeration[2] //affects whether we iterate x or y first
         );
       }
+      benchmark.stopTime("full-zini");
+      benchmark.report();
+      benchmark.clearAll();
 
       console.log(
         `Zini with xRev: ${enumeration[0]}, yRev: ${enumeration[1]}, xySwap: ${enumeration[2]} has value ${thisEnumerationClicks.length}`
@@ -1469,8 +1567,11 @@ class Algorithms {
     yReverse, //If true, prefer the premium with higher y coord
     xySwap //If true, use y in outer loop instead of x
   ) {
+    benchmark.startTime("find-highest-premium");
+
     const width = revealedStates.length;
     const height = revealedStates[0].length;
+    let squaresRevealedDuringStep = 0;
 
     //Find move with highest premium
     //Set up enumeration order
@@ -1513,6 +1614,9 @@ class Algorithms {
       }
     }
 
+    benchmark.stopTime("find-highest-premium");
+    benchmark.startTime("click-and-update-premiums");
+
     //We've found a good move, now do it and update things. The move will either be an nf click or a chord.
 
     //Track squares that will need premium update after doing the nf click or chord
@@ -1532,6 +1636,7 @@ class Algorithms {
       }
       clicks.push({ type: "left", x: nfClick.x, y: nfClick.y });
       revealedStates[nfClick.x][nfClick.y] = true;
+      squaresRevealedDuringStep++;
 
       //Update premiums of neighbour cells as they may go down if this is a 3bv cell
       for (let safeNeighbour of squareInfo[nfClick.x][nfClick.y]
@@ -1547,11 +1652,17 @@ class Algorithms {
       if (labelIfOpening !== null) {
         const opening = preprocessedOpenings.get(labelIfOpening);
         for (let zero of opening.zeros) {
-          revealedStates[zero.x][zero.y] = true;
+          if (!revealedStates[zero.x][zero.y]) {
+            revealedStates[zero.x][zero.y] = true;
+            squaresRevealedDuringStep++;
+          }
           squaresThatNeedPremiumUpdated.push({ x: zero.x, y: zero.y });
         }
         for (let edge of opening.edges) {
-          revealedStates[edge.x][edge.y] = true;
+          if (!revealedStates[edge.x][edge.y]) {
+            revealedStates[edge.x][edge.y] = true;
+            squaresRevealedDuringStep++;
+          }
           squaresThatNeedPremiumUpdated.push({ x: edge.x, y: edge.y });
         }
       }
@@ -1569,6 +1680,7 @@ class Algorithms {
       if (!revealedStates[chordClick.x][chordClick.y]) {
         clicks.push({ type: "left", x: chordClick.x, y: chordClick.y });
         revealedStates[chordClick.x][chordClick.y] = true;
+        squaresRevealedDuringStep++;
       }
 
       //Place flags
@@ -1599,11 +1711,17 @@ class Algorithms {
         //Note that we do not need to update premiums for squares that neighbour the opening edges
         //as opening edges are by definition not 3bv, so don't affect premiums
         for (let zero of opening.zeros) {
-          revealedStates[zero.x][zero.y] = true;
+          if (!revealedStates[zero.x][zero.y]) {
+            revealedStates[zero.x][zero.y] = true;
+            squaresRevealedDuringStep++;
+          }
           squaresThatNeedPremiumUpdated.push({ x: zero.x, y: zero.y });
         }
         for (let edge of opening.edges) {
-          revealedStates[edge.x][edge.y] = true;
+          if (!revealedStates[edge.x][edge.y]) {
+            revealedStates[edge.x][edge.y] = true;
+            squaresRevealedDuringStep++;
+          }
           squaresThatNeedPremiumUpdated.push({ x: edge.x, y: edge.y });
         }
       }
@@ -1611,7 +1729,10 @@ class Algorithms {
       //Open neighbour cells
       for (let safeNeighbour of thisSquare.safeNeighbours) {
         //Note - it may already be revealed, but easiest to set anyway rather than checking
-        revealedStates[safeNeighbour.x][safeNeighbour.y] = true;
+        if (!revealedStates[safeNeighbour.x][safeNeighbour.y]) {
+          revealedStates[safeNeighbour.x][safeNeighbour.y] = true;
+          squaresRevealedDuringStep++;
+        }
       }
 
       //5x5 block centred on the square we are chording should have premiums updated
@@ -1648,6 +1769,10 @@ class Algorithms {
         preprocessedOpenings
       );
     }
+
+    benchmark.stopTime("click-and-update-premiums");
+
+    return squaresRevealedDuringStep;
   }
 
   calcWomZini(mines) {
@@ -1947,9 +2072,69 @@ class Algorithms {
   }
 }
 
+class Benchmark {
+  constructor() {
+    this.times = new Map();
+    //Structure
+    /*
+    'key' ->
+    {
+      totalTime: time,
+      lastStart: performnce.now timestamp
+      isRunning: bool
+    }
+    */
+  }
+
+  startTime(key) {
+    let timing;
+    if (this.times.has(key)) {
+      timing = this.times.get(key);
+    } else {
+      timing = {
+        totalTime: 0,
+        lastStart: null,
+        isRunning: false,
+      };
+      this.times.set(key, timing);
+    }
+
+    if (timing.isRunning) {
+      throw new Error("cannot start timer that is already running");
+    }
+
+    timing.lastStart = performance.now();
+    timing.isRunning = true;
+  }
+
+  stopTime(key) {
+    let timing = this.times.get(key);
+    if (!timing.isRunning) {
+      throw new Error("cannot stop timer that is already stopped");
+    }
+    timing.isRunning = false;
+    timing.totalTime += performance.now() - timing.lastStart;
+    timing.isRunning = false;
+  }
+
+  report() {
+    for (let [key, timing] of this.times.entries()) {
+      if (timing.isRunning) {
+        throw new Error("not all timers stopped");
+      }
+      console.log(`key: ${key}, timing: ${timing.totalTime / 1000}s`);
+    }
+  }
+
+  clearAll() {
+    this.times = new Map();
+  }
+}
+
 //Need main loop somewhere
 
-const algorithms = new Algorithms();
+const algorithms = new Algorithms(); //Could probably change to have all static methods, so no need to init?
+const benchmark = new Benchmark();
 const skinManager = new SkinManager();
 const game = new Game();
 </script>

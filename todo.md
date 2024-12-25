@@ -17,4 +17,27 @@ Look at mouseEvent.buttons to check whether the left button is depressed when ho
 Benchmark my zini implementation against WoMs
 Do more checks that it is correct
 
-Fix bug where games can be started by clicks outside board...
+Mini zini benchmarks - tested on teamworm 100k (100x100/2184). My 8-way zini ran in 15s, and gave 2612 whereas WoM zini ran in 90s and gave 2618
+
+Some errors here?
+Uncaught TypeError: Cannot read properties of undefined (reading 'state')
+at Board.attemptChordOrDig (PlayPage.vue:592:51)
+[this line: typeof this.revealedNumbers[tileX][tileY].state === "number"]
+
+For a single zini:
+key: full-zini, timing: 0.3457999999523163s
+PlayPage.vue:2054 key: find-highest-premium, timing: 0.3244999985694885s
+PlayPage.vue:2054 key: click-and-update-premiums, timing: 0.01780000114440918s
+
+So - definitely need to improve finding highest premium...
+
+For a small board (exp) it is instead:
+key: full-zini, timing: 0.004200000047683716s
+PlayPage.vue:2026 key: find-highest-premium, timing: 0.0010999999046325684s
+PlayPage.vue:2026 key: click-and-update-premiums, timing: 0.0010999996662139893s
+
+Optimise basicZini to improve efficiency of finding highestPremium square (basically keep queues of premiums, and do binary search updates)
+
+Fix lag on large boards (maybe have canvas draw() that doesn't refresh whole board and only redraws the relevant area?)
+
+Implement effBoardShuffle function
