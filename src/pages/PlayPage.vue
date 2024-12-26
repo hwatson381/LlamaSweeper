@@ -100,6 +100,10 @@
         </div>
         {{ customWarning }}
       </template>
+      <div v-if="variant === 'eff boards'">
+        Generating boards with minimum eff: {{ minimumEff }}% (change this in
+        settings below)
+      </div>
 
       <div
         class="clearfix q-my-md"
@@ -147,8 +151,97 @@
             <q-tab-panel name="main">
               <div class="text-h6">Main Settings</div>
               <div>
+                <template v-if="variant === 'eff boards'">
+                  <template v-if="boardSizePreset === 'beg'">
+                    <q-select
+                      class="q-mx-md q-mb-md"
+                      outlined
+                      options-dense
+                      dense
+                      transition-duration="100"
+                      input-debounce="0"
+                      v-model="begEffPreset"
+                      style="width: 175px"
+                      :options="begEffOptions"
+                      stack-label
+                      label="Minimum beg eff"
+                    ></q-select>
+                    <q-input
+                      v-if="begEffPreset === 'custom'"
+                      debounce="100"
+                      v-model.number="begEffCustom"
+                      label="Custom eff"
+                      type="number"
+                      dense
+                      min="100"
+                      max="340"
+                    />
+                  </template>
+                  <template v-if="boardSizePreset === 'int'">
+                    <q-select
+                      class="q-mx-md q-mb-md"
+                      outlined
+                      options-dense
+                      dense
+                      transition-duration="100"
+                      input-debounce="0"
+                      v-model="intEffPreset"
+                      style="width: 175px"
+                      :options="intEffOptions"
+                      stack-label
+                      label="Minimum int eff"
+                    ></q-select>
+                    <q-input
+                      v-if="intEffPreset === 'custom'"
+                      debounce="100"
+                      v-model.number="intEffCustom"
+                      label="Custom eff"
+                      type="number"
+                      dense
+                      min="100"
+                      max="340"
+                    />
+                  </template>
+                  <template v-if="boardSizePreset === 'exp'">
+                    <q-select
+                      class="q-mx-md q-mb-md"
+                      outlined
+                      options-dense
+                      dense
+                      transition-duration="100"
+                      input-debounce="0"
+                      v-model="expEffPreset"
+                      style="width: 175px"
+                      :options="expEffOptions"
+                      stack-label
+                      label="Minimum exp eff"
+                    ></q-select>
+                    <q-input
+                      v-if="expEffPreset === 'custom'"
+                      debounce="100"
+                      v-model.number="expEffCustom"
+                      label="Custom eff"
+                      type="number"
+                      dense
+                      min="100"
+                      max="340"
+                    />
+                  </template>
+                  <q-input
+                    v-if="boardSizePreset === 'custom'"
+                    debounce="100"
+                    v-model.number="customEffCustom"
+                    label="Minimum Custom eff"
+                    type="number"
+                    dense
+                    min="100"
+                    max="340"
+                  />
+                </template>
+
                 PttaUrl (VERY HACKY):
                 <input v-model="pttaUrl" type="text" value="" /><br />
+                <q-checkbox left-label v-model="zeroStart" label="Zero Start" />
               </div>
             </q-tab-panel>
 
@@ -279,9 +372,6 @@ let boardVerticalPadding = computed(() => {
   return Math.floor(tileSizeSlider.value / 2);
 });
 
-//let boardWidth = ref(9);
-//let boardHeight = ref(9);
-//let boardMines = ref(10);
 let pttaUrl = ref("");
 let boardSizePreset = ref("beg"); //beg/int/exp. Mainly just used for showing correct thing in dropdown
 let customWidth = ref(8);
@@ -346,6 +436,52 @@ let customWarning = computed(() => {
 
 let variant = ref("normal");
 let settingsTab = ref("main");
+let zeroStart = ref(true);
+
+let begEffPreset = ref(200);
+let begEffOptions = Object.freeze([200, 210, 225, "custom"]);
+let begEffCustom = ref(243);
+let intEffPreset = ref(160);
+let intEffOptions = Object.freeze([160, 170, 180, "custom"]);
+let intEffCustom = ref(189);
+let expEffPreset = ref(140);
+let expEffOptions = Object.freeze([140, 150, 160, "custom"]);
+let expEffCustom = ref(170);
+let customEffCustom = ref(130);
+let minimumEff = computed(() => {
+  let minEff = 0;
+  switch (boardSizePreset.value) {
+    case "beg":
+      minEff =
+        begEffPreset.value === "custom"
+          ? begEffCustom.value
+          : begEffPreset.value;
+      break;
+    case "int":
+      minEff =
+        intEffPreset.value === "custom"
+          ? intEffCustom.value
+          : intEffPreset.value;
+      break;
+    case "exp":
+      minEff =
+        expEffPreset.value === "custom"
+          ? expEffCustom.value
+          : expEffPreset.value;
+      break;
+    case "custom":
+      minEff = customEffCustom.value;
+      break;
+    default:
+      throw new Error("Disallowed preset");
+  }
+
+  if (typeof minEff !== "number") {
+    return 100;
+  }
+
+  return clamp(minEff, 100, 340);
+});
 
 class Game {
   constructor() {}
@@ -436,14 +572,17 @@ class Game {
 
     if (event.button === 0) {
       if (this.gameStage === "pregame") {
-        //Check click in bounds
-        let tileX = Math.floor(boardRawX / this.board.tileSize);
-        let tileY = Math.floor(boardRawY / this.board.tileSize);
-        if (!this.board.checkCoordsInBounds(tileX, tileY)) {
-          return; //Don't start game, click not inbounds
+        const successfullyGenerated = this.board.generateBoard(
+          boardRawX,
+          boardRawY
+        );
+        if (successfullyGenerated) {
+          this.gameStage = "running";
+          this.startTime = performance.now();
+          //Game then continues with the code below providing the click to open the first square. It's possible we may change this though
+        } else {
+          return; //Don't start game. Click not inbounds, or something else went wrong
         }
-        this.gameStage = "running";
-        this.startTime = performance.now();
       }
       this.board.attemptChordOrDig(
         boardRawX,
@@ -511,9 +650,72 @@ class Board {
     this.hoveredSquare = { x: null, y: null }; //Square that is being hovered over
     this.isLeftMouseDown = false;
 
-    this.reset();
+    this.clearBoard();
   }
 
+  clearBoard() {
+    //Set to state of board pregame where everything is unrevealed and mines haven't been generated yet
+    this.mines = null;
+    //Which squares have revealed etc
+    this.revealedNumbers = new Array(this.width)
+      .fill(0)
+      .map(() =>
+        new Array(this.height).fill(0).map(() => new Tile(UNREVEALED))
+      );
+
+    this.blasted = false;
+    this.openedTiles = 0;
+    this.stats = null;
+  }
+
+  generateBoard(boardRawX, boardRawY) {
+    let tileX = Math.floor(boardRawX / this.tileSize);
+    let tileY = Math.floor(boardRawY / this.tileSize);
+
+    if (!this.checkCoordsInBounds(tileX, tileY)) {
+      //Click not on board, exit (doesn't count as wasted click)
+      return false;
+    }
+
+    const firstClick = {
+      x: tileX,
+      y: tileY,
+    };
+
+    if (variant.value === "eff boards") {
+      this.mines = BoardGenerator.effBoardShuffle(
+        this.width,
+        this.height,
+        this.mineCount,
+        firstClick
+      );
+
+      if (this.mines === false) {
+        return false; //Failed to generate eff board
+      }
+    } else {
+      this.mines = BoardGenerator.basicShuffle(
+        this.width,
+        this.height,
+        this.mineCount,
+        firstClick,
+        zeroStart.value
+      );
+    }
+
+    //Which squares have revealed etc
+    this.revealedNumbers = new Array(this.width)
+      .fill(0)
+      .map(() =>
+        new Array(this.height).fill(0).map(() => new Tile(UNREVEALED))
+      );
+
+    this.stats = new BoardStats(this.mines);
+
+    return true;
+  }
+
+  /*
   reset() {
     //Which squares contain mines
     if (pttaUrl.value !== "") {
@@ -541,6 +743,7 @@ class Board {
     this.openedTiles = 0;
     this.stats = new BoardStats(this.mines);
   }
+  */
 
   checkCoordsInBounds(tileX, tileY) {
     if (tileX === null || tileY === null) {
@@ -890,50 +1093,6 @@ class SkinManager {
     this.imagesToLoadCount = keyImageMapping.length;
     this.images = {};
     keyImageMapping.forEach((el) => this.addImage(el[0], el[1]));
-
-    /*
-    this.images = {
-      0: Object.assign(new Image(), {
-        src: "/img/tiles/type0.svg",
-      }),
-      1: Object.assign(new Image(), {
-        src: "/img/tiles/type1.svg",
-      }),
-      2: Object.assign(new Image(), {
-        src: "/img/tiles/type2.svg",
-      }),
-      3: Object.assign(new Image(), {
-        src: "/img/tiles/type3.svg",
-      }),
-      4: Object.assign(new Image(), {
-        src: "/img/tiles/type4.svg",
-      }),
-      5: Object.assign(new Image(), {
-        src: "/img/tiles/type5.svg",
-      }),
-      6: Object.assign(new Image(), {
-        src: "/img/tiles/type6.svg",
-      }),
-      7: Object.assign(new Image(), {
-        src: "/img/tiles/type7.svg",
-      }),
-      8: Object.assign(new Image(), {
-        src: "/img/tiles/type8.svg",
-      }),
-      UNREVEALED: Object.assign(new Image(), {
-        src: "/img/tiles/closed.svg",
-      }),
-      FLAG: Object.assign(new Image(), {
-        src: "/img/tiles/flag.svg",
-      }),
-      MINE: Object.assign(new Image(), {
-        src: "/img/tiles/mine.svg",
-      }),
-      MINERED: Object.assign(new Image(), {
-        src: "/img/tiles/mine_red.svg",
-      }),
-    };
-    */
   }
 
   addImage(key, src) {
@@ -979,8 +1138,7 @@ class SkinManager {
 
 //Class for doing different board gen. E.g. generating boards with fisher yates or maybe selecting boards with certain properties
 class BoardGenerator {
-  //todo - improve to use fisher yates?
-  static basicShuffle(width, height, mineCount) {
+  static badUnusedShuffle(width, height, mineCount) {
     //Generate width x height 2D array
     const minesArray = new Array(width)
       .fill(0)
@@ -999,7 +1157,7 @@ class BoardGenerator {
     return minesArray;
   }
 
-  static basic2Shuffle(
+  static basicShuffle(
     width,
     height,
     mineCount,
@@ -1059,8 +1217,47 @@ class BoardGenerator {
     return minesArray;
   }
 
-  static effBoardShuffle(width, height, mineCount, minEff) {
-    //TODO
+  static effBoardShuffle(width, height, mineCount, firstClick) {
+    //Optimisation needed. This calls algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings twice (for 3bv and zini)
+
+    const MAX_RUNTIME = 10; //How many seconds we have to generate the board
+
+    const startTime = performance.now();
+
+    let minesArray = false;
+
+    let attempts = 0;
+
+    while (!minesArray) {
+      if (performance.now() - startTime > MAX_RUNTIME * 1000) {
+        alert("Failed to generate board");
+        console.log(`effBoarShuffle had ${attempts}`);
+        return false; //Failed to generate a board in time
+      }
+
+      let candidateMinesArray = BoardGenerator.basicShuffle(
+        width,
+        height,
+        mineCount,
+        firstClick,
+        true //First click is an opening
+      );
+
+      const zini = algorithms.calcWomZini(candidateMinesArray);
+
+      const bbbv = algorithms.calc3bv(candidateMinesArray, false).bbbv;
+
+      if (bbbv / zini >= minimumEff.value / 100) {
+        //Successfully found a board with at least min eff
+        minesArray = candidateMinesArray;
+      }
+
+      attempts++;
+    }
+
+    console.log(`effBoardShuffle had ${attempts}`);
+
+    return minesArray;
   }
 
   static readFromPtta(width, height, mineCount) {
@@ -1209,55 +1406,10 @@ class BoardStats {
   }
 
   calc3bv(revealedNumbers) {
-    // Basic idea = generate grid of numbers
-    // Do flood fill with the zeros - this will label openings and find which squares touch which openings
-    // Maybe can reuse openings in zini calc? (Or not needed?)
+    let { bbbv, solved3bv } = algorithms.calc3bv(this.mines, revealedNumbers);
 
-    const width = this.mines.length;
-    const height = this.mines[0].length;
-
-    //Only destructure openingLabels as other properties aren't needed yet
-    const { openingLabels } =
-      algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
-        this.mines
-      );
-
-    //Find total number of openings. Each opening is labeled with a non-zero number, so we count up the number of unique opening labels
-    const totalNumberOfOpenings = new Set(
-      openingLabels.flat().filter((el) => typeof el === "number" && el !== 0)
-    ).size;
-
-    const totalNumberOfProtectedSquares = openingLabels
-      .flat()
-      .filter((el) => el === 0).length;
-
-    this.bbbv = totalNumberOfOpenings + totalNumberOfProtectedSquares;
-
-    //Calculate solved 3bv for when it's a lost game
-    //Scuffed as this includes openings that have not been fully opened
-    //and tiles that were solved from blasted chord
-
-    let solvedProtectedSquares = 0;
-    let solvedOpenings = new Set();
-    //^ Add openings to this set if there is a cell of them opened
-    //Slightly scuffed since this also captures partially opened openings
-    //But not worth the effort of trying to catch these
-
-    for (let x = 0; x < width; x++) {
-      for (let y = 0; y < height; y++) {
-        if (typeof revealedNumbers[x][y].state !== "number") {
-          //Tile has not been opened, so don't include in solved 3bv
-          continue;
-        }
-        if (openingLabels[x][y] === 0) {
-          solvedProtectedSquares++;
-        } else if (typeof openingLabels[x][y] === "number") {
-          solvedOpenings.add(openingLabels[x][y]); //Add the opening to the set as we've seen a zero tile from it
-        }
-      }
-    }
-
-    this.solved3bv = solvedProtectedSquares + solvedOpenings.size;
+    this.bbbv = bbbv;
+    this.solved3bv = solved3bv;
   }
 
   /*
@@ -1536,22 +1688,26 @@ class Algorithms {
         );
       }
       benchmark.stopTime("full-zini");
-      benchmark.report();
+      //benchmark.report();
       benchmark.clearAll();
 
+      /*
       console.log(
         `Zini with xRev: ${enumeration[0]}, yRev: ${enumeration[1]}, xySwap: ${enumeration[2]} has value ${thisEnumerationClicks.length}`
       );
+      */
       if (thisEnumerationClicks.length < currentZiniValue) {
+        /*
         console.log(
           `zini improved in a direction. ${currentZiniValue} -> ${thisEnumerationClicks.length}`
         );
+        */
         currentZiniValue = thisEnumerationClicks.length;
         currentClicksArray = thisEnumerationClicks;
       }
     }
 
-    console.log(currentClicksArray);
+    //console.log(currentClicksArray);
 
     return currentZiniValue; //Consider also returning currentClicksArray
   }
@@ -2069,6 +2225,66 @@ class Algorithms {
         newLabel
       );
     }
+  }
+
+  calc3bv(mines, revealedNumbers = false) {
+    // Basic idea = generate grid of numbers
+    // Do flood fill with the zeros - this will label openings and find which squares touch which openings
+    // Maybe can reuse openings in zini calc? (Or not needed?)
+
+    const width = mines.length;
+    const height = mines[0].length;
+
+    //Only destructure openingLabels as other properties aren't needed yet
+    const { openingLabels } =
+      algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
+
+    //Find total number of openings. Each opening is labeled with a non-zero number, so we count up the number of unique opening labels
+    const totalNumberOfOpenings = new Set(
+      openingLabels.flat().filter((el) => typeof el === "number" && el !== 0)
+    ).size;
+
+    const totalNumberOfProtectedSquares = openingLabels
+      .flat()
+      .filter((el) => el === 0).length;
+
+    let bbbv = totalNumberOfOpenings + totalNumberOfProtectedSquares;
+
+    let solved3bv = 0;
+
+    //Only calculate solved 3bv if we have the array of revealed numbers
+    if (revealedNumbers) {
+      //Calculate solved 3bv for when it's a lost game
+      //Scuffed as this includes openings that have not been fully opened
+      //and tiles that were solved from blasted chord
+
+      let solvedProtectedSquares = 0;
+      let solvedOpenings = new Set();
+      //^ Add openings to this set if there is a cell of them opened
+      //Slightly scuffed since this also captures partially opened openings
+      //But not worth the effort of trying to catch these
+
+      for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+          if (typeof revealedNumbers[x][y].state !== "number") {
+            //Tile has not been opened, so don't include in solved 3bv
+            continue;
+          }
+          if (openingLabels[x][y] === 0) {
+            solvedProtectedSquares++;
+          } else if (typeof openingLabels[x][y] === "number") {
+            solvedOpenings.add(openingLabels[x][y]); //Add the opening to the set as we've seen a zero tile from it
+          }
+        }
+      }
+
+      solved3bv = solvedProtectedSquares + solvedOpenings.size;
+    }
+
+    return {
+      bbbv,
+      solved3bv,
+    };
   }
 }
 

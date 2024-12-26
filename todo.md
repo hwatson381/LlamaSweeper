@@ -41,3 +41,7 @@ Optimise basicZini to improve efficiency of finding highestPremium square (basic
 Fix lag on large boards (maybe have canvas draw() that doesn't refresh whole board and only redraws the relevant area?)
 
 Implement effBoardShuffle function
+
+Improve effBoardShuffle: Don't call algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings twice (for 3bv and zini)
+
+Fix bug with hover square getting depressed during pregame and not going back up
