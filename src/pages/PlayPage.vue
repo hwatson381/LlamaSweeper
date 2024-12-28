@@ -6,7 +6,12 @@
       @mouseup="game.handleMouseUp($event)"
       @mousemove="game.handleMouseMove($event)"
     >
-      <h4>Beg Eff practise (only 200+ boards)</h4>
+      <h5>Llama's minesweeper variants</h5>
+      <p>
+        This is just a bunch of minesweeper variants I made. I should put an
+        explanation of what they are somewhere... Variants can be changed with
+        the dropdown immediately below.
+      </p>
       <!--<button @click="game.reset">reset board</button>--><br />
       <q-select
         class="q-mx-md q-mb-md"
@@ -120,14 +125,6 @@
             <pre>{{ statsText }}</pre>
           </q-card-section>
         </q-card>
-        <!--
-        <div
-          v-if="showStatsBlock"
-          style="background-color: #222222; float: left; margin: 10px"
-        >
-          <pre>{{ statsText }}</pre>
-        </div>
-        -->
       </div>
 
       <div>
@@ -161,7 +158,7 @@
                       transition-duration="100"
                       input-debounce="0"
                       v-model="begEffPreset"
-                      style="width: 175px"
+                      style="width: 145px"
                       :options="begEffOptions"
                       stack-label
                       label="Minimum beg eff"
@@ -175,6 +172,7 @@
                       dense
                       min="100"
                       max="340"
+                      style="width: 110px"
                     />
                   </template>
                   <template v-if="boardSizePreset === 'int'">
@@ -186,7 +184,7 @@
                       transition-duration="100"
                       input-debounce="0"
                       v-model="intEffPreset"
-                      style="width: 175px"
+                      style="width: 145px"
                       :options="intEffOptions"
                       stack-label
                       label="Minimum int eff"
@@ -200,6 +198,7 @@
                       dense
                       min="100"
                       max="340"
+                      style="width: 110px"
                     />
                   </template>
                   <template v-if="boardSizePreset === 'exp'">
@@ -211,7 +210,7 @@
                       transition-duration="100"
                       input-debounce="0"
                       v-model="expEffPreset"
-                      style="width: 175px"
+                      style="width: 145px"
                       :options="expEffOptions"
                       stack-label
                       label="Minimum exp eff"
@@ -225,6 +224,7 @@
                       dense
                       min="100"
                       max="340"
+                      style="width: 110px"
                     />
                   </template>
                   <q-input
@@ -236,6 +236,7 @@
                     dense
                     min="100"
                     max="340"
+                    style="width: 110px"
                   />
                 </template>
 
@@ -297,6 +298,24 @@
           :step="1"
           label
           color="light-green"
+        />
+        <q-checkbox
+          left-label
+          v-model="showBorders"
+          label="Show borders"
+          @update:model-value="game.refreshSize()"
+        /><br />
+        <q-checkbox
+          left-label
+          v-model="showTimer"
+          label="Show timer"
+          @update:model-value="game.board.drawTopBar()"
+        /><br />
+        <q-checkbox
+          left-label
+          v-model="showMineCount"
+          label="Show mine count"
+          @update:model-value="game.board.drawTopBar()"
         />
       </q-card-section>
 
@@ -364,12 +383,30 @@ Clicks: 17`);
 let settingsModal = ref(false);
 let tileSizeSlider = ref(40);
 let gameLeftPadding = ref(30);
+let showBorders = ref(true);
+let showTimer = ref(true);
+let showMineCount = ref(true);
 
+//Dimensions for border
 let boardHorizontalPadding = computed(() => {
-  return Math.floor(tileSizeSlider.value / 2);
+  return showBorders.value ? Math.floor(tileSizeSlider.value / 2) : 0;
 });
-let boardVerticalPadding = computed(() => {
-  return Math.floor(tileSizeSlider.value / 2);
+let boardTopPadding = computed(() => {
+  const topPanelTopAndBottomBorder = Math.floor(tileSizeSlider.value / 2);
+  const topPanelHeight = Math.floor(tileSizeSlider.value * 2);
+  return showBorders.value
+    ? topPanelHeight + 2 * topPanelTopAndBottomBorder
+    : 0; //Around 3 * tileSize, but may be less if values are non-integer to prevent gaps
+});
+let boardBottomPadding = computed(() => {
+  return showBorders.value ? Math.floor(tileSizeSlider.value / 2) : 0;
+});
+//More dimensions for top panel
+let topPanelTopAndBottomBorder = computed(() => {
+  return showBorders.value ? Math.floor(tileSizeSlider.value / 2) : 0;
+});
+let topPanelHeight = computed(() => {
+  return showBorders.value ? Math.floor(tileSizeSlider.value * 2) : 0;
 });
 
 let pttaUrl = ref("");
@@ -501,7 +538,9 @@ class Game {
       this.board.width * tileSizeSlider.value +
       2 * boardHorizontalPadding.value;
     mainCanvas.value.height =
-      this.board.height * tileSizeSlider.value + 2 * boardVerticalPadding.value;
+      this.board.height * tileSizeSlider.value +
+      boardTopPadding.value +
+      boardBottomPadding.value;
 
     this.startTime = 0;
 
@@ -519,7 +558,9 @@ class Game {
       this.board.width * tileSizeSlider.value +
       2 * boardHorizontalPadding.value;
     mainCanvas.value.height =
-      this.board.height * tileSizeSlider.value + 2 * boardVerticalPadding.value;
+      this.board.height * tileSizeSlider.value +
+      boardTopPadding.value +
+      boardBottomPadding.value;
 
     this.board.tileSize = tileSizeSlider.value;
     this.board.draw();
@@ -536,7 +577,7 @@ class Game {
       event.clientY - mainCanvas.value.getBoundingClientRect().top;
 
     const boardRawX = canvasRawX - boardHorizontalPadding.value;
-    const boardRawY = canvasRawY - boardVerticalPadding.value;
+    const boardRawY = canvasRawY - boardTopPadding.value;
 
     if (event.button === 0) {
       this.board.holdDownLeftMouse(boardRawX, boardRawY);
@@ -568,7 +609,7 @@ class Game {
       event.clientY - mainCanvas.value.getBoundingClientRect().top;
 
     const boardRawX = canvasRawX - boardHorizontalPadding.value;
-    const boardRawY = canvasRawY - boardVerticalPadding.value;
+    const boardRawY = canvasRawY - boardTopPadding.value;
 
     if (event.button === 0) {
       if (this.gameStage === "pregame") {
@@ -581,6 +622,9 @@ class Game {
           this.startTime = performance.now();
           //Game then continues with the code below providing the click to open the first square. It's possible we may change this though
         } else {
+          let tileX = Math.floor(boardRawX / this.tileSize);
+          let tileY = Math.floor(boardRawY / this.tileSize);
+          this.board.updateDepressedSquares(tileX, tileY, false);
           return; //Don't start game. Click not inbounds, or something else went wrong
         }
       }
@@ -592,12 +636,16 @@ class Game {
       if (this.board.blasted) {
         this.board.blast();
         this.gameStage = "lost";
-        this.board.stats.addEndTime(performance.now() - this.startTime);
+        const finalTime = performance.now() - this.startTime;
+        this.board.stats.addEndTime(finalTime);
+        this.board.end(finalTime);
         this.board.calculateAndDisplayStats(false);
       } else if (this.board.checkWin()) {
         this.board.markRemainingFlags();
         this.gameStage = "won";
-        this.board.stats.addEndTime(performance.now() - this.startTime);
+        const finalTime = performance.now() - this.startTime;
+        this.board.stats.addEndTime(finalTime);
+        this.board.end(finalTime);
         this.board.calculateAndDisplayStats(true);
       }
       this.board.draw();
@@ -624,7 +672,7 @@ class Game {
 
     //Convert to board coords
     const boardRawX = canvasRawX - boardHorizontalPadding.value;
-    const boardRawY = canvasRawY - boardVerticalPadding.value;
+    const boardRawY = canvasRawY - boardTopPadding.value;
 
     const isPregame = this.gameStage === "pregame";
     const time = performance.now() - this.startTime;
@@ -666,6 +714,10 @@ class Board {
     this.blasted = false;
     this.openedTiles = 0;
     this.stats = null;
+    this.unflagged = this.mineCount;
+    this.integerTimer = 0;
+    this.boardStartTime = 0;
+    this.updateTimerSetTimeoutHandle = null; //Handle for starts/stopping setTimeOut process that checks whether timer needs updating
   }
 
   generateBoard(boardRawX, boardRawY) {
@@ -711,8 +763,35 @@ class Board {
       );
 
     this.stats = new BoardStats(this.mines);
+    this.boardStartTime = performance.now();
+    this.updateTimerSetTimeoutHandle = setTimeout(
+      this.updateIntegerTimerIfNeeded.bind(this),
+      100
+    );
 
     return true;
+  }
+
+  updateIntegerTimerIfNeeded() {
+    let newTimerValue = Math.floor(
+      (performance.now() - this.boardStartTime) / 1000
+    );
+
+    if (newTimerValue !== this.integerTimer) {
+      this.integerTimer = newTimerValue;
+      this.drawTopBar();
+    }
+
+    this.updateTimerSetTimeoutHandle = setTimeout(
+      this.updateIntegerTimerIfNeeded.bind(this),
+      100
+    );
+  }
+
+  end(finalTime) {
+    //May refactor in future
+    clearTimeout(this.updateTimerSetTimeoutHandle);
+    this.integerTimer = Math.floor(finalTime / 1000);
   }
 
   /*
@@ -770,10 +849,12 @@ class Board {
     if (this.revealedNumbers[tileX][tileY].state === UNREVEALED) {
       //Flag the square
       this.revealedNumbers[tileX][tileY].state = FLAG;
+      this.unflagged--;
       this.stats.addRight(tileX, tileY, time);
     } else if (this.revealedNumbers[tileX][tileY].state === FLAG) {
       //Unflag a square
       this.revealedNumbers[tileX][tileY].state = UNREVEALED;
+      this.unflagged++;
       this.stats.makeMostRecentRightWasted(tileX, tileY);
       this.stats.addWastedRight(tileX, tileY, time);
     } else {
@@ -1018,6 +1099,8 @@ class Board {
         }
       }
     }
+
+    this.unflagged = 0;
   }
 
   checkWin() {
@@ -1036,23 +1119,212 @@ class Board {
   draw() {
     const ctx = mainCanvas.value.getContext("2d");
     ctx.clearRect(0, 0, mainCanvas.value.width, mainCanvas.value.height);
-    ctx.fillStyle = "#222222";
-    ctx.fillRect(
-      0,
-      0,
-      this.width * this.tileSize + 2 * boardHorizontalPadding.value,
-      this.height * this.tileSize + 2 * boardVerticalPadding.value
-    );
+
+    this.drawTiles();
+    this.drawBorders();
+    this.drawTopBar();
+  }
+
+  drawTiles() {
+    const ctx = mainCanvas.value.getContext("2d");
 
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
         this.revealedNumbers[x][y].draw(
           x * this.tileSize + boardHorizontalPadding.value,
-          y * this.tileSize + boardVerticalPadding.value,
+          y * this.tileSize + boardTopPadding.value,
           this.tileSize
         );
       }
     }
+  }
+
+  drawBorders() {
+    if (!showBorders.value) {
+      return;
+    }
+    const ctx = mainCanvas.value.getContext("2d");
+
+    //Draw borders
+    //top left corner
+    ctx.drawImage(
+      skinManager.getImage("b_c_up_left"),
+      0,
+      0,
+      boardHorizontalPadding.value,
+      topPanelTopAndBottomBorder.value
+    );
+    //top right corner
+    ctx.drawImage(
+      skinManager.getImage("b_c_up_right"),
+      this.width * this.tileSize + boardHorizontalPadding.value,
+      0,
+      boardHorizontalPadding.value,
+      topPanelTopAndBottomBorder.value
+    );
+    //bottom left corner
+    ctx.drawImage(
+      skinManager.getImage("b_c_bot_left"),
+      0,
+      this.height * this.tileSize + boardTopPadding.value,
+      boardHorizontalPadding.value,
+      boardBottomPadding.value
+    );
+    //bottom right corner
+    ctx.drawImage(
+      skinManager.getImage("b_c_bot_right"),
+      this.width * this.tileSize + boardHorizontalPadding.value,
+      this.height * this.tileSize + boardTopPadding.value,
+      boardHorizontalPadding.value,
+      boardBottomPadding.value
+    );
+
+    //t pieces (between top of board and mines/timer panel)
+    //left t piece
+    ctx.drawImage(
+      skinManager.getImage("t_left"),
+      0,
+      topPanelTopAndBottomBorder.value + topPanelHeight.value,
+      boardHorizontalPadding.value,
+      boardBottomPadding.value
+    );
+    //right t piece
+    ctx.drawImage(
+      skinManager.getImage("t_right"),
+      this.width * this.tileSize + boardHorizontalPadding.value,
+      topPanelTopAndBottomBorder.value + topPanelHeight.value,
+      boardHorizontalPadding.value,
+      boardBottomPadding.value
+    );
+
+    //connecting lines
+    //top line
+    ctx.drawImage(
+      skinManager.getImage("b_hor"),
+      boardHorizontalPadding.value,
+      0,
+      this.tileSize * this.width,
+      topPanelTopAndBottomBorder.value
+    );
+    //middle line
+    ctx.drawImage(
+      skinManager.getImage("b_hor"),
+      boardHorizontalPadding.value,
+      topPanelTopAndBottomBorder.value + topPanelHeight.value,
+      this.tileSize * this.width,
+      topPanelTopAndBottomBorder.value
+    );
+    //bottom line
+    ctx.drawImage(
+      skinManager.getImage("b_hor"),
+      boardHorizontalPadding.value,
+      this.height * this.tileSize + boardTopPadding.value,
+      this.tileSize * this.width,
+      boardBottomPadding.value
+    );
+    //left short segment
+    ctx.drawImage(
+      skinManager.getImage("b_vert"),
+      0,
+      topPanelTopAndBottomBorder.value,
+      boardHorizontalPadding.value,
+      topPanelHeight.value
+    );
+    //right short segment
+    ctx.drawImage(
+      skinManager.getImage("b_vert"),
+      this.width * this.tileSize + boardHorizontalPadding.value,
+      topPanelTopAndBottomBorder.value,
+      boardHorizontalPadding.value,
+      topPanelHeight.value
+    );
+    //left long segment
+    ctx.drawImage(
+      skinManager.getImage("b_vert"),
+      0,
+      boardTopPadding.value,
+      boardHorizontalPadding.value,
+      this.height * this.tileSize
+    );
+    //right long segment
+    ctx.drawImage(
+      skinManager.getImage("b_vert"),
+      this.width * this.tileSize + boardHorizontalPadding.value,
+      boardTopPadding.value,
+      boardHorizontalPadding.value,
+      this.height * this.tileSize
+    );
+  }
+
+  drawTopBar() {
+    if (!showBorders.value) {
+      return;
+    }
+
+    const ctx = mainCanvas.value.getContext("2d");
+
+    //A bunch of variables for positioning things
+    const topPanelMiddleHeight = topPanelHeight.value / 2;
+    const topPanelMiddleWidth = (this.width * this.tileSize) / 2;
+    const topPanelInnerPadding = this.tileSize / 4;
+    const mineStartX = boardHorizontalPadding.value + topPanelInnerPadding;
+    const timerStartX =
+      boardHorizontalPadding.value +
+      this.width * this.tileSize -
+      topPanelInnerPadding; //note timer is right aligned, so this is where right edge of timer is
+    const mineTimerStartY =
+      topPanelTopAndBottomBorder.value + topPanelMiddleHeight;
+    const faceWidth = topPanelHeight.value - 2 * topPanelInnerPadding;
+    const faceStartX =
+      boardHorizontalPadding.value + topPanelMiddleWidth - faceWidth / 2;
+    const faceStartY = topPanelTopAndBottomBorder.value + topPanelInnerPadding;
+
+    const mineTimerMaxWidth = faceStartX - mineStartX;
+
+    //Draw flat background for top panel
+    ctx.fillStyle = skinManager.getTopPanelColour();
+    ctx.fillRect(
+      boardHorizontalPadding.value,
+      topPanelTopAndBottomBorder.value,
+      this.width * this.tileSize,
+      topPanelHeight.value
+    );
+
+    //Set up font for mine/timer text
+    ctx.textBaseline = "middle";
+    ctx.font = `${this.tileSize}px monospace`;
+    ctx.fillStyle = skinManager.getMineTimerTextColour();
+
+    //Draw mine counter
+    if (showMineCount.value) {
+      ctx.textAlign = "left";
+      ctx.fillText(
+        this.unflagged,
+        mineStartX,
+        mineTimerStartY,
+        mineTimerMaxWidth
+      );
+    }
+
+    //Draw timer
+    if (showTimer.value) {
+      ctx.textAlign = "right";
+      ctx.fillText(
+        this.integerTimer,
+        timerStartX,
+        mineTimerStartY,
+        mineTimerMaxWidth
+      );
+    }
+
+    //Draw face
+    ctx.drawImage(
+      skinManager.getImage("f_unpressed"),
+      faceStartX,
+      faceStartY,
+      faceWidth,
+      faceWidth
+    );
   }
 }
 
@@ -1088,6 +1360,15 @@ class SkinManager {
       [FLAG, "/img/tiles/flag.svg"],
       [MINE, "/img/tiles/mine.svg"],
       [MINERED, "/img/tiles/mine_red.svg"],
+      ["b_hor", "/img/borders/border_hor_2x.png"],
+      ["b_vert", "/img/borders/border_vert_2x.png"],
+      ["b_c_bot_left", "/img/borders/corner_bottom_left_2x.png"],
+      ["b_c_bot_right", "/img/borders/corner_bottom_right_2x.png"],
+      ["b_c_up_left", "/img/borders/corner_up_left_2x.png"],
+      ["b_c_up_right", "/img/borders/corner_up_right_2x.png"],
+      ["t_left", "/img/borders/t_left_2x.png"],
+      ["t_right", "/img/borders/t_right_2x.png"],
+      ["f_unpressed", "/img/borders/face_unpressed.svg"],
     ];
     this.imagesLoadedCount = 0;
     this.imagesToLoadCount = keyImageMapping.length;
@@ -1133,6 +1414,14 @@ class SkinManager {
     } else {
       return this.images.MINERED;
     }
+  }
+
+  getTopPanelColour() {
+    return "#c0c0c0";
+  }
+
+  getMineTimerTextColour() {
+    return "#000000";
   }
 }
 

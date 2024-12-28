@@ -4,7 +4,6 @@ Improve OthersPage to use masonary layout instead of grid
 Move project files over to WSL2 (this is needed for hot-reload to work?)
 
 stuff for play page:
-first click always opening? (or do NG x?)
 implement zini alg
 add replays
 have board-history for exploring past replays (and replays of same game get grouped up)
@@ -44,4 +43,12 @@ Implement effBoardShuffle function
 
 Improve effBoardShuffle: Don't call algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings twice (for 3bv and zini)
 
-Fix bug with hover square getting depressed during pregame and not going back up
+Improve efficiency of effBoardsGen (maybe only try 1 direction of zini and then try other directions if it is close? This gives up to 8x improvement)
+
+Have display setting for hiding border (maybe useful for mobile). Also hiding flag count and/or timer
+
+Make clicking top bar trigger a reset
+
+Make unfocus a function and call it from all various inputs (where sensible?)
+
+Really need to do refactoring to pull startTime into Board from Game class
