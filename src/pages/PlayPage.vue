@@ -12,6 +12,11 @@
         explanation of what they are somewhere... Variants can be changed with
         the dropdown immediately below.
       </p>
+      <button @click="bulkrun">Bulk run</button>
+      Use organised premiums:
+      <input v-model="useOrgPrem" type="checkbox" /><br />
+      Use 8-way: <input v-model="use8Way" type="checkbox" /><br />
+      Iterations: <input v-model.number="bulkIterations" type="text" />
       <!--<button @click="game.reset">reset board</button>--><br />
       <q-select
         class="q-mx-md q-mb-md"
@@ -520,10 +525,36 @@ let minimumEff = computed(() => {
   return clamp(minEff, 100, 340);
 });
 
+let useOrgPrem = ref(false);
+let use8Way = ref(false);
+let bulkIterations = ref(1000);
+function bulkrun() {
+  for (let i = 0; i < bulkIterations.value; i++) {
+    let mines = BoardGenerator.basicShuffle(
+      boardWidth.value,
+      boardHeight.value,
+      boardMines.value
+    );
+
+    let is8Way = use8Way.value;
+    let orgPrem = useOrgPrem.value;
+
+    benchmark.startTime("full-zini-run");
+    algorithms.calcBasicZini(mines, is8Way, orgPrem);
+    benchmark.stopTime("full-zini-run");
+  }
+  benchmark.report();
+  benchmark.clearAll();
+}
+
 class Game {
   constructor() {}
 
   reset() {
+    if (this.board) {
+      this.board.clearTimerTimeout();
+    }
+
     this.board = new Board(
       boardWidth.value,
       boardHeight.value,
@@ -541,8 +572,6 @@ class Game {
       this.board.height * tileSizeSlider.value +
       boardTopPadding.value +
       boardBottomPadding.value;
-
-    this.startTime = 0;
 
     this.board.draw();
   }
@@ -589,11 +618,7 @@ class Game {
       event.target === mainCanvas.value &&
       this.gameStage === "running"
     ) {
-      this.board.attemptFlag(
-        boardRawX,
-        boardRawY,
-        performance.now() - this.startTime
-      );
+      this.board.attemptFlag(boardRawX, boardRawY);
       this.board.draw();
     }
   }
@@ -619,7 +644,6 @@ class Game {
         );
         if (successfullyGenerated) {
           this.gameStage = "running";
-          this.startTime = performance.now();
           //Game then continues with the code below providing the click to open the first square. It's possible we may change this though
         } else {
           let tileX = Math.floor(boardRawX / this.tileSize);
@@ -628,22 +652,18 @@ class Game {
           return; //Don't start game. Click not inbounds, or something else went wrong
         }
       }
-      this.board.attemptChordOrDig(
-        boardRawX,
-        boardRawY,
-        performance.now() - this.startTime
-      );
+      this.board.attemptChordOrDig(boardRawX, boardRawY);
       if (this.board.blasted) {
         this.board.blast();
         this.gameStage = "lost";
-        const finalTime = performance.now() - this.startTime;
+        const finalTime = this.board.getTime();
         this.board.stats.addEndTime(finalTime);
         this.board.end(finalTime);
         this.board.calculateAndDisplayStats(false);
       } else if (this.board.checkWin()) {
         this.board.markRemainingFlags();
         this.gameStage = "won";
-        const finalTime = performance.now() - this.startTime;
+        const finalTime = this.board.getTime();
         this.board.stats.addEndTime(finalTime);
         this.board.end(finalTime);
         this.board.calculateAndDisplayStats(true);
@@ -675,11 +695,9 @@ class Game {
     const boardRawY = canvasRawY - boardTopPadding.value;
 
     const isPregame = this.gameStage === "pregame";
-    const time = performance.now() - this.startTime;
     const requiresRedraw = this.board.mouseMove(
       boardRawX,
       boardRawY,
-      time,
       isPregame
     );
     if (requiresRedraw) {
@@ -773,9 +791,7 @@ class Board {
   }
 
   updateIntegerTimerIfNeeded() {
-    let newTimerValue = Math.floor(
-      (performance.now() - this.boardStartTime) / 1000
-    );
+    let newTimerValue = Math.floor(this.getTime() / 1000);
 
     if (newTimerValue !== this.integerTimer) {
       this.integerTimer = newTimerValue;
@@ -792,6 +808,15 @@ class Board {
     //May refactor in future
     clearTimeout(this.updateTimerSetTimeoutHandle);
     this.integerTimer = Math.floor(finalTime / 1000);
+  }
+
+  clearTimerTimeout() {
+    //May refactor in future. Disables setTimeout for timer
+    clearTimeout(this.updateTimerSetTimeoutHandle);
+  }
+
+  getTime() {
+    return performance.now() - this.boardStartTime;
   }
 
   /*
@@ -837,7 +862,9 @@ class Board {
     return true;
   }
 
-  attemptFlag(boardRawX, boardRawY, time) {
+  attemptFlag(boardRawX, boardRawY) {
+    let time = this.getTime();
+
     let tileX = Math.floor(boardRawX / this.tileSize);
     let tileY = Math.floor(boardRawY / this.tileSize);
 
@@ -863,7 +890,9 @@ class Board {
     }
   }
 
-  attemptChordOrDig(boardRawX, boardRawY, time) {
+  attemptChordOrDig(boardRawX, boardRawY) {
+    let time = this.getTime();
+
     let tileX = Math.floor(boardRawX / this.tileSize);
     let tileY = Math.floor(boardRawY / this.tileSize);
 
@@ -917,7 +946,9 @@ class Board {
     }
   }
 
-  mouseMove(boardRawX, boardRawY, time, isPregame) {
+  mouseMove(boardRawX, boardRawY, isPregame) {
+    let time = this.getTime();
+
     let unflooredTileX = boardRawX / this.tileSize;
     let unflooredTileY = boardRawY / this.tileSize;
 
@@ -1811,14 +1842,13 @@ class BoardStats {
 class Algorithms {
   constructor() {}
 
-  calcBasicZini(mines, is8Way) {
+  calcBasicZini(mines, is8Way, doBinarySearchOptimisation = false) {
     //Get various data structures which information about numbers and openings
     const { numbersArray, openingLabels, preprocessedOpenings } =
       algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
 
     const width = mines.length;
     const height = mines[0].length;
-    const numberOfMines = mines.flat().filter((x) => x).length;
 
     //false for unrevealed, true for revealed
     const revealedStates = new Array(width)
@@ -1845,6 +1875,7 @@ class Algorithms {
         };
       })
     );
+
     for (let x = 0; x < width; x++) {
       for (let y = 0; y < height; y++) {
         const thisSquare = squareInfo[x][y];
@@ -1957,14 +1988,43 @@ class Algorithms {
     for (const enumeration of enumerationsOrders) {
       //Take copies of variable that track board state as they need to be re-initialised for each zini direction
       const thisEnumerationClicks = []; //Track clicks that get done by ZiNi
-      const thisEnumerationFlagStates = structuredClone(flagStates);
-      const thisEnumerationRevealedStates = structuredClone(revealedStates);
-      const thisEnumerationPremiums = structuredClone(premiums);
+      const thisEnumerationFlagStates = algorithms.fast2dArrayCopy(flagStates);
+      const thisEnumerationRevealedStates =
+        algorithms.fast2dArrayCopy(revealedStates);
+      const thisEnumerationPremiums = algorithms.fast2dArrayCopy(premiums);
       let squaresSolvedThisRun = 0;
+      let thisEnumerationOrganisedPremiums = false;
 
-      benchmark.startTime("full-zini");
+      if (doBinarySearchOptimisation) {
+        thisEnumerationOrganisedPremiums = new OrganisedPremiums(
+          enumeration[0],
+          enumeration[1],
+          enumeration[2],
+          width,
+          height,
+          true
+        );
+
+        //Initialise based on premiums
+        for (let x = 0; x < width; x++) {
+          for (let y = 0; y < height; y++) {
+            if (mines[x][y]) {
+              continue;
+            }
+            thisEnumerationOrganisedPremiums.lazyAddPremium(
+              x,
+              y,
+              premiums[x][y]
+            );
+          }
+        }
+        thisEnumerationOrganisedPremiums.sortAfterLazyAdd();
+      }
+
+      let needToDoNFClicks = false;
+      benchmark.startTime("zini-core-calc");
       while (squaresSolvedThisRun !== revealedSquaresToSolve) {
-        squaresSolvedThisRun += this.doBasicZiniStep(
+        let basicZiniStepResult = this.doBasicZiniStep(
           squareInfo,
           thisEnumerationFlagStates,
           thisEnumerationRevealedStates,
@@ -1973,12 +2033,26 @@ class Algorithms {
           thisEnumerationClicks,
           enumeration[0], //iterate x coord in diff order
           enumeration[1], //iterate y coord in diff order
-          enumeration[2] //affects whether we iterate x or y first
+          enumeration[2], //affects whether we iterate x or y first
+          thisEnumerationOrganisedPremiums
+        );
+        squaresSolvedThisRun += basicZiniStepResult.newlyRevealed;
+
+        if (basicZiniStepResult.onlyNFRemaining) {
+          needToDoNFClicks = true;
+          break;
+        }
+      }
+      benchmark.stopTime("zini-core-calc");
+
+      if (needToDoNFClicks) {
+        this.nfClickEverythingForZini(
+          squareInfo,
+          thisEnumerationRevealedStates,
+          preprocessedOpenings,
+          thisEnumerationClicks
         );
       }
-      benchmark.stopTime("full-zini");
-      //benchmark.report();
-      benchmark.clearAll();
 
       /*
       console.log(
@@ -1996,8 +2070,6 @@ class Algorithms {
       }
     }
 
-    //console.log(currentClicksArray);
-
     return currentZiniValue; //Consider also returning currentClicksArray
   }
 
@@ -2010,59 +2082,71 @@ class Algorithms {
     clicks,
     xReverse, //If true, prefer the premium with higher x coord
     yReverse, //If true, prefer the premium with higher y coord
-    xySwap //If true, use y in outer loop instead of x
+    xySwap, //If true, use y in outer loop instead of x,
+    organisedPremiums = false //Optimised data structure for storing premiums and retrieving the highest one that is earliest in iteration order
   ) {
-    benchmark.startTime("find-highest-premium");
-
     const width = revealedStates.length;
     const height = revealedStates[0].length;
     let squaresRevealedDuringStep = 0;
 
     //Find move with highest premium
-    //Set up enumeration order
-    const xStart = xReverse ? width - 1 : 0;
-    const xEnd = xReverse ? 0 : width - 1;
-    const yStart = yReverse ? height - 1 : 0;
-    const yEnd = yReverse ? 0 : height - 1;
-    const iStart = xySwap ? yStart : xStart;
-    const iEnd = xySwap ? yEnd : xEnd;
-    const jStart = xySwap ? xStart : yStart;
-    const jEnd = xySwap ? xEnd : yEnd;
-    const iReverse = xySwap ? yReverse : xReverse;
-    const jReverse = xySwap ? xReverse : yReverse;
-
     let highestPremiumSoFar = -1; //Default to -1 as if all premiums negative we need to click a square
     let nfClick = null; //This is the first square in the enumeration, which we nf click if no chords are found
     let chordClick = null; //This is our candidate square for chording
 
-    for (let i = iStart; iReverse ? i >= 0 : i <= iEnd; iReverse ? i-- : i++) {
+    if (!organisedPremiums) {
+      //Set up enumeration order
+      const xStart = xReverse ? width - 1 : 0;
+      const xEnd = xReverse ? 0 : width - 1;
+      const yStart = yReverse ? height - 1 : 0;
+      const yEnd = yReverse ? 0 : height - 1;
+      const iStart = xySwap ? yStart : xStart;
+      const iEnd = xySwap ? yEnd : xEnd;
+      const jStart = xySwap ? xStart : yStart;
+      const jEnd = xySwap ? xEnd : yEnd;
+      const iReverse = xySwap ? yReverse : xReverse;
+      const jReverse = xySwap ? xReverse : yReverse;
+
       for (
-        let j = jStart;
-        jReverse ? j >= 0 : j <= jEnd;
-        jReverse ? j-- : j++
+        let i = iStart;
+        iReverse ? i >= 0 : i <= iEnd;
+        iReverse ? i-- : i++
       ) {
-        const [x, y] = xySwap ? [j, i] : [i, j];
-        const thisSquare = squareInfo[x][y];
-        if (thisSquare.isMine) {
-          continue;
-        }
-        if (nfClick === null && thisSquare.is3bv) {
-          //First square enumerated over becomes nfClick
-          if (!revealedStates[x][y]) {
-            nfClick = { x, y };
+        for (
+          let j = jStart;
+          jReverse ? j >= 0 : j <= jEnd;
+          jReverse ? j-- : j++
+        ) {
+          const [x, y] = xySwap ? [j, i] : [i, j];
+          const thisSquare = squareInfo[x][y];
+          if (thisSquare.isMine) {
+            continue;
+          }
+          if (nfClick === null && thisSquare.is3bv) {
+            //First square enumerated over becomes nfClick
+            if (!revealedStates[x][y]) {
+              nfClick = { x, y };
+            }
+          }
+          if (highestPremiumSoFar < premiums[x][y]) {
+            highestPremiumSoFar = premiums[x][y];
+            chordClick = { x, y };
           }
         }
-        if (highestPremiumSoFar < premiums[x][y]) {
-          highestPremiumSoFar = premiums[x][y];
-          chordClick = { x, y };
-        }
       }
+    } else {
+      //Use organised premiums to quickly find the best premium
+
+      const { x, y, premium } = organisedPremiums.getHighestPremium();
+      chordClick = { x, y };
+      highestPremiumSoFar = premium;
     }
 
-    benchmark.stopTime("find-highest-premium");
-    benchmark.startTime("click-and-update-premiums");
-
     //We've found a good move, now do it and update things. The move will either be an nf click or a chord.
+    if (organisedPremiums && highestPremiumSoFar <= -1) {
+      //Exit early as everything left will be NF clicks
+      return { newlyRevealed: 0, onlyNFRemaining: true };
+    }
 
     //Track squares that will need premium update after doing the nf click or chord
     let squaresThatNeedPremiumUpdated = [];
@@ -2211,20 +2295,61 @@ class Algorithms {
         flagStates,
         revealedStates,
         premiums,
-        preprocessedOpenings
+        preprocessedOpenings,
+        organisedPremiums //may be false in which case updatePremiumForCoord will ignore it
       );
     }
 
-    benchmark.stopTime("click-and-update-premiums");
+    return { newlyRevealed: squaresRevealedDuringStep, onlyNFRemaining: false };
+  }
 
-    return squaresRevealedDuringStep;
+  nfClickEverythingForZini(
+    squareInfo,
+    revealedStates,
+    preprocessedOpenings,
+    clicks
+  ) {
+    const width = revealedStates.length;
+    const height = revealedStates[0].length;
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        const thisSquare = squareInfo[x][y];
+        if (thisSquare.isMine) {
+          continue;
+        }
+        if (revealedStates[x][y]) {
+          continue;
+        }
+        if (!thisSquare.is3bv) {
+          continue;
+        }
+        //Square is an unrevealed 3bv, so do an nf click on it
+
+        clicks.push({ type: "left", x: x, y: y });
+        revealedStates[x][y] = true;
+
+        //Open connected squares if this is an opening
+        const labelIfOpening = squareInfo[x][y].labelIfOpening;
+        if (labelIfOpening !== null) {
+          const opening = preprocessedOpenings.get(labelIfOpening);
+          for (let zero of opening.zeros) {
+            revealedStates[zero.x][zero.y] = true;
+          }
+          for (let edge of opening.edges) {
+            revealedStates[edge.x][edge.y] = true;
+          }
+        }
+      }
+    }
   }
 
   calcWomZini(mines) {
     //WoM zini is really 8-way zini
     const is8Way = true;
+    const doBinarySearchOptimisation = true;
 
-    return this.calcBasicZini(mines, is8Way);
+    return this.calcBasicZini(mines, is8Way, doBinarySearchOptimisation);
   }
 
   updatePremiumForCoord(
@@ -2234,7 +2359,8 @@ class Algorithms {
     flagStates,
     revealedStates,
     premiums,
-    preprocessedOpenings
+    preprocessedOpenings,
+    organisedPremiums = false
   ) {
     //https://minesweepergame.com/forum/viewtopic.php?t=70&sid=8bb9f4500da68f4ef4a8989e5a89b6a4
     /*
@@ -2299,14 +2425,19 @@ class Algorithms {
     const clicksSaved =
       bbbvOpenedWithChord - unflaggedAdjacentMines - 1 - penaltyForFirstClick;
 
+    if (organisedPremiums) {
+      //Also save premium to organised premiums assuming it is available
+      organisedPremiums.updatePremium(x, y, premiums[x][y], clicksSaved);
+    }
     premiums[x][y] = clicksSaved;
   }
 
-  //Returns an object wich three structures
+  /*[TO REMOVE] Use getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings instead
+  //Returns an object with three structures
   //Numbers array gives the numbers of each cell.
   //OpeningLabels tracks which squares are part of the same openings or on opening edges.
   //Preprocessed openings tracks which squares are the edge and inside of openings
-  getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines) {
+  getNumbersArrayAndOpeningLabelsAndPreprocessedOpeningsOld(mines) {
     const width = mines.length;
     const height = mines[0].length;
 
@@ -2316,24 +2447,22 @@ class Algorithms {
 
     for (let x = 0; x < width; x++) {
       for (let y = 0; y < height; y++) {
-        if (mines[x][y]) {
-          numbersArray[x][y] = "x";
+        if (!mines[x][y]) {
+          continue;
         }
-
-        let number = 0;
+        numbersArray[x][y] = "x";
         for (let i = x - 1; i <= x + 1; i++) {
           for (let j = y - 1; j <= y + 1; j++) {
-            if (mines[i]?.[j]) {
-              number++;
+            if (mines[i]?.[j] === false) {
+              numbersArray[i][j]++;
             }
           }
         }
-        numbersArray[x][y] = number;
       }
     }
-
     //Generate grid with labelled openings. Like
-    /*
+    */
+  /*
       11+00x
       1++x++
       1+x0+2
@@ -2341,6 +2470,7 @@ class Algorithms {
       In this grid, 1's are part of the first opening, 2's are part of the 2nd opening.
       0s are not part of any opening, +'s are on the edge of an opening, x's are mines.
     */
+  /*
     let openingLabels = new Array(width)
       .fill(0)
       .map(() => new Array(height).fill(0));
@@ -2368,7 +2498,7 @@ class Algorithms {
       }
     }
 
-    //Initialise map with entries for each opening that keeps track of which coords below to that opening
+    //Initialise map with entries for each opening that keeps track of which coords belong to that opening
     const preprocessedOpenings = new Map();
     for (
       let openingLabelNumber = 1;
@@ -2426,7 +2556,9 @@ class Algorithms {
       preprocessedOpenings,
     };
   }
+  */
 
+  /* [TO REMOVE] Use floodOpeningForProcessing instead
   floodOpeningFor3bv(x, y, mines, openingLabels, numbersArray, newLabel) {
     if (openingLabels[x]?.[y] !== 0) {
       //Square outside board or has already been processed
@@ -2515,6 +2647,214 @@ class Algorithms {
       );
     }
   }
+  */
+
+  //Returns an object with three structures
+  //Numbers array gives the numbers of each cell.
+  //OpeningLabels tracks which squares are part of the same openings or on opening edges.
+  //Preprocessed openings tracks which squares are the edge and inside of openings
+  getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines) {
+    benchmark.startTime("preprocess-func");
+    const width = mines.length;
+    const height = mines[0].length;
+
+    const numbersArray = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(0));
+
+    //Populate which numbers squares have. Slightly more efficient to loop over and find mines and increment neighbours since mines are usually rare
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (!mines[x][y]) {
+          continue;
+        }
+        numbersArray[x][y] = "x";
+        for (let i = x - 1; i <= x + 1; i++) {
+          for (let j = y - 1; j <= y + 1; j++) {
+            if (mines[i]?.[j] === false) {
+              numbersArray[i][j]++;
+            }
+          }
+        }
+      }
+    }
+    //Generate grid with labelled openings. Like
+    /*
+      11+00x
+      1++x++
+      1+x0+2
+
+      In this grid, 1's are part of the first opening, 2's are part of the 2nd opening.
+      0s are not part of any opening, +'s are on the edge of an opening, x's are mines.
+    */
+    let openingLabels = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(0));
+
+    let nextOpeningLabel = 0;
+
+    //At same time also populate preprocessedOpenings
+
+    //Initialise map for preprocessedOpenings
+    /*
+      It has the below form:
+      opening label number
+       =>
+      {
+        zeros: [], //Which coords in this opening have zeros
+        edges: [], //Which coords are on the edge of this opening
+      }
+    */
+    const preprocessedOpenings = new Map();
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (mines[x][y]) {
+          openingLabels[x][y] = "x";
+          continue;
+        }
+
+        if (numbersArray[x][y] === 0 && openingLabels[x][y] === 0) {
+          nextOpeningLabel++;
+          preprocessedOpenings.set(nextOpeningLabel, {
+            zeros: [], //Which coords in this opening have zeros
+            edges: [], //Which coords are on the edge of this opening
+          });
+          this.floodOpeningForProcessing(
+            x,
+            y,
+            mines,
+            openingLabels,
+            numbersArray,
+            preprocessedOpenings,
+            nextOpeningLabel
+          );
+        }
+      }
+    }
+
+    benchmark.stopTime("preprocess-func");
+
+    return {
+      numbersArray,
+      openingLabels,
+      preprocessedOpenings,
+    };
+  }
+
+  floodOpeningForProcessing(
+    x,
+    y,
+    mines,
+    openingLabels,
+    numbersArray,
+    preprocessedOpenings,
+    newLabel
+  ) {
+    if (openingLabels[x]?.[y] === undefined) {
+      //Square outside board
+      return;
+    }
+    if (openingLabels[x][y] === newLabel) {
+      //Square has already been included in this opening
+      return;
+    }
+
+    if (numbersArray[x][y] !== 0) {
+      openingLabels[x][y] = "+"; //Squares that are on the edge of an opening
+      //Also add as an edge to preprocessedOpenings
+      const preprocessedOpening = preprocessedOpenings.get(newLabel);
+      //Add to edges of the opening provided it hasn't already been included
+      benchmark.startTime("edge-slow-search");
+      if (
+        !preprocessedOpening.edges.some(
+          (edgeSquare) => edgeSquare.x === x && edgeSquare.y === y
+        )
+      ) {
+        preprocessedOpening.edges.push({ x, y });
+      }
+      benchmark.stopTime("edge-slow-search");
+
+      return;
+    } else if (numbersArray[x][y] === 0) {
+      openingLabels[x][y] = newLabel;
+      const preprocessedOpening = preprocessedOpenings.get(newLabel);
+      preprocessedOpening.zeros.push({ x, y });
+      //Flood square
+      this.floodOpeningForProcessing(
+        x - 1,
+        y - 1,
+        mines,
+        openingLabels,
+        numbersArray,
+        preprocessedOpenings,
+        newLabel
+      );
+      this.floodOpeningForProcessing(
+        x - 1,
+        y,
+        mines,
+        openingLabels,
+        numbersArray,
+        preprocessedOpenings,
+        newLabel
+      );
+      this.floodOpeningForProcessing(
+        x - 1,
+        y + 1,
+        mines,
+        openingLabels,
+        numbersArray,
+        preprocessedOpenings,
+        newLabel
+      );
+      this.floodOpeningForProcessing(
+        x,
+        y - 1,
+        mines,
+        openingLabels,
+        numbersArray,
+        preprocessedOpenings,
+        newLabel
+      );
+      this.floodOpeningForProcessing(
+        x,
+        y + 1,
+        mines,
+        openingLabels,
+        numbersArray,
+        preprocessedOpenings,
+        newLabel
+      );
+      this.floodOpeningForProcessing(
+        x + 1,
+        y - 1,
+        mines,
+        openingLabels,
+        numbersArray,
+        preprocessedOpenings,
+        newLabel
+      );
+      this.floodOpeningForProcessing(
+        x + 1,
+        y,
+        mines,
+        openingLabels,
+        numbersArray,
+        preprocessedOpenings,
+        newLabel
+      );
+      this.floodOpeningForProcessing(
+        x + 1,
+        y + 1,
+        mines,
+        openingLabels,
+        numbersArray,
+        preprocessedOpenings,
+        newLabel
+      );
+    }
+  }
 
   calc3bv(mines, revealedNumbers = false) {
     // Basic idea = generate grid of numbers
@@ -2575,6 +2915,174 @@ class Algorithms {
       solved3bv,
     };
   }
+
+  fast2dArrayCopy(toBeCopied) {
+    //shallow copy for 2d arrays
+    return toBeCopied.map((arr) => arr.slice());
+  }
+}
+
+//Data structure to make it easier to find best premiums. Uses binary search
+//Read here for context https://stackoverflow.com/questions/1344500/efficient-way-to-insert-a-number-into-a-sorted-array-of-numbers
+//Rough idea is to convert x,y coord into the order they would be iterated over, and store this in ordered arrays keyed to the premium
+class OrganisedPremiums {
+  constructor(
+    xReverse,
+    yReverse,
+    xySwap,
+    width,
+    height,
+    excludeNegativePremiums
+  ) {
+    this.premiumsMap = new Map();
+    //Map of numbers to arrays, where the key is the premium and the value is an array containing all squares of that premium
+
+    this.xReverse = xReverse;
+    this.yReverse = yReverse;
+    this.xySwap = xySwap;
+    this.width = width;
+    this.height = height;
+    this.excludeNegativePremiums = excludeNegativePremiums;
+  }
+
+  addPremium(x, y, newPremium) {
+    if (this.excludeNegativePremiums && newPremium < 0) {
+      return;
+    }
+
+    let order = this.xyToOrder(x, y);
+
+    let premiumArray = this.premiumsMap.get(newPremium);
+
+    if (!Array.isArray(premiumArray)) {
+      //We do not already have anything with this premium
+      this.premiumsMap.set(newPremium, [order]);
+    } else {
+      //Find index to insert this
+      let idx = this.sortedIndex(premiumArray, order);
+
+      premiumArray.splice(idx, 0, order);
+    }
+  }
+
+  lazyAddPremium(x, y, newPremium) {
+    //Similar to addPremium, but doesn't store values in order. sortAfterLazyAdd will need to be called later
+    //Useful for add premiums in bulk when initialising
+    if (this.excludeNegativePremiums && newPremium < 0) {
+      return;
+    }
+
+    let order = this.xyToOrder(x, y);
+
+    let premiumArray = this.premiumsMap.get(newPremium);
+
+    if (!Array.isArray(premiumArray)) {
+      //We do not already have anything with this premium
+      this.premiumsMap.set(newPremium, [order]);
+    } else {
+      //Append to array as we will be sorting later
+      premiumArray.push(order);
+    }
+  }
+
+  sortAfterLazyAdd() {
+    for (let premiumArray of this.premiumsMap.values()) {
+      premiumArray.sort((a, b) => a - b);
+    }
+  }
+
+  removePremium(x, y, oldPremium) {
+    if (this.excludeNegativePremiums && oldPremium < 0) {
+      return;
+    }
+
+    let order = this.xyToOrder(x, y);
+    let premiumArray = this.premiumsMap.get(oldPremium);
+
+    let idx = this.sortedIndex(premiumArray, order);
+
+    if (premiumArray[idx] !== order) {
+      throw new Error("Order not found in premiums array?");
+    }
+
+    premiumArray.splice(idx, 1);
+
+    if (premiumArray.length === 0) {
+      this.premiumsMap.delete(oldPremium);
+    }
+  }
+
+  updatePremium(x, y, oldPremium, newPremium) {
+    this.removePremium(x, y, oldPremium);
+    this.addPremium(x, y, newPremium);
+  }
+
+  getHighestPremium() {
+    if (this.premiumsMap.size === 0) {
+      if (this.excludeNegativePremiums) {
+        //Probably a negative premium, return -1 as this will cause zini to start looking for nf clicks
+        return { x: "not stored", y: "not stored", premium: -1 };
+      } else {
+        throw new Error("Empty map");
+      }
+    }
+
+    const highestPremium = Math.max.apply(null, [...this.premiumsMap.keys()]);
+
+    let order = this.premiumsMap.get(highestPremium)[0];
+    let { x, y } = this.orderToXy(order);
+
+    return {
+      x,
+      y,
+      premium: highestPremium,
+    };
+  }
+
+  xyToOrder(x, y) {
+    let possiblyFlippedX = this.xReverse ? this.width - 1 - x : x;
+    let possiblyFlippedY = this.yReverse ? this.height - 1 - y : y;
+
+    if (this.xySwap) {
+      return possiblyFlippedY + this.height * possiblyFlippedX;
+    } else {
+      return possiblyFlippedX + this.width * possiblyFlippedY;
+    }
+  }
+
+  orderToXy(order) {
+    let possiblyFlippedX;
+    let possiblyFlippedY;
+
+    if (this.xySwap) {
+      possiblyFlippedY = order % this.height;
+      possiblyFlippedX = Math.floor(order / this.height);
+    } else {
+      possiblyFlippedX = order % this.width;
+      possiblyFlippedY = Math.floor(order / this.width);
+    }
+
+    let x = this.xReverse
+      ? this.width - 1 - possiblyFlippedX
+      : possiblyFlippedX;
+    let y = this.yReverse
+      ? this.height - 1 - possiblyFlippedY
+      : possiblyFlippedY;
+
+    return { x, y };
+  }
+
+  sortedIndex(array, value) {
+    var low = 0,
+      high = array.length;
+
+    while (low < high) {
+      var mid = (low + high) >>> 1;
+      if (array[mid] < value) low = mid + 1;
+      else high = mid;
+    }
+    return low;
+  }
 }
 
 class Benchmark {
@@ -2614,6 +3122,9 @@ class Benchmark {
 
   stopTime(key) {
     let timing = this.times.get(key);
+    if (!timing) {
+      throw new Error(`timer with key "${key}" does not exist`);
+    }
     if (!timing.isRunning) {
       throw new Error("cannot stop timer that is already stopped");
     }

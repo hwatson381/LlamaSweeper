@@ -7,7 +7,6 @@ stuff for play page:
 implement zini alg
 add replays
 have board-history for exploring past replays (and replays of same game get grouped up)
-add proper border around board (and mine counter/timer?)
 
 Change revealedNumbers stuff to be tiles[x][y] and then hide behind getters/setters. Like setTileState(x, y, newState) and setTileDepressed(x, y, true)
 
@@ -39,16 +38,19 @@ Optimise basicZini to improve efficiency of finding highestPremium square (basic
 
 Fix lag on large boards (maybe have canvas draw() that doesn't refresh whole board and only redraws the relevant area?)
 
-Implement effBoardShuffle function
-
 Improve effBoardShuffle: Don't call algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings twice (for 3bv and zini)
 
-Improve efficiency of effBoardsGen (maybe only try 1 direction of zini and then try other directions if it is close? This gives up to 8x improvement)
-
-Have display setting for hiding border (maybe useful for mobile). Also hiding flag count and/or timer
+Improve efficiency of effBoardsShuffle (maybe only try 1 direction of zini and then try other directions if it is close? This gives up to 8x improvement)
 
 Make clicking top bar trigger a reset
 
 Make unfocus a function and call it from all various inputs (where sensible?)
 
-Really need to do refactoring to pull startTime into Board from Game class
+[IMPORTANT] Really need to do refactoring to pull startTime into Board from Game class
+
+Be careful with setTimeouts to not have loads of them running at the same time...
+Remove on component unmount?
+
+Implement xyToOrder and OrderToXY so that they use xReverse etc...
+Implement something to deal with NF clicks
+Implement nfClickEverythingForZini
