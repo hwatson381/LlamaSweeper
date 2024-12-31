@@ -111,7 +111,7 @@
         {{ customWarning }}
       </template>
       <div v-if="variant === 'eff boards'">
-        Generating boards with minimum eff: {{ minimumEff }}% (change this in
+        Generating boards with target eff: {{ minimumEff }}% (change this in
         settings below)
       </div>
 
@@ -126,8 +126,26 @@
           v-if="showStatsBlock"
           style="float: left; margin-bottom: 10px"
         >
-          <q-card-section>
-            <pre>{{ statsText }}</pre>
+          <q-card-section style="font-family: monospace">
+            <div>Time: {{ statsObject.time }}s</div>
+            <div v-if="!statsObject.isWonGame">
+              Est. Time: {{ statsObject.estTime }}s
+            </div>
+            <div v-if="statsObject.isWonGame">
+              3bv: {{ statsObject.total3bv }}
+            </div>
+            <div v-else>
+              3bv: {{ statsObject.solved3bv }}/{{ statsObject.total3bv }}
+            </div>
+            <div>3bv/s: {{ statsObject.bbbvs }}</div>
+            <div>Eff: {{ statsObject.eff }}%</div>
+            <div>Max Eff: {{ statsObject.maxEff }}%</div>
+            <div>Clicks: {{ statsObject.clicks }}</div>
+            <div>Zini (not WoM): {{ statsObject.zini }}</div>
+            <div>
+              Zini (ptta):
+              <a target="_blank" :href="statsObject.pttaLink">link</a>
+            </div>
           </q-card-section>
         </q-card>
       </div>
@@ -166,7 +184,7 @@
                       style="width: 145px"
                       :options="begEffOptions"
                       stack-label
-                      label="Minimum beg eff"
+                      label="Target beg eff"
                     ></q-select>
                     <q-input
                       v-if="begEffPreset === 'custom'"
@@ -192,7 +210,7 @@
                       style="width: 145px"
                       :options="intEffOptions"
                       stack-label
-                      label="Minimum int eff"
+                      label="Target int eff"
                     ></q-select>
                     <q-input
                       v-if="intEffPreset === 'custom'"
@@ -218,7 +236,7 @@
                       style="width: 145px"
                       :options="expEffOptions"
                       stack-label
-                      label="Minimum exp eff"
+                      label="Target exp eff"
                     ></q-select>
                     <q-input
                       v-if="expEffPreset === 'custom'"
@@ -321,6 +339,15 @@
           v-model="showMineCount"
           label="Show mine count"
           @update:model-value="game.board.drawTopBar()"
+        /><br />
+        <q-checkbox
+          left-label
+          v-model="showCoords"
+          label="Show coordinates"
+          @update:model-value="
+            game.board.drawBorders();
+            game.board.drawCoords();
+          "
         />
       </q-card-section>
 
@@ -377,20 +404,27 @@ const MINE = "MINE";
 const MINERED = "MINERED";
 
 let showStatsBlock = ref(true);
-let statsText = ref(`
-Default text lol
-Time: 30.563s
-3bv/s: 5.47
-Eff: 170%/200%
-Zini: 10
-3bv: 20
-Clicks: 17`);
+let statsObject = ref({
+  isWonGame: null, //Affects whether we show estimate stats
+  time: null,
+  estTime: null,
+  solved3bv: null,
+  total3bv: null,
+  bbbvs: null,
+  eff: null,
+  maxEff: null,
+  clicks: null,
+  zini: null,
+  pttaLink: null,
+});
+
 let settingsModal = ref(false);
 let tileSizeSlider = ref(40);
 let gameLeftPadding = ref(30);
 let showBorders = ref(true);
 let showTimer = ref(true);
 let showMineCount = ref(true);
+let showCoords = ref(false);
 
 //Dimensions for border
 let boardHorizontalPadding = computed(() => {
@@ -487,8 +521,8 @@ let intEffPreset = ref(160);
 let intEffOptions = Object.freeze([160, 170, 180, "custom"]);
 let intEffCustom = ref(189);
 let expEffPreset = ref(140);
-let expEffOptions = Object.freeze([140, 150, 160, "custom"]);
-let expEffCustom = ref(170);
+let expEffOptions = Object.freeze([150, 160, 170, "custom"]);
+let expEffCustom = ref(180);
 let customEffCustom = ref(130);
 let minimumEff = computed(() => {
   let minEff = 0;
@@ -529,6 +563,10 @@ let useOrgPrem = ref(false);
 let use8Way = ref(false);
 let bulkIterations = ref(1000);
 function bulkrun() {
+  let eight200 = 0;
+  let single200 = 0;
+  let singleNeedsInvestigating = 0;
+  let investigate200 = 0;
   for (let i = 0; i < bulkIterations.value; i++) {
     let mines = BoardGenerator.basicShuffle(
       boardWidth.value,
@@ -539,10 +577,46 @@ function bulkrun() {
     let is8Way = use8Way.value;
     let orgPrem = useOrgPrem.value;
 
+    benchmark.startTime("with-preprocessed");
+    let preprocessedData =
+      algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
+
+    benchmark.startTime("full-3bv-run");
+    let bbbv = algorithms.calc3bv(mines, false, preprocessedData).bbbv;
+    benchmark.stopTime("full-3bv-run");
+
     benchmark.startTime("full-zini-run");
-    algorithms.calcBasicZini(mines, is8Way, orgPrem);
+    let singleZini = algorithms.calcBasicZini(mines, false, preprocessedData);
+    let eightZini = algorithms.calcBasicZini(mines, true, preprocessedData);
     benchmark.stopTime("full-zini-run");
+    benchmark.stopTime("with-preprocessed");
+
+    //If saving 1.15x as many clicks as zini (plus 2 more) would breach 200 then investigate further
+    let investigate = false;
+    //if (bbbv / (bbbv - (bbbv - singleZini) * 1.5) >= 2) {
+    //if (bbbv / (bbbv - (bbbv - singleZini) - 3) >= 2) {
+    if (bbbv / (bbbv - (bbbv - singleZini) * 1.15 - 2) >= 2) {
+      singleNeedsInvestigating++;
+      investigate = true;
+    }
+
+    if (bbbv / eightZini >= 2) {
+      eight200++;
+      if (bbbv / singleZini >= 2) {
+        single200++;
+      }
+      if (investigate) {
+        investigate200++;
+      }
+
+      console.log(
+        `8way: ${eightZini}, single: ${singleZini}, investigate?:${investigate} 3bv: ${bbbv}`
+      );
+    }
   }
+  console.log(
+    `8 way found: ${eight200}, single way found: ${single200}, investigate found: ${investigate200}. Investigate ratio: ${singleNeedsInvestigating}/${bulkIterations.value}`
+  );
   benchmark.report();
   benchmark.clearAll();
 }
@@ -900,6 +974,7 @@ class Board {
 
     if (!this.checkCoordsInBounds(tileX, tileY)) {
       //Click not on board, exit (doesn't count as wasted click)
+      return;
     }
 
     if (typeof this.revealedNumbers[tileX][tileY].state === "number") {
@@ -1153,12 +1228,11 @@ class Board {
 
     this.drawTiles();
     this.drawBorders();
+    this.drawCoords();
     this.drawTopBar();
   }
 
   drawTiles() {
-    const ctx = mainCanvas.value.getContext("2d");
-
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
         this.revealedNumbers[x][y].draw(
@@ -1285,6 +1359,49 @@ class Board {
       boardHorizontalPadding.value,
       this.height * this.tileSize
     );
+  }
+
+  drawCoords() {
+    if (!showCoords.value) {
+      return;
+    }
+    if (!showBorders.value) {
+      return;
+    }
+
+    const ctx = mainCanvas.value.getContext("2d");
+
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "center";
+    ctx.font = `${this.tileSize / 2}px monospace`;
+    ctx.fillStyle = skinManager.getCoordTextColour();
+
+    //Horizontal coords
+    for (let i = 0; i < this.width; i++) {
+      const maxWidth = this.tileSize;
+
+      const yPos =
+        topPanelTopAndBottomBorder.value +
+        topPanelHeight.value +
+        topPanelTopAndBottomBorder.value / 2;
+
+      const xPos =
+        boardHorizontalPadding.value + this.tileSize / 2 + i * this.tileSize;
+
+      ctx.fillText(i + 1, xPos, yPos, maxWidth);
+    }
+
+    //Vertical coords
+    for (let i = 0; i < this.height; i++) {
+      const maxWidth = boardHorizontalPadding.value;
+
+      const yPos =
+        boardTopPadding.value + this.tileSize / 2 + i * this.tileSize;
+
+      const xPos = boardHorizontalPadding.value / 2;
+
+      ctx.fillText(i + 1, xPos, yPos, maxWidth);
+    }
   }
 
   drawTopBar() {
@@ -1454,6 +1571,10 @@ class SkinManager {
   getMineTimerTextColour() {
     return "#000000";
   }
+
+  getCoordTextColour() {
+    return "#000000";
+  }
 }
 
 //Class for doing different board gen. E.g. generating boards with fisher yates or maybe selecting boards with certain properties
@@ -1547,11 +1668,12 @@ class BoardGenerator {
     let minesArray = false;
 
     let attempts = 0;
+    let passedFirstCheck = 0;
 
     while (!minesArray) {
       if (performance.now() - startTime > MAX_RUNTIME * 1000) {
         alert("Failed to generate board");
-        console.log(`effBoarShuffle had ${attempts}`);
+        console.log(`effBoardShuffle had ${attempts}`);
         return false; //Failed to generate a board in time
       }
 
@@ -1563,19 +1685,49 @@ class BoardGenerator {
         true //First click is an opening
       );
 
-      const zini = algorithms.calcWomZini(candidateMinesArray);
+      //Needed for performance as this is used by both 3bv and zini, but is expensive to calculate
+      let preprocessedData =
+        algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
+          candidateMinesArray
+        );
 
-      const bbbv = algorithms.calc3bv(candidateMinesArray, false).bbbv;
+      const bbbv = algorithms.calc3bv(
+        candidateMinesArray,
+        false,
+        preprocessedData
+      ).bbbv;
 
-      if (bbbv / zini >= minimumEff.value / 100) {
-        //Successfully found a board with at least min eff
-        minesArray = candidateMinesArray;
+      const oneWayZini = algorithms.calcBasicZini(
+        candidateMinesArray,
+        false, //one-way
+        preprocessedData
+      );
+
+      //If saving 1.15x as many clicks as one-way zini (plus 2 more) would exceed the goal then investigate further (by checking 8-way zini)
+      if (
+        bbbv / (bbbv - (bbbv - oneWayZini) * 1.15 - 2) >=
+        minimumEff.value / 100
+      ) {
+        passedFirstCheck++;
+
+        const eightWayZini = algorithms.calcBasicZini(
+          candidateMinesArray,
+          true, //eight-way
+          preprocessedData
+        );
+
+        if (bbbv / eightWayZini >= minimumEff.value / 100) {
+          //Successfully found a board with at least min eff
+          minesArray = candidateMinesArray;
+        }
       }
 
       attempts++;
     }
 
-    console.log(`effBoardShuffle had ${attempts}`);
+    console.log(
+      `effBoardShuffle had ${attempts} attempts. ${passedFirstCheck} passed first check`
+    );
 
     return minesArray;
   }
@@ -1732,67 +1884,65 @@ class BoardStats {
     this.solved3bv = solved3bv;
   }
 
-  /*
-  floodOpeningFor3bv(x, y, openingLabels, numbersArray, newLabel) {
-    if (openingLabels[x]?.[y] !== 0) {
-      //Square outside board or has already been processed
-      return;
-    }
-
-    if (this.mines[x]?.[y]) {
-      //Not really needed as this gets set elsewhere, but just in case
-      openingLabels[x][y] = "x";
-      return;
-    }
-
-    //Check if square is on the board
-    if (typeof numbersArray[x]?.[y] === "undefined") {
-      //This check isn't really needed since we check earlier. Defensive programming.
-      return;
-    } else if (numbersArray[x][y] !== 0) {
-      openingLabels[x][y] = "+"; //Squares that are on the edge of an opening
-      return;
-    } else if (numbersArray[x][y] === 0) {
-      openingLabels[x][y] = newLabel;
-      //Flood square
-      this.floodOpeningFor3bv(
-        x - 1,
-        y - 1,
-        openingLabels,
-        numbersArray,
-        newLabel
-      );
-      this.floodOpeningFor3bv(x - 1, y, openingLabels, numbersArray, newLabel);
-      this.floodOpeningFor3bv(
-        x - 1,
-        y + 1,
-        openingLabels,
-        numbersArray,
-        newLabel
-      );
-      this.floodOpeningFor3bv(x, y - 1, openingLabels, numbersArray, newLabel);
-      this.floodOpeningFor3bv(x, y + 1, openingLabels, numbersArray, newLabel);
-      this.floodOpeningFor3bv(
-        x + 1,
-        y - 1,
-        openingLabels,
-        numbersArray,
-        newLabel
-      );
-      this.floodOpeningFor3bv(x + 1, y, openingLabels, numbersArray, newLabel);
-      this.floodOpeningFor3bv(
-        x + 1,
-        y + 1,
-        openingLabels,
-        numbersArray,
-        newLabel
-      );
-    }
-  }
-  */
-
   calcZini() {
     this.zini = algorithms.calcWomZini(this.mines);
+  }
+
+  getPttaLink() {
+    let link = new URL(
+      "https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/"
+    );
+
+    const width = this.mines.length;
+    const height = this.mines[0].length;
+
+    let boardDimensions;
+
+    if (width === 9 && height === 9) {
+      boardDimensions = "1";
+    } else if (width === 16 && height === 16) {
+      boardDimensions = "2";
+    } else if (width === 30 && height === 16) {
+      boardDimensions = "3";
+    } else {
+      let maxLength = width.toString().length;
+      boardDimensions =
+        width.toString() + height.toString().padStart(maxLength, "0");
+    }
+
+    link.searchParams.set("b", boardDimensions);
+
+    const totalMines = this.mines.flat().filter((s) => s).length;
+
+    if (totalMines != 0) {
+      link.searchParams.set("m", this.getPttaMinesString());
+    }
+
+    return link.href;
+  }
+
+  getPttaMinesString() {
+    const width = this.mines.length;
+    const height = this.mines[0].length;
+
+    let result = "";
+
+    const totalNumberOfSquares = width * height;
+    for (var i = 0; i < totalNumberOfSquares; i += 5) {
+      var tempN = 0;
+      for (var j = i; j < i + 5; j++) {
+        if (j >= totalNumberOfSquares) {
+          tempN *= 2;
+        } else if (this.mines[j % width][Math.floor(j / width)] === false) {
+          tempN *= 2;
+        } else {
+          tempN *= 2;
+          tempN++;
+        }
+      }
+      result += tempN.toString(32);
+    }
+    return result;
   }
 
   calcStats(isWin, revealedNumbers) {
@@ -1812,25 +1962,32 @@ class BoardStats {
     const eff = (100 * solved3bv) / clicks;
     const maxEff = (100 * bbbv) / zini;
 
+    const pttaLink = this.getPttaLink();
+
+    statsObject.value = {};
+
     if (isWin) {
-      statsText.value = `
-      Time: ${time.toFixed(3)}s
-      3bv: ${bbbv}
-      3bv/s: ${bbbvs.toFixed(3)}
-      Eff: ${eff.toFixed(0)}%
-      Max Eff: ${maxEff.toFixed(0)}%
-      Clicks: ${clicks}
-      Zini (not WoM): ${zini}`;
+      statsObject.value.isWonGame = true;
+      statsObject.value.time = time.toFixed(3);
+      statsObject.value.total3bv = bbbv;
+      statsObject.value.bbbvs = bbbvs.toFixed(3);
+      statsObject.value.eff = eff.toFixed(0);
+      statsObject.value.maxEff = maxEff.toFixed(0);
+      statsObject.value.clicks = clicks;
+      statsObject.value.zini = zini;
+      statsObject.value.pttaLink = pttaLink;
     } else {
-      statsText.value = `
-      Time: ${time.toFixed(3)}s
-      Est. Time: ${estTime.toFixed(3)}
-      3bv: ${solved3bv}/${bbbv}
-      3bv/s: ${bbbvs.toFixed(3)}
-      Eff: ${eff.toFixed(0)}%
-      Max Eff: ${maxEff.toFixed(0)}%
-      Clicks: ${clicks}
-      Zini (not WoM): ${zini}`;
+      statsObject.value.isWonGame = false;
+      statsObject.value.time = time.toFixed(3);
+      statsObject.value.estTime = estTime.toFixed(3);
+      statsObject.value.solved3bv = solved3bv;
+      statsObject.value.total3bv = bbbv;
+      statsObject.value.bbbvs = bbbvs.toFixed(3);
+      statsObject.value.eff = eff.toFixed(0);
+      statsObject.value.maxEff = maxEff.toFixed(0);
+      statsObject.value.clicks = clicks;
+      statsObject.value.zini = zini;
+      statsObject.value.pttaLink = pttaLink;
     }
   }
 
@@ -1842,10 +1999,20 @@ class BoardStats {
 class Algorithms {
   constructor() {}
 
-  calcBasicZini(mines, is8Way, doBinarySearchOptimisation = false) {
+  calcBasicZini(mines, is8Way, preprocessedData = false) {
+    //PreprocessedData is the result from algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines)
+    //Which means that we don't have to run that function multiple times
+
     //Get various data structures which information about numbers and openings
+    if (!preprocessedData) {
+      preprocessedData =
+        algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
+          mines
+        );
+    }
+
     const { numbersArray, openingLabels, preprocessedOpenings } =
-      algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
+      preprocessedData;
 
     const width = mines.length;
     const height = mines[0].length;
@@ -1995,34 +2162,27 @@ class Algorithms {
       let squaresSolvedThisRun = 0;
       let thisEnumerationOrganisedPremiums = false;
 
-      if (doBinarySearchOptimisation) {
-        thisEnumerationOrganisedPremiums = new OrganisedPremiums(
-          enumeration[0],
-          enumeration[1],
-          enumeration[2],
-          width,
-          height,
-          true
-        );
+      thisEnumerationOrganisedPremiums = new OrganisedPremiums(
+        enumeration[0],
+        enumeration[1],
+        enumeration[2],
+        width,
+        height,
+        true
+      );
 
-        //Initialise based on premiums
-        for (let x = 0; x < width; x++) {
-          for (let y = 0; y < height; y++) {
-            if (mines[x][y]) {
-              continue;
-            }
-            thisEnumerationOrganisedPremiums.lazyAddPremium(
-              x,
-              y,
-              premiums[x][y]
-            );
+      //Initialise based on premiums
+      for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+          if (mines[x][y]) {
+            continue;
           }
+          thisEnumerationOrganisedPremiums.lazyAddPremium(x, y, premiums[x][y]);
         }
-        thisEnumerationOrganisedPremiums.sortAfterLazyAdd();
       }
+      thisEnumerationOrganisedPremiums.sortAfterLazyAdd();
 
       let needToDoNFClicks = false;
-      benchmark.startTime("zini-core-calc");
       while (squaresSolvedThisRun !== revealedSquaresToSolve) {
         let basicZiniStepResult = this.doBasicZiniStep(
           squareInfo,
@@ -2043,7 +2203,6 @@ class Algorithms {
           break;
         }
       }
-      benchmark.stopTime("zini-core-calc");
 
       if (needToDoNFClicks) {
         this.nfClickEverythingForZini(
@@ -2344,12 +2503,13 @@ class Algorithms {
     }
   }
 
-  calcWomZini(mines) {
-    //WoM zini is really 8-way zini
+  //preprocessedData is the result from algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines)
+  //Which means that we don't have to run that function multiple times
+  calcWomZini(mines, preprocessedData = false) {
+    //WoM zini is really (NOT) 8-way zini
     const is8Way = true;
-    const doBinarySearchOptimisation = true;
 
-    return this.calcBasicZini(mines, is8Way, doBinarySearchOptimisation);
+    return this.calcBasicZini(mines, is8Way, preprocessedData);
   }
 
   updatePremiumForCoord(
@@ -2432,229 +2592,11 @@ class Algorithms {
     premiums[x][y] = clicksSaved;
   }
 
-  /*[TO REMOVE] Use getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings instead
-  //Returns an object with three structures
-  //Numbers array gives the numbers of each cell.
-  //OpeningLabels tracks which squares are part of the same openings or on opening edges.
-  //Preprocessed openings tracks which squares are the edge and inside of openings
-  getNumbersArrayAndOpeningLabelsAndPreprocessedOpeningsOld(mines) {
-    const width = mines.length;
-    const height = mines[0].length;
-
-    const numbersArray = new Array(width)
-      .fill(0)
-      .map(() => new Array(height).fill(0));
-
-    for (let x = 0; x < width; x++) {
-      for (let y = 0; y < height; y++) {
-        if (!mines[x][y]) {
-          continue;
-        }
-        numbersArray[x][y] = "x";
-        for (let i = x - 1; i <= x + 1; i++) {
-          for (let j = y - 1; j <= y + 1; j++) {
-            if (mines[i]?.[j] === false) {
-              numbersArray[i][j]++;
-            }
-          }
-        }
-      }
-    }
-    //Generate grid with labelled openings. Like
-    */
-  /*
-      11+00x
-      1++x++
-      1+x0+2
-
-      In this grid, 1's are part of the first opening, 2's are part of the 2nd opening.
-      0s are not part of any opening, +'s are on the edge of an opening, x's are mines.
-    */
-  /*
-    let openingLabels = new Array(width)
-      .fill(0)
-      .map(() => new Array(height).fill(0));
-
-    let nextOpeningLabel = 0;
-
-    for (let x = 0; x < width; x++) {
-      for (let y = 0; y < height; y++) {
-        if (mines[x][y]) {
-          openingLabels[x][y] = "x";
-          continue;
-        }
-
-        if (numbersArray[x][y] === 0 && openingLabels[x][y] === 0) {
-          nextOpeningLabel++;
-          this.floodOpeningFor3bv(
-            x,
-            y,
-            mines,
-            openingLabels,
-            numbersArray,
-            nextOpeningLabel
-          );
-        }
-      }
-    }
-
-    //Initialise map with entries for each opening that keeps track of which coords belong to that opening
-    const preprocessedOpenings = new Map();
-    for (
-      let openingLabelNumber = 1;
-      openingLabelNumber <= nextOpeningLabel;
-      openingLabelNumber++
-    ) {
-      const thisOpening = {
-        zeros: [], //Which coords in this opening have zeros
-        edges: [], //Which coords are on the edge of this opening
-      };
-      preprocessedOpenings.set(openingLabelNumber, thisOpening);
-    }
-
-    //Loop through all squares to populate map of openings, figuring out which squares have which neighbours
-    for (let x = 0; x < width; x++) {
-      for (let y = 0; y < height; y++) {
-        const thisCellLabel = openingLabels[x][y];
-        if (typeof thisCellLabel === "number" && thisCellLabel !== 0) {
-          //Cell is a zero from an opening. So add this info to the map
-          preprocessedOpenings.get(thisCellLabel).zeros.push({ x, y });
-          continue;
-        }
-
-        if (thisCellLabel === "+") {
-          //Cell is on the edge of an opening(s), so figure out which
-          for (let i = x - 1; i <= x + 1; i++) {
-            for (let j = y - 1; j <= y + 1; j++) {
-              const neighbourCellLabel = openingLabels[i]?.[j]; //Will be undefined if out of bounds
-              if (
-                typeof neighbourCellLabel === "number" &&
-                neighbourCellLabel !== 0
-              ) {
-                //Cell has a neighbour in opening "neighbourCellLabel". Therefore it is an edge of this opening
-                const preprocessedOpening =
-                  preprocessedOpenings.get(neighbourCellLabel);
-
-                //Add to edges of the opening provided it hasn't already been included
-                if (
-                  !preprocessedOpening.edges.some(
-                    (edgeSquare) => edgeSquare.x === x && edgeSquare.y === y
-                  )
-                ) {
-                  preprocessedOpening.edges.push({ x, y });
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    return {
-      numbersArray,
-      openingLabels,
-      preprocessedOpenings,
-    };
-  }
-  */
-
-  /* [TO REMOVE] Use floodOpeningForProcessing instead
-  floodOpeningFor3bv(x, y, mines, openingLabels, numbersArray, newLabel) {
-    if (openingLabels[x]?.[y] !== 0) {
-      //Square outside board or has already been processed
-      return;
-    }
-
-    if (mines[x]?.[y]) {
-      //Not really needed as this gets set elsewhere, but just in case
-      openingLabels[x][y] = "x";
-      return;
-    }
-
-    //Check if square is on the board
-    if (typeof numbersArray[x]?.[y] === "undefined") {
-      //This check isn't really needed since we check earlier. Defensive programming.
-      return;
-    } else if (numbersArray[x][y] !== 0) {
-      openingLabels[x][y] = "+"; //Squares that are on the edge of an opening
-      return;
-    } else if (numbersArray[x][y] === 0) {
-      openingLabels[x][y] = newLabel;
-      //Flood square
-      this.floodOpeningFor3bv(
-        x - 1,
-        y - 1,
-        mines,
-        openingLabels,
-        numbersArray,
-        newLabel
-      );
-      this.floodOpeningFor3bv(
-        x - 1,
-        y,
-        mines,
-        openingLabels,
-        numbersArray,
-        newLabel
-      );
-      this.floodOpeningFor3bv(
-        x - 1,
-        y + 1,
-        mines,
-        openingLabels,
-        numbersArray,
-        newLabel
-      );
-      this.floodOpeningFor3bv(
-        x,
-        y - 1,
-        mines,
-        openingLabels,
-        numbersArray,
-        newLabel
-      );
-      this.floodOpeningFor3bv(
-        x,
-        y + 1,
-        mines,
-        openingLabels,
-        numbersArray,
-        newLabel
-      );
-      this.floodOpeningFor3bv(
-        x + 1,
-        y - 1,
-        mines,
-        openingLabels,
-        numbersArray,
-        newLabel
-      );
-      this.floodOpeningFor3bv(
-        x + 1,
-        y,
-        mines,
-        openingLabels,
-        numbersArray,
-        newLabel
-      );
-      this.floodOpeningFor3bv(
-        x + 1,
-        y + 1,
-        mines,
-        openingLabels,
-        numbersArray,
-        newLabel
-      );
-    }
-  }
-  */
-
   //Returns an object with three structures
   //Numbers array gives the numbers of each cell.
   //OpeningLabels tracks which squares are part of the same openings or on opening edges.
   //Preprocessed openings tracks which squares are the edge and inside of openings
   getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines) {
-    benchmark.startTime("preprocess-func");
     const width = mines.length;
     const height = mines[0].length;
 
@@ -2716,10 +2658,11 @@ class Algorithms {
 
         if (numbersArray[x][y] === 0 && openingLabels[x][y] === 0) {
           nextOpeningLabel++;
-          preprocessedOpenings.set(nextOpeningLabel, {
+          let thisOpening = {
             zeros: [], //Which coords in this opening have zeros
             edges: [], //Which coords are on the edge of this opening
-          });
+          };
+          preprocessedOpenings.set(nextOpeningLabel, thisOpening);
           this.floodOpeningForProcessing(
             x,
             y,
@@ -2732,8 +2675,6 @@ class Algorithms {
         }
       }
     }
-
-    benchmark.stopTime("preprocess-func");
 
     return {
       numbersArray,
@@ -2765,7 +2706,6 @@ class Algorithms {
       //Also add as an edge to preprocessedOpenings
       const preprocessedOpening = preprocessedOpenings.get(newLabel);
       //Add to edges of the opening provided it hasn't already been included
-      benchmark.startTime("edge-slow-search");
       if (
         !preprocessedOpening.edges.some(
           (edgeSquare) => edgeSquare.x === x && edgeSquare.y === y
@@ -2773,7 +2713,6 @@ class Algorithms {
       ) {
         preprocessedOpening.edges.push({ x, y });
       }
-      benchmark.stopTime("edge-slow-search");
 
       return;
     } else if (numbersArray[x][y] === 0) {
@@ -2856,7 +2795,7 @@ class Algorithms {
     }
   }
 
-  calc3bv(mines, revealedNumbers = false) {
+  calc3bv(mines, revealedNumbers = false, preprocessedData = false) {
     // Basic idea = generate grid of numbers
     // Do flood fill with the zeros - this will label openings and find which squares touch which openings
     // Maybe can reuse openings in zini calc? (Or not needed?)
@@ -2864,9 +2803,15 @@ class Algorithms {
     const width = mines.length;
     const height = mines[0].length;
 
-    //Only destructure openingLabels as other properties aren't needed yet
-    const { openingLabels } =
-      algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
+    let openingLabels;
+    if (preprocessedData) {
+      openingLabels = preprocessedData.openingLabels;
+    } else {
+      openingLabels =
+        algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
+          mines
+        ).openingLabels;
+    }
 
     //Find total number of openings. Each opening is labeled with a non-zero number, so we count up the number of unique opening labels
     const totalNumberOfOpenings = new Set(
