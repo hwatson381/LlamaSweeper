@@ -36,6 +36,7 @@
         ]"
         stack-label
         label="Variant"
+        @update:model-value="game.reset()"
       ></q-select>
       <div class="flex" style="margin: 5px">
         <div class="q-gutter-sm">
@@ -379,12 +380,13 @@ defineOptions({
 onMounted(() => {
   document.body.addEventListener("keydown", handleKeyDown);
   skinManager.addCallbackWhenAllLoaded(() => {
-    game.reset();
+    game.initialise();
   });
 });
 
 onUnmounted(() => {
   document.body.removeEventListener("keydown", handleKeyDown);
+  game.unmount();
 });
 
 function handleKeyDown(event) {
@@ -405,7 +407,7 @@ const FLAG = "FLAG";
 const MINE = "MINE";
 const MINERED = "MINERED";
 
-let showStatsBlock = ref(true);
+let showStatsBlock = ref(false);
 let statsObject = ref({
   isWonGame: null, //Affects whether we show estimate stats
   time: null,
@@ -421,7 +423,7 @@ let statsObject = ref({
 });
 
 let settingsModal = ref(false);
-let tileSizeSlider = ref(40);
+let tileSizeSlider = ref(25);
 let gameLeftPadding = ref(30);
 let showBorders = ref(true);
 let showTimer = ref(true);
@@ -595,8 +597,7 @@ function bulkrun() {
 
     //If saving 1.15x as many clicks as zini (plus 2 more) would breach 200 then investigate further
     let investigate = false;
-    //if (bbbv / (bbbv - (bbbv - singleZini) * 1.5) >= 2) {
-    //if (bbbv / (bbbv - (bbbv - singleZini) - 3) >= 2) {
+
     if (bbbv / (bbbv - (bbbv - singleZini) * 1.15 - 2) >= 2) {
       singleNeedsInvestigating++;
       investigate = true;
@@ -626,30 +627,30 @@ function bulkrun() {
 class Game {
   constructor() {}
 
-  reset() {
-    if (this.board) {
-      this.board.clearTimerTimeout();
-    }
-
+  initialise() {
+    //Called once at the start to set up the board object and do the first draw.
     this.board = new Board(
       boardWidth.value,
       boardHeight.value,
       boardMines.value,
-      tileSizeSlider.value
+      tileSizeSlider.value,
+      variant.value
     );
-    this.gameStage = "pregame";
-    showStatsBlock.value = false;
-    //this.board.reset();
+  }
 
-    mainCanvas.value.width =
-      this.board.width * tileSizeSlider.value +
-      2 * boardHorizontalPadding.value;
-    mainCanvas.value.height =
-      this.board.height * tileSizeSlider.value +
-      boardTopPadding.value +
-      boardBottomPadding.value;
+  reset() {
+    if (!this.board) {
+      window.alert("Board has not been initialised yet. Reset failed.");
+      return;
+    }
 
-    this.board.draw();
+    this.board.resetBoard(
+      boardWidth.value,
+      boardHeight.value,
+      boardMines.value,
+      tileSizeSlider.value,
+      variant.value
+    );
   }
 
   resetAndUnfocus() {
@@ -658,145 +659,69 @@ class Game {
     document.activeElement.blur();
   }
 
-  refreshSize() {
-    mainCanvas.value.width =
-      this.board.width * tileSizeSlider.value +
-      2 * boardHorizontalPadding.value;
-    mainCanvas.value.height =
-      this.board.height * tileSizeSlider.value +
-      boardTopPadding.value +
-      boardBottomPadding.value;
+  unmount() {
+    if (!this.board) {
+      //Do nothing
+      return;
+    }
 
-    this.board.tileSize = tileSizeSlider.value;
-    this.board.draw();
+    this.board.clearTimerTimeout();
+    this.board.saveGameIfRunning();
+  }
+
+  refreshSize() {
+    if (!this.board) {
+      //Do nothing, board will pick up new size once initialised.
+      return;
+    }
+
+    this.board.refreshCanvasSize();
   }
 
   handleMouseDown(event) {
-    if (this.gameStage !== "pregame" && this.gameStage !== "running") {
+    if (!this.board) {
       return;
     }
 
-    const canvasRawX =
-      event.clientX - mainCanvas.value.getBoundingClientRect().left;
-    const canvasRawY =
-      event.clientY - mainCanvas.value.getBoundingClientRect().top;
-
-    const boardRawX = canvasRawX - boardHorizontalPadding.value;
-    const boardRawY = canvasRawY - boardTopPadding.value;
-
-    if (event.button === 0) {
-      this.board.holdDownLeftMouse(boardRawX, boardRawY);
-      this.board.draw();
-    }
-
-    if (
-      event.button === 2 &&
-      event.target === mainCanvas.value &&
-      this.gameStage === "running"
-    ) {
-      this.board.attemptFlag(boardRawX, boardRawY);
-      this.board.draw();
-    }
+    this.board.handleMouseDown(event);
   }
 
   handleMouseUp(event) {
-    if (this.gameStage !== "pregame" && this.gameStage !== "running") {
-      return; //Clicks do nothing on win/lose screen
+    if (!this.board) {
+      return;
     }
 
-    const canvasRawX =
-      event.clientX - mainCanvas.value.getBoundingClientRect().left;
-    const canvasRawY =
-      event.clientY - mainCanvas.value.getBoundingClientRect().top;
-
-    const boardRawX = canvasRawX - boardHorizontalPadding.value;
-    const boardRawY = canvasRawY - boardTopPadding.value;
-
-    if (event.button === 0) {
-      if (this.gameStage === "pregame") {
-        const successfullyGenerated = this.board.generateBoard(
-          boardRawX,
-          boardRawY
-        );
-        if (successfullyGenerated) {
-          this.gameStage = "running";
-          //Game then continues with the code below providing the click to open the first square. It's possible we may change this though
-        } else {
-          let tileX = Math.floor(boardRawX / this.tileSize);
-          let tileY = Math.floor(boardRawY / this.tileSize);
-          this.board.updateDepressedSquares(tileX, tileY, false);
-          return; //Don't start game. Click not inbounds, or something else went wrong
-        }
-      }
-      this.board.attemptChordOrDig(boardRawX, boardRawY);
-      if (this.board.blasted) {
-        this.board.blast();
-        this.gameStage = "lost";
-        const finalTime = this.board.getTime();
-        this.board.stats.addEndTime(finalTime);
-        this.board.end(finalTime);
-        this.board.calculateAndDisplayStats(false);
-      } else if (this.board.checkWin()) {
-        this.board.markRemainingFlags();
-        this.gameStage = "won";
-        const finalTime = this.board.getTime();
-        this.board.stats.addEndTime(finalTime);
-        this.board.end(finalTime);
-        this.board.calculateAndDisplayStats(true);
-      }
-      this.board.draw();
-    }
+    this.board.handleMouseUp(event);
   }
 
   handleMouseMove(event) {
-    if (this.gameStage !== "pregame" && this.gameStage !== "running") {
-      return; //only track mouse when game is running or just before
-    }
-
-    //Commented out as we need to track when the canvas is left
-    /*
-    if (event.target !== mainCanvas.value) {
+    if (!this.board) {
       return;
     }
-    */
 
-    //Convert to canvas coords
-    const canvasRawX =
-      event.clientX - mainCanvas.value.getBoundingClientRect().left;
-    const canvasRawY =
-      event.clientY - mainCanvas.value.getBoundingClientRect().top;
-
-    //Convert to board coords
-    const boardRawX = canvasRawX - boardHorizontalPadding.value;
-    const boardRawY = canvasRawY - boardTopPadding.value;
-
-    const isPregame = this.gameStage === "pregame";
-    const requiresRedraw = this.board.mouseMove(
-      boardRawX,
-      boardRawY,
-      isPregame
-    );
-    if (requiresRedraw) {
-      this.board.draw();
-    }
+    this.board.handleMouseMove(event);
   }
 }
 
 class Board {
-  constructor(width, height, mineCount, tileSize = 40) {
+  constructor(width, height, mineCount, tileSize, variant) {
+    this.gameStage = "uninitialised";
+    this.updateTimerSetTimeoutHandle = null; //Handle for starting/stopping setTimeOut process that checks whether timer needs updating
+    this.isLeftMouseDown = false;
+
+    this.resetBoard(width, height, mineCount, tileSize, variant);
+  }
+
+  resetBoard(width, height, mineCount, tileSize, variant) {
+    //Set to state of board pregame where everything is unrevealed and mines haven't been generated yet
     this.width = width;
     this.height = height;
     this.mineCount = mineCount;
     this.tileSize = tileSize;
+    this.variant = variant;
 
     this.hoveredSquare = { x: null, y: null }; //Square that is being hovered over
-    this.isLeftMouseDown = false;
 
-    this.clearBoard();
-  }
-
-  clearBoard() {
-    //Set to state of board pregame where everything is unrevealed and mines haven't been generated yet
     this.mines = null;
     //Which squares have revealed etc
     this.revealedNumbers = new Array(this.width)
@@ -811,13 +736,127 @@ class Board {
     this.unflagged = this.mineCount;
     this.integerTimer = 0;
     this.boardStartTime = 0;
-    this.updateTimerSetTimeoutHandle = null; //Handle for starts/stopping setTimeOut process that checks whether timer needs updating
+
+    this.clearTimerTimeout();
+
+    this.gameStage = "pregame";
+    showStatsBlock.value = false;
+
+    mainCanvas.value.width =
+      width * tileSizeSlider.value + 2 * boardHorizontalPadding.value;
+    mainCanvas.value.height =
+      height * tileSizeSlider.value +
+      boardTopPadding.value +
+      boardBottomPadding.value;
+
+    this.draw();
   }
 
-  generateBoard(boardRawX, boardRawY) {
-    let tileX = Math.floor(boardRawX / this.tileSize);
-    let tileY = Math.floor(boardRawY / this.tileSize);
+  saveGameIfRunning() {
+    console.log("saving game (need to implement)");
 
+    //TODO - code to serialise this game and save to boardHistory
+  }
+
+  refreshCanvasSize() {
+    mainCanvas.value.width =
+      this.width * tileSizeSlider.value + 2 * boardHorizontalPadding.value;
+    mainCanvas.value.height =
+      this.height * tileSizeSlider.value +
+      boardTopPadding.value +
+      boardBottomPadding.value;
+
+    this.tileSize = tileSizeSlider.value;
+    this.draw();
+  }
+
+  handleMouseDown(event) {
+    if (this.gameStage !== "pregame" && this.gameStage !== "running") {
+      return;
+    }
+
+    let flooredCoords = this.eventToFlooredTileCoords(event);
+    let unflooredCoords = this.eventToUnflooredTileCoords(event);
+
+    if (event.button === 0) {
+      this.holdDownLeftMouse(flooredCoords.tileX, flooredCoords.tileY);
+      this.draw();
+    }
+
+    if (
+      event.button === 2 &&
+      event.target === mainCanvas.value &&
+      this.gameStage === "running"
+    ) {
+      this.attemptFlag(unflooredCoords.tileX, unflooredCoords.tileY);
+      this.draw();
+    }
+  }
+
+  handleMouseUp(event) {
+    if (this.gameStage !== "pregame" && this.gameStage !== "running") {
+      return; //Clicks do nothing on win/lose screen
+    }
+
+    let canvasCoords = this.eventToCanvasCoord(event);
+    let flooredCoords = this.eventToFlooredTileCoords(event);
+    let unflooredCoords = this.eventToUnflooredTileCoords(event);
+
+    if (event.button !== 0) {
+      //Ignore all mouse up events except for left mouse up
+      return;
+    }
+
+    if (this.gameStage === "pregame") {
+      const successfullyGenerated = this.generateBoard(
+        flooredCoords.tileX,
+        flooredCoords.tileY
+      );
+      if (successfullyGenerated) {
+        this.gameStage = "running";
+        //Game then continues with the code below providing the click to open the first square. It's possible we may change this though
+      } else {
+        this.updateDepressedSquares(
+          flooredCoords.tileX,
+          flooredCoords.tileY,
+          false
+        );
+        return; //Don't start game. Click not inbounds, or something else went wrong
+      }
+    }
+    this.attemptChordOrDig(unflooredCoords.tileX, unflooredCoords.tileY);
+    if (this.blasted) {
+      this.doLose();
+    } else if (this.checkWin()) {
+      this.doWin();
+    }
+    this.draw();
+  }
+
+  handleMouseMove(event) {
+    if (this.gameStage !== "pregame" && this.gameStage !== "running") {
+      return; //only track mouse when game is running or just before
+    }
+
+    //Commented out as we need to track when the canvas is left
+    /*
+    if (event.target !== mainCanvas.value) {
+      return;
+    }
+    */
+
+    let unflooredCoords = this.eventToUnflooredTileCoords(event);
+
+    const requiresRedraw = this.mouseMove(
+      unflooredCoords.tileX,
+      unflooredCoords.tileY
+    );
+    if (requiresRedraw) {
+      this.draw();
+    }
+  }
+
+  generateBoard(tileX, tileY) {
     if (!this.checkCoordsInBounds(tileX, tileY)) {
       //Click not on board, exit (doesn't count as wasted click)
       return false;
@@ -828,7 +867,7 @@ class Board {
       y: tileY,
     };
 
-    if (variant.value === "eff boards") {
+    if (this.variant === "eff boards") {
       this.mines = BoardGenerator.effBoardShuffle(
         this.width,
         this.height,
@@ -858,6 +897,7 @@ class Board {
 
     this.stats = new BoardStats(this.mines);
     this.boardStartTime = performance.now();
+    this.clearTimerTimeout(); //defensive as it should already be disabled since we reset board.
     this.updateTimerSetTimeoutHandle = setTimeout(
       this.updateIntegerTimerIfNeeded.bind(this),
       100
@@ -880,15 +920,11 @@ class Board {
     );
   }
 
-  end(finalTime) {
-    //May refactor in future
-    clearTimeout(this.updateTimerSetTimeoutHandle);
-    this.integerTimer = Math.floor(finalTime / 1000);
-  }
-
   clearTimerTimeout() {
     //May refactor in future. Disables setTimeout for timer
-    clearTimeout(this.updateTimerSetTimeoutHandle);
+    if (this.updateTimerSetTimeoutHandle !== null) {
+      clearTimeout(this.updateTimerSetTimeoutHandle);
+    }
   }
 
   getTime() {
@@ -938,11 +974,52 @@ class Board {
     return true;
   }
 
-  attemptFlag(boardRawX, boardRawY) {
+  eventToCanvasCoord(event) {
+    //Get coords relative to canvas
+    const canvasRawX =
+      event.clientX - mainCanvas.value.getBoundingClientRect().left;
+    const canvasRawY =
+      event.clientY - mainCanvas.value.getBoundingClientRect().top;
+
+    return { canvasRawX, canvasRawY };
+  }
+
+  eventToUnflooredTileCoords(event) {
+    //Extracts tile coords from mouseEvent. But not floored
+    const canvasRawX =
+      event.clientX - mainCanvas.value.getBoundingClientRect().left;
+    const canvasRawY =
+      event.clientY - mainCanvas.value.getBoundingClientRect().top;
+
+    const boardRawX = canvasRawX - boardHorizontalPadding.value;
+    const boardRawY = canvasRawY - boardTopPadding.value;
+
+    let tileX = boardRawX / this.tileSize;
+    let tileY = boardRawY / this.tileSize;
+
+    return { tileX, tileY };
+  }
+
+  eventToFlooredTileCoords(event) {
+    //Extracts tile coords from mouseEvent. These are floored
+    let { tileX, tileY } = this.eventToUnflooredTileCoords(event);
+    let flooredCoords = this.unflooredToFlooredTileCoords(tileX, tileY);
+
+    return flooredCoords; //format is {tileX: ..., tileY: ...}
+  }
+
+  unflooredToFlooredTileCoords(tileX, tileY) {
+    //Floors both tileX and tileY
+    return { tileX: Math.floor(tileX), tileY: Math.floor(tileY) };
+  }
+
+  attemptFlag(unflooredTileX, unflooredTileY) {
     let time = this.getTime();
 
-    let tileX = Math.floor(boardRawX / this.tileSize);
-    let tileY = Math.floor(boardRawY / this.tileSize);
+    let { tileX, tileY } = this.unflooredToFlooredTileCoords(
+      unflooredTileX,
+      unflooredTileY
+    );
 
     if (!this.checkCoordsInBounds(tileX, tileY)) {
       //Click not on board, exit (doesn't count as wasted click)
@@ -966,11 +1043,13 @@ class Board {
     }
   }
 
-  attemptChordOrDig(boardRawX, boardRawY) {
+  attemptChordOrDig(unflooredTileX, unflooredTileY) {
     let time = this.getTime();
 
-    let tileX = Math.floor(boardRawX / this.tileSize);
-    let tileY = Math.floor(boardRawY / this.tileSize);
+    let { tileX, tileY } = this.unflooredToFlooredTileCoords(
+      unflooredTileX,
+      unflooredTileY
+    );
 
     this.updateDepressedSquares(tileX, tileY, false); //Undepress square as we have just done leftMouseUp
 
@@ -990,10 +1069,7 @@ class Board {
     }
   }
 
-  holdDownLeftMouse(boardRawX, boardRawY) {
-    let tileX = Math.floor(boardRawX / this.tileSize);
-    let tileY = Math.floor(boardRawY / this.tileSize);
-
+  holdDownLeftMouse(tileX, tileY) {
     //Don't track this in stats yet (but may add in future)
     //All this does is depress the current square or surrounding squares as the user pressed down left mouse
     this.updateDepressedSquares(tileX, tileY, true);
@@ -1023,14 +1099,13 @@ class Board {
     }
   }
 
-  mouseMove(boardRawX, boardRawY, isPregame) {
+  mouseMove(unflooredTileX, unflooredTileY) {
     let time = this.getTime();
 
-    let unflooredTileX = boardRawX / this.tileSize;
-    let unflooredTileY = boardRawY / this.tileSize;
-
-    let tileX = Math.floor(unflooredTileX);
-    let tileY = Math.floor(unflooredTileY);
+    let { tileX, tileY } = this.unflooredToFlooredTileCoords(
+      unflooredTileX,
+      unflooredTileY
+    );
 
     const requiresRedraw = this.updateDepressedSquares(
       tileX,
@@ -1038,7 +1113,7 @@ class Board {
       this.isLeftMouseDown
     );
 
-    if (!isPregame) {
+    if (!this.gameStage === "pregame") {
       this.stats.addMouseMove(unflooredTileX, unflooredTileY, time);
     }
 
@@ -1182,6 +1257,16 @@ class Board {
     }
   }
 
+  doLose() {
+    this.blast();
+    this.gameStage = "lost";
+    const finalTime = this.getTime();
+    this.stats.addEndTime(finalTime);
+    this.clearTimerTimeout();
+    this.integerTimer = Math.floor(finalTime / 1000);
+    this.calculateAndDisplayStats(false);
+  }
+
   blast() {
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
@@ -1194,6 +1279,16 @@ class Board {
         }
       }
     }
+  }
+
+  doWin() {
+    this.markRemainingFlags();
+    this.gameStage = "won";
+    const finalTime = this.getTime();
+    this.stats.addEndTime(finalTime);
+    this.clearTimerTimeout();
+    this.integerTimer = Math.floor(finalTime / 1000);
+    this.calculateAndDisplayStats(true);
   }
 
   markRemainingFlags() {
@@ -1979,10 +2074,17 @@ class BoardStats {
   }
 }
 
+class BoardHistory {
+  //Stores past games that we can recover and resume
+  //Saves to local storage?
+  constructor() {}
+}
+
 //Need main loop somewhere
 
 const algorithms = new Algorithms(); //Could probably change to have all static methods, so no need to init?
 const benchmark = new Benchmark();
 const skinManager = new SkinManager();
+const boardHistory = new BoardHistory();
 const game = new Game();
 </script>

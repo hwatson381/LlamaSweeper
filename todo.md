@@ -26,3 +26,7 @@ Remove on component unmount?
 Compare old version of effBoardShuffle to new version (performance-wise)?
 
 Add support for generating effBoards in background
+
+Include raw coords in BoardStats.clicks info
+
+Implement womzini
