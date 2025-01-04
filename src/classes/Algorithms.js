@@ -217,17 +217,7 @@ class Algorithms {
         );
       }
 
-      /*
-      console.log(
-        `Zini with xRev: ${enumeration[0]}, yRev: ${enumeration[1]}, xySwap: ${enumeration[2]} has value ${thisEnumerationClicks.length}`
-      );
-      */
       if (thisEnumerationClicks.length < currentZiniValue) {
-        /*
-        console.log(
-          `zini improved in a direction. ${currentZiniValue} -> ${thisEnumerationClicks.length}`
-        );
-        */
         currentZiniValue = thisEnumerationClicks.length;
         currentClicksArray = thisEnumerationClicks;
       }
@@ -868,6 +858,191 @@ class Algorithms {
   fast2dArrayCopy(toBeCopied) {
     //shallow copy for 2d arrays
     return toBeCopied.map((arr) => arr.slice());
+  }
+
+  fisherYatesArrayShuffle(arr) {
+    //https://stackoverflow.com/questions/59810241/how-to-fisher-yates-shuffle-a-javascript-array
+    var i = arr.length,
+      j,
+      temp;
+    while (--i > 0) {
+      j = Math.floor(Math.random() * (i + 1));
+      temp = arr[j];
+      arr[j] = arr[i];
+      arr[i] = temp;
+    }
+  }
+
+  basicShuffle(
+    width,
+    height,
+    mineCount,
+    safeCoord = null,
+    isOpening = false
+  ) {
+    let knownSafes = [];
+    if (safeCoord) {
+      knownSafes.push({ x: safeCoord.x, y: safeCoord.y });
+      if (isOpening) {
+        for (let x = safeCoord.x - 1; x <= safeCoord.x + 1; x++) {
+          for (let y = safeCoord.y - 1; y <= safeCoord.y + 1; y++) {
+            if (x === safeCoord.x && y === safeCoord.y) {
+              continue;
+            }
+            if (x >= 0 && x <= width - 1 && y >= 0 && y <= height - 1) {
+              knownSafes.push({ x, y });
+            }
+          }
+        }
+      }
+    }
+
+    if (width * height - knownSafes.length < mineCount) {
+      if (width * height - 1 >= mineCount) {
+        knownSafes = [{ x: safeCoord.x, y: safeCoord.y }]; //Board too dense, so try remove condition about opening start
+      } else {
+        throw new Error(`Cannot generate ${width}x${height}/${mineCount}`);
+      }
+    }
+
+    const flatMinesWithoutKnownSafes = new Array(
+      width * height - knownSafes.length
+    ).fill(false);
+
+    for (let i = 0; i < mineCount; i++) {
+      flatMinesWithoutKnownSafes[i] = true;
+    }
+    this.fisherYatesArrayShuffle(flatMinesWithoutKnownSafes);
+
+    //Generate width x height 2D array
+    const minesArray = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(false));
+
+    let flatIndex = 0;
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (knownSafes.some((square) => square.x === x && square.y === y)) {
+          continue; //False/safe by default as that's how we initialised
+        }
+        minesArray[x][y] = flatMinesWithoutKnownSafes[flatIndex];
+        flatIndex++;
+      }
+    }
+
+    return minesArray;
+  }
+
+  effBoardShuffle(
+    width,
+    height,
+    mineCount,
+    firstClick,
+    targetEff,
+    timeoutSeconds //How many seconds we have to generate the board
+  ) {
+    const startTime = performance.now();
+
+    let minesArray = false;
+
+    let attempts = 0;
+    let passedFirstCheck = 0;
+
+    while (!minesArray) {
+      if (performance.now() - startTime > timeoutSeconds * 1000) {
+        //console.log(`effBoardShuffle had ${attempts}`);
+        return false; //Failed to generate a board in time
+      }
+
+      let candidateMinesArray = this.basicShuffle(
+        width,
+        height,
+        mineCount,
+        firstClick,
+        true //First click is an opening
+      );
+
+      //Needed for performance as this is used by both 3bv and zini, but is expensive to calculate
+      let preprocessedData =
+        this.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
+          candidateMinesArray
+        );
+
+      const bbbv = this.calc3bv(
+        candidateMinesArray,
+        false,
+        preprocessedData
+      ).bbbv;
+
+      const oneWayZini = this.calcBasicZini(
+        candidateMinesArray,
+        false, //one-way
+        preprocessedData
+      );
+
+      //If saving 1.15x as many clicks as one-way zini (plus 2 more) would exceed the goal then investigate further (by checking 8-way zini)
+      if (
+        bbbv / (bbbv - (bbbv - oneWayZini) * 1.15 - 2) >=
+        targetEff / 100
+      ) {
+        passedFirstCheck++;
+
+        const eightWayZini = this.calcBasicZini(
+          candidateMinesArray,
+          true, //eight-way
+          preprocessedData
+        );
+
+        if (bbbv / eightWayZini >= targetEff / 100) {
+          //Successfully found a board with at least min eff
+          minesArray = candidateMinesArray;
+        }
+      }
+
+      attempts++;
+    }
+
+    /*console.log(
+      `effBoardShuffle had ${attempts} attempts. ${passedFirstCheck} passed first check`
+    );*/
+
+    return minesArray;
+  }
+
+  getRandomZeroCell(minesArray) {
+    //Finds a random zero cell on board to click
+    //Inefficient, but only runs when we've found a good board, which isn't that often
+
+    let numbersArray = this.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
+      minesArray
+    ).numbersArray;
+
+    let width = minesArray.length;
+    let height = minesArray[0].length;
+
+    let zeros = [];
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (numbersArray[x][y] === 0) {
+          zeros.push({ x, y });
+        }
+      }
+    }
+
+    if (zeros.length === 0) {
+      //board has no zeros, so instead choose a random non-mine
+      while (true) {
+        //inefficient, but most boards will have zeros
+        let x = Math.floor(Math.random() * width);
+        let y = Math.floor(Math.random() * height);
+        if (!minesArray[x][y]) {
+          return { x, y }
+        }
+      }
+    }
+
+    return zeros[Math.floor(Math.random() * zeros.length)];
   }
 }
 

@@ -27,13 +27,15 @@
         input-debounce="0"
         v-model="variant"
         style="width: 175px"
-        :options="[
-          'normal',
-          'board editor',
-          'mean openings',
-          'eff boards',
-          'zini explorer',
-        ]"
+        :options="
+          Object.freeze([
+            'normal',
+            'board editor',
+            'mean openings',
+            'eff boards',
+            'zini explorer',
+          ])
+        "
         stack-label
         label="Variant"
         @update:model-value="game.reset()"
@@ -114,6 +116,10 @@
       <div v-if="variant === 'eff boards'">
         Generating boards with target eff: {{ minimumEff }}% (change this in
         settings below)
+        <span v-if="generateEffBoardsInBackground" class="text-info"
+          >{{ effBoardsStoredDisplayCount }}/20 (click:
+          {{ effBoardsStoredFirstClickDisplay }})</span
+        >
       </div>
 
       <div
@@ -139,7 +145,21 @@
               3bv: {{ statsObject.solved3bv }}/{{ statsObject.total3bv }}
             </div>
             <div>3bv/s: {{ statsObject.bbbvs }}</div>
-            <div>Eff: {{ statsObject.eff }}%</div>
+            <div
+              id="eff-stat"
+              :class="{
+                'zini-match':
+                  variant === 'eff boards' &&
+                  statsObject.isWonGame &&
+                  statsObject.clicks === statsObject.zini,
+                'sub-zini':
+                  variant === 'eff boards' &&
+                  statsObject.isWonGame &&
+                  statsObject.clicks < statsObject.zini,
+              }"
+            >
+              Eff: {{ statsObject.eff }}%
+            </div>
             <div>Max Eff: {{ statsObject.maxEff }}%</div>
             <div>Clicks: {{ statsObject.clicks }}</div>
             <div>Zini (not WoM): {{ statsObject.zini }}</div>
@@ -173,7 +193,7 @@
               <div class="text-h6">Main Settings</div>
               <div>
                 <template v-if="variant === 'eff boards'">
-                  <template v-if="boardSizePreset === 'beg'">
+                  <div v-if="boardSizePreset === 'beg'" class="flex">
                     <q-select
                       class="q-mx-md q-mb-md"
                       outlined
@@ -198,8 +218,8 @@
                       max="340"
                       style="width: 110px"
                     />
-                  </template>
-                  <template v-if="boardSizePreset === 'int'">
+                  </div>
+                  <div v-if="boardSizePreset === 'int'" class="flex">
                     <q-select
                       class="q-mx-md q-mb-md"
                       outlined
@@ -224,8 +244,8 @@
                       max="340"
                       style="width: 110px"
                     />
-                  </template>
-                  <template v-if="boardSizePreset === 'exp'">
+                  </div>
+                  <div v-if="boardSizePreset === 'exp'" class="flex">
                     <q-select
                       class="q-mx-md q-mb-md"
                       outlined
@@ -250,23 +270,80 @@
                       max="340"
                       style="width: 110px"
                     />
-                  </template>
-                  <q-input
-                    v-if="boardSizePreset === 'custom'"
-                    debounce="100"
-                    v-model.number="customEffCustom"
-                    label="Minimum Custom eff"
-                    type="number"
-                    dense
-                    min="100"
-                    max="340"
-                    style="width: 110px"
-                  />
+                  </div>
+                  <div v-if="boardSizePreset === 'custom'">
+                    <q-input
+                      debounce="100"
+                      v-model.number="customEffCustom"
+                      label="Minimum Custom eff"
+                      type="number"
+                      dense
+                      min="100"
+                      max="340"
+                      style="width: 110px"
+                    />
+                  </div>
+                  <div
+                    v-if="browserSupportsWebWorkers"
+                    class="flex q-mb-sm"
+                    style="align-items: center"
+                  >
+                    <q-checkbox
+                      class="q-mr-md"
+                      style="flex-shrink: 0"
+                      v-model="generateEffBoardsInBackground"
+                      label="Generate in background"
+                    />
+                    <div
+                      v-if="effBoardShowSlowGenerationWarning"
+                      class="text-info"
+                      style="flex: 1 1 200px"
+                    >
+                      <b>IMPORTANT:</b> Recommended for high target efficiencies
+                    </div>
+                  </div>
+                  <div class="flex q-mb-sm">
+                    <q-select
+                      class="q-mx-md q-mb-md"
+                      outlined
+                      options-dense
+                      dense
+                      transition-duration="100"
+                      input-debounce="0"
+                      v-model="effFirstClickType"
+                      @update:model-value="
+                        effShuffleManager.sendUpdateFirstClickIfNeeded()
+                      "
+                      style="width: 175px; flex-shrink: 0"
+                      :options="[
+                        {
+                          label: 'Mouse',
+                          value: 'same',
+                        },
+                        { label: 'Random zero tile', value: 'random' },
+                        { label: 'Top left corner', value: 'corner' },
+                        { label: 'Middle', value: 'middle' },
+                      ]"
+                      emit-value
+                      map-options
+                      stack-label
+                      label="First click location"
+                    ></q-select>
+                    <div
+                      v-if="generateEffBoardsInBackground"
+                      class="text-info"
+                      style="flex: 1 1 215px"
+                    >
+                      Boards generated in the background will use the value of
+                      this setting at time of generation and will ignore the
+                      "Mouse" option
+                    </div>
+                  </div>
                 </template>
 
                 PttaUrl (VERY HACKY):
                 <input v-model="pttaUrl" type="text" value="" /><br />
-                <q-checkbox left-label v-model="zeroStart" label="Zero Start" />
+                <q-checkbox v-model="zeroStart" label="Zero Start" />
               </div>
             </q-tab-panel>
 
@@ -324,25 +401,21 @@
           color="light-green"
         />
         <q-checkbox
-          left-label
           v-model="showBorders"
           label="Show borders"
           @update:model-value="game.refreshSize()"
         /><br />
         <q-checkbox
-          left-label
           v-model="showTimer"
           label="Show timer"
           @update:model-value="game.board.drawTopBar()"
         /><br />
         <q-checkbox
-          left-label
           v-model="showMineCount"
           label="Show mine count"
           @update:model-value="game.board.drawTopBar()"
         /><br />
         <q-checkbox
-          left-label
           v-model="showCoords"
           label="Show coordinates"
           @update:model-value="
@@ -366,10 +439,34 @@
   margin-right: 10px;
   margin-bottom: 10px;
 }
+
+#eff-stat.zini-match {
+  color: #007b00;
+}
+
+#eff-stat.sub-zini {
+  color: #986d00;
+}
+
+body.body--dark #eff-stat.zini-match {
+  color: lime;
+}
+
+body.body--dark #eff-stat.sub-zini {
+  color: gold;
+}
 </style>
 
 <script setup>
-import { useTemplateRef, computed, ref, onMounted, onUnmounted } from "vue";
+import {
+  useTemplateRef,
+  computed,
+  ref,
+  onMounted,
+  onUnmounted,
+  watchEffect,
+  watch,
+} from "vue";
 import Benchmark from "src/classes/Benchmark.js";
 import Algorithms from "src/classes/Algorithms";
 
@@ -387,6 +484,7 @@ onMounted(() => {
 onUnmounted(() => {
   document.body.removeEventListener("keydown", handleKeyDown);
   game.unmount();
+  effShuffleManager.unmount();
 });
 
 function handleKeyDown(event) {
@@ -520,14 +618,21 @@ let zeroStart = ref(true);
 
 let begEffPreset = ref(200);
 let begEffOptions = Object.freeze([200, 210, 225, "custom"]);
-let begEffCustom = ref(243);
+let begEffCustom = ref(235);
+const begEffSlowGenPoint = 210;
 let intEffPreset = ref(160);
 let intEffOptions = Object.freeze([160, 170, 180, "custom"]);
 let intEffCustom = ref(189);
-let expEffPreset = ref(140);
+const intEffSlowGenPoint = 180;
+let expEffPreset = ref(150);
 let expEffOptions = Object.freeze([150, 160, 170, "custom"]);
 let expEffCustom = ref(180);
-let customEffCustom = ref(130);
+const expEffSlowGenPoint = 170;
+let customEffCustom = ref(150);
+let generateEffBoardsInBackground = ref(false);
+let effBoardsStoredDisplayCount = ref(0);
+let effBoardsStoredFirstClickDisplay = ref("random");
+let effFirstClickType = ref("same");
 let minimumEff = computed(() => {
   let minEff = 0;
   switch (boardSizePreset.value) {
@@ -561,6 +666,59 @@ let minimumEff = computed(() => {
   }
 
   return clamp(minEff, 100, 340);
+});
+let effBoardShowSlowGenerationWarning = computed(() => {
+  //Whether we show a warning that generating the target eff on eff boards variant may be slow
+  if (variant.value === "eff boards") {
+    if (generateEffBoardsInBackground.value) {
+      return false;
+    }
+    if (!window.Worker) {
+      return false; //No point suggesting background generation if their device can't use web workers
+    }
+    switch (boardSizePreset.value) {
+      case "beg":
+        if (minimumEff.value >= begEffSlowGenPoint) {
+          return true;
+        }
+        break;
+      case "int":
+        if (minimumEff.value >= intEffSlowGenPoint) {
+          return true;
+        }
+        break;
+      case "exp":
+        if (minimumEff.value >= expEffSlowGenPoint) {
+          return true;
+        }
+        break;
+      case "custom":
+        //Don't show warning for this as too complicated to figure out when it is slow
+        break;
+      default:
+        throw new Error("Disallowed preset");
+    }
+  }
+  return false;
+});
+let browserSupportsWebWorkers = computed(() => {
+  if (window.Worker) {
+    return true;
+  } else {
+    return false;
+  }
+});
+watchEffect(() => {
+  if (variant.value === "eff boards" && generateEffBoardsInBackground.value) {
+    effShuffleManager && effShuffleManager.activateBackgroundGeneration();
+  } else {
+    effShuffleManager && effShuffleManager.deactivateBackgroundGeneration();
+  }
+});
+watch([boardWidth, boardHeight, boardMines, minimumEff], () => {
+  if (variant.value === "eff boards" && generateEffBoardsInBackground.value) {
+    effShuffleManager && effShuffleManager.sendWorkerCurrentTaskDebounced();
+  }
 });
 
 let useOrgPrem = ref(false);
@@ -794,27 +952,63 @@ class Board {
   }
 
   handleMouseUp(event) {
-    if (this.gameStage !== "pregame" && this.gameStage !== "running") {
-      return; //Clicks do nothing on win/lose screen
+    if (event.button !== 0) {
+      //Ignore all mouse up events except for left mouse up
+      return;
     }
 
     let canvasCoords = this.eventToCanvasCoord(event);
     let flooredCoords = this.eventToFlooredTileCoords(event);
     let unflooredCoords = this.eventToUnflooredTileCoords(event);
 
-    if (event.button !== 0) {
-      //Ignore all mouse up events except for left mouse up
-      return;
+    if (
+      this.gameStage !== "pregame" &&
+      showBorders.value &&
+      canvasCoords.canvasRawY <= boardTopPadding.value
+    ) {
+      //Check if face is being clicked on
+      const topPanelMiddleWidth = (this.width * this.tileSize) / 2;
+      const topPanelInnerPadding = this.tileSize / 4;
+      const faceWidth = topPanelHeight.value - 2 * topPanelInnerPadding;
+      const faceStartX =
+        boardHorizontalPadding.value + topPanelMiddleWidth - faceWidth / 2;
+      const faceStartY =
+        topPanelTopAndBottomBorder.value + topPanelInnerPadding;
+      if (
+        canvasCoords.canvasRawX >= faceStartX &&
+        canvasCoords.canvasRawX <= faceStartX + faceWidth &&
+        canvasCoords.canvasRawY >= faceStartY &&
+        canvasCoords.canvasRawY <= faceStartY + faceWidth
+      ) {
+        this.updateDepressedSquares(
+          flooredCoords.tileX, //Coords not strictly necessary, but including incase this changes
+          flooredCoords.tileY,
+          false
+        );
+        game.reset(); //Reset and don't process the click any further
+        return;
+      }
+    }
+
+    if (this.gameStage !== "pregame" && this.gameStage !== "running") {
+      return; //Clicks on the board (as opposed to on face) do nothing on win/lose screen
     }
 
     if (this.gameStage === "pregame") {
-      const successfullyGenerated = this.generateBoard(
+      const generationResult = this.generateBoard(
         flooredCoords.tileX,
         flooredCoords.tileY
       );
-      if (successfullyGenerated) {
+      if (generationResult.success) {
         this.gameStage = "running";
-        //Game then continues with the code below providing the click to open the first square. It's possible we may change this though
+        //Game then continues with the code below providing the click to open the first square.
+        //Slightly hacky, but we also optionally change where the first click is if the board
+        //received requires a different first click
+        if (generationResult.rewrittenFirstClick) {
+          //unflooredCoords as these are what attemptChordOrDig uses.
+          unflooredCoords.tileX = generationResult.rewrittenFirstClick.x;
+          unflooredCoords.tileY = generationResult.rewrittenFirstClick.y;
+        }
       } else {
         this.updateDepressedSquares(
           flooredCoords.tileX,
@@ -857,9 +1051,11 @@ class Board {
   }
 
   generateBoard(tileX, tileY) {
+    let rewrittenFirstClick = false; //Some generations will change where the first click is
+
     if (!this.checkCoordsInBounds(tileX, tileY)) {
       //Click not on board, exit (doesn't count as wasted click)
-      return false;
+      return { success: false };
     }
 
     const firstClick = {
@@ -868,15 +1064,21 @@ class Board {
     };
 
     if (this.variant === "eff boards") {
-      this.mines = BoardGenerator.effBoardShuffle(
+      const effBoardResult = BoardGenerator.effBoardShuffle(
         this.width,
         this.height,
         this.mineCount,
         firstClick
       );
 
-      if (this.mines === false) {
-        return false; //Failed to generate eff board
+      if (effBoardResult === false) {
+        return { success: false }; //Failed to generate eff board
+      }
+
+      this.mines = effBoardResult.mines;
+
+      if (effBoardResult.firstClick) {
+        rewrittenFirstClick = effBoardResult.firstClick;
       }
     } else {
       this.mines = BoardGenerator.basicShuffle(
@@ -903,7 +1105,7 @@ class Board {
       100
     );
 
-    return true;
+    return { success: true, rewrittenFirstClick: rewrittenFirstClick };
   }
 
   updateIntegerTimerIfNeeded() {
@@ -1683,131 +1885,31 @@ class BoardGenerator {
     safeCoord = null,
     isOpening = false
   ) {
-    let knownSafes = [];
-    if (safeCoord) {
-      knownSafes.push({ x: safeCoord.x, y: safeCoord.y });
-      if (isOpening) {
-        for (let x = safeCoord.x - 1; x <= safeCoord.x + 1; x++) {
-          for (let y = safeCoord.y - 1; y <= safeCoord.y + 1; y++) {
-            if (x === safeCoord.x && y === safeCoord.y) {
-              continue;
-            }
-            if (x >= 0 && x <= width - 1 && y >= 0 && y <= height - 1) {
-              knownSafes.push({ x, y });
-            }
-          }
-        }
-      }
-    }
-
-    if (width * height - knownSafes.length < mineCount) {
-      if (width * height - 1 >= mineCount) {
-        knownSafes = [{ x: safeCoord.x, y: safeCoord.y }]; //Board too dense, so try remove condition about opening start
-      } else {
-        throw new Error(`Cannot generate ${width}x${height}/${mineCount}`);
-      }
-    }
-
-    const flatMinesWithoutKnownSafes = new Array(
-      width * height - knownSafes.length
-    ).fill(false);
-
-    for (let i = 0; i < mineCount; i++) {
-      flatMinesWithoutKnownSafes[i] = true;
-    }
-    BoardGenerator.fisherYatesArrayShuffle(flatMinesWithoutKnownSafes);
-
-    //Generate width x height 2D array
-    const minesArray = new Array(width)
-      .fill(0)
-      .map(() => new Array(height).fill(false));
-
-    let flatIndex = 0;
-    for (let x = 0; x < width; x++) {
-      for (let y = 0; y < height; y++) {
-        if (knownSafes.some((square) => square.x === x && square.y === y)) {
-          continue; //False/safe by default as that's how we initialised
-        }
-        minesArray[x][y] = flatMinesWithoutKnownSafes[flatIndex];
-        flatIndex++;
-      }
-    }
-
-    return minesArray;
+    return algorithms.basicShuffle(
+      width,
+      height,
+      mineCount,
+      safeCoord,
+      isOpening
+    );
   }
 
   static effBoardShuffle(width, height, mineCount, firstClick) {
-    //Optimisation needed. This calls algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings twice (for 3bv and zini)
-
-    const MAX_RUNTIME = 10; //How many seconds we have to generate the board
-
-    const startTime = performance.now();
-
-    let minesArray = false;
-
-    let attempts = 0;
-    let passedFirstCheck = 0;
-
-    while (!minesArray) {
-      if (performance.now() - startTime > MAX_RUNTIME * 1000) {
-        alert("Failed to generate board");
-        console.log(`effBoardShuffle had ${attempts}`);
-        return false; //Failed to generate a board in time
-      }
-
-      let candidateMinesArray = BoardGenerator.basicShuffle(
-        width,
-        height,
-        mineCount,
-        firstClick,
-        true //First click is an opening
-      );
-
-      //Needed for performance as this is used by both 3bv and zini, but is expensive to calculate
-      let preprocessedData =
-        algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
-          candidateMinesArray
-        );
-
-      const bbbv = algorithms.calc3bv(
-        candidateMinesArray,
-        false,
-        preprocessedData
-      ).bbbv;
-
-      const oneWayZini = algorithms.calcBasicZini(
-        candidateMinesArray,
-        false, //one-way
-        preprocessedData
-      );
-
-      //If saving 1.15x as many clicks as one-way zini (plus 2 more) would exceed the goal then investigate further (by checking 8-way zini)
-      if (
-        bbbv / (bbbv - (bbbv - oneWayZini) * 1.15 - 2) >=
-        minimumEff.value / 100
-      ) {
-        passedFirstCheck++;
-
-        const eightWayZini = algorithms.calcBasicZini(
-          candidateMinesArray,
-          true, //eight-way
-          preprocessedData
-        );
-
-        if (bbbv / eightWayZini >= minimumEff.value / 100) {
-          //Successfully found a board with at least min eff
-          minesArray = candidateMinesArray;
-        }
-      }
-
-      attempts++;
-    }
-
-    console.log(
-      `effBoardShuffle had ${attempts} attempts. ${passedFirstCheck} passed first check`
+    let effBoard = effShuffleManager.provideEffBoard(
+      width,
+      height,
+      mineCount,
+      firstClick
     );
 
-    return minesArray;
+    if (!effBoard) {
+      //Failed to generate
+      return false;
+    }
+
+    //Return value has form {mines:[[]], firstClick: {x, y}}.
+    //This is because the first click may be changed if using a pregenerated board.
+    return effBoard;
   }
 
   static readFromPtta(width, height, mineCount) {
@@ -1859,16 +1961,379 @@ class BoardGenerator {
   }
 
   static fisherYatesArrayShuffle(arr) {
-    //https://stackoverflow.com/questions/59810241/how-to-fisher-yates-shuffle-a-javascript-array
-    var i = arr.length,
-      j,
-      temp;
-    while (--i > 0) {
-      j = Math.floor(Math.random() * (i + 1));
-      temp = arr[j];
-      arr[j] = arr[i];
-      arr[i] = temp;
+    algorithms.fisherYatesArrayShuffle(arr);
+  }
+}
+
+class EffShuffleManager {
+  constructor() {
+    this.isWorkerInitialised = false;
+    this.worker = null;
+
+    //Format is Width-Height-Mines-Eff => [{mines: 2d mines array, firstClick: {x, y}}]
+    this.storedBoards = new Map();
+
+    this.isWorkerPaused = true;
+
+    //format is `${width}-${height}-${mineCount}-${targetEff}`
+    this.workerCurrentTaskKey = "";
+
+    //string with values such as middle, corner, random, same
+    // which square we use as first click for worker generated baords
+    this.workerCurrentFirstClickType = "";
+
+    this.maxStoredBoardsPerSize = 20;
+    this.sendWorkerCurrentTaskDebounceTimeoutHandle = null;
+
+    //Queue which tracks the most recently played custom games (dimensions and target eff)
+    //Boards that are not recently played get garbage collected
+    this.recentlyPlayedCustoms = []; //array of `${width}-${height}-${mineCount}-${targetEff}`
+    this.maxStoredCustoms = 10;
+  }
+
+  provideEffBoard(width, height, mineCount, firstClick) {
+    const targetEff = minimumEff.value;
+    const timeoutSeconds = 10;
+
+    if (generateEffBoardsInBackground.value) {
+      //Check if we have a pre-generated board
+      const boardKey = `${width}-${height}-${mineCount}-${targetEff}`;
+      const storedBoard = this.storedBoards.get(boardKey);
+      this.addRecentlyPlayedCustom(boardKey); //Mark this board as being played since they've requested a board for it (only if it is a custom game)
+      if (Array.isArray(storedBoard) && storedBoard.length > 0) {
+        let precomputedBoard = storedBoard.shift(); //return precomputed mines array and where the first click was
+        effBoardsStoredDisplayCount.value = storedBoard.length;
+        effBoardsStoredFirstClickDisplay.value =
+          storedBoard[0]?.firstClickType ?? effFirstClickType.value;
+        this.sendWorkerCurrentTask(); //Just in case, as worker may need resuming if it was previously paused
+        return precomputedBoard;
+      }
     }
+
+    //No pre-generated boards (as we would've returned earlier) so try to generate our own
+
+    //change firstClick as needed
+    switch (effFirstClickType.value) {
+      case "corner":
+        firstClick = { x: 0, y: 0 };
+        break;
+      case "middle":
+        firstClick = { x: Math.floor(width / 2), y: Math.floor(height / 2) };
+        break;
+      //All other cases instead give a random first click
+      case "same":
+        //Leave first click as is
+        break;
+      case "random":
+        firstClick = null;
+        break;
+      default:
+      //do nothing
+    }
+
+    let minesArray = algorithms.effBoardShuffle(
+      width,
+      height,
+      mineCount,
+      firstClick,
+      targetEff,
+      timeoutSeconds
+    );
+
+    if (!minesArray) {
+      alert("Failed to generate board");
+      return false;
+    } else {
+      if (effFirstClickType.value === "random") {
+        firstClick = algorithms.getRandomZeroCell(minesArray);
+      }
+
+      if (effFirstClickType.value === "same") {
+        firstClick = false; //Signal that we don't change position of the click
+      }
+
+      return {
+        mines: minesArray,
+        firstClick: firstClick, //False as when generating in main thread, we don't change position of first click
+      };
+    }
+  }
+
+  activateBackgroundGeneration() {
+    this.initWorkerIfNotAlreadyInited();
+    this.sendWorkerCurrentTask();
+  }
+
+  deactivateBackgroundGeneration() {
+    this.sendWorkerPauseCommand();
+  }
+
+  initWorkerIfNotAlreadyInited() {
+    if (this.isWorkerInitialised) {
+      return;
+    }
+
+    if (!window.Worker) {
+      return;
+    }
+
+    //this.worker = new Worker("src/workers/eff-worker.js");
+    this.worker = new Worker(
+      new URL("../workers/eff-worker.js", import.meta.url),
+      {
+        type: "module",
+      }
+    );
+
+    this.worker.onmessage = this.updateStoredBoard.bind(this);
+
+    this.isWorkerInitialised = true;
+  }
+
+  sendWorkerCurrentTaskDebounced() {
+    //Calls this.sendWorkerCurrentTask, but only if 500ms have passed without being called again.
+    //This reduces unnecessary messages when adjusting dimensions/mines/target eff etc
+    let self = this;
+    if (this.sendWorkerCurrentTaskDebounceTimeoutHandle !== null) {
+      clearTimeout(this.sendWorkerCurrentTaskDebounceTimeoutHandle);
+      this.sendWorkerCurrentTaskDebounceTimeoutHandle = null;
+    }
+
+    this.sendWorkerCurrentTaskDebounceTimeoutHandle = setTimeout(() => {
+      console.log("new task sent for board change");
+      self.sendWorkerCurrentTask();
+      self.sendWorkerCurrentTaskDebounceTimeoutHandle = null;
+      self.garbageCollectStoredBoards();
+    }, 500);
+  }
+
+  sendWorkerCurrentTask() {
+    if (!this.isWorkerInitialised) {
+      return;
+    }
+
+    this.sendUpdateFirstClickIfNeeded();
+
+    const boardKey = `${boardWidth.value}-${boardHeight.value}-${boardMines.value}-${minimumEff.value}`;
+
+    if (!this.isWorkerPaused && this.workerCurrentTaskKey === boardKey) {
+      //Early exit as worker is already generating the board we want
+      return;
+    }
+
+    const storedBoard = this.storedBoards.get(boardKey);
+
+    if (Array.isArray(storedBoard)) {
+      effBoardsStoredDisplayCount.value = storedBoard.length;
+      effBoardsStoredFirstClickDisplay.value =
+        storedBoard[0]?.firstClickType ?? effFirstClickType.value;
+    } else {
+      effBoardsStoredDisplayCount.value = 0;
+    }
+
+    if (
+      Array.isArray(storedBoard) &&
+      storedBoard.length >= this.maxStoredBoardsPerSize
+    ) {
+      //Already generated enough of this board
+      this.sendWorkerPauseCommand();
+      return;
+    }
+
+    this.worker.postMessage({
+      command: "process",
+      width: boardWidth.value,
+      height: boardHeight.value,
+      mineCount: boardMines.value,
+      targetEff: minimumEff.value,
+    });
+    this.workerCurrentTaskKey = boardKey;
+    this.isWorkerPaused = false;
+  }
+
+  sendWorkerPauseCommand() {
+    if (!this.isWorkerInitialised) {
+      return;
+    }
+
+    if (this.isWorkerPaused) {
+      //already paused, do nothing
+      return;
+    }
+
+    this.worker.postMessage({
+      command: "pause",
+    });
+
+    this.isWorkerPaused = true;
+  }
+
+  sendUpdateFirstClickIfNeeded() {
+    if (effBoardsStoredDisplayCount.value === 0) {
+      effBoardsStoredFirstClickDisplay.value = effFirstClickType.value;
+    }
+
+    if (!this.isWorkerInitialised) {
+      return;
+    }
+
+    if (!this.isWorkerPaused) {
+      //Note - ok to return here as unpausing requires calling sendWorkerCurrentTask which also calls this
+      return;
+    }
+
+    if (this.workerCurrentFirstClickType === effFirstClickType.value) {
+      //worker is already using correct first click
+      return;
+    }
+
+    this.worker.postMessage({
+      command: "updateFirstClickType",
+      firstClickType: effFirstClickType.value,
+    });
+
+    this.workerCurrentFirstClickType = effFirstClickType.value;
+  }
+
+  updateStoredBoard(event) {
+    let workerBoardKey = event.data.boardKey;
+    let foundBoards = event.data.foundBoards;
+
+    console.log(`Adding ${foundBoards.length} board(s) to ${workerBoardKey}`);
+
+    let storedBoardArray = this.storedBoards.get(workerBoardKey);
+    if (!storedBoardArray) {
+      storedBoardArray = [];
+      this.storedBoards.set(workerBoardKey, storedBoardArray);
+    }
+
+    for (let board of foundBoards) {
+      if (storedBoardArray.length <= this.maxStoredBoardsPerSize - 1) {
+        storedBoardArray.push(board);
+      }
+    }
+
+    //If we are on this board then update counter that tells user how many boards are stored
+    if (this.workerCurrentTaskKey === workerBoardKey) {
+      effBoardsStoredDisplayCount.value = storedBoardArray.length;
+      effBoardsStoredFirstClickDisplay.value =
+        storedBoardArray[0]?.firstClickType ?? effFirstClickType.value;
+    }
+
+    //Pause worker if we have maxed out the number of stored boards for this size
+    if (storedBoardArray.length >= this.maxStoredBoardsPerSize) {
+      if (
+        this.workerCurrentTaskKey === workerBoardKey &&
+        !this.isWorkerPaused
+      ) {
+        this.sendWorkerPauseCommand();
+      }
+    }
+  }
+
+  garbageCollectStoredBoards() {
+    if (!this.isWorkerInitialised) {
+      return;
+    }
+
+    for (let key of this.storedBoards.keys()) {
+      //Parse out width, height, mineCount, targetEff
+      let [, width, height, mineCount, targetEff] = key.match(
+        /^(\d+)-(\d+)-(\d+)-(\d+)$/
+      );
+      width = parseInt(width);
+      height = parseInt(height);
+      mineCount = parseInt(mineCount);
+      targetEff = parseInt(targetEff);
+
+      if (
+        width === boardWidth.value &&
+        height === boardHeight.value &&
+        mineCount === boardMines.value &&
+        targetEff === minimumEff.value
+      ) {
+        //currently active board, don't garbage collect
+        continue;
+      }
+
+      //beginner
+      if (key.startsWith("9-9-10-")) {
+        if (
+          begEffOptions.includes(targetEff) ||
+          targetEff > begEffSlowGenPoint
+        ) {
+          //Don't garbage collect beg if it's a dropdown option or above a certain value
+          continue;
+        }
+      }
+
+      //int
+      if (key.startsWith("16-16-40-")) {
+        if (
+          intEffOptions.includes(targetEff) ||
+          targetEff > intEffSlowGenPoint
+        ) {
+          //Don't garbage collect int if it's a dropdown option or above a certain value
+          continue;
+        }
+      }
+
+      //exp
+      if (key.startsWith("16-16-40-")) {
+        if (
+          expEffOptions.includes(targetEff) ||
+          targetEff > expEffSlowGenPoint
+        ) {
+          //Don't garbage collect exp if it's a dropdown option or above a certain value
+          continue;
+        }
+      }
+
+      //Check if custom game was played within the last x games
+      if (this.recentlyPlayedCustoms.includes(key)) {
+        continue;
+      }
+
+      //Garbage collect if this is a beg/int/exp non-presets below slow gen point
+      //Also garbage collect if it is a non-recent custom game
+      console.log("deleting " + key);
+      this.storedBoards.delete(key);
+    }
+  }
+
+  addRecentlyPlayedCustom(boardKey) {
+    if (!this.isWorkerInitialised) {
+      return;
+    }
+
+    //exclude games of regular sizes.
+    if (boardKey.startsWith("9-9-10-")) {
+      return;
+    }
+    if (boardKey.startsWith("16-16-40-")) {
+      return;
+    }
+    if (boardKey.startsWith("16-16-40-")) {
+      return;
+    }
+
+    if (this.recentlyPlayedCustoms.includes(boardKey)) {
+      return;
+    }
+
+    //Add custom to queue
+    this.recentlyPlayedCustoms.push(boardKey);
+    if (this.recentlyPlayedCustoms.length > this.maxStoredCustoms) {
+      this.recentlyPlayedCustoms.shift();
+    }
+  }
+
+  unmount() {
+    if (!this.isWorkerInitialised) {
+      return;
+    }
+
+    this.worker.terminate();
   }
 }
 
@@ -2085,6 +2550,7 @@ class BoardHistory {
 const algorithms = new Algorithms(); //Could probably change to have all static methods, so no need to init?
 const benchmark = new Benchmark();
 const skinManager = new SkinManager();
+var effShuffleManager = new EffShuffleManager(); //Needs to be var to stop an access-before-init error
 const boardHistory = new BoardHistory();
 const game = new Game();
 </script>
