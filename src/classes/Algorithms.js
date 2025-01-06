@@ -789,7 +789,7 @@ class Algorithms {
     }
   }
 
-  calc3bv(mines, revealedNumbers = false, preprocessedData = false) {
+  calc3bv(mines, tilesArray = false, preprocessedData = false) {
     // Basic idea = generate grid of numbers
     // Do flood fill with the zeros - this will label openings and find which squares touch which openings
     // Maybe can reuse openings in zini calc? (Or not needed?)
@@ -821,7 +821,7 @@ class Algorithms {
     let solved3bv = 0;
 
     //Only calculate solved 3bv if we have the array of revealed numbers
-    if (revealedNumbers) {
+    if (tilesArray) {
       //Calculate solved 3bv for when it's a lost game
       //Scuffed as this includes openings that have not been fully opened
       //and tiles that were solved from blasted chord
@@ -834,7 +834,7 @@ class Algorithms {
 
       for (let x = 0; x < width; x++) {
         for (let y = 0; y < height; y++) {
-          if (typeof revealedNumbers[x][y].state !== "number") {
+          if (typeof tilesArray[x][y].state !== "number") {
             //Tile has not been opened, so don't include in solved 3bv
             continue;
           }

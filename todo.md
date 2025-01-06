@@ -8,7 +8,7 @@ implement zini alg
 add replays
 have board-history for exploring past replays (and replays of same game get grouped up)
 
-Change revealedNumbers stuff to be tiles[x][y] and then hide behind getters/setters. Like setTileState(x, y, newState) and setTileDepressed(x, y, true)
+Use setters and getters for tilesArray (formerly called revealedNumbers). Like setTileState(x, y, newState) and setTileDepressed(x, y, true)
 
 Look at mouseEvent.buttons to check whether the left button is depressed when hovering (fixes issues with left click down outside the window etc)
 
@@ -64,3 +64,17 @@ multiple workers
 womzini
 
 option to use thrp instead of eff
+
+remove unused comments and spammy console.logs
+
+move code in paintObviousSquares into algorithms, so we have option of doing basic hint/logic type stuff in the future
+
+Have scroll wheel to cycle quick paint type
+
+middle click to clear guesses and dots? How about: middle click first removes dots, and then doing it again removes guesses
+
+middle click should also clear excess knowns?
+dots dont stand out on top of 1s?
+quickpaint button only shows during 'running' games? Or greys out?
+
+consider asking qqwref for minesweeper c++ library to speed up eff boards generation (wasm)

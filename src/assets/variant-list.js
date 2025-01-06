@@ -450,6 +450,17 @@ let variantList = [
     ],
     "rating": 3.1,
     "popularity": 1
+  },
+  {
+    "name": "Inesweeper",
+    "url": "https://inesweeper.vercel.app/",
+    "desc": "A modern collection of minesweeper variants that take inspiration from 14 minesweeper variants and minesweeper advent calendar as well as some others. As of writing there are 7 variants. Examples include liar where numbers are off by one and contrast where there is a red-blue checkboard pattern and the numbers give the difference between the number of mines in the red and blue squares.",
+    "image": "/img/variants/inesweeper.png",
+    "tags": [
+      "game"
+    ],
+    "rating": 4.1,
+    "popularity": 1
   }
 ]
 

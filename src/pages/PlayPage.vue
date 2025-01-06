@@ -17,7 +17,15 @@
       <input v-model="useOrgPrem" type="checkbox" /><br />
       Use 8-way: <input v-model="use8Way" type="checkbox" /><br />
       Iterations: <input v-model.number="bulkIterations" type="text" />
-      <!--<button @click="game.reset">reset board</button>--><br />
+      <button
+        @click="
+          effShuffleManager.storedBoards = new Map();
+          effShuffleManager.sendWorkersCurrentTask();
+        "
+      >
+        delete stored boards
+      </button>
+      <br />
       <q-select
         class="q-mx-md q-mb-md"
         outlined
@@ -126,7 +134,12 @@
         class="clearfix q-my-md"
         :style="{ paddingLeft: gameLeftPadding + 'px' }"
       >
-        <canvas ref="main-canvas" id="main-canvas" @contextmenu.prevent>
+        <canvas
+          ref="main-canvas"
+          id="main-canvas"
+          @contextmenu.prevent
+          @wheel="game.board.handleMouseWheel($event)"
+        >
         </canvas>
         <q-card
           square
@@ -169,6 +182,26 @@
             </div>
           </q-card-section>
         </q-card>
+      </div>
+      <div class="flex q-ma-md" style="gap: 10px">
+        <q-btn
+          @click="game.board.toggleQuickPaint()"
+          color="secondary"
+          label="QuickPaint (Q)"
+        >
+        </q-btn>
+        <template v-if="showQuickPaintOptions">
+          <q-btn
+            v-if="!quickPaintMinimalMode"
+            @click="game.board.cycleQuickPaintMode()"
+            color="secondary"
+          >
+            {{ quickPaintModeDisplay }} (scroll)
+          </q-btn>
+          <q-btn @click="game.board.clearDotsOrGuesses()" color="secondary">
+            Clear {{ quickPaintClearable }} (scrollclick)
+          </q-btn>
+        </template>
       </div>
 
       <div>
@@ -295,11 +328,41 @@
                       label="Generate in background"
                     />
                     <div
-                      v-if="effBoardShowSlowGenerationWarning"
+                      v-if="
+                        effBoardShowSlowGenerationWarning &&
+                        !generateEffBoardsInBackground
+                      "
                       class="text-info"
                       style="flex: 1 1 200px"
                     >
-                      <b>IMPORTANT:</b> Recommended for high target efficiencies
+                      <b>IMPORTANT:</b> Recommended for high target efficiency
+                    </div>
+                  </div>
+                  <div v-if="browserSupportsConcurrency" class="flex q-mb-sm">
+                    <q-select
+                      class="q-mx-md q-mb-md"
+                      outlined
+                      options-dense
+                      dense
+                      transition-duration="100"
+                      input-debounce="200"
+                      v-model="effWebWorkerCount"
+                      style="width: 270px; flex-shrink: 0"
+                      :options="effWebWorkerCountOptions"
+                      stack-label
+                      label="Workers used for background generation"
+                      @update:model-value="effShuffleManager.reinitWorkers()"
+                    ></q-select>
+                    <div
+                      v-if="
+                        effBoardShowSlowGenerationWarning &&
+                        generateEffBoardsInBackground
+                      "
+                      class="text-info"
+                      style="flex: 1 1 215px"
+                    >
+                      Consider increasing this if background generation is too
+                      slow
                     </div>
                   </div>
                   <div class="flex q-mb-sm">
@@ -350,19 +413,14 @@
             <q-tab-panel name="other">
               <div class="text-h6">Other Settings</div>
               <div>
-                Game-left-padding: <br />
-                <q-slider
-                  v-model="gameLeftPadding"
-                  :min="0"
-                  :max="1000"
-                  :step="1"
-                  label
-                  color="light-green"
-                  style="width: 50%"
-                /><br />
-                <button @click="settingsModal = true">
-                  Change board display size
-                </button>
+                <q-checkbox
+                  v-model="quickPaintInitialOnlyMines"
+                  label="QuickPaint only solves mines"
+                />
+                <q-checkbox
+                  v-model="quickPaintMinimalMode"
+                  label="QuickPaint minimal mode"
+                />
               </div>
             </q-tab-panel>
           </q-tab-panels>
@@ -484,13 +542,16 @@ onMounted(() => {
 onUnmounted(() => {
   document.body.removeEventListener("keydown", handleKeyDown);
   game.unmount();
-  effShuffleManager.unmount();
+  effShuffleManager.killAllWorkers();
 });
 
 function handleKeyDown(event) {
   if (event.key === " " || event.key === "F2") {
     game.reset();
     event.preventDefault();
+  }
+  if (event.key === "q") {
+    game.board.toggleQuickPaint();
   }
 }
 
@@ -630,6 +691,10 @@ let expEffCustom = ref(180);
 const expEffSlowGenPoint = 170;
 let customEffCustom = ref(150);
 let generateEffBoardsInBackground = ref(false);
+let effWebWorkerCount = ref(1);
+let browserSupportsWebWorkers = window.Worker ? true : false;
+let browserSupportsConcurrency =
+  browserSupportsWebWorkers && window.navigator.hardwareConcurrency > 2;
 let effBoardsStoredDisplayCount = ref(0);
 let effBoardsStoredFirstClickDisplay = ref("random");
 let effFirstClickType = ref("same");
@@ -670,9 +735,6 @@ let minimumEff = computed(() => {
 let effBoardShowSlowGenerationWarning = computed(() => {
   //Whether we show a warning that generating the target eff on eff boards variant may be slow
   if (variant.value === "eff boards") {
-    if (generateEffBoardsInBackground.value) {
-      return false;
-    }
     if (!window.Worker) {
       return false; //No point suggesting background generation if their device can't use web workers
     }
@@ -701,13 +763,21 @@ let effBoardShowSlowGenerationWarning = computed(() => {
   }
   return false;
 });
-let browserSupportsWebWorkers = computed(() => {
-  if (window.Worker) {
-    return true;
-  } else {
-    return false;
+let effWebWorkerCountOptions = [];
+if (typeof window.navigator.hardwareConcurrency === "number") {
+  for (let i = 1; i <= window.navigator.hardwareConcurrency; i = i * 2) {
+    effWebWorkerCountOptions.push(i);
   }
-});
+
+  if (
+    !effWebWorkerCountOptions.includes(window.navigator.hardwareConcurrency)
+  ) {
+    effWebWorkerCountOptions.push(window.navigator.hardwareConcurrency);
+  }
+} else {
+  effWebWorkerCountOptions = [1];
+}
+
 watchEffect(() => {
   if (variant.value === "eff boards" && generateEffBoardsInBackground.value) {
     effShuffleManager && effShuffleManager.activateBackgroundGeneration();
@@ -717,9 +787,15 @@ watchEffect(() => {
 });
 watch([boardWidth, boardHeight, boardMines, minimumEff], () => {
   if (variant.value === "eff boards" && generateEffBoardsInBackground.value) {
-    effShuffleManager && effShuffleManager.sendWorkerCurrentTaskDebounced();
+    effShuffleManager && effShuffleManager.sendWorkersCurrentTaskDebounced();
   }
 });
+
+let showQuickPaintOptions = ref(false);
+let quickPaintModeDisplay = ref("Guess");
+let quickPaintClearable = ref("guesses");
+let quickPaintInitialOnlyMines = ref(true);
+let quickPaintMinimalMode = ref(true);
 
 let useOrgPrem = ref(false);
 let use8Way = ref(false);
@@ -882,7 +958,7 @@ class Board {
 
     this.mines = null;
     //Which squares have revealed etc
-    this.revealedNumbers = new Array(this.width)
+    this.tilesArray = new Array(this.width)
       .fill(0)
       .map(() =>
         new Array(this.height).fill(0).map(() => new Tile(UNREVEALED))
@@ -899,6 +975,14 @@ class Board {
 
     this.gameStage = "pregame";
     showStatsBlock.value = false;
+    this.quickPaintActive = false;
+    showQuickPaintOptions.value = false;
+    this.quickPaintMode = "known"; //modes are 'known' for drawing red/green, 'guess' for orange/white, 'dots' for click ideas
+    quickPaintModeDisplay.value = "Known";
+    this.isFirstQuickPaint = true;
+    this.redCount = 0;
+    this.orangeCount = 0;
+    this.dotCount = 0;
 
     mainCanvas.value.width =
       width * tileSizeSlider.value + 2 * boardHorizontalPadding.value;
@@ -935,6 +1019,16 @@ class Board {
 
     let flooredCoords = this.eventToFlooredTileCoords(event);
     let unflooredCoords = this.eventToUnflooredTileCoords(event);
+
+    if (this.quickPaintActive) {
+      this.handleQuickPaintClick(
+        flooredCoords.tileX,
+        flooredCoords.tileY,
+        event
+      );
+      this.draw();
+      return;
+    }
 
     if (event.button === 0) {
       this.holdDownLeftMouse(flooredCoords.tileX, flooredCoords.tileY);
@@ -994,6 +1088,11 @@ class Board {
       return; //Clicks on the board (as opposed to on face) do nothing on win/lose screen
     }
 
+    if (this.quickPaintActive) {
+      //Do nothing as quickpaint uses mouseDown
+      return;
+    }
+
     if (this.gameStage === "pregame") {
       const generationResult = this.generateBoard(
         flooredCoords.tileX,
@@ -1018,12 +1117,15 @@ class Board {
         return; //Don't start game. Click not inbounds, or something else went wrong
       }
     }
+
     this.attemptChordOrDig(unflooredCoords.tileX, unflooredCoords.tileY);
+
     if (this.blasted) {
       this.doLose();
     } else if (this.checkWin()) {
       this.doWin();
     }
+
     this.draw();
   }
 
@@ -1038,6 +1140,11 @@ class Board {
       return;
     }
     */
+
+    if (this.quickPaintActive) {
+      //Do nothing as quickpaint
+      return;
+    }
 
     let unflooredCoords = this.eventToUnflooredTileCoords(event);
 
@@ -1091,7 +1198,7 @@ class Board {
     }
 
     //Which squares have revealed etc
-    this.revealedNumbers = new Array(this.width)
+    this.tilesArray = new Array(this.width)
       .fill(0)
       .map(() =>
         new Array(this.height).fill(0).map(() => new Tile(UNREVEALED))
@@ -1151,7 +1258,7 @@ class Board {
     }
 
     //Which squares have revealed etc
-    this.revealedNumbers = new Array(this.width)
+    this.tilesArray = new Array(this.width)
       .fill(0)
       .map(() =>
         new Array(this.height).fill(0).map(() => new Tile(UNREVEALED))
@@ -1228,14 +1335,14 @@ class Board {
       return;
     }
 
-    if (this.revealedNumbers[tileX][tileY].state === UNREVEALED) {
+    if (this.tilesArray[tileX][tileY].state === UNREVEALED) {
       //Flag the square
-      this.revealedNumbers[tileX][tileY].state = FLAG;
+      this.tilesArray[tileX][tileY].state = FLAG;
       this.unflagged--;
       this.stats.addRight(tileX, tileY, time);
-    } else if (this.revealedNumbers[tileX][tileY].state === FLAG) {
+    } else if (this.tilesArray[tileX][tileY].state === FLAG) {
       //Unflag a square
-      this.revealedNumbers[tileX][tileY].state = UNREVEALED;
+      this.tilesArray[tileX][tileY].state = UNREVEALED;
       this.unflagged++;
       this.stats.makeMostRecentRightWasted(tileX, tileY);
       this.stats.addWastedRight(tileX, tileY, time);
@@ -1260,10 +1367,10 @@ class Board {
       return;
     }
 
-    if (typeof this.revealedNumbers[tileX][tileY].state === "number") {
+    if (typeof this.tilesArray[tileX][tileY].state === "number") {
       //Attempt chord tile
       this.chord(tileX, tileY, true, time);
-    } else if (this.revealedNumbers[tileX][tileY].state === UNREVEALED) {
+    } else if (this.tilesArray[tileX][tileY].state === UNREVEALED) {
       this.openTile(tileX, tileY);
       this.stats.addLeft(tileX, tileY, time);
     } else {
@@ -1283,16 +1390,16 @@ class Board {
     }
 
     //Opens a square, possibly triggering an opening recursively
-    if (this.revealedNumbers[x][y].state !== UNREVEALED) {
+    if (this.tilesArray[x][y].state !== UNREVEALED) {
       return;
     }
 
     if (this.mines[x][y]) {
-      this.revealedNumbers[x][y].state = MINERED;
+      this.tilesArray[x][y].state = MINERED;
       this.blasted = true;
     } else {
       const number = this.getNumberSurroundingMines(x, y);
-      this.revealedNumbers[x][y].state = number;
+      this.tilesArray[x][y].state = number;
       this.openedTiles++;
 
       if (number === 0) {
@@ -1351,8 +1458,8 @@ class Board {
         y <= this.hoveredSquare.y + 1;
         y++
       ) {
-        if (this.revealedNumbers[x]?.[y]) {
-          this.revealedNumbers[x][y].depressed = false;
+        if (this.tilesArray[x]?.[y]) {
+          this.tilesArray[x][y].depressed = false;
         }
       }
     }
@@ -1360,17 +1467,17 @@ class Board {
     //Apply new hover
     if (tileX !== null && tileY !== null && newIsLeftMouseDownValue) {
       //Single square
-      if (this.revealedNumbers[tileX][tileY].state === UNREVEALED) {
-        this.revealedNumbers[tileX][tileY].depressed = true;
+      if (this.tilesArray[tileX][tileY].state === UNREVEALED) {
+        this.tilesArray[tileX][tileY].depressed = true;
       }
 
       //Chord
-      if (typeof this.revealedNumbers[tileX][tileY].state === "number") {
+      if (typeof this.tilesArray[tileX][tileY].state === "number") {
         for (let x = tileX - 1; x <= tileX + 1; x++) {
           for (let y = tileY - 1; y <= tileY + 1; y++) {
             //Note that the middle square automatically gets excluded as it's been revealed
-            if (this.revealedNumbers[x]?.[y]?.state === UNREVEALED) {
-              this.revealedNumbers[x][y].depressed = true;
+            if (this.tilesArray[x]?.[y]?.state === UNREVEALED) {
+              this.tilesArray[x][y].depressed = true;
             }
           }
         }
@@ -1414,7 +1521,7 @@ class Board {
         if (!this.checkCoordsInBounds(i, j)) {
           continue; //ignore squares outside board
         }
-        if (this.revealedNumbers[i][j].state === FLAG) {
+        if (this.tilesArray[i][j].state === FLAG) {
           count++;
         }
       }
@@ -1428,13 +1535,11 @@ class Board {
       return; //ignore squares outside board
     }
 
-    if (typeof this.revealedNumbers[x][y].state !== "number") {
+    if (typeof this.tilesArray[x][y].state !== "number") {
       return; //Can only chord numbers
     }
 
-    if (
-      this.revealedNumbers[x][y].state === this.getNumberSurroundingFlags(x, y)
-    ) {
+    if (this.tilesArray[x][y].state === this.getNumberSurroundingFlags(x, y)) {
       //Correct number of flags, so do chord
       for (let i = x - 1; i <= x + 1; i++) {
         for (let j = y - 1; j <= y + 1; j++) {
@@ -1444,7 +1549,7 @@ class Board {
           if (!this.checkCoordsInBounds(i, j)) {
             continue; //ignore squares outside board
           }
-          if (this.revealedNumbers[i][j].state === UNREVEALED) {
+          if (this.tilesArray[i][j].state === UNREVEALED) {
             this.openTile(i, j);
           }
         }
@@ -1474,10 +1579,10 @@ class Board {
       for (let y = 0; y < this.height; y++) {
         if (
           this.mines[x][y] &&
-          this.revealedNumbers[x][y].state !== FLAG &&
-          this.revealedNumbers[x][y].state !== MINERED
+          this.tilesArray[x][y].state !== FLAG &&
+          this.tilesArray[x][y].state !== MINERED
         ) {
-          this.revealedNumbers[x][y].state = MINE;
+          this.tilesArray[x][y].state = MINE;
         }
       }
     }
@@ -1496,11 +1601,8 @@ class Board {
   markRemainingFlags() {
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
-        if (
-          this.mines[x][y] &&
-          this.revealedNumbers[x][y].state === UNREVEALED
-        ) {
-          this.revealedNumbers[x][y].state = FLAG;
+        if (this.mines[x][y] && this.tilesArray[x][y].state === UNREVEALED) {
+          this.tilesArray[x][y].state = FLAG;
         }
       }
     }
@@ -1517,8 +1619,504 @@ class Board {
   }
 
   calculateAndDisplayStats(isWin) {
-    this.stats.calcStats(isWin, this.revealedNumbers);
+    this.stats.calcStats(isWin, this.tilesArray);
     showStatsBlock.value = true;
+  }
+
+  toggleQuickPaint() {
+    if (this.gameStage !== "running") {
+      return;
+    }
+
+    this.quickPaintActive = !this.quickPaintActive;
+    showQuickPaintOptions.value = this.quickPaintActive;
+
+    if (this.quickPaintActive) {
+      this.updateDepressedSquares(null, null, false);
+
+      if (this.isFirstQuickPaint) {
+        this.quickPaintMode = "guess";
+        quickPaintModeDisplay.value = "Guess";
+        this.isFirstQuickPaint = false;
+        //First quick paint, so prepopulate the "obvious" mines
+        this.paintObviousSquares();
+      } else {
+        //Subsequent quick paint, so remove anything overwritten
+        this.removeOverwrittenPaints();
+        this.paintObviousSquares();
+      }
+      this.refreshQuickPaintCounts();
+      this.updateQuickPaintClearableDisplay();
+    }
+    this.draw();
+  }
+
+  handleMouseWheel(event) {
+    //Mouse wheel does stuff when QuickPaint is active
+    if (!this.quickPaintActive) {
+      return;
+    }
+
+    if (!quickPaintMinimalMode.value) {
+      return;
+    }
+
+    if (event.deltaY < 0) {
+      this.cycleQuickPaintMode(true);
+    }
+    if (event.deltaY > 0) {
+      this.cycleQuickPaintMode(false);
+    }
+
+    event.preventDefault();
+  }
+
+  removeOverwrittenPaints() {
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        if (
+          this.tilesArray[x][y].state !== UNREVEALED &&
+          this.tilesArray[x][y].paintColour !== null
+        ) {
+          this.tilesArray[x][y].paintColour = null;
+        }
+      }
+    }
+  }
+
+  refreshQuickPaintCounts() {
+    let redCount = this.mineCount;
+    let orangeCount = this.mineCount;
+    let dotCount = 0;
+
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        const thisTile = this.tilesArray[x][y];
+
+        if (thisTile.state === FLAG || thisTile.paintColour === "red") {
+          redCount--;
+          orangeCount--;
+        }
+        if (thisTile.paintColour === "orange") {
+          orangeCount--;
+        }
+        dotCount += thisTile.paintDots;
+      }
+    }
+
+    this.redCount = redCount;
+    this.orangeCount = orangeCount;
+    this.dotCount = dotCount;
+  }
+
+  paintObviousSquares() {
+    //Note that code here is EXTREMELY inefficient
+
+    let knownMines = new Array(this.width)
+      .fill(0)
+      .map(() => new Array(this.height).fill(false));
+
+    let knownSafes = new Array(this.width)
+      .fill(0)
+      .map(() => new Array(this.height).fill(false));
+
+    //prepopulate knowledge with where flags and safes (numbers) are
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        if (this.tilesArray[x][y].state === FLAG) {
+          knownMines[x][y] = true;
+        }
+        if (typeof this.tilesArray[x][y].state === "number") {
+          knownSafes[x][y] = true;
+        }
+      }
+    }
+
+    let foundThisLoop = false;
+
+    do {
+      foundThisLoop = false;
+
+      //Check all squares for "obvious" moves and update if any mines/safes found
+      for (let x = 0; x < this.width; x++) {
+        for (let y = 0; y < this.height; y++) {
+          let thisTile = this.tilesArray[x][y];
+          if (typeof thisTile.state !== "number") {
+            continue;
+          }
+          let thisNumber = thisTile.state;
+
+          //touching squares
+          let neighbours = [
+            { x: x - 1, y: y - 1 },
+            { x: x - 1, y: y },
+            { x: x - 1, y: y + 1 },
+            { x: x, y: y - 1 },
+            { x: x, y: y + 1 },
+            { x: x + 1, y: y - 1 },
+            { x: x + 1, y: y },
+            { x: x + 1, y: y + 1 },
+          ];
+          neighbours = neighbours.filter((square) =>
+            this.checkCoordsInBounds(square.x, square.y)
+          );
+
+          let unknownNeighbours = neighbours.filter(
+            (square) =>
+              !knownSafes[square.x][square.y] && !knownMines[square.x][square.y]
+          );
+          if (unknownNeighbours.length === 0) {
+            //nothing more to find for this square
+            continue;
+          }
+          let mineNeighbours = neighbours.filter(
+            (square) => knownMines[square.x][square.y]
+          );
+          let safeNeighbours = neighbours.filter(
+            (square) => knownSafes[square.x][square.y]
+          );
+          let numberNeighbours = neighbours.filter(
+            (square) =>
+              typeof this.tilesArray[square.x][square.y].state === "number"
+          );
+
+          if (thisNumber === mineNeighbours.length) {
+            //all mines found, so remaining are safe
+            foundThisLoop = true;
+            unknownNeighbours.forEach(
+              (square) => (knownSafes[square.x][square.y] = true)
+            );
+          }
+          if (unknownNeighbours.length + mineNeighbours.length === thisNumber) {
+            //all safes found, so remaining are mines
+            foundThisLoop = true;
+            unknownNeighbours.forEach(
+              (square) => (knownMines[square.x][square.y] = true)
+            );
+          }
+
+          //subtraction formula
+          numberNeighbours.forEach((other) => {
+            let otherTile = this.tilesArray[other.x][other.y];
+
+            let otherNumber = otherTile.state; //guaranteed to be number as that's how we constructed numberNeighbours
+
+            //touching squares for neighbour cell
+            let otherNeighbours = [
+              { x: other.x - 1, y: other.y - 1 },
+              { x: other.x - 1, y: other.y },
+              { x: other.x - 1, y: other.y + 1 },
+              { x: other.x, y: other.y - 1 },
+              { x: other.x, y: other.y + 1 },
+              { x: other.x + 1, y: other.y - 1 },
+              { x: other.x + 1, y: other.y },
+              { x: other.x + 1, y: other.y + 1 },
+            ];
+            otherNeighbours = otherNeighbours.filter((square) =>
+              this.checkCoordsInBounds(square.x, square.y)
+            );
+
+            let onlyThisMine = [];
+            let onlyNeighbourMine = [];
+
+            let onlyThisSafe = [];
+            let onlyNeighbourSafe = [];
+
+            let onlyThisUnknown = [];
+            let onlyNeighbourUnknown = [];
+
+            //Make note of the squares that only belong to thisTile
+            for (let thisNeighbour of neighbours) {
+              if (
+                otherNeighbours.some(
+                  (otherNeighbour) =>
+                    thisNeighbour.x === otherNeighbour.x &&
+                    thisNeighbour.y === otherNeighbour.y
+                )
+              ) {
+                continue;
+              }
+
+              if (knownSafes[thisNeighbour.x][thisNeighbour.y]) {
+                onlyThisSafe.push({ x: thisNeighbour.x, y: thisNeighbour.y });
+              }
+              if (knownMines[thisNeighbour.x][thisNeighbour.y]) {
+                onlyThisMine.push({ x: thisNeighbour.x, y: thisNeighbour.y });
+              }
+              if (
+                !knownSafes[thisNeighbour.x][thisNeighbour.y] &&
+                !knownMines[thisNeighbour.x][thisNeighbour.y]
+              ) {
+                onlyThisUnknown.push({
+                  x: thisNeighbour.x,
+                  y: thisNeighbour.y,
+                });
+              }
+            }
+
+            //Make note of the squares that only belong to otherTile
+            for (let otherNeighbour of otherNeighbours) {
+              if (
+                neighbours.some(
+                  (thisNeighbour) =>
+                    thisNeighbour.x === otherNeighbour.x &&
+                    thisNeighbour.y === otherNeighbour.y
+                )
+              ) {
+                continue;
+              }
+
+              if (knownSafes[otherNeighbour.x][otherNeighbour.y]) {
+                onlyNeighbourSafe.push({
+                  x: otherNeighbour.x,
+                  y: otherNeighbour.y,
+                });
+              }
+              if (knownMines[otherNeighbour.x][otherNeighbour.y]) {
+                onlyNeighbourMine.push({
+                  x: otherNeighbour.x,
+                  y: otherNeighbour.y,
+                });
+              }
+              if (
+                !knownSafes[otherNeighbour.x][otherNeighbour.y] &&
+                !knownMines[otherNeighbour.x][otherNeighbour.y]
+              ) {
+                onlyNeighbourUnknown.push({
+                  x: otherNeighbour.x,
+                  y: otherNeighbour.y,
+                });
+              }
+            }
+
+            //nothing to do if the only unknowns are both empty
+            if (onlyThisUnknown.length + onlyNeighbourUnknown.length === 0) {
+              return;
+            }
+
+            //do checks to find logic from subtraction formula
+
+            //Could all onlyNeighbour unknowns be mines and all onlyThis unknowns be safe
+            if (
+              onlyNeighbourMine.length +
+                onlyNeighbourUnknown.length -
+                onlyThisMine.length ===
+              otherNumber - thisNumber
+            ) {
+              //onlyNeighbours forced high and onlyThis forced low
+              foundThisLoop = true;
+              onlyNeighbourUnknown.forEach(
+                (square) => (knownMines[square.x][square.y] = true)
+              );
+              onlyThisUnknown.forEach(
+                (square) => (knownSafes[square.x][square.y] = true)
+              );
+            } else if (
+              onlyThisMine.length +
+                onlyThisUnknown.length -
+                onlyNeighbourMine.length ===
+              thisNumber - otherNumber
+            ) {
+              //Could all onlyNeighbour unknowns be mines and all onlyThis unknowns be safe
+
+              //onlyNeighbours forced low and onlyThis forced high
+              foundThisLoop = true;
+              onlyNeighbourUnknown.forEach(
+                (square) => (knownSafes[square.x][square.y] = true)
+              );
+              onlyThisUnknown.forEach(
+                (square) => (knownMines[square.x][square.y] = true)
+              );
+            }
+          });
+        }
+      }
+    } while (foundThisLoop);
+
+    //Now that all logic has been deduced, paint stuff to match this
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        if (this.tilesArray[x][y].state !== UNREVEALED) {
+          continue;
+        }
+        if (knownSafes[x][y] && !quickPaintInitialOnlyMines.value) {
+          this.tilesArray[x][y].paintColour = "green";
+        }
+        if (knownMines[x][y]) {
+          this.tilesArray[x][y].paintColour = "red";
+        }
+      }
+    }
+  }
+
+  cycleQuickPaintMode(forwardDirection = true) {
+    let modesList = ["known", "guess", "dots"];
+    let modeIndex = modesList.indexOf(this.quickPaintMode);
+    if (modeIndex === -1) {
+      modeIndex = 0;
+    }
+
+    if (forwardDirection) {
+      modeIndex = (modeIndex + 1) % modesList.length;
+    } else {
+      modeIndex = (modeIndex - 1 + modesList.length) % modesList.length;
+    }
+
+    this.quickPaintMode = modesList[modeIndex];
+    quickPaintModeDisplay.value =
+      this.quickPaintMode[0].toUpperCase() + this.quickPaintMode.slice(1);
+  }
+
+  updateQuickPaintClearableDisplay() {
+    if (this.dotCount > 0) {
+      quickPaintClearable.value = "dots";
+      return;
+    } else {
+      //note that there might not me any guesses on the board, but we don't have a value below guesses
+      quickPaintClearable.value = "guesses";
+    }
+  }
+
+  clearDotsOrGuesses() {
+    let isClearingDots = this.dotCount > 0;
+
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        const thisTile = this.tilesArray[x][y];
+        if (isClearingDots) {
+          thisTile.paintDots = 0;
+        } else {
+          if (
+            thisTile.paintColour === "orange" ||
+            thisTile.paintColour === "white"
+          ) {
+            thisTile.paintColour = null;
+          }
+        }
+      }
+    }
+
+    if (isClearingDots) {
+      this.dotCount = 0;
+    } else {
+      this.orangeCount = this.redCount;
+    }
+
+    this.updateQuickPaintClearableDisplay();
+
+    this.draw();
+  }
+
+  handleQuickPaintClick(tileX, tileY, event) {
+    const button = event.button;
+
+    if (button === 1) {
+      //middle click, doesn't need to be inbounds.
+      this.clearDotsOrGuesses();
+      event.preventDefault();
+      return;
+    }
+
+    if (!this.checkCoordsInBounds(tileX, tileY)) {
+      //Click not on board, exit
+      return;
+    }
+
+    if (button !== 0 && button !== 2) {
+      //not left/right click. Ignore
+      return;
+    }
+
+    const thisTile = this.tilesArray[tileX][tileY];
+    const tileState = thisTile.state;
+    const oldColour = thisTile.paintColour;
+    const oldDots = thisTile.paintDots;
+
+    if (quickPaintMinimalMode.value) {
+      //minimal mode only has right click = orange, left click = dots
+      if (button === 2) {
+        if (
+          tileState !== UNREVEALED ||
+          (oldColour !== null && oldColour !== "orange")
+        ) {
+          return;
+        }
+
+        if (oldColour === "orange") {
+          this.orangeCount++; //unorange the square
+          thisTile.paintColour = null;
+        } else if (oldColour === null) {
+          this.orangeCount--; //orange the square
+          thisTile.paintColour = "orange";
+        }
+      }
+
+      if (button === 0) {
+        let newDots;
+        newDots = (oldDots + 1) % 3; //cycle dots forward
+
+        this.dotCount += newDots - oldDots;
+        thisTile.paintDots = newDots;
+      }
+    } else if (
+      this.quickPaintMode === "known" ||
+      this.quickPaintMode === "guess"
+    ) {
+      if (tileState !== UNREVEALED) {
+        return;
+      }
+
+      let newColour;
+      if (this.quickPaintMode === "known" && button === 2) {
+        newColour = "red";
+      }
+      if (this.quickPaintMode === "known" && button === 0) {
+        newColour = "green";
+      }
+      if (this.quickPaintMode === "guess" && button === 2) {
+        newColour = "orange";
+      }
+      if (this.quickPaintMode === "guess" && button === 0) {
+        newColour = "white";
+      }
+
+      if (newColour === oldColour) {
+        //if it's same colour then instead removed the colour
+        newColour = null;
+      }
+
+      if (oldColour === "red") {
+        this.redCount++; //unredding a square
+        this.orangeCount++;
+      }
+      if (oldColour === "orange") {
+        this.orangeCount++; //unoranging a square
+      }
+
+      if (newColour === "red") {
+        this.redCount--; //redding a square
+        this.orangeCount--;
+      }
+      if (newColour === "orange") {
+        this.orangeCount--; //oranging a square
+      }
+
+      thisTile.paintColour = newColour;
+    } else if (this.quickPaintMode === "dots") {
+      let newDots;
+      if (button === 0) {
+        newDots = (oldDots + 1) % 3; //cycle dots forward
+      } else if (button === 2) {
+        newDots = (oldDots + 2) % 3; //cycle dots backward
+      }
+
+      this.dotCount += newDots - oldDots;
+      thisTile.paintDots = newDots;
+    }
+
+    this.updateQuickPaintClearableDisplay();
+    //^ this could be in the dots if statement, since it only changes when dots change
+    // but putting it at end seemed more future-proof
   }
 
   draw() {
@@ -1526,6 +2124,9 @@ class Board {
     ctx.clearRect(0, 0, mainCanvas.value.width, mainCanvas.value.height);
 
     this.drawTiles();
+    if (this.quickPaintActive) {
+      this.drawTilesPaint();
+    }
     this.drawBorders();
     this.drawCoords();
     this.drawTopBar();
@@ -1534,7 +2135,19 @@ class Board {
   drawTiles() {
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
-        this.revealedNumbers[x][y].draw(
+        this.tilesArray[x][y].draw(
+          x * this.tileSize + boardHorizontalPadding.value,
+          y * this.tileSize + boardTopPadding.value,
+          this.tileSize
+        );
+      }
+    }
+  }
+
+  drawTilesPaint() {
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        this.tilesArray[x][y].drawPaint(
           x * this.tileSize + boardHorizontalPadding.value,
           y * this.tileSize + boardTopPadding.value,
           this.tileSize
@@ -1704,6 +2317,14 @@ class Board {
   }
 
   drawTopBar() {
+    if (this.quickPaintActive) {
+      this.drawQuickPaintTopBar();
+    } else {
+      this.drawStandardTopBar();
+    }
+  }
+
+  drawStandardTopBar() {
     if (!showBorders.value) {
       return;
     }
@@ -1728,14 +2349,7 @@ class Board {
 
     const mineTimerMaxWidth = faceStartX - mineStartX;
 
-    //Draw flat background for top panel
-    ctx.fillStyle = skinManager.getTopPanelColour();
-    ctx.fillRect(
-      boardHorizontalPadding.value,
-      topPanelTopAndBottomBorder.value,
-      this.width * this.tileSize,
-      topPanelHeight.value
-    );
+    this.drawTopBarFlatBackground();
 
     //Set up font for mine/timer text
     ctx.textBaseline = "middle";
@@ -1773,12 +2387,98 @@ class Board {
       faceWidth
     );
   }
+
+  drawQuickPaintTopBar() {
+    if (!showBorders.value) {
+      return;
+    }
+
+    const ctx = mainCanvas.value.getContext("2d");
+
+    //A bunch of variables for positioning things
+    const topPanelMiddleHeight = topPanelHeight.value / 2;
+    const topPanelMiddleWidth = (this.width * this.tileSize) / 2;
+    const topPanelInnerPadding = this.tileSize / 4;
+    const redStartX = boardHorizontalPadding.value + topPanelInnerPadding;
+    const dotStartX =
+      boardHorizontalPadding.value +
+      this.width * this.tileSize -
+      topPanelInnerPadding; //note dot counter is right aligned, so this is where right edge of dot counter is
+    const counterStartY =
+      topPanelTopAndBottomBorder.value + topPanelMiddleHeight;
+    const faceWidth = topPanelHeight.value - 2 * topPanelInnerPadding;
+    const faceStartX =
+      boardHorizontalPadding.value + topPanelMiddleWidth - faceWidth / 2;
+    const faceStartY = topPanelTopAndBottomBorder.value + topPanelInnerPadding;
+
+    const largeMaxWidth = faceStartX - redStartX;
+    const smallMaxWidth = this.tileSize * 1.5;
+    const orangeLeftGap = this.tileSize / 4;
+    const orangeStartX = redStartX + smallMaxWidth + orangeLeftGap;
+
+    let noSpaceForOrangeCounter = false;
+    if (smallMaxWidth * 2 + orangeLeftGap > largeMaxWidth) {
+      noSpaceForOrangeCounter = true;
+    }
+    const redMaxWidth = noSpaceForOrangeCounter ? largeMaxWidth : smallMaxWidth;
+
+    this.drawTopBarFlatBackground();
+
+    //Set up font for counter text
+    ctx.textBaseline = "middle";
+    ctx.font = `${this.tileSize}px monospace`;
+
+    //Draw red counter
+    ctx.fillStyle = skinManager.getRedCounterTextColour();
+    ctx.textAlign = "left";
+    ctx.fillText(this.redCount, redStartX, counterStartY, redMaxWidth);
+
+    //Draw orange counter
+    if (!noSpaceForOrangeCounter) {
+      ctx.fillStyle = skinManager.getOrangeCounterTextColour();
+      ctx.fillText(
+        this.orangeCount,
+        orangeStartX,
+        counterStartY,
+        smallMaxWidth
+      );
+    }
+
+    //Draw dots count
+    ctx.textAlign = "right";
+    ctx.fillStyle = skinManager.getDotsCounterTextColour();
+    ctx.fillText(this.dotCount, dotStartX, counterStartY, largeMaxWidth);
+
+    //Draw face
+    ctx.drawImage(
+      skinManager.getImage("f_unpressed"),
+      faceStartX,
+      faceStartY,
+      faceWidth,
+      faceWidth
+    );
+  }
+
+  drawTopBarFlatBackground() {
+    const ctx = mainCanvas.value.getContext("2d");
+
+    //Draw flat background for top panel
+    ctx.fillStyle = skinManager.getTopPanelColour();
+    ctx.fillRect(
+      boardHorizontalPadding.value,
+      topPanelTopAndBottomBorder.value,
+      this.width * this.tileSize,
+      topPanelHeight.value
+    );
+  }
 }
 
 class Tile {
   constructor(state) {
     this.state = state; //Possible values are numbers (e.g. 0, 1, 2... and stuff like UNREVEALED etc)
     this.depressed = false;
+    this.paintColour = null; //values such as red, green, orange, white
+    this.paintDots = 0; //values can be 0, 1, 2
   }
 
   draw(rawX, rawY, size) {
@@ -1788,6 +2488,77 @@ class Tile {
     const toDraw = this.depressed ? 0 : this.state;
 
     ctx.drawImage(skinManager.getImage(toDraw), rawX, rawY, size, size);
+  }
+
+  drawPaint(rawX, rawY, size) {
+    if (this.paintColour === null && this.paintDots === null) {
+      return;
+    }
+
+    const ctx = mainCanvas.value.getContext("2d");
+
+    //draw square
+    if (this.paintColour) {
+      let fillColour;
+      switch (this.paintColour) {
+        case "red":
+          fillColour = "red";
+          break;
+        case "green":
+          fillColour = "green";
+          break;
+        case "orange":
+          fillColour = "orange";
+          break;
+        case "white":
+          fillColour = "white";
+          break;
+        default:
+          throw new Error("illegal paint colour");
+      }
+      ctx.fillStyle = fillColour;
+
+      //downsize slightly
+      const downsizeFactor = 0.8;
+      const squareX = rawX + (size * (1 - downsizeFactor)) / 2;
+      const squareY = rawY + (size * (1 - downsizeFactor)) / 2;
+      const squareSize = size * downsizeFactor;
+
+      ctx.fillRect(squareX, squareY, squareSize, squareSize);
+    }
+
+    //draw dots
+    if (this.paintDots !== 0) {
+      ctx.fillStyle = "black";
+      ctx.fillStyle = "black";
+
+      const dotRadius = size * 0.1;
+      const dotCentreFromEdge = 0.3;
+
+      const leftDotX = rawX + size * dotCentreFromEdge;
+      const dotsY = rawY + size * 0.5;
+      const rightDotX = rawX + (1 - dotCentreFromEdge) * size;
+      const centreDotX = rawX + size * 0.5;
+
+      if (this.paintDots === 1) {
+        //Draw single dot in centre
+        ctx.beginPath();
+        ctx.arc(centreDotX, dotsY, dotRadius, 0, 2 * Math.PI);
+        ctx.fill();
+      } else if (this.paintDots === 2) {
+        //Draw left and right dot
+
+        //draw left dot
+        ctx.beginPath();
+        ctx.arc(leftDotX, dotsY, dotRadius, 0, 2 * Math.PI);
+        ctx.fill();
+
+        //draw right dot
+        ctx.beginPath();
+        ctx.arc(rightDotX, dotsY, dotRadius, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
   }
 }
 
@@ -1872,6 +2643,18 @@ class SkinManager {
   }
 
   getCoordTextColour() {
+    return "#000000";
+  }
+
+  getRedCounterTextColour() {
+    return "red";
+  }
+
+  getOrangeCounterTextColour() {
+    return "#000000" /*"#8f5600"*/;
+  }
+
+  getDotsCounterTextColour() {
     return "#000000";
   }
 }
@@ -1967,20 +2750,19 @@ class BoardGenerator {
 
 class EffShuffleManager {
   constructor() {
-    this.isWorkerInitialised = false;
-    this.worker = null;
+    this.isWorkerPoolInitialised = false;
+    this.workerPool = [];
 
     //Format is Width-Height-Mines-Eff => [{mines: 2d mines array, firstClick: {x, y}}]
     this.storedBoards = new Map();
 
-    this.isWorkerPaused = true;
+    this.isWorkerPoolPaused = true;
 
     //format is `${width}-${height}-${mineCount}-${targetEff}`
-    this.workerCurrentTaskKey = "";
+    this.workerPoolCurrentTaskKey = "";
 
-    //string with values such as middle, corner, random, same
-    // which square we use as first click for worker generated baords
-    this.workerCurrentFirstClickType = "";
+    // which square we use as first click for worker generated boards
+    this.workerPoolCurrentFirstClickType = ""; //Values: middle, corner, random, same
 
     this.maxStoredBoardsPerSize = 20;
     this.sendWorkerCurrentTaskDebounceTimeoutHandle = null;
@@ -2005,7 +2787,7 @@ class EffShuffleManager {
         effBoardsStoredDisplayCount.value = storedBoard.length;
         effBoardsStoredFirstClickDisplay.value =
           storedBoard[0]?.firstClickType ?? effFirstClickType.value;
-        this.sendWorkerCurrentTask(); //Just in case, as worker may need resuming if it was previously paused
+        this.sendWorkersCurrentTask(); //Just in case, as workers may need resuming if it was previously paused
         return precomputedBoard;
       }
     }
@@ -2060,16 +2842,26 @@ class EffShuffleManager {
   }
 
   activateBackgroundGeneration() {
-    this.initWorkerIfNotAlreadyInited();
-    this.sendWorkerCurrentTask();
+    this.initWorkerPoolIfNotAlreadyInited();
+    this.sendWorkersCurrentTask();
   }
 
   deactivateBackgroundGeneration() {
-    this.sendWorkerPauseCommand();
+    //this.sendWorkersPauseCommand();
+
+    //kill all workers
+    this.killAllWorkers();
+
+    //run initialisation procedure again
+    this.isWorkerPoolInitialised = false;
+    this.workerPool = [];
+    this.workerPoolCurrentTaskKey = "";
+    this.workerPoolCurrentFirstClickType = "";
+    this.isWorkerPoolPaused = true;
   }
 
-  initWorkerIfNotAlreadyInited() {
-    if (this.isWorkerInitialised) {
+  initWorkerPoolIfNotAlreadyInited() {
+    if (this.isWorkerPoolInitialised) {
       return;
     }
 
@@ -2077,21 +2869,30 @@ class EffShuffleManager {
       return;
     }
 
-    //this.worker = new Worker("src/workers/eff-worker.js");
-    this.worker = new Worker(
-      new URL("../workers/eff-worker.js", import.meta.url),
-      {
-        type: "module",
-      }
-    );
+    console.log("starting initiation");
 
-    this.worker.onmessage = this.updateStoredBoard.bind(this);
+    for (let i = 0; i < effWebWorkerCount.value; i++) {
+      console.log(`initing worker ${i}`);
 
-    this.isWorkerInitialised = true;
+      const worker = new Worker(
+        new URL("../workers/eff-worker.js", import.meta.url),
+        {
+          type: "module",
+        }
+      );
+
+      worker.onmessage = this.updateStoredBoard.bind(this);
+
+      this.workerPool.push(worker);
+    }
+
+    console.log("finished initiation");
+
+    this.isWorkerPoolInitialised = true;
   }
 
-  sendWorkerCurrentTaskDebounced() {
-    //Calls this.sendWorkerCurrentTask, but only if 500ms have passed without being called again.
+  sendWorkersCurrentTaskDebounced() {
+    //Calls this.sendWorkersCurrentTask, but only if 500ms have passed without being called again.
     //This reduces unnecessary messages when adjusting dimensions/mines/target eff etc
     let self = this;
     if (this.sendWorkerCurrentTaskDebounceTimeoutHandle !== null) {
@@ -2101,14 +2902,14 @@ class EffShuffleManager {
 
     this.sendWorkerCurrentTaskDebounceTimeoutHandle = setTimeout(() => {
       console.log("new task sent for board change");
-      self.sendWorkerCurrentTask();
+      self.sendWorkersCurrentTask();
       self.sendWorkerCurrentTaskDebounceTimeoutHandle = null;
       self.garbageCollectStoredBoards();
     }, 500);
   }
 
-  sendWorkerCurrentTask() {
-    if (!this.isWorkerInitialised) {
+  sendWorkersCurrentTask() {
+    if (!this.isWorkerPoolInitialised) {
       return;
     }
 
@@ -2116,8 +2917,11 @@ class EffShuffleManager {
 
     const boardKey = `${boardWidth.value}-${boardHeight.value}-${boardMines.value}-${minimumEff.value}`;
 
-    if (!this.isWorkerPaused && this.workerCurrentTaskKey === boardKey) {
-      //Early exit as worker is already generating the board we want
+    if (
+      !this.isWorkerPoolPaused &&
+      this.workerPoolCurrentTaskKey === boardKey
+    ) {
+      //Early exit as workerpool is already generating the board we want
       return;
     }
 
@@ -2136,36 +2940,41 @@ class EffShuffleManager {
       storedBoard.length >= this.maxStoredBoardsPerSize
     ) {
       //Already generated enough of this board
-      this.sendWorkerPauseCommand();
+      this.sendWorkersPauseCommand();
       return;
     }
 
-    this.worker.postMessage({
-      command: "process",
-      width: boardWidth.value,
-      height: boardHeight.value,
-      mineCount: boardMines.value,
-      targetEff: minimumEff.value,
-    });
-    this.workerCurrentTaskKey = boardKey;
-    this.isWorkerPaused = false;
+    this.workerPool.forEach((worker) =>
+      worker.postMessage({
+        command: "process",
+        width: boardWidth.value,
+        height: boardHeight.value,
+        mineCount: boardMines.value,
+        targetEff: minimumEff.value,
+      })
+    );
+
+    this.workerPoolCurrentTaskKey = boardKey;
+    this.isWorkerPoolPaused = false;
   }
 
-  sendWorkerPauseCommand() {
-    if (!this.isWorkerInitialised) {
+  sendWorkersPauseCommand() {
+    if (!this.isWorkerPoolInitialised) {
       return;
     }
 
-    if (this.isWorkerPaused) {
+    if (this.isWorkerPoolPaused) {
       //already paused, do nothing
       return;
     }
 
-    this.worker.postMessage({
-      command: "pause",
-    });
+    this.workerPool.forEach((worker) =>
+      worker.postMessage({
+        command: "pause",
+      })
+    );
 
-    this.isWorkerPaused = true;
+    this.isWorkerPoolPaused = true;
   }
 
   sendUpdateFirstClickIfNeeded() {
@@ -2173,33 +2982,38 @@ class EffShuffleManager {
       effBoardsStoredFirstClickDisplay.value = effFirstClickType.value;
     }
 
-    if (!this.isWorkerInitialised) {
+    if (!this.isWorkerPoolInitialised) {
       return;
     }
 
-    if (!this.isWorkerPaused) {
-      //Note - ok to return here as unpausing requires calling sendWorkerCurrentTask which also calls this
+    if (!this.isWorkerPoolPaused) {
+      //Note - ok to return here as unpausing requires calling sendWorkersCurrentTask which also calls this
       return;
     }
 
-    if (this.workerCurrentFirstClickType === effFirstClickType.value) {
+    if (this.workerPoolCurrentFirstClickType === effFirstClickType.value) {
       //worker is already using correct first click
       return;
     }
 
-    this.worker.postMessage({
-      command: "updateFirstClickType",
-      firstClickType: effFirstClickType.value,
-    });
+    this.workerPool.forEach((worker) =>
+      worker.postMessage({
+        command: "updateFirstClickType",
+        firstClickType: effFirstClickType.value,
+      })
+    );
 
-    this.workerCurrentFirstClickType = effFirstClickType.value;
+    this.workerPoolCurrentFirstClickType = effFirstClickType.value;
   }
 
   updateStoredBoard(event) {
     let workerBoardKey = event.data.boardKey;
     let foundBoards = event.data.foundBoards;
+    let workerId = event.data.workerId;
 
-    console.log(`Adding ${foundBoards.length} board(s) to ${workerBoardKey}`);
+    console.log(
+      `Adding ${foundBoards.length} board(s) to ${workerBoardKey} from worker ${workerId}`
+    );
 
     let storedBoardArray = this.storedBoards.get(workerBoardKey);
     if (!storedBoardArray) {
@@ -2214,25 +3028,25 @@ class EffShuffleManager {
     }
 
     //If we are on this board then update counter that tells user how many boards are stored
-    if (this.workerCurrentTaskKey === workerBoardKey) {
+    if (this.workerPoolCurrentTaskKey === workerBoardKey) {
       effBoardsStoredDisplayCount.value = storedBoardArray.length;
       effBoardsStoredFirstClickDisplay.value =
         storedBoardArray[0]?.firstClickType ?? effFirstClickType.value;
     }
 
-    //Pause worker if we have maxed out the number of stored boards for this size
+    //Pause workers if we have maxed out the number of stored boards for this size
     if (storedBoardArray.length >= this.maxStoredBoardsPerSize) {
       if (
-        this.workerCurrentTaskKey === workerBoardKey &&
-        !this.isWorkerPaused
+        this.workerPoolCurrentTaskKey === workerBoardKey &&
+        !this.isWorkerPoolPaused
       ) {
-        this.sendWorkerPauseCommand();
+        this.sendWorkersPauseCommand();
       }
     }
   }
 
   garbageCollectStoredBoards() {
-    if (!this.isWorkerInitialised) {
+    if (!this.isWorkerPoolInitialised) {
       return;
     }
 
@@ -2302,7 +3116,7 @@ class EffShuffleManager {
   }
 
   addRecentlyPlayedCustom(boardKey) {
-    if (!this.isWorkerInitialised) {
+    if (!this.isWorkerPoolInitialised) {
       return;
     }
 
@@ -2328,12 +3142,23 @@ class EffShuffleManager {
     }
   }
 
-  unmount() {
-    if (!this.isWorkerInitialised) {
+  killAllWorkers() {
+    if (!this.isWorkerPoolInitialised) {
       return;
     }
 
-    this.worker.terminate();
+    this.workerPool.forEach((worker) => worker.terminate());
+
+    this.workerPool = [];
+  }
+
+  reinitWorkers() {
+    if (!this.isWorkerPoolInitialised) {
+      return;
+    }
+
+    this.deactivateBackgroundGeneration();
+    this.activateBackgroundGeneration();
   }
 }
 
@@ -2420,8 +3245,8 @@ class BoardStats {
     });
   }
 
-  calc3bv(revealedNumbers) {
-    let { bbbv, solved3bv } = algorithms.calc3bv(this.mines, revealedNumbers);
+  calc3bv(tilesArray) {
+    let { bbbv, solved3bv } = algorithms.calc3bv(this.mines, tilesArray);
 
     this.bbbv = bbbv;
     this.solved3bv = solved3bv;
@@ -2488,9 +3313,9 @@ class BoardStats {
     return result;
   }
 
-  calcStats(isWin, revealedNumbers) {
+  calcStats(isWin, tilesArray) {
     const time = this.endTime / 1000;
-    this.calc3bv(revealedNumbers);
+    this.calc3bv(tilesArray);
     const solved3bv = this.solved3bv;
     const bbbv = this.bbbv;
     const bbbvs = solved3bv / time;

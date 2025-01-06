@@ -3,6 +3,11 @@ import Algorithms from "src/classes/Algorithms";
 
 let algorithms = new Algorithms();
 
+const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+let workerId = characters.charAt(Math.floor(Math.random() * characters.length));
+
+console.log(`worker ${workerId} initialised`);
+
 let isPaused = true;
 let currentTask = {
   width: null,
@@ -141,6 +146,7 @@ function sendMessageWithFoundBoards(foundBoards) {
 
   postMessage({
     boardKey: boardKey,
+    workerId: workerId,
     foundBoards: foundBoards
   });
 }
