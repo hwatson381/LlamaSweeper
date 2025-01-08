@@ -19,20 +19,11 @@ Make unfocus a function and call it from all various inputs (where sensible?)
 Be careful with setTimeouts to not have loads of them running at the same time...
 Remove on component unmount?
 
-Compare old version of effBoardShuffle to new version (performance-wise)?
-
-Add support for generating effBoards in background
-
 Include raw coords in BoardStats.clicks info
 
 Implement womzini
 
 Make algorithms class static
-
-Does having two workers result in 2x speedup? See window.navigator.hardwareConcurrency
-
-Have button that means you don't have to minecount for eff? It just flags all guaranteed flags.
-and shows provisional minecount. Also lets you place "temp" flags? Maybe it marks up all red/green squares, similar to how someone would in paint. Also lets you place "provisional safe/mines" - orange/white. And lets you place "click dots" and clear these all out with button (each square can have up to 2 click-dots). And has click dot counter. Marking stay after playing moves except when squares are revealed coverring them
 
 Undo button? Too similar to replay feature?
 
@@ -58,6 +49,10 @@ We could go further and instead of just including + excluding single chords, we 
 the effects of including/excluding chainlets of chords
 these chainlets would be 2 (or 3, though maybe ambitious) chords that neighbour eachother (like ptta wide moves)
 
+zini explorer could display results of initial inclusion-exclusion analysis:
+Which chords increase/decrease zini. Which flags are never used?
+Which chords have high "weirdness" - this is how often the chords appear in normal zini runs. Weird chords are likely to be ones that give subzini (provided they also decrease zini).
+
 review subzini trick for generating eff boards (is there a better formula? e.g. subzini < 3bv/50 + 2)
 
 multiple workers
@@ -69,12 +64,17 @@ remove unused comments and spammy console.logs
 
 move code in paintObviousSquares into algorithms, so we have option of doing basic hint/logic type stuff in the future
 
-Have scroll wheel to cycle quick paint type
-
-middle click to clear guesses and dots? How about: middle click first removes dots, and then doing it again removes guesses
-
-middle click should also clear excess knowns?
 dots dont stand out on top of 1s?
 quickpaint button only shows during 'running' games? Or greys out?
 
 consider asking qqwref for minesweeper c++ library to speed up eff boards generation (wasm)
+
+tweak with window.dotMain = "black"; window.dotSecondary = "white";
+
+check that code for reseting knowns is working
+
+quickpaint disabling doesn't happen on face click (also might be too distracting? Or even laggy?)
+
+Make some settings persist (e.g. QuickPaint preferences)
+
+Do random zinis actually vary that much? They probably always do all the 1 chords first which are disjoint.

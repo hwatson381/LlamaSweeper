@@ -134,12 +134,7 @@
         class="clearfix q-my-md"
         :style="{ paddingLeft: gameLeftPadding + 'px' }"
       >
-        <canvas
-          ref="main-canvas"
-          id="main-canvas"
-          @contextmenu.prevent
-          @wheel="game.board.handleMouseWheel($event)"
-        >
+        <canvas ref="main-canvas" id="main-canvas" @contextmenu.prevent>
         </canvas>
         <q-card
           square
@@ -196,11 +191,14 @@
             @click="game.board.cycleQuickPaintMode()"
             color="secondary"
           >
-            {{ quickPaintModeDisplay }} (scroll)
+            {{ quickPaintModeDisplay }} (w)
           </q-btn>
-          <q-btn @click="game.board.clearDotsOrGuesses()" color="secondary">
-            Clear {{ quickPaintClearable }} (scrollclick)
+          <q-btn @click="game.board.clearClearableMarkings()" color="secondary">
+            {{ quickPaintClearable }} (scrollclick)
           </q-btn>
+          <q-btn @click="quickPaintHelpModal = true" color="secondary"
+            >Help</q-btn
+          >
         </template>
       </div>
 
@@ -416,7 +414,7 @@
                 <q-checkbox
                   v-model="quickPaintInitialOnlyMines"
                   label="QuickPaint only solves mines"
-                />
+                /><br />
                 <q-checkbox
                   v-model="quickPaintMinimalMode"
                   label="QuickPaint minimal mode"
@@ -488,6 +486,75 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+  <q-dialog v-model="quickPaintHelpModal">
+    <q-card style="min-width: 350px">
+      <q-card-section>
+        <div class="text-h6">QuickPaint Help</div>
+      </q-card-section>
+
+      <q-card-section class="q-pt-none">
+        <p>
+          QuickPaint is inspired by the paint feature on minesweeper.online. It
+          lets you mark squares to plan out possibly moves. I've intended this
+          to be used during minecount situations in efficiency.
+        </p>
+        <p>
+          QuickPaint automatically marks mines (and safes if enabled) that can
+          deduced through basic logic. It does not do logic more complex than
+          subtraction formula.
+        </p>
+        <p>
+          QuickPaint has different kinds of markings. These can be used how you
+          like, however I intended them to be used as follows:
+          <br />
+          Known Squares: Red = known mine, Green = known safe<br />
+          Guess Squares: orange = possible mine, white = possible safe<br />
+          Dots: these represent clicks. 1 dot = a click, 2 dots = two clicks
+          (e.g. revealing a square then chording).
+        </p>
+        <p>
+          The top bar will update to show counters which from left to right are:
+          <br />
+          Undiscovered mines | total mines - (flags + reds)<br />
+          Undiscovered mines including guessed | total mines - (flags + reds +
+          oranges)<br />
+          Dot count | How many dots there are. This can be used to work out
+          which clicking order uses fewest clicks.
+        </p>
+        <p>
+          There are two modes. Minimal mode (default) lets you place dots with
+          left click and guess mines (orange) with right click. Non-minimal mode
+          lets you cycle between placing knowns, guesses, dots. Left click will
+          place known safe, guess safe, or add a dot. Right click will place
+          known mines, guess mine or remove a dot.
+        </p>
+        <p>
+          Markings can be reset by clicking the middle mouse button (scroll
+          wheel). It first removes dots and then guesses and then excess known
+          squares (if any).
+        </p>
+        <p>
+          Settings for QuickPaint can be adjusted below or from the settings
+          beneath the board
+        </p>
+        <div>
+          <q-checkbox
+            v-model="quickPaintInitialOnlyMines"
+            label="QuickPaint only solves mines"
+          /><br />
+          <q-checkbox
+            v-model="quickPaintMinimalMode"
+            label="QuickPaint minimal mode"
+          />
+        </div>
+      </q-card-section>
+
+      <q-card-actions align="right" class="text-primary">
+        <q-btn flat label="Close" v-close-popup />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 </template>
 
 <style scoped>
@@ -552,6 +619,11 @@ function handleKeyDown(event) {
   }
   if (event.key === "q") {
     game.board.toggleQuickPaint();
+    event.preventDefault();
+  }
+  if (event.key === "w") {
+    game.board.handleCycleQuickPaintModeKeypress();
+    event.preventDefault();
   }
 }
 
@@ -796,6 +868,7 @@ let quickPaintModeDisplay = ref("Guess");
 let quickPaintClearable = ref("guesses");
 let quickPaintInitialOnlyMines = ref(true);
 let quickPaintMinimalMode = ref(true);
+let quickPaintHelpModal = ref(false);
 
 let useOrgPrem = ref(false);
 let use8Way = ref(false);
@@ -983,6 +1056,7 @@ class Board {
     this.redCount = 0;
     this.orangeCount = 0;
     this.dotCount = 0;
+    this.whiteOrangeCount = 0; //orange + white
 
     mainCanvas.value.width =
       width * tileSizeSlider.value + 2 * boardHorizontalPadding.value;
@@ -1074,6 +1148,10 @@ class Board {
         canvasCoords.canvasRawY >= faceStartY &&
         canvasCoords.canvasRawY <= faceStartY + faceWidth
       ) {
+        if (!this.confirmBoardResetIfQuickPaint()) {
+          return;
+        }
+
         this.updateDepressedSquares(
           flooredCoords.tileX, //Coords not strictly necessary, but including incase this changes
           flooredCoords.tileY,
@@ -1625,6 +1703,7 @@ class Board {
 
   toggleQuickPaint() {
     if (this.gameStage !== "running") {
+      window.alert("QuickPaint can only be used when a game is in progress");
       return;
     }
 
@@ -1651,24 +1730,17 @@ class Board {
     this.draw();
   }
 
-  handleMouseWheel(event) {
-    //Mouse wheel does stuff when QuickPaint is active
+  handleCycleQuickPaintModeKeypress() {
+    //W key does stuff when QuickPaint is active
     if (!this.quickPaintActive) {
       return;
     }
 
-    if (!quickPaintMinimalMode.value) {
+    if (quickPaintMinimalMode.value) {
       return;
     }
 
-    if (event.deltaY < 0) {
-      this.cycleQuickPaintMode(true);
-    }
-    if (event.deltaY > 0) {
-      this.cycleQuickPaintMode(false);
-    }
-
-    event.preventDefault();
+    this.cycleQuickPaintMode();
   }
 
   removeOverwrittenPaints() {
@@ -1688,6 +1760,7 @@ class Board {
     let redCount = this.mineCount;
     let orangeCount = this.mineCount;
     let dotCount = 0;
+    let whiteOrangeCount = 0;
 
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
@@ -1699,6 +1772,10 @@ class Board {
         }
         if (thisTile.paintColour === "orange") {
           orangeCount--;
+          whiteOrangeCount++;
+        }
+        if (thisTile.paintColour === "white") {
+          whiteOrangeCount++;
         }
         dotCount += thisTile.paintDots;
       }
@@ -1707,6 +1784,7 @@ class Board {
     this.redCount = redCount;
     this.orangeCount = orangeCount;
     this.dotCount = dotCount;
+    this.whiteOrangeCount = whiteOrangeCount;
   }
 
   paintObviousSquares() {
@@ -1969,26 +2047,42 @@ class Board {
 
   updateQuickPaintClearableDisplay() {
     if (this.dotCount > 0) {
-      quickPaintClearable.value = "dots";
+      quickPaintClearable.value = "Clear dots";
       return;
+    } else if (this.whiteOrangeCount > 0) {
+      quickPaintClearable.value = "Clear guesses";
     } else {
-      //note that there might not me any guesses on the board, but we don't have a value below guesses
-      quickPaintClearable.value = "guesses";
+      quickPaintClearable.value = "Reset knowns";
     }
   }
 
-  clearDotsOrGuesses() {
-    let isClearingDots = this.dotCount > 0;
+  clearClearableMarkings() {
+    let thingBeingCleared;
+    if (this.dotCount > 0) {
+      thingBeingCleared = "dots";
+    } else if (this.whiteOrangeCount > 0) {
+      thingBeingCleared = "guesses";
+    } else {
+      thingBeingCleared = "knowns";
+    }
 
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
         const thisTile = this.tilesArray[x][y];
-        if (isClearingDots) {
+        if (thingBeingCleared === "dots") {
           thisTile.paintDots = 0;
-        } else {
+        } else if (thingBeingCleared === "guesses") {
           if (
             thisTile.paintColour === "orange" ||
             thisTile.paintColour === "white"
+          ) {
+            thisTile.paintColour = null;
+          }
+        } else {
+          //knowns
+          if (
+            thisTile.paintColour === "red" ||
+            thisTile.paintColour === "green"
           ) {
             thisTile.paintColour = null;
           }
@@ -1996,12 +2090,21 @@ class Board {
       }
     }
 
-    if (isClearingDots) {
-      this.dotCount = 0;
-    } else {
-      this.orangeCount = this.redCount;
+    if (thingBeingCleared === "knowns") {
+      this.paintObviousSquares();
     }
 
+    //COMMENTED CODE BELOW OK TO DELETE
+    /*
+    if (thingBeingCleared === 'dots') {
+      this.dotCount = 0;
+    } else if (thingBeingCleared === 'guesses') {
+      this.orangeCount = this.redCount;
+      this.whiteOrangeCount = 0;
+    }
+    */
+
+    this.refreshQuickPaintCounts();
     this.updateQuickPaintClearableDisplay();
 
     this.draw();
@@ -2012,7 +2115,7 @@ class Board {
 
     if (button === 1) {
       //middle click, doesn't need to be inbounds.
-      this.clearDotsOrGuesses();
+      this.clearClearableMarkings();
       event.preventDefault();
       return;
     }
@@ -2044,9 +2147,11 @@ class Board {
 
         if (oldColour === "orange") {
           this.orangeCount++; //unorange the square
+          this.whiteOrangeCount--;
           thisTile.paintColour = null;
         } else if (oldColour === null) {
           this.orangeCount--; //orange the square
+          this.whiteOrangeCount++;
           thisTile.paintColour = "orange";
         }
       }
@@ -2091,6 +2196,10 @@ class Board {
       }
       if (oldColour === "orange") {
         this.orangeCount++; //unoranging a square
+        this.whiteOrangeCount--;
+      }
+      if (oldColour === "white") {
+        this.whiteOrangeCount--; //unwhiting a square
       }
 
       if (newColour === "red") {
@@ -2099,6 +2208,10 @@ class Board {
       }
       if (newColour === "orange") {
         this.orangeCount--; //oranging a square
+        this.whiteOrangeCount++;
+      }
+      if (newColour === "white") {
+        this.whiteOrangeCount++; //whiting a square
       }
 
       thisTile.paintColour = newColour;
@@ -2117,6 +2230,16 @@ class Board {
     this.updateQuickPaintClearableDisplay();
     //^ this could be in the dots if statement, since it only changes when dots change
     // but putting it at end seemed more future-proof
+  }
+
+  confirmBoardResetIfQuickPaint() {
+    if (!this.quickPaintActive) {
+      return true;
+    }
+
+    return confirm(
+      "Are you sure? This will reset the whole board. If instead you want to exit QuickPaint, this can be done by pressing the QuickPaint button or pressing the Q key."
+    );
   }
 
   draw() {
@@ -2529,10 +2652,11 @@ class Tile {
 
     //draw dots
     if (this.paintDots !== 0) {
-      ctx.fillStyle = "black";
-      ctx.fillStyle = "black";
+      ctx.fillStyle = skinManager.getDotMainColour();
+      ctx.strokeStyle = skinManager.getDotSecondaryColour();
 
-      const dotRadius = size * 0.1;
+      const dotRadius = size * 0.11;
+
       const dotCentreFromEdge = 0.3;
 
       const leftDotX = rawX + size * dotCentreFromEdge;
@@ -2540,11 +2664,19 @@ class Tile {
       const rightDotX = rawX + (1 - dotCentreFromEdge) * size;
       const centreDotX = rawX + size * 0.5;
 
+      const dotOutlineWidth = size * 0.04;
+      ctx.lineWidth = dotOutlineWidth;
+
       if (this.paintDots === 1) {
         //Draw single dot in centre
+
         ctx.beginPath();
         ctx.arc(centreDotX, dotsY, dotRadius, 0, 2 * Math.PI);
         ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(centreDotX, dotsY, dotRadius, 0, 2 * Math.PI);
+        ctx.stroke();
       } else if (this.paintDots === 2) {
         //Draw left and right dot
 
@@ -2553,10 +2685,18 @@ class Tile {
         ctx.arc(leftDotX, dotsY, dotRadius, 0, 2 * Math.PI);
         ctx.fill();
 
+        ctx.beginPath();
+        ctx.arc(leftDotX, dotsY, dotRadius, 0, 2 * Math.PI);
+        ctx.stroke();
+
         //draw right dot
         ctx.beginPath();
         ctx.arc(rightDotX, dotsY, dotRadius, 0, 2 * Math.PI);
         ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(rightDotX, dotsY, dotRadius, 0, 2 * Math.PI);
+        ctx.stroke();
       }
     }
   }
@@ -2656,6 +2796,14 @@ class SkinManager {
 
   getDotsCounterTextColour() {
     return "#000000";
+  }
+
+  getDotMainColour() {
+    return "white";
+  }
+
+  getDotSecondaryColour() {
+    return "black";
   }
 }
 
