@@ -1,4 +1,5 @@
 import OrganisedPremiums from "src/classes/OrganisedPremiums.js";
+import WomZini from "./WomZini";
 
 class Algorithms {
   constructor() { }
@@ -499,8 +500,8 @@ class Algorithms {
 
   //preprocessedData is the result from algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines)
   //Which means that we don't have to run that function multiple times
-  calcWomZini(mines, preprocessedData = false) {
-    //WoM zini is really (NOT) 8-way zini
+  calcRegularZini(mines, preprocessedData = false) {
+    //8-way zini
     const is8Way = true;
 
     return this.calcBasicZini(mines, is8Way, preprocessedData);
@@ -1043,6 +1044,46 @@ class Algorithms {
     }
 
     return zeros[Math.floor(Math.random() * zeros.length)];
+  }
+
+  //Note - wom zini has a off-by-one error with handling premiums for opening edges
+  calcWomZiniAndHZini(mines, applyOpeningEdgeCorrection = false) {
+    const preprocessedData = this.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
+      mines
+    );
+
+    //Object with 1d arrays in correct form to input into WoM zini alg
+    let womBoardData = WomZini.createdWomBoardDataObject(mines, preprocessedData, applyOpeningEdgeCorrection);
+    const width = mines.length;
+    const height = mines[0].length;
+    const minesNumber = mines.flat().filter(val => val).length
+
+    let { total: zini, clicks: ziniClicks } = WomZini.c215(false, womBoardData, width, height, minesNumber, applyOpeningEdgeCorrection);
+    let { total: hzini, clicks: hziniClicks } = WomZini.c215(true, womBoardData, width, height, minesNumber, applyOpeningEdgeCorrection);
+
+    console.log(`zini is ${zini}`)
+    console.log('zini clicks below');
+    console.log(ziniClicks)
+    console.log(`hzini is ${hzini}`)
+    console.log('hzini clicks below');
+    console.log(hziniClicks)
+
+    if (zini > hzini) {
+      console.log('reducing zini to be equal to hzini');
+      zini = hzini;
+      ziniClicks = structuredClone(hziniClicks);
+    }
+
+    return {
+      womZini: {
+        total: zini,
+        clicks: ziniClicks
+      },
+      womHzini: {
+        total: hzini,
+        clicks: hziniClicks
+      }
+    }
   }
 }
 

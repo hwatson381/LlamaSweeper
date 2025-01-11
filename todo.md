@@ -55,7 +55,6 @@ Which chords have high "weirdness" - this is how often the chords appear in norm
 
 review subzini trick for generating eff boards (is there a better formula? e.g. subzini < 3bv/50 + 2)
 
-multiple workers
 womzini
 
 option to use thrp instead of eff
@@ -64,17 +63,16 @@ remove unused comments and spammy console.logs
 
 move code in paintObviousSquares into algorithms, so we have option of doing basic hint/logic type stuff in the future
 
-dots dont stand out on top of 1s?
-quickpaint button only shows during 'running' games? Or greys out?
-
 consider asking qqwref for minesweeper c++ library to speed up eff boards generation (wasm)
-
-tweak with window.dotMain = "black"; window.dotSecondary = "white";
-
-check that code for reseting knowns is working
-
-quickpaint disabling doesn't happen on face click (also might be too distracting? Or even laggy?)
 
 Make some settings persist (e.g. QuickPaint preferences)
 
 Do random zinis actually vary that much? They probably always do all the 1 chords first which are disjoint.
+
+Small bug with depressing squares and then placing flag - flag doesn't show under undepressing
+
+Test womzini on 3bv > 500
+
+During inclusion-exclusion zini, try profile how much each chord affects the global solution (e.g. Which squares need to be recomputed depending on it's inclusion?)
+
+Add freesweeper to others page?

@@ -170,7 +170,33 @@
             </div>
             <div>Max Eff: {{ statsObject.maxEff }}%</div>
             <div>Clicks: {{ statsObject.clicks }}</div>
-            <div>Zini (not WoM): {{ statsObject.zini }}</div>
+            <div>ZiNi (8-way): {{ statsObject.eightZini }}</div>
+            <div>
+              ZiNi (WoM):
+              <template v-if="statsObject.womZini !== null">
+                {{ statsObject.womZini }}
+              </template>
+              <span
+                v-else
+                class="text-info"
+                style="text-decoration: underline; cursor: pointer"
+                @click="game.board.stats.lateCalcWomZiniStats()"
+                >run</span
+              >
+            </div>
+            <div>
+              H.ZiNi (WoM):
+              <template v-if="statsObject.womHzini !== null">
+                {{ statsObject.womHzini }}
+              </template>
+              <span
+                v-else
+                class="text-info"
+                style="text-decoration: underline; cursor: pointer"
+                @click="game.board.stats.lateCalcWomZiniStats()"
+                >run</span
+              >
+            </div>
             <div>
               Zini (ptta):
               <a target="_blank" :href="statsObject.pttaLink">link</a>
@@ -649,7 +675,9 @@ let statsObject = ref({
   eff: null,
   maxEff: null,
   clicks: null,
-  zini: null,
+  eightZini: null,
+  womZini: null,
+  womHzini: null,
   pttaLink: null,
 });
 
@@ -3400,8 +3428,19 @@ class BoardStats {
     this.solved3bv = solved3bv;
   }
 
-  calcZini() {
-    this.zini = algorithms.calcWomZini(this.mines);
+  calcZinis(includeWomZini) {
+    this.eightZini = algorithms.calcRegularZini(this.mines);
+
+    //Also do wom zini
+    if (includeWomZini) {
+      let { womZini, womHzini } = algorithms.calcWomZiniAndHZini(this.mines);
+
+      this.womZini = womZini.total;
+      this.womHzini = womHzini.total;
+    } else {
+      this.womZini = null;
+      this.womHzini = null;
+    }
   }
 
   getPttaLink() {
@@ -3470,13 +3509,17 @@ class BoardStats {
 
     const estTime = bbbv / bbbvs;
 
-    this.calcZini();
-    const zini = this.zini;
+    this.calcZinis(bbbv < 500);
+    const eightZini = this.eightZini;
+    const womZini = this.womZini;
+    const womHzini = this.womHzini;
+
+    const bestZini = eightZini; //Change when I do a better zini
 
     const clicks = this.clicks.length;
 
     const eff = (100 * solved3bv) / clicks;
-    const maxEff = (100 * bbbv) / zini;
+    const maxEff = (100 * bbbv) / bestZini;
 
     const pttaLink = this.getPttaLink();
 
@@ -3490,7 +3533,9 @@ class BoardStats {
       statsObject.value.eff = eff.toFixed(0);
       statsObject.value.maxEff = maxEff.toFixed(0);
       statsObject.value.clicks = clicks;
-      statsObject.value.zini = zini;
+      statsObject.value.eightZini = eightZini;
+      statsObject.value.womZini = womZini;
+      statsObject.value.womHzini = womHzini;
       statsObject.value.pttaLink = pttaLink;
     } else {
       statsObject.value.isWonGame = false;
@@ -3502,9 +3547,20 @@ class BoardStats {
       statsObject.value.eff = eff.toFixed(0);
       statsObject.value.maxEff = maxEff.toFixed(0);
       statsObject.value.clicks = clicks;
-      statsObject.value.zini = zini;
+      statsObject.value.eightZini = eightZini;
+      statsObject.value.womZini = womZini;
+      statsObject.value.womHzini = womHzini;
       statsObject.value.pttaLink = pttaLink;
     }
+  }
+
+  lateCalcWomZiniStats() {
+    this.calcZinis(true);
+    const womZini = this.womZini;
+    const womHzini = this.womHzini;
+
+    statsObject.value.womZini = womZini;
+    statsObject.value.womHzini = womHzini;
   }
 
   addEndTime(time) {
