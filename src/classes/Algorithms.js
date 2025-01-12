@@ -1053,13 +1053,13 @@ class Algorithms {
     );
 
     //Object with 1d arrays in correct form to input into WoM zini alg
-    let womBoardData = WomZini.createdWomBoardDataObject(mines, preprocessedData, applyOpeningEdgeCorrection);
+    let womBoardData = WomZini.createWomBoardDataObject(mines, preprocessedData, applyOpeningEdgeCorrection);
     const width = mines.length;
     const height = mines[0].length;
     const minesNumber = mines.flat().filter(val => val).length
 
-    let { total: zini, clicks: ziniClicks } = WomZini.c215(false, womBoardData, width, height, minesNumber, applyOpeningEdgeCorrection);
-    let { total: hzini, clicks: hziniClicks } = WomZini.c215(true, womBoardData, width, height, minesNumber, applyOpeningEdgeCorrection);
+    let { total: zini, clicks: ziniClicks } = WomZini.c215(false, womBoardData, width, height, minesNumber);
+    let { total: hzini, clicks: hziniClicks } = WomZini.c215(true, womBoardData, width, height, minesNumber);
 
     console.log(`zini is ${zini}`)
     console.log('zini clicks below');

@@ -12,19 +12,22 @@
         explanation of what they are somewhere... Variants can be changed with
         the dropdown immediately below.
       </p>
-      <button @click="bulkrun">Bulk run</button>
-      Use organised premiums:
-      <input v-model="useOrgPrem" type="checkbox" /><br />
-      Use 8-way: <input v-model="use8Way" type="checkbox" /><br />
-      Iterations: <input v-model.number="bulkIterations" type="text" />
-      <button
-        @click="
-          effShuffleManager.storedBoards = new Map();
-          effShuffleManager.sendWorkersCurrentTask();
-        "
-      >
-        delete stored boards
-      </button>
+      <div style="border: 1px solid white; margin: 5px; border-radius: 5px">
+        <span>Random dev stuff box</span><br />
+        <button @click="bulkrun">Bulk run</button>
+        Use organised premiums:
+        <input v-model="useOrgPrem" type="checkbox" /><br />
+        Use 8-way: <input v-model="use8Way" type="checkbox" /><br />
+        Iterations: <input v-model.number="bulkIterations" type="text" />
+        <button
+          @click="
+            effShuffleManager.storedBoards = new Map();
+            effShuffleManager.sendWorkersCurrentTask();
+          "
+        >
+          delete stored boards
+        </button>
+      </div>
       <br />
       <q-select
         class="q-mx-md q-mb-md"
@@ -174,7 +177,7 @@
             <div>
               ZiNi (WoM):
               <template v-if="statsObject.womZini !== null">
-                {{ statsObject.womZini }}
+                {{ statsObject.womZini }} | fix: {{ statsObject.cWomZini }}
               </template>
               <span
                 v-else
@@ -187,7 +190,7 @@
             <div>
               H.ZiNi (WoM):
               <template v-if="statsObject.womHzini !== null">
-                {{ statsObject.womHzini }}
+                {{ statsObject.womHzini }} | fix: {{ statsObject.cWomHzini }}
               </template>
               <span
                 v-else
@@ -963,7 +966,7 @@ class Game {
   constructor() {}
 
   initialise() {
-    //Called once at the start to set up the board object and do the first draw.
+    //Called once at the start to set up the board object.
     this.board = new Board(
       boardWidth.value,
       boardHeight.value,
@@ -989,7 +992,7 @@ class Game {
   }
 
   resetAndUnfocus() {
-    //Only needed for when radio buttons for beg/int/exp are click as otherwise they eat "space" inputs...
+    //Only needed for when radio buttons for beg/int/exp are clicked as otherwise they eat "space" inputs...
     game.reset();
     document.activeElement.blur();
   }
@@ -1058,7 +1061,7 @@ class Board {
     this.hoveredSquare = { x: null, y: null }; //Square that is being hovered over
 
     this.mines = null;
-    //Which squares have revealed etc
+    //The states of the tiles (e.g. whether they are unrevealed or show a number amongst other things)
     this.tilesArray = new Array(this.width)
       .fill(0)
       .map(() =>
@@ -1078,7 +1081,7 @@ class Board {
     showStatsBlock.value = false;
     this.quickPaintActive = false;
     showQuickPaintOptions.value = false;
-    this.quickPaintMode = "known"; //modes are 'known' for drawing red/green, 'guess' for orange/white, 'dots' for click ideas
+    this.quickPaintMode = "known"; //modes are 'known' for drawing red/green, 'guess' for orange/white, 'dots' for marking possible clicks
     quickPaintModeDisplay.value = "Known";
     this.isFirstQuickPaint = true;
     this.redCount = 0;
@@ -1303,7 +1306,7 @@ class Board {
       );
     }
 
-    //Which squares have revealed etc
+    //The states of the tiles (e.g. whether they are unrevealed or show a number amongst other things)
     this.tilesArray = new Array(this.width)
       .fill(0)
       .map(() =>
@@ -2122,16 +2125,6 @@ class Board {
       this.paintObviousSquares();
     }
 
-    //COMMENTED CODE BELOW OK TO DELETE
-    /*
-    if (thingBeingCleared === 'dots') {
-      this.dotCount = 0;
-    } else if (thingBeingCleared === 'guesses') {
-      this.orangeCount = this.redCount;
-      this.whiteOrangeCount = 0;
-    }
-    */
-
     this.refreshQuickPaintCounts();
     this.updateQuickPaintClearableDisplay();
 
@@ -2256,8 +2249,6 @@ class Board {
     }
 
     this.updateQuickPaintClearableDisplay();
-    //^ this could be in the dots if statement, since it only changes when dots change
-    // but putting it at end seemed more future-proof
   }
 
   confirmBoardResetIfQuickPaint() {
@@ -2636,7 +2627,7 @@ class Tile {
     const ctx = mainCanvas.value.getContext("2d");
 
     //Depressed squares get drawn as an open tile
-    const toDraw = this.depressed ? 0 : this.state;
+    const toDraw = this.state === UNREVEALED && this.depressed ? 0 : this.state;
 
     ctx.drawImage(skinManager.getImage(toDraw), rawX, rawY, size, size);
   }
@@ -3023,8 +3014,6 @@ class EffShuffleManager {
   }
 
   deactivateBackgroundGeneration() {
-    //this.sendWorkersPauseCommand();
-
     //kill all workers
     this.killAllWorkers();
 
@@ -3433,13 +3422,25 @@ class BoardStats {
 
     //Also do wom zini
     if (includeWomZini) {
-      let { womZini, womHzini } = algorithms.calcWomZiniAndHZini(this.mines);
+      //wom zini without correction
+      let { womZini, womHzini } = algorithms.calcWomZiniAndHZini(
+        this.mines,
+        false
+      );
+      //wom zini with correction
+      let { womZini: cWomZini, womHzini: cWomHzini } =
+        algorithms.calcWomZiniAndHZini(this.mines, true);
 
       this.womZini = womZini.total;
       this.womHzini = womHzini.total;
+
+      this.cWomZini = cWomZini.total;
+      this.cWomHzini = cWomHzini.total;
     } else {
       this.womZini = null;
       this.womHzini = null;
+      this.cWomZini = null;
+      this.cWomHzini = null;
     }
   }
 
@@ -3513,6 +3514,8 @@ class BoardStats {
     const eightZini = this.eightZini;
     const womZini = this.womZini;
     const womHzini = this.womHzini;
+    const cWomZini = this.cWomZini;
+    const cWomHzini = this.cWomHzini;
 
     const bestZini = eightZini; //Change when I do a better zini
 
@@ -3536,6 +3539,8 @@ class BoardStats {
       statsObject.value.eightZini = eightZini;
       statsObject.value.womZini = womZini;
       statsObject.value.womHzini = womHzini;
+      statsObject.value.cWomZini = cWomZini;
+      statsObject.value.cWomHzini = cWomHzini;
       statsObject.value.pttaLink = pttaLink;
     } else {
       statsObject.value.isWonGame = false;
@@ -3550,6 +3555,8 @@ class BoardStats {
       statsObject.value.eightZini = eightZini;
       statsObject.value.womZini = womZini;
       statsObject.value.womHzini = womHzini;
+      statsObject.value.cWomZini = cWomZini;
+      statsObject.value.cWomHzini = cWomHzini;
       statsObject.value.pttaLink = pttaLink;
     }
   }
@@ -3558,9 +3565,13 @@ class BoardStats {
     this.calcZinis(true);
     const womZini = this.womZini;
     const womHzini = this.womHzini;
+    const cWomZini = this.cWomZini;
+    const cWomHzini = this.cWomHzini;
 
     statsObject.value.womZini = womZini;
     statsObject.value.womHzini = womHzini;
+    statsObject.value.cWomZini = cWomZini;
+    statsObject.value.cWomHzini = cWomHzini;
   }
 
   addEndTime(time) {

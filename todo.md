@@ -21,8 +21,6 @@ Remove on component unmount?
 
 Include raw coords in BoardStats.clicks info
 
-Implement womzini
-
 Make algorithms class static
 
 Undo button? Too similar to replay feature?
@@ -55,8 +53,6 @@ Which chords have high "weirdness" - this is how often the chords appear in norm
 
 review subzini trick for generating eff boards (is there a better formula? e.g. subzini < 3bv/50 + 2)
 
-womzini
-
 option to use thrp instead of eff
 
 remove unused comments and spammy console.logs
@@ -69,10 +65,10 @@ Make some settings persist (e.g. QuickPaint preferences)
 
 Do random zinis actually vary that much? They probably always do all the 1 chords first which are disjoint.
 
-Small bug with depressing squares and then placing flag - flag doesn't show under undepressing
-
 Test womzini on 3bv > 500
 
 During inclusion-exclusion zini, try profile how much each chord affects the global solution (e.g. Which squares need to be recomputed depending on it's inclusion?)
 
 Add freesweeper to others page?
+
+make stuff that lets you edit boards and show what the path is that womzini took

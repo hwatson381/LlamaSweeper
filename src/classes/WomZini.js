@@ -1,7 +1,7 @@
 //Adapted from on zini code from minesweeper.online
 
 class WomZini {
-  static createdWomBoardDataObject(mines, preprocessedData, applyOpeningEdgeCorrection) {
+  static createWomBoardDataObject(mines, preprocessedData, applyOpeningEdgeCorrection) {
     const width = mines.length;
     const height = mines[0].length;
     const { numbersArray, openingLabels, preprocessedOpenings } =
@@ -21,7 +21,7 @@ class WomZini {
 
         womOpeningLabelsArray.push(0); //just initialise these
         womSecondaryOpeningLabelsArray.push(0);
-        womOpeningEdgesArray.push(0);
+        womOpeningEdgesArray.push(false);
       }
     }
 
@@ -39,7 +39,7 @@ class WomZini {
 
         if (womOpeningLabelsArray[womIndex] === 0) {
           womOpeningLabelsArray[womIndex] = label;
-          womOpeningEdgesArray[womIndex] = 1;
+          womOpeningEdgesArray[womIndex] = true;
         } else {
           //If this square is also an edge of another opening, then put it in the double openings array
           womSecondaryOpeningLabelsArray[womIndex] = label;
@@ -47,14 +47,21 @@ class WomZini {
       }
     }
 
-    return {
+    let boardData = {
       f: [], //flags - not used by zini
       g: womOpeningLabelsArray,
       g2: womSecondaryOpeningLabelsArray,
       o: [], //squares that have been opened, not used by zini
-      t: womNumbersArray,
-      womOpeningEdgesArray: womOpeningEdgesArray
+      t: womNumbersArray
     };
+
+    if (applyOpeningEdgeCorrection) {
+      // In the wom zini code will only use this array if it exists.
+      // The idea is to check which squares on edge of opening and apply correction to premium
+      boardData.womOpeningEdgesArray = womOpeningEdgesArray;
+    }
+
+    return boardData
   }
 
   //c215 = Func for calculating zini. 
@@ -73,7 +80,7 @@ class WomZini {
     l: width or height
     r: minecount
   */
-  static c215(e, i, n, l, r, useOpEdgeCorrection) {
+  static c215(e, i, n, l, r) {
     if (typeof window < "u" && !("Uint8Array" in window))
       return { total: 0, clicks: [] };
     let p = n * l - r
@@ -96,6 +103,9 @@ class WomZini {
         m.g2[f] = i.g2[f],
         m.p[f] = 0,
         m.t[f] == 11 && (m.t[f] = 10);
+    if (i.womOpeningEdgesArray) {
+      m.womOpeningEdgesArray = i.womOpeningEdgesArray.slice(0);
+    }
     if (e) {
       let openingsLabelsClicked = [];
       for (let f = 0; f < n; f++) {
@@ -232,33 +242,91 @@ class WomZini {
   //Compute premiums, although undercounts for op-edge squares
   static c216(e, i, n, l, r) {
     if (r.t[e * l + i] == 0 || r.t[e * l + i] == 10)
-      return -100;
-    let p = 0;
-    return r.o[e * l + i] || (p -= 1),
-      p -= 1,
-      r.g[e * l + i] || (p += 1),
-      e - 1 >= 0 && i - 1 >= 0 && (r.t[(e - 1) * l + (i - 1)] == 10 ? r.f[(e - 1) * l + (i - 1)] || p-- : !r.o[(e - 1) * l + (i - 1)] && !r.g[(e - 1) * l + (i - 1)] && p++),
-      i - 1 >= 0 && (r.t[e * l + (i - 1)] == 10 ? r.f[e * l + (i - 1)] || p-- : !r.o[e * l + (i - 1)] && !r.g[e * l + (i - 1)] && p++),
-      e + 1 < n && i - 1 >= 0 && (r.t[(e + 1) * l + (i - 1)] == 10 ? r.f[(e + 1) * l + (i - 1)] || p-- : !r.o[(e + 1) * l + (i - 1)] && !r.g[(e + 1) * l + (i - 1)] && p++),
-      e - 1 >= 0 && (r.t[(e - 1) * l + i] == 10 ? r.f[(e - 1) * l + i] || p-- : !r.o[(e - 1) * l + i] && !r.g[(e - 1) * l + i] && p++),
-      e + 1 < n && (r.t[(e + 1) * l + i] == 10 ? r.f[(e + 1) * l + i] || p-- : !r.o[(e + 1) * l + i] && !r.g[(e + 1) * l + i] && p++),
-      e - 1 >= 0 && i + 1 < l && (r.t[(e - 1) * l + (i + 1)] == 10 ? r.f[(e - 1) * l + (i + 1)] || p-- : !r.o[(e - 1) * l + (i + 1)] && !r.g[(e - 1) * l + (i + 1)] && p++),
-      i + 1 < l && (r.t[e * l + (i + 1)] == 10 ? r.f[e * l + (i + 1)] || p-- : !r.o[e * l + (i + 1)] && !r.g[e * l + (i + 1)] && p++),
-      e + 1 < n && i + 1 < l && (r.t[(e + 1) * l + (i + 1)] == 10 ? r.f[(e + 1) * l + (i + 1)] || p-- : !r.o[(e + 1) * l + (i + 1)] && !r.g[(e + 1) * l + (i + 1)] && p++),
-      r.g2[e * l + i] && (e - 1 >= 0 && i - 1 >= 0 && r.t[(e - 1) * l + (i - 1)] == 0 && !r.o[(e - 1) * l + (i - 1)] || i - 1 >= 0 && r.t[e * l + (i - 1)] == 0 && !r.o[e * l + (i - 1)] || e + 1 < n && i - 1 >= 0 && r.t[(e + 1) * l + (i - 1)] == 0 && !r.o[(e + 1) * l + (i - 1)] || e - 1 >= 0 && r.t[(e - 1) * l + i] == 0 && !r.o[(e - 1) * l + i] || e + 1 < n && r.t[(e + 1) * l + i] == 0 && !r.o[(e + 1) * l + i] || e - 1 >= 0 && i + 1 < l && r.t[(e - 1) * l + (i + 1)] == 0 && !r.o[(e - 1) * l + (i + 1)] || i + 1 < l && r.t[e * l + (i + 1)] == 0 && !r.o[e * l + (i + 1)] || e + 1 < n && i + 1 < l && r.t[(e + 1) * l + (i + 1)] == 0 && !r.o[(e + 1) * l + (i + 1)]) ? p + 1 : p
+      return -100; //premium for mines/zeros = -100
+    let p = 0; //premium starts at zero
+    r.o[e * l + i] || (p -= 1); //decrease if chord cell needs to be opened
+    p -= 1; //decrease for chord click
+    r.g[e * l + i] || (p += 1); //increase if chord cell is 3bv
+    //stuff below checks the neighbour cells and decrements if unflagged cell or increments if 3bv cell
+    e - 1 >= 0 && i - 1 >= 0 && (r.t[(e - 1) * l + (i - 1)] == 10 ? r.f[(e - 1) * l + (i - 1)] || p-- : !r.o[(e - 1) * l + (i - 1)] && !r.g[(e - 1) * l + (i - 1)] && p++);
+    i - 1 >= 0 && (r.t[e * l + (i - 1)] == 10 ? r.f[e * l + (i - 1)] || p-- : !r.o[e * l + (i - 1)] && !r.g[e * l + (i - 1)] && p++);
+    e + 1 < n && i - 1 >= 0 && (r.t[(e + 1) * l + (i - 1)] == 10 ? r.f[(e + 1) * l + (i - 1)] || p-- : !r.o[(e + 1) * l + (i - 1)] && !r.g[(e + 1) * l + (i - 1)] && p++);
+    e - 1 >= 0 && (r.t[(e - 1) * l + i] == 10 ? r.f[(e - 1) * l + i] || p-- : !r.o[(e - 1) * l + i] && !r.g[(e - 1) * l + i] && p++);
+    e + 1 < n && (r.t[(e + 1) * l + i] == 10 ? r.f[(e + 1) * l + i] || p-- : !r.o[(e + 1) * l + i] && !r.g[(e + 1) * l + i] && p++);
+    e - 1 >= 0 && i + 1 < l && (r.t[(e - 1) * l + (i + 1)] == 10 ? r.f[(e - 1) * l + (i + 1)] || p-- : !r.o[(e - 1) * l + (i + 1)] && !r.g[(e - 1) * l + (i + 1)] && p++);
+    i + 1 < l && (r.t[e * l + (i + 1)] == 10 ? r.f[e * l + (i + 1)] || p-- : !r.o[e * l + (i + 1)] && !r.g[e * l + (i + 1)] && p++);
+    e + 1 < n && i + 1 < l && (r.t[(e + 1) * l + (i + 1)] == 10 ? r.f[(e + 1) * l + (i + 1)] || p-- : !r.o[(e + 1) * l + (i + 1)] && !r.g[(e + 1) * l + (i + 1)] && p++);
+
+    if (!r.womOpeningEdgesArray) {
+      //increment premium if cell that touches two openings
+      r.g2[e * l + i] && (e - 1 >= 0 && i - 1 >= 0 && r.t[(e - 1) * l + (i - 1)] == 0 && !r.o[(e - 1) * l + (i - 1)] || i - 1 >= 0 && r.t[e * l + (i - 1)] == 0 && !r.o[e * l + (i - 1)] || e + 1 < n && i - 1 >= 0 && r.t[(e + 1) * l + (i - 1)] == 0 && !r.o[(e + 1) * l + (i - 1)] || e - 1 >= 0 && r.t[(e - 1) * l + i] == 0 && !r.o[(e - 1) * l + i] || e + 1 < n && r.t[(e + 1) * l + i] == 0 && !r.o[(e + 1) * l + i] || e - 1 >= 0 && i + 1 < l && r.t[(e - 1) * l + (i + 1)] == 0 && !r.o[(e - 1) * l + (i + 1)] || i + 1 < l && r.t[e * l + (i + 1)] == 0 && !r.o[e * l + (i + 1)] || e + 1 < n && i + 1 < l && r.t[(e + 1) * l + (i + 1)] == 0 && !r.o[(e + 1) * l + (i + 1)]) ? p++ : p;
+    } else {
+      let unrevealedOpeningsTouched = this.countUnopenedOpeningsTouchingCell(e, i, n, l, r);
+      p += unrevealedOpeningsTouched;
+    }
+
+    return p;
+  }
+
+  //func by me for correcting zini
+  //r contains board data (kept same variable name as used in c216)
+  static countUnopenedOpeningsTouchingCell(x, y, width, height, r) {
+    if (!r.womOpeningEdgesArray) {
+      throw new Error('womOpeningEdgesArray undefined, but countOpeningsTouchingCell was called');
+    }
+    if (r.womOpeningEdgesArray[x * height + y] === false) {
+      //square not opening edge - not worth checking
+      return 0;
+    }
+
+    //code added by me for checking openings touched
+    let neighbours = [
+      { x: x - 1, y: y - 1 },
+      { x: x - 1, y: y },
+      { x: x - 1, y: y + 1 },
+      { x: x, y: y - 1 },
+      { x: x, y: y + 1 },
+      { x: x + 1, y: y - 1 },
+      { x: x + 1, y: y },
+      { x: x + 1, y: y + 1 },
+    ];
+    neighbours = neighbours.filter((square) =>
+      square.x >= 0 && square.x < width && square.y >= 0 && square.y < height
+    );
+
+    let openingsLabelsTouched = [];
+    for (let square of neighbours) {
+      if (!r.o[square.x * height + square.y] && r.t[square.x * height + square.y] === 0) {
+        //Square unopened, and is a zero, so this is an "opening" 3bv
+        let openingLabel = r.g[square.x * height + square.y]
+        if (!openingsLabelsTouched.includes(openingLabel)) {
+          openingsLabelsTouched.push(openingLabel);
+        }
+      }
+    }
+
+    return openingsLabelsTouched.length
   }
 
   //Reveal square, and squares linked to opening if there are any. Also updates premiums
   static o68(e, i, n, l, r) {
     let p = 1;
     if (r.o[e * l + i] = 1,
-      r.t[e * l + i] == 0) {
-      for (let o = 0; o < n; o++)
-        for (let d = 0; d < l; d++)
-          (r.g[o * l + d] == r.g[e * l + i] || r.g2[o * l + d] == r.g[e * l + i]) && !(o == e && d == i) && (r.o[o * l + d] || (r.o[o * l + d] = 1,
-            p++,
-            r.t[o * l + d] != 0 && r.p[o * l + d]++),
-            r.t[o * l + d] != 0 && r.p[o * l + d]--);
+      r.t[e * l + i] == 0) { //if it's a zero tile
+      for (let o = 0; o < n; o++) {
+        for (let d = 0; d < l; d++) {
+          //for all squares (except this one) in this opening
+          if ((r.g[o * l + d] == r.g[e * l + i] || r.g2[o * l + d] == r.g[e * l + i]) && !(o == e && d == i)) {
+            //if not already opened
+            if (!r.o[o * l + d]) {
+              r.o[o * l + d] = 1; //open square
+              p++;
+              r.t[o * l + d] != 0 && r.p[o * l + d]++ //if op edge, increase premium (since it no longer needs to be clicked on)
+            }
+            r.t[o * l + d] != 0 && r.p[o * l + d]--; //if op edge, decrease premium, since it no longer touches this opening
+          }
+        }
+      }
       return p
     }
     return r.p[e * l + i]++,
