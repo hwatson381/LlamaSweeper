@@ -12,7 +12,15 @@
         explanation of what they are somewhere... Variants can be changed with
         the dropdown immediately below.
       </p>
-      <div style="border: 1px solid white; margin: 5px; border-radius: 5px">
+      <div
+        style="
+          border: 1px solid white;
+          margin: 5px;
+          border-radius: 5px;
+          padding: 5px;
+          max-width: 600px;
+        "
+      >
         <span>Random dev stuff box</span><br />
         <button @click="bulkrun">Bulk run</button>
         Use organised premiums:
@@ -49,10 +57,13 @@
         "
         stack-label
         label="Variant"
-        @update:model-value="game.reset()"
+        @update:model-value="game.reset(true)"
       ></q-select>
       <div class="flex" style="margin: 5px">
-        <div class="q-gutter-sm">
+        <div
+          class="q-gutter-sm"
+          v-if="variant !== 'board editor' && variant !== 'zini explorer'"
+        >
           <q-radio
             dense
             v-model="boardSizePreset"
@@ -89,7 +100,13 @@
           style="margin-left: 30px"
         />
       </div>
-      <template v-if="boardSizePreset === 'custom'">
+      <template
+        v-if="
+          boardSizePreset === 'custom' &&
+          variant !== 'board editor' &&
+          variant !== 'zini explorer'
+        "
+      >
         <div class="flex" style="gap: 10px; margin: 5px">
           <q-input
             debounce="100"
@@ -124,6 +141,78 @@
         </div>
         {{ customWarning }}
       </template>
+      <div
+        v-if="variant === 'board editor' || variant === 'zini explorer'"
+        class="flex"
+        style="margin: 5px; gap: 10px"
+      >
+        <q-input
+          debounce="100"
+          v-model.number="editBoardUnappliedWidth"
+          label="Width"
+          type="number"
+          dense
+          min="1"
+          max="100"
+        />
+        <q-input
+          debounce="100"
+          v-model.number="editBoardUnappliedHeight"
+          label="Height"
+          type="number"
+          dense
+          min="1"
+          max="100"
+        />
+        <q-btn-group>
+          <q-btn
+            color="primary"
+            label="Beg"
+            @click="
+              editBoardUnappliedWidth = 9;
+              editBoardUnappliedHeight = 9;
+            "
+          />
+          <q-btn
+            color="primary"
+            label="Int"
+            @click="
+              editBoardUnappliedWidth = 16;
+              editBoardUnappliedHeight = 16;
+            "
+          />
+          <q-btn
+            color="primary"
+            label="Exp"
+            @click="
+              editBoardUnappliedWidth = 30;
+              editBoardUnappliedHeight = 16;
+            "
+          />
+        </q-btn-group>
+        <q-btn
+          @click="game.board.applyEditBoardWidthHeight()"
+          color="positive"
+          label="new board"
+        />
+        <q-btn
+          @click="
+            isCurrentlyEditModeDisplay
+              ? game.board.switchToPlayMode()
+              : game.board.switchToEditMode()
+          "
+          color="positive"
+        >
+          {{
+            isCurrentlyEditModeDisplay ? "edit mode active" : "play mode active"
+          }}</q-btn
+        >
+        <q-btn
+          @click="pttaImportModal = true"
+          color="positive"
+          label="ptt import"
+        />
+      </div>
       <div v-if="variant === 'eff boards'">
         Generating boards with target eff: {{ minimumEff }}% (change this in
         settings below)
@@ -448,6 +537,10 @@
                   v-model="quickPaintMinimalMode"
                   label="QuickPaint minimal mode"
                 />
+                <q-checkbox
+                  v-model="quickPaintOnlyTrivialLogic"
+                  label="QuickPaint only use single number logic (e.g. no 1-2 patterns)"
+                />
               </div>
             </q-tab-panel>
           </q-tab-panels>
@@ -576,7 +669,40 @@
             v-model="quickPaintMinimalMode"
             label="QuickPaint minimal mode"
           />
+          <q-checkbox
+            v-model="quickPaintOnlyTrivialLogic"
+            label="QuickPaint only use single number logic (e.g. no 1-2 patterns)"
+          />
         </div>
+      </q-card-section>
+
+      <q-card-actions align="right" class="text-primary">
+        <q-btn flat label="Close" v-close-popup />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
+  <q-dialog v-model="pttaImportModal">
+    <q-card style="min-width: 350px">
+      <q-card-section>
+        <div class="text-h6">PTTA Import</div>
+      </q-card-section>
+
+      <q-card-section class="q-pt-none">
+        <p>
+          This dialogue can be used to copy boards from the
+          <a
+            target="_blank"
+            href="https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/"
+            >PTTACGfans ZiNi calculator</a
+          >. Simply copy the full URL when on a board and paste in the text box
+          and then click load. This works because the bit at the end of the URL
+          on the PTTACGfans calculator encodes board data.
+        </p>
+        <q-input dense v-model="pttaUrl" label="Ptt Url" /><br />
+        <q-btn @click="game.board.importPttaBoard()" color="primary"
+          >Load</q-btn
+        >
       </q-card-section>
 
       <q-card-actions align="right" class="text-primary">
@@ -887,6 +1013,11 @@ watchEffect(() => {
   } else {
     effShuffleManager && effShuffleManager.deactivateBackgroundGeneration();
   }
+  /* OK TO DELETE
+  if (variant.value === "board editor" || variant.value === "zini explorer") {
+    game.board && game.board.revertUnappliedWidthHeightSetting();
+  }
+  */
 });
 watch([boardWidth, boardHeight, boardMines, minimumEff], () => {
   if (variant.value === "eff boards" && generateEffBoardsInBackground.value) {
@@ -899,12 +1030,91 @@ let quickPaintModeDisplay = ref("Guess");
 let quickPaintClearable = ref("guesses");
 let quickPaintInitialOnlyMines = ref(true);
 let quickPaintMinimalMode = ref(true);
+let quickPaintOnlyTrivialLogic = ref(false);
 let quickPaintHelpModal = ref(false);
+
+let editBoardUnappliedWidth = ref(9);
+let editBoardUnappliedHeight = ref(9);
+let pttaImportModal = ref(false);
+let isCurrentlyEditModeDisplay = ref(true); //Lines up with game.board.gameStage = 'edit' - consider making ...gameStage a ref instead.
 
 let useOrgPrem = ref(false);
 let use8Way = ref(false);
 let bulkIterations = ref(1000);
 function bulkrun() {
+  //Entries are diffs and counts
+  let oneDiff = new Map();
+  let eightDiff = new Map();
+  let womFixDiff = new Map();
+
+  for (let i = 0; i < bulkIterations.value; i++) {
+    let mines = BoardGenerator.basicShuffle(
+      boardWidth.value,
+      boardHeight.value,
+      boardMines.value
+    );
+
+    benchmark.startTime("one-way");
+    let oneZini = algorithms.calcOneWayZini(mines);
+    benchmark.stopTime("one-way");
+
+    benchmark.startTime("8-way");
+    let eightZini = algorithms.calcEightWayZini(mines);
+    benchmark.stopTime("8-way");
+
+    //wom zini without correction
+    benchmark.startTime("wom-zini-hzini-no-corr");
+    let womZini = algorithms.calcWomZiniAndHZini(mines, false).womZini.total;
+    benchmark.stopTime("wom-zini-hzini-no-corr");
+
+    //wom zini with correction
+    benchmark.startTime("wom-zini-hzini-with-corr");
+    let womFixZini = algorithms.calcWomZiniAndHZini(mines, true).womZini.total;
+    benchmark.stopTime("wom-zini-hzini-with-corr");
+
+    let thisOneDiff = oneZini - womZini;
+    let thisEightDiff = eightZini - womZini;
+    let thisWomFixDiff = womFixZini - womZini;
+
+    oneDiff.set(thisOneDiff, (oneDiff.get(thisOneDiff) ?? 0) + 1);
+    eightDiff.set(thisEightDiff, (eightDiff.get(thisEightDiff) ?? 0) + 1);
+    womFixDiff.set(thisWomFixDiff, (womFixDiff.get(thisWomFixDiff) ?? 0) + 1);
+  }
+
+  benchmark.report();
+  benchmark.clearAll();
+
+  //report zini differences
+  let oneZiniOut = "One-way zini stats: \n";
+  let oneZiniDiffSum = 0;
+  for (let [key, val] of [...oneDiff.entries()].sort((a, b) => a[0] - b[0])) {
+    oneZiniOut += `${key} | ${val}` + "\n";
+    oneZiniDiffSum += key * val;
+  }
+  oneZiniOut += `Average-diff: ${oneZiniDiffSum / bulkIterations.value}`;
+  console.log(oneZiniOut);
+
+  let eightZiniOut = "Eight-way zini stats: \n";
+  let eightZiniDiffSum = 0;
+  for (let [key, val] of [...eightDiff.entries()].sort((a, b) => a[0] - b[0])) {
+    eightZiniOut += `${key} | ${val}` + "\n";
+    eightZiniDiffSum += key * val;
+  }
+  eightZiniOut += `Average-diff: ${eightZiniDiffSum / bulkIterations.value}`;
+  console.log(eightZiniOut);
+
+  let womFixZiniOut = "WoM zini WITH FIX stats: \n";
+  let womFixZiniDiffSum = 0;
+  for (let [key, val] of [...womFixDiff.entries()].sort(
+    (a, b) => a[0] - b[0]
+  )) {
+    womFixZiniOut += `${key} | ${val}` + "\n";
+    womFixZiniDiffSum += key * val;
+  }
+  womFixZiniOut += `Average-diff: ${womFixZiniDiffSum / bulkIterations.value}`;
+  console.log(womFixZiniOut);
+
+  /*
   let eight200 = 0;
   let single200 = 0;
   let singleNeedsInvestigating = 0;
@@ -960,6 +1170,7 @@ function bulkrun() {
   );
   benchmark.report();
   benchmark.clearAll();
+  */
 }
 
 class Game {
@@ -976,19 +1187,13 @@ class Game {
     );
   }
 
-  reset() {
+  reset(isVariantChange = false) {
     if (!this.board) {
       window.alert("Board has not been initialised yet. Reset failed.");
       return;
     }
 
-    this.board.resetBoard(
-      boardWidth.value,
-      boardHeight.value,
-      boardMines.value,
-      tileSizeSlider.value,
-      variant.value
-    );
+    this.board.resetBoard(isVariantChange);
   }
 
   resetAndUnfocus() {
@@ -1042,31 +1247,103 @@ class Game {
 }
 
 class Board {
-  constructor(width, height, mineCount, tileSize, variant) {
+  constructor() {
     this.gameStage = "uninitialised";
     this.updateTimerSetTimeoutHandle = null; //Handle for starting/stopping setTimeOut process that checks whether timer needs updating
     this.isLeftMouseDown = false;
 
-    this.resetBoard(width, height, mineCount, tileSize, variant);
+    //Boards used for "edit board" variant and "zini board" variant. These persist across resets.
+    this.boardEditorMines = new Array(9)
+      .fill(0)
+      .map(() => new Array(9).fill(false));
+    this.ziniExplorerMines = new Array(9)
+      .fill(0)
+      .map(() => new Array(9).fill(false));
+    this.editingEditBoard = true;
+    this.editingZiniBoard = true;
+
+    this.resetBoard();
   }
 
-  resetBoard(width, height, mineCount, tileSize, variant) {
+  resetBoard(isVariantChange = false) {
+    if (
+      !isVariantChange &&
+      (this.variant === "board editor" || this.variant === "zini explorer") &&
+      this.gameStage === "edit"
+    ) {
+      //Edit mode cannot be reset
+      return;
+    }
+
+    if (
+      isVariantChange &&
+      (this.variant === "board editor" || this.variant === "zini explorer")
+    ) {
+      this.revertUnappliedWidthHeightSetting();
+    }
+
     //Set to state of board pregame where everything is unrevealed and mines haven't been generated yet
-    this.width = width;
-    this.height = height;
-    this.mineCount = mineCount;
-    this.tileSize = tileSize;
-    this.variant = variant;
+    this.width = boardWidth.value;
+    this.height = boardHeight.value;
+    this.mineCount = boardMines.value;
+    this.tileSize = tileSizeSlider.value;
+    this.variant = variant.value;
+
+    this.gameStage = "pregame";
+
+    //Perhaps slightly confusing - for editable boards, set this.mines to refer to either the board editor or zini explorer.
+    //This way it gets saved when we switch variants
+    if (this.variant === "board editor") {
+      this.mines = this.boardEditorMines;
+    } else if (this.variant === "zini explorer") {
+      this.mines = this.ziniExplorerMines;
+    } else {
+      this.mines = null;
+    }
+
+    //board editor/zini explorer use different width/height/mines
+    if (this.variant === "board editor" || this.variant === "zini explorer") {
+      this.width = this.mines.length;
+      this.height = this.mines[0].length;
+      this.mineCount = this.mines.flat().filter((val) => val).length;
+    }
+
+    /*
+    //board editor/zini explorer use different width/height/mines
+    if (this.variant === "board editor") {
+      this.width = this.boardEditorMines.length;
+      this.height = this.boardEditorMines[0].length;
+      this.mineCount = this.boardEditorMines.flat().filter((val) => val).length;
+    } else if (this.variant === "zini explorer") {
+      this.width = this.ziniExplorerMines.length;
+      this.height = this.ziniExplorerMines[0].length;
+      this.mineCount = this.ziniExplorerMines.flat().filter((val) => val).length;
+    }
+    */
+
+    if (this.variant === "board editor" && this.editingEditBoard) {
+      this.gameStage = "edit";
+      isCurrentlyEditModeDisplay.value = true;
+    } else if (this.variant === "zini explorer" && this.editingZiniBoard) {
+      this.gameStage = "edit";
+      isCurrentlyEditModeDisplay.value = true;
+    } else {
+      this.gameStage = "pregame";
+      isCurrentlyEditModeDisplay.value = false;
+    }
 
     this.hoveredSquare = { x: null, y: null }; //Square that is being hovered over
 
-    this.mines = null;
     //The states of the tiles (e.g. whether they are unrevealed or show a number amongst other things)
     this.tilesArray = new Array(this.width)
       .fill(0)
       .map(() =>
         new Array(this.height).fill(0).map(() => new Tile(UNREVEALED))
       );
+
+    if (this.gameStage === "edit") {
+      this.openBoardForEdit();
+    }
 
     this.blasted = false;
     this.openedTiles = 0;
@@ -1077,7 +1354,6 @@ class Board {
 
     this.clearTimerTimeout();
 
-    this.gameStage = "pregame";
     showStatsBlock.value = false;
     this.quickPaintActive = false;
     showQuickPaintOptions.value = false;
@@ -1090,9 +1366,9 @@ class Board {
     this.whiteOrangeCount = 0; //orange + white
 
     mainCanvas.value.width =
-      width * tileSizeSlider.value + 2 * boardHorizontalPadding.value;
+      this.width * tileSizeSlider.value + 2 * boardHorizontalPadding.value;
     mainCanvas.value.height =
-      height * tileSizeSlider.value +
+      this.height * tileSizeSlider.value +
       boardTopPadding.value +
       boardBottomPadding.value;
 
@@ -1117,8 +1393,99 @@ class Board {
     this.draw();
   }
 
+  revertUnappliedWidthHeightSetting() {
+    //For board editor and zini explorer, we use a different way to change board size.
+    //Update the value shown for this in the width/height inputs to be the current value
+
+    if (variant.value === "board editor") {
+      editBoardUnappliedWidth.value = this.boardEditorMines.length;
+      editBoardUnappliedHeight.value = this.boardEditorMines[0].length;
+    } else if (variant.value === "zini explorer") {
+      editBoardUnappliedWidth.value = this.ziniExplorerMines.length;
+      editBoardUnappliedHeight.value = this.ziniExplorerMines[0].length;
+    }
+  }
+
+  applyEditBoardWidthHeight() {
+    if (
+      typeof editBoardUnappliedWidth.value !== "number" ||
+      typeof editBoardUnappliedHeight.value !== "number"
+    ) {
+      return;
+    }
+
+    editBoardUnappliedWidth.value = clamp(
+      Math.floor(editBoardUnappliedWidth.value),
+      1,
+      100
+    );
+    editBoardUnappliedHeight.value = clamp(
+      Math.floor(editBoardUnappliedHeight.value),
+      1,
+      100
+    );
+
+    this.width = editBoardUnappliedWidth.value;
+    this.height = editBoardUnappliedHeight.value;
+
+    const newBoardMines = new Array(editBoardUnappliedWidth.value)
+      .fill(0)
+      .map(() => new Array(editBoardUnappliedHeight.value).fill(false));
+
+    if (variant.value === "board editor") {
+      this.boardEditorMines = newBoardMines;
+      this.mines = this.boardEditorMines; //set mines as a reference to board editor mines
+    } else if (variant.value === "zini explorer") {
+      this.ziniExplorerMines = newBoardMines;
+      this.mines = this.ziniExplorerMines; //set mines as a reference to zini explorer mines
+    }
+
+    this.switchToEditMode();
+
+    /* OK TO DELETE
+    this.mineCount = 0;
+    this.unflagged = 0;
+
+    this.openBoardForEdit(); //set tilesArray to all be zeros
+    */
+
+    this.draw();
+  }
+
+  openBoardForEdit() {
+    //Update tilesArray such that it corresponds to an open board with mines as per the appropriate mine board.
+
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        if (this.mines[x][y]) {
+          this.tilesArray[x][y].state = MINE;
+          continue;
+        }
+
+        let tileNumber = 0;
+        for (let i = x - 1; i <= x + 1; i++) {
+          for (let j = y - 1; j <= y + 1; j++) {
+            if (!this.checkCoordsInBounds(i, j)) {
+              continue;
+            }
+
+            if (this.mines[i][j]) {
+              tileNumber++;
+            }
+          }
+        }
+
+        this.tilesArray[x][y].state = tileNumber;
+      }
+    }
+  }
+
   handleMouseDown(event) {
-    if (this.gameStage !== "pregame" && this.gameStage !== "running") {
+    if (
+      this.gameStage !== "pregame" &&
+      this.gameStage !== "running" &&
+      this.gameStage !== "edit"
+    ) {
       return;
     }
 
@@ -1131,6 +1498,12 @@ class Board {
         flooredCoords.tileY,
         event
       );
+      this.draw();
+      return;
+    }
+
+    if (this.gameStage === "edit") {
+      this.handleEditClick(flooredCoords.tileX, flooredCoords.tileY, event);
       this.draw();
       return;
     }
@@ -1201,6 +1574,10 @@ class Board {
       //Do nothing as quickpaint uses mouseDown
       return;
     }
+    if (this.gameStage === "edit") {
+      //Do nothing as edit clicks use mouseDown
+      return;
+    }
 
     if (this.gameStage === "pregame") {
       const generationResult = this.generateBoard(
@@ -1254,6 +1631,10 @@ class Board {
       //Do nothing as quickpaint
       return;
     }
+    if (this.gameStage === "edit") {
+      //Do nothing as edit mode - consider disabling stats object entirely for this mode
+      return;
+    }
 
     let unflooredCoords = this.eventToUnflooredTileCoords(event);
 
@@ -1296,6 +1677,11 @@ class Board {
       if (effBoardResult.firstClick) {
         rewrittenFirstClick = effBoardResult.firstClick;
       }
+    } else if (
+      this.variant === "board editor" ||
+      this.variant === "zini explorer"
+    ) {
+      //Do nothing as this.mines is constant on these modes, so doesn't need to be regenerated?
     } else {
       this.mines = BoardGenerator.basicShuffle(
         this.width,
@@ -1905,139 +2291,141 @@ class Board {
           }
 
           //subtraction formula
-          numberNeighbours.forEach((other) => {
-            let otherTile = this.tilesArray[other.x][other.y];
+          if (!quickPaintOnlyTrivialLogic.value) {
+            numberNeighbours.forEach((other) => {
+              let otherTile = this.tilesArray[other.x][other.y];
 
-            let otherNumber = otherTile.state; //guaranteed to be number as that's how we constructed numberNeighbours
+              let otherNumber = otherTile.state; //guaranteed to be number as that's how we constructed numberNeighbours
 
-            //touching squares for neighbour cell
-            let otherNeighbours = [
-              { x: other.x - 1, y: other.y - 1 },
-              { x: other.x - 1, y: other.y },
-              { x: other.x - 1, y: other.y + 1 },
-              { x: other.x, y: other.y - 1 },
-              { x: other.x, y: other.y + 1 },
-              { x: other.x + 1, y: other.y - 1 },
-              { x: other.x + 1, y: other.y },
-              { x: other.x + 1, y: other.y + 1 },
-            ];
-            otherNeighbours = otherNeighbours.filter((square) =>
-              this.checkCoordsInBounds(square.x, square.y)
-            );
-
-            let onlyThisMine = [];
-            let onlyNeighbourMine = [];
-
-            let onlyThisSafe = [];
-            let onlyNeighbourSafe = [];
-
-            let onlyThisUnknown = [];
-            let onlyNeighbourUnknown = [];
-
-            //Make note of the squares that only belong to thisTile
-            for (let thisNeighbour of neighbours) {
-              if (
-                otherNeighbours.some(
-                  (otherNeighbour) =>
-                    thisNeighbour.x === otherNeighbour.x &&
-                    thisNeighbour.y === otherNeighbour.y
-                )
-              ) {
-                continue;
-              }
-
-              if (knownSafes[thisNeighbour.x][thisNeighbour.y]) {
-                onlyThisSafe.push({ x: thisNeighbour.x, y: thisNeighbour.y });
-              }
-              if (knownMines[thisNeighbour.x][thisNeighbour.y]) {
-                onlyThisMine.push({ x: thisNeighbour.x, y: thisNeighbour.y });
-              }
-              if (
-                !knownSafes[thisNeighbour.x][thisNeighbour.y] &&
-                !knownMines[thisNeighbour.x][thisNeighbour.y]
-              ) {
-                onlyThisUnknown.push({
-                  x: thisNeighbour.x,
-                  y: thisNeighbour.y,
-                });
-              }
-            }
-
-            //Make note of the squares that only belong to otherTile
-            for (let otherNeighbour of otherNeighbours) {
-              if (
-                neighbours.some(
-                  (thisNeighbour) =>
-                    thisNeighbour.x === otherNeighbour.x &&
-                    thisNeighbour.y === otherNeighbour.y
-                )
-              ) {
-                continue;
-              }
-
-              if (knownSafes[otherNeighbour.x][otherNeighbour.y]) {
-                onlyNeighbourSafe.push({
-                  x: otherNeighbour.x,
-                  y: otherNeighbour.y,
-                });
-              }
-              if (knownMines[otherNeighbour.x][otherNeighbour.y]) {
-                onlyNeighbourMine.push({
-                  x: otherNeighbour.x,
-                  y: otherNeighbour.y,
-                });
-              }
-              if (
-                !knownSafes[otherNeighbour.x][otherNeighbour.y] &&
-                !knownMines[otherNeighbour.x][otherNeighbour.y]
-              ) {
-                onlyNeighbourUnknown.push({
-                  x: otherNeighbour.x,
-                  y: otherNeighbour.y,
-                });
-              }
-            }
-
-            //nothing to do if the only unknowns are both empty
-            if (onlyThisUnknown.length + onlyNeighbourUnknown.length === 0) {
-              return;
-            }
-
-            //do checks to find logic from subtraction formula
-
-            //Could all onlyNeighbour unknowns be mines and all onlyThis unknowns be safe
-            if (
-              onlyNeighbourMine.length +
-                onlyNeighbourUnknown.length -
-                onlyThisMine.length ===
-              otherNumber - thisNumber
-            ) {
-              //onlyNeighbours forced high and onlyThis forced low
-              foundThisLoop = true;
-              onlyNeighbourUnknown.forEach(
-                (square) => (knownMines[square.x][square.y] = true)
+              //touching squares for neighbour cell
+              let otherNeighbours = [
+                { x: other.x - 1, y: other.y - 1 },
+                { x: other.x - 1, y: other.y },
+                { x: other.x - 1, y: other.y + 1 },
+                { x: other.x, y: other.y - 1 },
+                { x: other.x, y: other.y + 1 },
+                { x: other.x + 1, y: other.y - 1 },
+                { x: other.x + 1, y: other.y },
+                { x: other.x + 1, y: other.y + 1 },
+              ];
+              otherNeighbours = otherNeighbours.filter((square) =>
+                this.checkCoordsInBounds(square.x, square.y)
               );
-              onlyThisUnknown.forEach(
-                (square) => (knownSafes[square.x][square.y] = true)
-              );
-            } else if (
-              onlyThisMine.length +
-                onlyThisUnknown.length -
-                onlyNeighbourMine.length ===
-              thisNumber - otherNumber
-            ) {
+
+              let onlyThisMine = [];
+              let onlyNeighbourMine = [];
+
+              let onlyThisSafe = [];
+              let onlyNeighbourSafe = [];
+
+              let onlyThisUnknown = [];
+              let onlyNeighbourUnknown = [];
+
+              //Make note of the squares that only belong to thisTile
+              for (let thisNeighbour of neighbours) {
+                if (
+                  otherNeighbours.some(
+                    (otherNeighbour) =>
+                      thisNeighbour.x === otherNeighbour.x &&
+                      thisNeighbour.y === otherNeighbour.y
+                  )
+                ) {
+                  continue;
+                }
+
+                if (knownSafes[thisNeighbour.x][thisNeighbour.y]) {
+                  onlyThisSafe.push({ x: thisNeighbour.x, y: thisNeighbour.y });
+                }
+                if (knownMines[thisNeighbour.x][thisNeighbour.y]) {
+                  onlyThisMine.push({ x: thisNeighbour.x, y: thisNeighbour.y });
+                }
+                if (
+                  !knownSafes[thisNeighbour.x][thisNeighbour.y] &&
+                  !knownMines[thisNeighbour.x][thisNeighbour.y]
+                ) {
+                  onlyThisUnknown.push({
+                    x: thisNeighbour.x,
+                    y: thisNeighbour.y,
+                  });
+                }
+              }
+
+              //Make note of the squares that only belong to otherTile
+              for (let otherNeighbour of otherNeighbours) {
+                if (
+                  neighbours.some(
+                    (thisNeighbour) =>
+                      thisNeighbour.x === otherNeighbour.x &&
+                      thisNeighbour.y === otherNeighbour.y
+                  )
+                ) {
+                  continue;
+                }
+
+                if (knownSafes[otherNeighbour.x][otherNeighbour.y]) {
+                  onlyNeighbourSafe.push({
+                    x: otherNeighbour.x,
+                    y: otherNeighbour.y,
+                  });
+                }
+                if (knownMines[otherNeighbour.x][otherNeighbour.y]) {
+                  onlyNeighbourMine.push({
+                    x: otherNeighbour.x,
+                    y: otherNeighbour.y,
+                  });
+                }
+                if (
+                  !knownSafes[otherNeighbour.x][otherNeighbour.y] &&
+                  !knownMines[otherNeighbour.x][otherNeighbour.y]
+                ) {
+                  onlyNeighbourUnknown.push({
+                    x: otherNeighbour.x,
+                    y: otherNeighbour.y,
+                  });
+                }
+              }
+
+              //nothing to do if the only unknowns are both empty
+              if (onlyThisUnknown.length + onlyNeighbourUnknown.length === 0) {
+                return;
+              }
+
+              //do checks to find logic from subtraction formula
+
               //Could all onlyNeighbour unknowns be mines and all onlyThis unknowns be safe
+              if (
+                onlyNeighbourMine.length +
+                  onlyNeighbourUnknown.length -
+                  onlyThisMine.length ===
+                otherNumber - thisNumber
+              ) {
+                //onlyNeighbours forced high and onlyThis forced low
+                foundThisLoop = true;
+                onlyNeighbourUnknown.forEach(
+                  (square) => (knownMines[square.x][square.y] = true)
+                );
+                onlyThisUnknown.forEach(
+                  (square) => (knownSafes[square.x][square.y] = true)
+                );
+              } else if (
+                onlyThisMine.length +
+                  onlyThisUnknown.length -
+                  onlyNeighbourMine.length ===
+                thisNumber - otherNumber
+              ) {
+                //Could all onlyNeighbour unknowns be mines and all onlyThis unknowns be safe
 
-              //onlyNeighbours forced low and onlyThis forced high
-              foundThisLoop = true;
-              onlyNeighbourUnknown.forEach(
-                (square) => (knownSafes[square.x][square.y] = true)
-              );
-              onlyThisUnknown.forEach(
-                (square) => (knownMines[square.x][square.y] = true)
-              );
-            }
-          });
+                //onlyNeighbours forced low and onlyThis forced high
+                foundThisLoop = true;
+                onlyNeighbourUnknown.forEach(
+                  (square) => (knownSafes[square.x][square.y] = true)
+                );
+                onlyThisUnknown.forEach(
+                  (square) => (knownMines[square.x][square.y] = true)
+                );
+              }
+            });
+          }
         }
       }
     } while (foundThisLoop);
@@ -2259,6 +2647,88 @@ class Board {
     return confirm(
       "Are you sure? This will reset the whole board. If instead you want to exit QuickPaint, this can be done by pressing the QuickPaint button or pressing the Q key."
     );
+  }
+
+  handleEditClick(tileX, tileY, event) {
+    //Click on the edit board - typically will toggle a mine
+
+    if (event.button !== 0) {
+      return;
+    }
+
+    if (!this.checkCoordsInBounds(tileX, tileY)) {
+      return; //just incase
+    }
+
+    const isAddingMines = !this.mines[tileX][tileY]; //adding a mine or removing it?
+
+    this.mines[tileX][tileY] = !this.mines[tileX][tileY]; //toggle the mine
+
+    this.mineCount += isAddingMines ? 1 : -1;
+    this.unflagged = this.mineCount;
+
+    this.openBoardForEdit(); //refreshes all numbers. Maybe too inefficient?
+  }
+
+  importPttaBoard() {
+    if (this.variant !== "board editor" && this.variant !== "zini explorer") {
+      return;
+    }
+
+    let pttMines = BoardGenerator.readFromPtta();
+
+    if (this.variant === "board editor") {
+      this.boardEditorMines = pttMines;
+    } else if (this.variant === "zini explorer") {
+      this.ziniExplorerMines = pttMines;
+    }
+
+    this.revertUnappliedWidthHeightSetting();
+
+    this.switchToEditMode();
+
+    pttaImportModal.value = false;
+    pttaUrl.value = "";
+  }
+
+  switchToEditMode() {
+    if (this.variant === "board editor") {
+      this.editingEditBoard = true;
+      this.gameStage = "edit";
+      isCurrentlyEditModeDisplay.value = true;
+      this.resetBoard(true); //force a harder reset as if we were switching variants
+    } else if (this.variant === "zini explorer") {
+      this.editingZiniBoard = true;
+      this.gameStage = "edit";
+      isCurrentlyEditModeDisplay.value = true;
+      this.resetBoard(true); //force a harder reset as if we were switching variants
+    } else {
+      //do nothing
+    }
+
+    this.draw();
+  }
+
+  switchToPlayMode() {
+    if (this.variant == "board editor") {
+      this.editingEditBoard = false;
+      this.gameStage = "pregame";
+      isCurrentlyEditModeDisplay.value = false;
+      this.resetBoard();
+    } else if (this.variant == "zini explorer") {
+      this.editingZiniBoard = false;
+      this.gameStage = "pregame";
+      isCurrentlyEditModeDisplay.value = false;
+      this.resetBoard();
+    } else {
+      //do nothing
+    }
+
+    this.draw();
+  }
+
+  switchToAnalysisMode() {
+    //For zini explorer?
   }
 
   draw() {
@@ -2862,12 +3332,7 @@ class BoardGenerator {
     return effBoard;
   }
 
-  static readFromPtta(width, height, mineCount) {
-    //IGNORE width/height/mineCount if diff in ptta and just assume it is correct...
-    const minesArray = new Array(width)
-      .fill(0)
-      .map(() => new Array(height).fill(false));
-
+  static readFromPtta() {
     //VERY HACKY. REDO LATER
     //Mostly lifted from ptta code...
     let b = "";
@@ -2880,13 +3345,50 @@ class BoardGenerator {
 
     if (pttaUrl.value.startsWith("https")) {
       const pttaAsURL = new URL(pttaUrl.value);
-      let b = pttaAsURL.searchParams.get("b");
-      console.log(b);
+      b = pttaAsURL.searchParams.get("b");
       s = pttaAsURL.searchParams.get("m");
     } else {
       window.alert("PTTA NOT URL");
       throw new Error("PTTA NOT URL");
     }
+
+    let width;
+    let height;
+
+    switch (b) {
+      case "1":
+        width = 9;
+        height = 9;
+        break;
+      case "2":
+        width = 16;
+        height = 16;
+        break;
+      case "3":
+        width = 30;
+        height = 16;
+        break;
+      default:
+        width = parseInt(b.substring(0, b.length / 2));
+        height = parseInt(b.substring(b.length / 2, b.length));
+        break;
+    }
+
+    if (
+      !Number.isInteger(width) ||
+      !Number.isInteger(height) ||
+      width < 1 ||
+      width > 100 ||
+      height < 1 ||
+      width > 100
+    ) {
+      window.alert("Bad value for PTT url");
+      throw new Error("Bad width height from ptt url");
+    }
+
+    const minesArray = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(false));
 
     for (var i = 0; i < width * height; i += 5) {
       var tempN = parseInt(s.charAt(i / 5), 32);
@@ -3418,7 +3920,7 @@ class BoardStats {
   }
 
   calcZinis(includeWomZini) {
-    this.eightZini = algorithms.calcRegularZini(this.mines);
+    this.eightZini = algorithms.calcEightWayZini(this.mines);
 
     //Also do wom zini
     if (includeWomZini) {

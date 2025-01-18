@@ -72,3 +72,19 @@ During inclusion-exclusion zini, try profile how much each chord affects the glo
 Add freesweeper to others page?
 
 make stuff that lets you edit boards and show what the path is that womzini took
+
+zini idea: Simulated annealing zini where we randomise priorities/premium adjustments to find neighbour solutions
+
+Be more consistent with using this.variant vs variant.value in Board class.
+
+What do I need for board editor?
+
+hide quickpaint button on edit mode?
+maybe mode switch a toggle button (or similar)
+import ptta button
+
+Can we change gameStage to be a ref?
+
+Can I do anything with mutally exclusive min group theory? See discord message from 195 guy 17/01/2025
+
+Can I move button for display settings?

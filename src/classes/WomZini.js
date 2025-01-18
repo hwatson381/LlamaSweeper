@@ -167,9 +167,9 @@ class WomZini {
                 _ = !0;
                 clicks.push({ type: 'left', x: M, y: A });
               }
-              _ || (d = !0);
             }
           }
+          _ || (d = !0); //Bug fix in my code?
         }
         if (d) {
           _ = !1;
