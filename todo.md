@@ -88,3 +88,35 @@ Can we change gameStage to be a ref?
 Can I do anything with mutally exclusive min group theory? See discord message from 195 guy 17/01/2025
 
 Can I move button for display settings?
+
+Can I do early release for hc + cashew? Need planned features page?
+
+For zini - is there a way to analyse benefit of flags? Flag premiums? Some measure of how reusable flags are?
+
+have "send to" button on stats
+this has options for sending a board to:
+zini explorer
+board editor
+ptta
+
+and also have:
+menu button for "watch"
+with options for:
+replay
+8-way replay
+womzini replay
+womzini improved replay
+click-loss replay (in future)
+
+post game (or post zini run), do a click save heatmap showing the locations of where all the click saves were.
+This may even be useful for doing a genetic zini algorithm where we breed solutions by "subtracting" heatmaps
+from two different solutions and then this produces a child where the genes are taken by looking at which areas
+one solution does better on and the other does worse at. In this case, the genes could be either a premium adjustment
+or a priority adjustment (see random priority grid idea).
+
+zini tiebreak idea: chose the chord that is closest to other stuff
+(the reason would be that choosing stuff in the middle may have disadvantages that only get discovered later).
+Note that random zini is bad at discovering global improvements that are very specific
+
+Note example gets missed on ptt unless iterations is quite high
+https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=4005&m=vvvvvvvv000000010000000194i94i95vvvvvvvv

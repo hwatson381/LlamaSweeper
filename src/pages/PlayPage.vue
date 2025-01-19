@@ -37,67 +37,77 @@
         </button>
       </div>
       <br />
-      <q-select
-        class="q-mx-md q-mb-md"
-        outlined
-        options-dense
-        dense
-        transition-duration="100"
-        input-debounce="0"
-        v-model="variant"
-        style="width: 175px"
-        :options="
-          Object.freeze([
-            'normal',
-            'board editor',
-            'mean openings',
-            'eff boards',
-            'zini explorer',
-          ])
+      <div
+        class="flex"
+        style="
+          gap: 5px;
+          max-width: 600px;
+          justify-content: space-between;
+          padding: 5px;
         "
-        stack-label
-        label="Variant"
-        @update:model-value="game.reset(true)"
-      ></q-select>
-      <div class="flex" style="margin: 5px">
-        <div
-          class="q-gutter-sm"
-          v-if="variant !== 'board editor' && variant !== 'zini explorer'"
-        >
-          <q-radio
-            dense
-            v-model="boardSizePreset"
-            val="beg"
-            label="Beg"
-            @update:model-value="game.resetAndUnfocus()"
-          />
-          <q-radio
-            dense
-            v-model="boardSizePreset"
-            val="int"
-            label="Int"
-            @update:model-value="game.resetAndUnfocus()"
-          />
-          <q-radio
-            dense
-            v-model="boardSizePreset"
-            val="exp"
-            label="Exp"
-            @update:model-value="game.resetAndUnfocus()"
-          />
-          <q-radio
-            dense
-            v-model="boardSizePreset"
-            val="custom"
-            label="Custom"
-            @update:model-value="game.resetAndUnfocus()"
+      >
+        <q-select
+          class="q-mx-md q-mb-md"
+          outlined
+          options-dense
+          dense
+          transition-duration="100"
+          input-debounce="0"
+          v-model="variant"
+          style="width: 175px"
+          :options="
+            Object.freeze([
+              'normal',
+              'board editor',
+              'mean openings',
+              'eff boards',
+              'zini explorer',
+            ])
+          "
+          stack-label
+          label="Variant"
+          @update:model-value="game.reset(true)"
+        ></q-select>
+        <div>
+          <q-btn
+            @click="settingsModal = true"
+            color="secondary"
+            label="display settings (scale etc.)"
           />
         </div>
-        <q-btn
-          @click="settingsModal = true"
-          color="secondary"
-          label="display settings (scale etc.)"
-          style="margin-left: 30px"
+      </div>
+      <div
+        class="flex q-gutter-sm"
+        style="margin: 5px"
+        v-if="variant !== 'board editor' && variant !== 'zini explorer'"
+      >
+        <q-radio
+          dense
+          v-model="boardSizePreset"
+          val="beg"
+          label="Beg"
+          @update:model-value="game.resetAndUnfocus()"
+        />
+        <q-radio
+          dense
+          v-model="boardSizePreset"
+          val="int"
+          label="Int"
+          @update:model-value="game.resetAndUnfocus()"
+        />
+        <q-radio
+          dense
+          v-model="boardSizePreset"
+          val="exp"
+          label="Exp"
+          @update:model-value="game.resetAndUnfocus()"
+        />
+        <q-radio
+          dense
+          v-model="boardSizePreset"
+          val="custom"
+          label="Custom"
+          @update:model-value="game.resetAndUnfocus()"
         />
       </div>
       <template
@@ -141,78 +151,74 @@
         </div>
         {{ customWarning }}
       </template>
-      <div
+
+      <q-card
+        flat
+        bordered
+        style="max-width: 550px"
         v-if="variant === 'board editor' || variant === 'zini explorer'"
-        class="flex"
-        style="margin: 5px; gap: 10px"
       >
-        <q-input
-          debounce="100"
-          v-model.number="editBoardUnappliedWidth"
-          label="Width"
-          type="number"
-          dense
-          min="1"
-          max="100"
-        />
-        <q-input
-          debounce="100"
-          v-model.number="editBoardUnappliedHeight"
-          label="Height"
-          type="number"
-          dense
-          min="1"
-          max="100"
-        />
-        <q-btn-group>
-          <q-btn
-            color="primary"
-            label="Beg"
-            @click="
-              editBoardUnappliedWidth = 9;
-              editBoardUnappliedHeight = 9;
-            "
-          />
-          <q-btn
-            color="primary"
-            label="Int"
-            @click="
-              editBoardUnappliedWidth = 16;
-              editBoardUnappliedHeight = 16;
-            "
-          />
-          <q-btn
-            color="primary"
-            label="Exp"
-            @click="
-              editBoardUnappliedWidth = 30;
-              editBoardUnappliedHeight = 16;
-            "
-          />
-        </q-btn-group>
-        <q-btn
-          @click="game.board.applyEditBoardWidthHeight()"
-          color="positive"
-          label="new board"
-        />
-        <q-btn
-          @click="
-            isCurrentlyEditModeDisplay
-              ? game.board.switchToPlayMode()
-              : game.board.switchToEditMode()
-          "
-          color="positive"
-        >
-          {{
-            isCurrentlyEditModeDisplay ? "edit mode active" : "play mode active"
-          }}</q-btn
-        >
-        <q-btn
-          @click="pttaImportModal = true"
-          color="positive"
-          label="ptt import"
-        />
-      </div>
+        <q-card-section>
+          <div class="flex q-mb-md" style="gap: 15px">
+            <q-input
+              debounce="100"
+              v-model.number="editBoardUnappliedWidth"
+              label="Width"
+              type="number"
+              dense
+              min="1"
+              max="100"
+            />
+            <q-input
+              debounce="100"
+              v-model.number="editBoardUnappliedHeight"
+              label="Height"
+              type="number"
+              dense
+              min="1"
+              max="100"
+            />
+            <q-btn-group>
+              <q-btn
+                color="primary"
+                label="Beg"
+                @click="
+                  editBoardUnappliedWidth = 9;
+                  editBoardUnappliedHeight = 9;
+                "
+              />
+              <q-btn
+                color="primary"
+                label="Int"
+                @click="
+                  editBoardUnappliedWidth = 16;
+                  editBoardUnappliedHeight = 16;
+                "
+              />
+              <q-btn
+                color="primary"
+                label="Exp"
+                @click="
+                  editBoardUnappliedWidth = 30;
+                  editBoardUnappliedHeight = 16;
+                "
+              />
+            </q-btn-group>
+            <q-btn
+              @click="pttaImportModal = true"
+              color="secondary"
+              label="ptt import"
+            />
+          </div>
+          <div>
+            <q-btn
+              @click="game.board.applyEditBoardWidthHeight()"
+              color="positive"
+              label="new board"
+            />
+          </div>
+        </q-card-section>
+      </q-card>
       <div v-if="variant === 'eff boards'">
         Generating boards with target eff: {{ minimumEff }}% (change this in
         settings below)
@@ -266,7 +272,7 @@
             <div>
               ZiNi (WoM):
               <template v-if="statsObject.womZini !== null">
-                {{ statsObject.womZini }} | fix: {{ statsObject.cWomZini }}
+                {{ statsObject.womZini }} | improved: {{ statsObject.cWomZini }}
               </template>
               <span
                 v-else
@@ -279,7 +285,7 @@
             <div>
               H.ZiNi (WoM):
               <template v-if="statsObject.womHzini !== null">
-                {{ statsObject.womHzini }} | fix: {{ statsObject.cWomHzini }}
+                {{ statsObject.womHzini }}
               </template>
               <span
                 v-else
@@ -297,6 +303,24 @@
         </q-card>
       </div>
       <div class="flex q-ma-md" style="gap: 10px">
+        <q-btn-toggle
+          v-if="variant === 'board editor' || variant === 'zini explorer'"
+          v-model="isCurrentlyEditModeDisplay"
+          push
+          glossy
+          toggle-color="primary"
+          :options="[
+            { label: 'Edit', value: true },
+            { label: 'Play', value: false },
+          ]"
+          @update:model-value="
+            (val) => {
+              val
+                ? game.board.switchToEditMode()
+                : game.board.switchToPlayMode();
+            }
+          "
+        />
         <q-btn
           @click="game.board.toggleQuickPaint()"
           color="secondary"
