@@ -989,9 +989,13 @@ class Algorithms {
       );
 
       //If saving 1.15x as many clicks as one-way zini (plus 2 more) would exceed the goal then investigate further (by checking 8-way zini)
+
+      let oldCheck = bbbv / (bbbv - (bbbv - oneWayZini) * 1.15 - 2) >= targetEff / 100;
+
+      let newCheck = bbbv / (oneWayZini - this.get99thPercentileSubzini(width, height, mineCount, bbbv, oneWayZini)) >= targetEff / 100;
+
       if (
-        bbbv / (bbbv - (bbbv - oneWayZini) * 1.15 - 2) >=
-        targetEff / 100
+        oldCheck
       ) {
         passedFirstCheck++;
 
@@ -1015,6 +1019,76 @@ class Algorithms {
     );*/
 
     return minesArray;
+  }
+
+  get99thPercentileSubzini(width, height, mineCount, bbbv, oneWayZini) {
+    //For "normal" boards, this is based on data from bulkrun2, otherwise it's a guess
+
+    const boardKey = `${width}-${height}-${mineCount}`;
+
+    let boundaryPoints = null
+
+    switch (boardKey) {
+      case '9-9-10': //beginner
+        boundaryPoints = [5, 9, 14, 25, 40, Infinity];
+        // /* Old cutoffs - missed some 200s */ boundaryPoints = [7, 16, 31, 40, Infinity];
+        /*
+          The way to intepret the above is
+          0-7 3bv => 0 subzini 99% likely
+          8-16 3bv => 1 subzini 99% likely
+          17-31 3bv => 2 subzini 99% likely
+          31-40 3bv => 3 subzini 99% likely
+          41 up 3bv => 4 subzini 99% likely
+        */
+        break;
+      case '16-16-40': //intermediate
+        boundaryPoints = [0, 0, 0, 33, 70, 90, 100, 110, 120, Infinity]; //shifted over from previous cutoffs
+        // /* old cutoffs, some missed 170s */ boundaryPoints = [0, 0, 33, 70, 90, 100, 110, 120, Infinity];
+        /*
+          The way to intepret the above is
+          0-33 3bv => 2 subzini 99% likely
+          34-70 3bv => 3 subzini 99% likely
+          71-90 3bv => 4 subzini 99% likely
+          91-100 3bv => 5 subzini 99% likely
+          101-110 3bv => 6 subzini 99% likely
+          111-120 3bv => 7 subzini 99% likely
+          121 up 3bv => 8 subzini 99% likely
+        */
+        break;
+      case '30-16-99': //expert
+        boundaryPoints = [0, 0, 0, 0, 0, 0, 0, 170, 200, 216, 222, 227, 230, 235, Infinity]; //shifted twice from old
+        // /* old cutoffs, some missed on 150 */ boundaryPoints = [0, 0, 0, 0, 0, 170, 200, 216, 222, 227, 230, 235, Infinity];
+        /*
+          The way to intepret the above is
+          0-170 3bv => 5 subzini 99% likely
+          171-200 3bv => 6 subzini 99% likely
+          201-216 3bv => 7 subzini 99% likely
+          217-222 3bv => 8 subzini 99% likely
+          223-227 3bv => 9 subzini 99% likely
+          228-230 3bv => 10 subzini 99% likely
+          231-235 3bv => 11 subzini 99% likely
+          236 up 3bv => 12 subzini 99% likely
+        */
+        break;
+      default:
+        boundaryPoints = null;
+    }
+
+    if (boundaryPoints) {
+      let subzini99th = 0
+
+      for (let i = 0; i < boundaryPoints.length; i++) {
+        if (bbbv <= boundaryPoints[i]) {
+          subzini99th = i;
+          break;
+        }
+      }
+
+      return subzini99th;
+    } else {
+      //Non standard board size, fall back to assuming subzini is likely within 15% + 2 of click save
+      return (bbbv - oneWayZini) * 0.15 + 2;
+    }
   }
 
   getRandomZeroCell(minesArray) {

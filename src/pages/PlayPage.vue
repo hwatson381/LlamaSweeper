@@ -10,7 +10,10 @@
       <p>
         This is just a bunch of minesweeper variants I made. I should put an
         explanation of what they are somewhere... Variants can be changed with
-        the dropdown immediately below.
+        the dropdown immediately below. This is very much a work in progress, so
+        some of the variants will be very incomplete. Feedback/suggestions are
+        welcome, although I reserve the right to ignore any suggestions that
+        don't align with my plans.
       </p>
       <div
         style="
@@ -22,10 +25,7 @@
         "
       >
         <span>Random dev stuff box</span><br />
-        <button @click="bulkrun">Bulk run</button>
-        Use organised premiums:
-        <input v-model="useOrgPrem" type="checkbox" /><br />
-        Use 8-way: <input v-model="use8Way" type="checkbox" /><br />
+        <button @click="bulkrun3">Bulk run</button>
         Iterations: <input v-model.number="bulkIterations" type="text" />
         <button
           @click="
@@ -295,10 +295,42 @@
                 >run</span
               >
             </div>
-            <div>
-              Zini (ptta):
-              <a target="_blank" :href="statsObject.pttaLink">link</a>
-            </div>
+            <br />
+            <q-btn-dropdown color="primary" label="Send To">
+              <q-list>
+                <q-item
+                  v-if="variant !== 'board editor'"
+                  clickable
+                  v-close-popup
+                  @click="game.board.sendToBoardEditor()"
+                >
+                  <q-item-section>
+                    <q-item-label>Board Editor</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-item
+                  v-if="variant !== 'zini explorer'"
+                  clickable
+                  v-close-popup
+                  @click="game.board.sendToZiniExplorer()"
+                >
+                  <q-item-section>
+                    <q-item-label>Zini Explorer</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-item
+                  clickable
+                  v-close-popup
+                  @click="game.board.sendToPttCalculator()"
+                >
+                  <q-item-section>
+                    <q-item-label>PTT ZiNi Calculator</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-btn-dropdown>
           </q-card-section>
         </q-card>
       </div>
@@ -544,9 +576,11 @@
                   </div>
                 </template>
 
-                PttaUrl (VERY HACKY):
-                <input v-model="pttaUrl" type="text" value="" /><br />
-                <q-checkbox v-model="zeroStart" label="Zero Start" />
+                <q-checkbox v-model="zeroStart" label="Zero Start" /><br />
+                <q-checkbox
+                  v-model="flagToggleEnabled"
+                  label="Show Flag Button"
+                />
               </div>
             </q-tab-panel>
 
@@ -560,7 +594,7 @@
                 <q-checkbox
                   v-model="quickPaintMinimalMode"
                   label="QuickPaint minimal mode"
-                />
+                /><br />
                 <q-checkbox
                   v-model="quickPaintOnlyTrivialLogic"
                   label="QuickPaint only use single number logic (e.g. no 1-2 patterns)"
@@ -734,6 +768,21 @@
       </q-card-actions>
     </q-card>
   </q-dialog>
+
+  <button
+    v-if="flagToggleEnabled"
+    :class="{
+      'flag-toggle': true,
+      'flag-active': flagToggleActive,
+    }"
+    @click="flagToggleActive = !flagToggleActive"
+  >
+    <q-icon
+      name="flag"
+      :color="flagToggleActive ? 'white' : 'black'"
+      size="3em"
+    />
+  </button>
 </template>
 
 <style scoped>
@@ -758,6 +807,26 @@ body.body--dark #eff-stat.zini-match {
 
 body.body--dark #eff-stat.sub-zini {
   color: gold;
+}
+
+.flag-toggle {
+  width: 80px;
+  height: 80px;
+  background-color: rgba(29, 33, 37, 0.9);
+  border-radius: 10% 0 0 0;
+  border: unset;
+  border-left: 1px solid white;
+  border-top: 1px solid white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: fixed;
+  right: -1px;
+  bottom: -1px;
+}
+
+.flag-active {
+  background-color: rgba(102, 23, 23, 0.9);
 }
 </style>
 
@@ -1062,8 +1131,9 @@ let editBoardUnappliedHeight = ref(9);
 let pttaImportModal = ref(false);
 let isCurrentlyEditModeDisplay = ref(true); //Lines up with game.board.gameStage = 'edit' - consider making ...gameStage a ref instead.
 
-let useOrgPrem = ref(false);
-let use8Way = ref(false);
+let flagToggleActive = ref(false); //Whether to swap left and right mouse buttons
+let flagToggleEnabled = ref(true); //Change to use default based on user agent?
+
 let bulkIterations = ref(1000);
 function bulkrun() {
   //Entries are diffs and counts
@@ -1137,12 +1207,15 @@ function bulkrun() {
   }
   womFixZiniOut += `Average-diff: ${womFixZiniDiffSum / bulkIterations.value}`;
   console.log(womFixZiniOut);
+}
 
-  /*
-  let eight200 = 0;
-  let single200 = 0;
-  let singleNeedsInvestigating = 0;
-  let investigate200 = 0;
+function bulkrun2() {
+  //gather data that we can use to figure out for a given 3bv value on a given board, where the 99th percentile of subzini is
+
+  let cutoff = 0.99;
+
+  let bbbvsMap = new Map(); //Entries are another map from subzini => count
+
   for (let i = 0; i < bulkIterations.value; i++) {
     let mines = BoardGenerator.basicShuffle(
       boardWidth.value,
@@ -1150,51 +1223,161 @@ function bulkrun() {
       boardMines.value
     );
 
-    let is8Way = use8Way.value;
-    let orgPrem = useOrgPrem.value;
-
-    benchmark.startTime("with-preprocessed");
     let preprocessedData =
       algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
 
-    benchmark.startTime("full-3bv-run");
     let bbbv = algorithms.calc3bv(mines, false, preprocessedData).bbbv;
-    benchmark.stopTime("full-3bv-run");
 
-    benchmark.startTime("full-zini-run");
     let singleZini = algorithms.calcBasicZini(mines, false, preprocessedData);
     let eightZini = algorithms.calcBasicZini(mines, true, preprocessedData);
-    benchmark.stopTime("full-zini-run");
-    benchmark.stopTime("with-preprocessed");
 
-    //If saving 1.15x as many clicks as zini (plus 2 more) would breach 200 then investigate further
-    let investigate = false;
-
-    if (bbbv / (bbbv - (bbbv - singleZini) * 1.15 - 2) >= 2) {
-      singleNeedsInvestigating++;
-      investigate = true;
+    //Find data so far for the particular 3bv value of this board
+    let this3bvEntry = bbbvsMap.get(bbbv);
+    if (!this3bvEntry) {
+      this3bvEntry = new Map();
+      bbbvsMap.set(bbbv, this3bvEntry);
     }
 
-    if (bbbv / eightZini >= 2) {
-      eight200++;
-      if (bbbv / singleZini >= 2) {
-        single200++;
+    //Increment data for this subzini amount on this board
+    let amountBelowZini = singleZini - eightZini;
+
+    this3bvEntry.set(
+      amountBelowZini,
+      (this3bvEntry.get(amountBelowZini) ?? 0) + 1
+    );
+  }
+
+  let out = "";
+  for (let [bbbvKey, bbbvEntry] of [...bbbvsMap.entries()].sort(
+    (a, b) => a[0] - b[0]
+  )) {
+    out += `Results for ${bbbvKey} 3bv:` + "\n";
+
+    let totalCount = [...bbbvEntry.values()].reduce(
+      (partialSum, a) => partialSum + a,
+      0
+    );
+    let runningCount = 0; //Used to figure out when we cross xth percentile
+    let subziniSum = 0;
+    let gamesOverCutoff = 0;
+
+    let cutoffHit = false;
+    let cutoffCrossedDuring;
+
+    //Loop through subzini values in order
+    for (let [subziniKey, subziniAmount] of [...bbbvEntry.entries()].sort(
+      (a, b) => a[0] - b[0]
+    )) {
+      runningCount += subziniAmount;
+      subziniSum += subziniKey * subziniAmount;
+
+      if (cutoffHit) {
+        gamesOverCutoff += subziniAmount;
       }
-      if (investigate) {
-        investigate200++;
+
+      if (runningCount >= cutoff * totalCount && cutoffHit === false) {
+        cutoffHit = true;
+        cutoffCrossedDuring = subziniKey;
+      }
+    }
+
+    const averageSubZini = subziniSum / totalCount;
+    const averageSubziniPer3bv = averageSubZini / bbbvKey;
+
+    out +=
+      `Total games: ${totalCount}, cutoff-crossed-during-zini: ${cutoffCrossedDuring}, games over cutoff: ${gamesOverCutoff}` +
+      "\n";
+    out +=
+      `Average subzini: ${averageSubZini.toPrecision(
+        3
+      )}, Average-zini-per-3bv: ${averageSubziniPer3bv.toPrecision(3)}` +
+      "\n\n";
+  }
+
+  console.log(out);
+}
+
+function bulkrun3() {
+  let targetHitCount = 0;
+
+  let oldTriggeredTimes = 0;
+  let oldSuccess = 0;
+  let oldMissed = 0;
+
+  let newTriggeredTimes = 0;
+  let newSuccess = 0;
+  let newMissed = 0;
+
+  for (let i = 0; i < bulkIterations.value; i++) {
+    let mines = BoardGenerator.basicShuffle(
+      boardWidth.value,
+      boardHeight.value,
+      boardMines.value
+    );
+
+    let preprocessedData =
+      algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
+
+    let bbbv = algorithms.calc3bv(mines, false, preprocessedData).bbbv;
+
+    benchmark.startTime("single-zini");
+    let singleZini = algorithms.calcBasicZini(mines, false, preprocessedData);
+    benchmark.stopTime("single-zini");
+
+    benchmark.startTime("eight-zini");
+    let eightZini = algorithms.calcBasicZini(mines, true, preprocessedData);
+    benchmark.stopTime("eight-zini");
+
+    let oldCheckTriggered =
+      bbbv / (bbbv - (bbbv - singleZini) * 1.15 - 2) >= minimumEff.value / 100;
+    oldCheckTriggered && oldTriggeredTimes++;
+
+    let newCheckTriggered =
+      bbbv /
+        (singleZini -
+          algorithms.get99thPercentileSubzini(
+            boardWidth.value,
+            boardHeight.value,
+            boardMines.value,
+            bbbv,
+            singleZini
+          )) >=
+      minimumEff.value / 100;
+    newCheckTriggered && newTriggeredTimes++;
+
+    let wasTargetHit = bbbv / eightZini >= minimumEff.value / 100;
+    wasTargetHit && targetHitCount++;
+
+    if (wasTargetHit) {
+      targetHitCount++;
+
+      if (oldCheckTriggered) {
+        oldSuccess++;
+      } else {
+        oldMissed++;
+      }
+
+      if (newCheckTriggered) {
+        newSuccess++;
+      } else {
+        newMissed++;
       }
 
       console.log(
-        `8way: ${eightZini}, single: ${singleZini}, investigate?:${investigate} 3bv: ${bbbv}`
+        `8way: ${eightZini}, single: ${singleZini}, oldTriggered:${oldCheckTriggered}, newTriggered:${newCheckTriggered} 3bv: ${bbbv}`
       );
     }
   }
-  console.log(
-    `8 way found: ${eight200}, single way found: ${single200}, investigate found: ${investigate200}. Investigate ratio: ${singleNeedsInvestigating}/${bulkIterations.value}`
-  );
+  console.log(`8 way found: ${targetHitCount}`);
+
+  console.log(`## OldCheck Summary ###.
+  triggered: ${oldTriggeredTimes}, missed: ${oldMissed}, success: ${oldSuccess}`);
+
+  console.log(`## NewCheck Summary ###.
+  triggered: ${newTriggeredTimes}, missed: ${newMissed}, success: ${newSuccess}`);
+
   benchmark.report();
   benchmark.clearAll();
-  */
 }
 
 class Game {
@@ -1296,6 +1479,9 @@ class Board {
       this.gameStage === "edit"
     ) {
       //Edit mode cannot be reset
+      window.alert(
+        "Cannot reset during edit mode. If you want to clear the board, click the new board button. If you want to change to a different mode, use the toggle buttons below"
+      );
       return;
     }
 
@@ -1502,6 +1688,38 @@ class Board {
         this.tilesArray[x][y].state = tileNumber;
       }
     }
+  }
+
+  sendToBoardEditor() {
+    //Button on stats window for copying a board from somewhere to the board editor
+    if (this.variant === "board editor") {
+      //Already on board editor, do nothing
+      return;
+    }
+
+    this.boardEditorMines = this.mines;
+    variant.value = "board editor";
+    this.editingEditBoard = true;
+
+    this.resetBoard(true); //full reset as needed for variant change.
+  }
+
+  sendToZiniExplorer() {
+    //Button on stats window for copying a board from somewhere to the zini explorer
+    if (this.variant === "zini explorer") {
+      //Already on zini explorer, do nothing
+      return;
+    }
+
+    this.ziniExplorerMines = this.mines;
+    variant.value = "zini explorer";
+    this.editingZiniBoard = true;
+
+    this.resetBoard(true); //full reset as needed for variant change.
+  }
+
+  sendToPttCalculator() {
+    window.open(statsObject.value.pttaLink, "_blank").focus();
   }
 
   handleMouseDown(event) {
@@ -1858,12 +2076,17 @@ class Board {
       //Flag the square
       this.tilesArray[tileX][tileY].state = FLAG;
       this.unflagged--;
-      this.stats.addRight(tileX, tileY, time);
+      if (this.mines[tileX][tileY]) {
+        //Flags on correct square count towards effective clicks
+        this.stats.addRight(tileX, tileY, time);
+      } else {
+        //Flags on incorrect square are wasted
+        this.stats.addWastedRight(tileX, tileY, time);
+      }
     } else if (this.tilesArray[tileX][tileY].state === FLAG) {
       //Unflag a square
       this.tilesArray[tileX][tileY].state = UNREVEALED;
       this.unflagged++;
-      this.stats.makeMostRecentRightWasted(tileX, tileY);
       this.stats.addWastedRight(tileX, tileY, time);
     } else {
       //Wasted flag input
@@ -2088,6 +2311,7 @@ class Board {
     this.gameStage = "lost";
     const finalTime = this.getTime();
     this.stats.addEndTime(finalTime);
+    this.stats.makeRepeatFlagsWasted();
     this.clearTimerTimeout();
     this.integerTimer = Math.floor(finalTime / 1000);
     this.calculateAndDisplayStats(false);
@@ -2112,6 +2336,7 @@ class Board {
     this.gameStage = "won";
     const finalTime = this.getTime();
     this.stats.addEndTime(finalTime);
+    this.stats.makeRepeatFlagsWasted();
     this.clearTimerTimeout();
     this.integerTimer = Math.floor(finalTime / 1000);
     this.calculateAndDisplayStats(true);
@@ -2718,12 +2943,12 @@ class Board {
   switchToEditMode() {
     if (this.variant === "board editor") {
       this.editingEditBoard = true;
-      this.gameStage = "edit";
-      isCurrentlyEditModeDisplay.value = true;
+      //this.gameStage = "edit"; //commented out as gets set from resetBoard
+      //isCurrentlyEditModeDisplay.value = true; //commented out as gets set from resetBoard
       this.resetBoard(true); //force a harder reset as if we were switching variants
     } else if (this.variant === "zini explorer") {
-      this.editingZiniBoard = true;
-      this.gameStage = "edit";
+      //this.editingZiniBoard = true; //commented out as gets set from resetBoard
+      //this.gameStage = "edit"; //commented out as gets set from resetBoard
       isCurrentlyEditModeDisplay.value = true;
       this.resetBoard(true); //force a harder reset as if we were switching variants
     } else {
@@ -3905,19 +4130,6 @@ class BoardStats {
     });
   }
 
-  makeMostRecentRightWasted(x, y) {
-    //findLast might be too new? Watch out for browsers not having it
-    if (!Array.prototype.findLast) {
-      window.alert("Browser missing Array.prototype.findLast");
-      return;
-    }
-    const mostRecentFlag = this.clicks.findLast((click) => {
-      return click.type === "right" && click.x === x && click.y === y;
-    });
-
-    mostRecentFlag.type = "wasted_right";
-  }
-
   addWastedChord(x, y, time) {
     this.clicks.push({
       type: "wasted_chord",
@@ -3934,6 +4146,27 @@ class BoardStats {
       y,
       time,
     });
+  }
+
+  makeRepeatFlagsWasted() {
+    //If someone flags a correct square, unflags and then reflags
+    // only the first flag should be "effective" and the reflag should be wasted
+
+    let onlyEffectiveFlags = this.clicks.filter(
+      (click) => click.type === "right"
+    );
+
+    for (let i = onlyEffectiveFlags.length - 1; i >= 0; i--) {
+      const thisFlag = onlyEffectiveFlags[i];
+
+      let firstFlagOccurenceOnSameSquare = onlyEffectiveFlags.indexOf(
+        (click) => click.x === thisFlag.x && click.y === thisFlag.y
+      );
+
+      if (firstFlagOccurenceOnSameSquare !== i) {
+        thisFlag.type = "wasted_right";
+      }
+    }
   }
 
   calc3bv(tilesArray) {

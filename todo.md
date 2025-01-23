@@ -65,8 +65,6 @@ Make some settings persist (e.g. QuickPaint preferences)
 
 Do random zinis actually vary that much? They probably always do all the 1 chords first which are disjoint.
 
-Test womzini on 3bv > 500
-
 During inclusion-exclusion zini, try profile how much each chord affects the global solution (e.g. Which squares need to be recomputed depending on it's inclusion?)
 
 Add freesweeper to others page?
@@ -87,17 +85,9 @@ Can we change gameStage to be a ref?
 
 Can I do anything with mutally exclusive min group theory? See discord message from 195 guy 17/01/2025
 
-Can I move button for display settings?
-
 Can I do early release for hc + cashew? Need planned features page?
 
 For zini - is there a way to analyse benefit of flags? Flag premiums? Some measure of how reusable flags are?
-
-have "send to" button on stats
-this has options for sending a board to:
-zini explorer
-board editor
-ptta
 
 and also have:
 menu button for "watch"
@@ -120,3 +110,25 @@ Note that random zini is bad at discovering global improvements that are very sp
 
 Note example gets missed on ptt unless iterations is quite high
 https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=4005&m=vvvvvvvv000000010000000194i94i95vvvvvvvv
+
+Have board editor do "something" when face is clicked (maybe just tell user to click edit/play toggle?)
+
+Have page with zini benchmarks on diff sizes (beg/int/exp) and comparison to 1-way zini (similar to data I sent Janitor)
+
+Need to have "toggle flag" button before early release
+
+Beware of provably "never chords" coming up during inclusion-exclusion zini
+
+- it suffers if there is a group of similar moves that can't be easily disambiguated
+  (e.g. we could exclude one chord, but don't spot it's bad because another chord does the same thing)
+
+For inclusion-exclusion zini, allow taking multiple moves at the same time as long as regions of influence are disjoint
+(may need a minimum gap inbetween)
+
+Figure out whether using old zini check or new zini check is faster (and also how effective it is)
+Beware that high eff games are extraordinary, so may need to use higher cutoff than 99%
+
+[fixed but needs testing] Wasted flags stat is incorrect. Flags on non-mine squares are always wasted. Unflags are always wasted.
+
+Have proper play page instead of intermediate page
+Implement mobile flag button
