@@ -9,7 +9,7 @@
       </p>
       <p>
         The variants I'm working on can be played on the
-        <a href="/#/mine">my minesweeper variants</a> page. I also have a page
+        <a href="/#/play">my minesweeper variants</a> page. I also have a page
         where I have collected and rated a variety of
         <a href="/#/others">minesweeper variants and resources</a> made by
         others.

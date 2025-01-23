@@ -132,3 +132,5 @@ Beware that high eff games are extraordinary, so may need to use higher cutoff t
 
 Have proper play page instead of intermediate page
 Implement mobile flag button
+
+Fun 404 page?
