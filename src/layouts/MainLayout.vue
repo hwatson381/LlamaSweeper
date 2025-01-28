@@ -40,15 +40,7 @@ const $q = useQuasar();
 var isDark = ref(true);
 $q.dark.set(isDark.value);
 
-watch(
-  () => $q.dark.isActive,
-  (val) => {
-    console.log(val ? "On dark mode" : "On light mode");
-  }
-);
-
 function toggleDarkMode(value) {
-  console.log("toggle called and changing to " + value);
   $q.dark.set(value);
 }
 </script>

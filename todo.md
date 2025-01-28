@@ -60,6 +60,7 @@ remove unused comments and spammy console.logs
 move code in paintObviousSquares into algorithms, so we have option of doing basic hint/logic type stuff in the future
 
 consider asking qqwref for minesweeper c++ library to speed up eff boards generation (wasm)
+Or find someone in the community discord willing to code a wasm zini?
 
 Make some settings persist (e.g. QuickPaint preferences)
 
@@ -130,7 +131,36 @@ Beware that high eff games are extraordinary, so may need to use higher cutoff t
 
 [fixed but needs testing] Wasted flags stat is incorrect. Flags on non-mine squares are always wasted. Unflags are always wasted.
 
-Have proper play page instead of intermediate page
-Implement mobile flag button
+Make a fun 404 page?
 
-Fun 404 page?
+Maybe openings should annihilate flags instead of being blocked by them?
+
+Count games tested in x amount of time for eff board gen (this is a way to check the speed improvements help)
+
+Make first touch in pregame still open stuff even if it's a flag input? Easier to just reset flag mode for now...
+
+Should mobile only depress squares for chords and not digs? This is how msgo does it.
+
+Moving mouse with left click down quickly across large board could be slow cos each depressed square change requires redraw
+
+Consider adding touchMove data to mobile replay (need to track multiple path segments as touches can be concurrent)
+
+Consider having a mobile mode that disables mouse listeners?
+Or have a global variable hittouchlistener that sets itself to true and then disables itself after the events have been processed. (We do the first, but could do the second instead. Or maybe look at pointer events instead of treating mouse/touch differently)
+
+Sound effects (wooshes like msgo?)
+
+Split todos into different large features with their own text files (e.g. mobile, zini, UI etc)
+
+Try killing all active touches on board scroll? (Done not tested)
+
+consider more options for handling board scroll
+
+wom just has inital-scale without min/max.
+I've removed maximum-scale=1, minimum-scale=1, . Needs testing. Works, but looks terrible. Oh well.
+
+pointermove may be better than touch move as touchmove only triggers for ~10px movements
+
+Have the flag-toggle track properly when zoomed in (is this even possible?)
+
+Consider making topbar scrollable?

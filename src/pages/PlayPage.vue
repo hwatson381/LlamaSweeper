@@ -1,11 +1,6 @@
 <template>
   <q-page>
-    <div
-      class="q-pa-md"
-      @mousedown="game.handleMouseDown($event)"
-      @mouseup="game.handleMouseUp($event)"
-      @mousemove="game.handleMouseMove($event)"
-    >
+    <div class="q-pa-md">
       <h5>Llama's minesweeper variants</h5>
       <p>
         This is just a bunch of minesweeper variants I made. I should put an
@@ -232,7 +227,23 @@
         class="clearfix q-my-md"
         :style="{ paddingLeft: gameLeftPadding + 'px' }"
       >
-        <canvas ref="main-canvas" id="main-canvas" @contextmenu.prevent>
+        <canvas
+          ref="main-canvas"
+          id="main-canvas"
+          @contextmenu.prevent
+          @mousedown="game.handleMouseDown($event)"
+          @mouseup="game.handleMouseUp($event)"
+          @mousemove="game.handleMouseMove($event)"
+          @mouseenter="game.handleMouseEnter($event)"
+          @touchstart="game.handleTouchStart($event)"
+          @touchmove="game.handleTouchMove($event)"
+          @touchend="game.handleTouchEnd($event)"
+          @touchcancel="game.handleTouchCancel($event)"
+          :style="{
+            touchAction:
+              mobileScrollSetting === 'disable' ? 'none' : 'manipulation',
+          }"
+        >
         </canvas>
         <q-card
           square
@@ -257,17 +268,120 @@
                 'zini-match':
                   variant === 'eff boards' &&
                   statsObject.isWonGame &&
-                  statsObject.clicks === statsObject.zini,
+                  statsObject.clicks.total === statsObject.zini,
                 'sub-zini':
                   variant === 'eff boards' &&
                   statsObject.isWonGame &&
-                  statsObject.clicks < statsObject.zini,
+                  statsObject.clicks.total < statsObject.zini,
               }"
             >
               Eff: {{ statsObject.eff }}%
             </div>
             <div>Max Eff: {{ statsObject.maxEff }}%</div>
-            <div>Clicks: {{ statsObject.clicks }}</div>
+            <div>
+              Clicks: {{ statsObject.clicks.effective }} +
+              {{ statsObject.clicks.wasted }}
+              <q-icon
+                size="xs"
+                name="bar_chart"
+                @mouseenter="showStatsClicksTable = true"
+                @mouseleave="showStatsClicksTable = false"
+              >
+                <!--
+                <q-tooltip
+                  anchor="top middle"
+                  self="bottom middle"
+                  :offset="[10, 10]"
+                >
+                  <table style="text-align: right">
+                    <thead>
+                      <tr>
+                        <th></th>
+                        <th>Active</th>
+                        <th>Wasted</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <th>Left</th>
+                        <td>
+                          {{ statsObject.clicks.left }}
+                        </td>
+                        <td>
+                          {{ statsObject.clicks.leftWasted }}
+                        </td>
+                      </tr>
+                      <tr>
+                        <th>Right</th>
+                        <td>
+                          {{ statsObject.clicks.right }}
+                        </td>
+                        <td>
+                          {{ statsObject.clicks.rightWasted }}
+                        </td>
+                      </tr>
+                      <tr>
+                        <th>Chord</th>
+                        <td>
+                          {{ statsObject.clicks.chord }}
+                        </td>
+                        <td>
+                          {{ statsObject.clicks.chordWasted }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </q-tooltip>
+                -->
+                <q-menu
+                  anchor="top middle"
+                  self="bottom middle"
+                  :offset="[10, 10]"
+                  v-model="showStatsClicksTable"
+                >
+                  <div class="row no-wrap q-pa-sm stats-click-table-container">
+                    <table style="text-align: right">
+                      <thead>
+                        <tr>
+                          <th></th>
+                          <th>Active</th>
+                          <th>Wasted</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <th>Left</th>
+                          <td>
+                            {{ statsObject.clicks.left }}
+                          </td>
+                          <td>
+                            {{ statsObject.clicks.leftWasted }}
+                          </td>
+                        </tr>
+                        <tr>
+                          <th>Right</th>
+                          <td>
+                            {{ statsObject.clicks.right }}
+                          </td>
+                          <td>
+                            {{ statsObject.clicks.rightWasted }}
+                          </td>
+                        </tr>
+                        <tr>
+                          <th>Chord</th>
+                          <td>
+                            {{ statsObject.clicks.chord }}
+                          </td>
+                          <td>
+                            {{ statsObject.clicks.chordWasted }}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </q-menu>
+              </q-icon>
+            </div>
             <div>ZiNi (8-way): {{ statsObject.eightZini }}</div>
             <div>
               ZiNi (WoM):
@@ -578,9 +692,129 @@
 
                 <q-checkbox v-model="zeroStart" label="Zero Start" /><br />
                 <q-checkbox
-                  v-model="flagToggleEnabled"
-                  label="Show Flag Button"
-                />
+                  v-model="mobileModeEnabled"
+                  label="Use Mobile Mode"
+                /><br />
+                <q-select
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="mobileScrollSetting"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    {
+                      label: 'Only scroll on zeros',
+                      value: 'zero',
+                    },
+                    { label: 'Disable scroll', value: 'disable' },
+                    { label: 'Enable scroll', value: 'enable' },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Touch Reveal Location"
+                ></q-select
+                ><br />
+                <q-select
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="touchRevealLocation"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    {
+                      label: 'Touch Start',
+                      value: 'start',
+                    },
+                    { label: 'Touch End', value: 'end' },
+                    { label: 'Block If Changed', value: 'block' },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Touch Reveal Location"
+                ></q-select
+                ><br />
+                <q-select
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="touchRevealTiming"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    {
+                      label: 'Start of touch',
+                      value: 'start',
+                    },
+                    { label: 'End of touch', value: 'end' },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Touch Reveal Timing"
+                ></q-select
+                ><br />
+                <q-input
+                  debounce="100"
+                  v-model.number="touchLongPressTime"
+                  label="Long press time (80-400ms)"
+                  type="number"
+                  dense
+                  min="80"
+                  max="400"
+                  style="width: 110px"
+                /><br />
+                <q-input
+                  debounce="100"
+                  v-model.number="touchMaxTime"
+                  label="Max touch time (300-1500ms)"
+                  type="number"
+                  dense
+                  min="300"
+                  max="1500"
+                  style="width: 110px"
+                /><br />
+                <q-input
+                  debounce="100"
+                  v-model.number="touchScrollDistance"
+                  label="Max tiles moved for touch (2-5)"
+                  type="number"
+                  dense
+                  min="2"
+                  max="5"
+                  style="width: 140px"
+                /><br />
+                <q-select
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="faceHitbox"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    {
+                      label: 'Adaptive',
+                      value: 'adaptive',
+                    },
+                    { label: 'Just face', value: 'face' },
+                    { label: 'Whole bar', value: 'bar' },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Face Hitbox"
+                ></q-select>
               </div>
             </q-tab-panel>
 
@@ -621,7 +855,7 @@
         <q-slider
           v-model="tileSizeSlider"
           :min="10"
-          :max="60"
+          :max="80"
           :step="1"
           label
           color="light-green"
@@ -770,17 +1004,18 @@
   </q-dialog>
 
   <button
-    v-if="flagToggleEnabled"
+    v-if="mobileModeEnabled"
     :class="{
       'flag-toggle': true,
       'flag-active': flagToggleActive,
     }"
-    @click="flagToggleActive = !flagToggleActive"
+    @touchstart.prevent="flagToggleActive = !flagToggleActive"
   >
     <q-icon
       name="flag"
       :color="flagToggleActive ? 'white' : 'black'"
       size="3em"
+      @mousedown="game.board.showClickFlagToggleWarning()"
     />
   </button>
 </template>
@@ -791,6 +1026,7 @@
   float: left;
   margin-right: 10px;
   margin-bottom: 10px;
+  touch-action: manipulation;
 }
 
 #eff-stat.zini-match {
@@ -823,10 +1059,19 @@ body.body--dark #eff-stat.sub-zini {
   position: fixed;
   right: -1px;
   bottom: -1px;
+  touch-action: none;
 }
 
 .flag-active {
   background-color: rgba(102, 23, 23, 0.9);
+}
+
+.stats-click-table-container {
+  background-color: #e0e0e0;
+}
+
+body.body--dark .stats-click-table-container {
+  background-color: #616161;
 }
 </style>
 
@@ -849,6 +1094,7 @@ defineOptions({
 
 onMounted(() => {
   document.body.addEventListener("keydown", handleKeyDown);
+  document.body.addEventListener("scroll", handlePageScroll);
   skinManager.addCallbackWhenAllLoaded(() => {
     game.initialise();
   });
@@ -856,6 +1102,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.body.removeEventListener("keydown", handleKeyDown);
+  window.removeEventListener("scroll", handlePageScroll);
   game.unmount();
   effShuffleManager.killAllWorkers();
 });
@@ -875,9 +1122,24 @@ function handleKeyDown(event) {
   }
 }
 
+function handlePageScroll(event) {
+  if (!game.board) {
+    return;
+  }
+
+  game.board.handlePageScroll(event);
+}
+
 //Utility to restrict number to range
 function clamp(number, min, max) {
   return Math.max(Math.min(number, max), min);
+}
+
+//Utility to detect mobile device
+function isMobile() {
+  const regex =
+    /Mobi|Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
+  return regex.test(navigator.userAgent);
 }
 
 const mainCanvas = useTemplateRef("main-canvas");
@@ -896,12 +1158,23 @@ let statsObject = ref({
   bbbvs: null,
   eff: null,
   maxEff: null,
-  clicks: null,
+  clicks: {
+    total: null,
+    effective: null,
+    wasted: null,
+    left: null,
+    leftWasted: null,
+    chord: null,
+    chordWasted: null,
+    right: null,
+    rightWasted: null,
+  },
   eightZini: null,
   womZini: null,
   womHzini: null,
   pttaLink: null,
 });
+let showStatsClicksTable = ref(false);
 
 let settingsModal = ref(false);
 let tileSizeSlider = ref(25);
@@ -1132,7 +1405,14 @@ let pttaImportModal = ref(false);
 let isCurrentlyEditModeDisplay = ref(true); //Lines up with game.board.gameStage = 'edit' - consider making ...gameStage a ref instead.
 
 let flagToggleActive = ref(false); //Whether to swap left and right mouse buttons
-let flagToggleEnabled = ref(true); //Change to use default based on user agent?
+let mobileModeEnabled = ref(isMobile()); //Flag toggle starts enabled on mobile, disabled on desktop
+let mobileScrollSetting = ref("zero"); //Affects whether touches can trigger scroll
+let touchRevealLocation = ref("start"); //Whether we use the location of the touch at the start of it or the end of it
+let touchRevealTiming = ref("end"); //Does it reveal the tile on finger up or finger down
+let touchLongPressTime = ref(250); //When does long press = flag (or dig) get triggered
+let touchMaxTime = ref(1000); //When do long touches get cancelled (maybe these become scrolls?)
+let touchScrollDistance = ref(3); //When do touches that move a lot unlock the scroll
+let faceHitbox = ref("adaptive"); //Hitbox for when the face is click to trigger a reset
 
 let bulkIterations = ref(1000);
 function bulkrun() {
@@ -1449,7 +1729,55 @@ class Game {
       return;
     }
 
-    this.board.handleMouseMove(event);
+    this.board.handleMouseMove(event, false, false);
+  }
+
+  handleMouseEnter(event) {
+    if (!this.board) {
+      return;
+    }
+
+    this.board.handleMouseMove(event, true, false);
+  }
+
+  handleMouseLeave(event) {
+    if (!this.board) {
+      return;
+    }
+
+    this.board.handleMouseMove(event, false, true);
+  }
+
+  handleTouchStart(event) {
+    if (!this.board) {
+      return;
+    }
+
+    this.board.handleTouchStart(event);
+  }
+
+  handleTouchEnd(event) {
+    if (!this.board) {
+      return;
+    }
+
+    this.board.handleTouchEnd(event);
+  }
+
+  handleTouchMove(event) {
+    if (!this.board) {
+      return;
+    }
+
+    this.board.handleTouchMove(event);
+  }
+
+  handleTouchCancel(event) {
+    if (!this.board) {
+      return;
+    }
+
+    this.board.handleTouchCancel(event);
   }
 }
 
@@ -1458,6 +1786,9 @@ class Board {
     this.gameStage = "uninitialised";
     this.updateTimerSetTimeoutHandle = null; //Handle for starting/stopping setTimeOut process that checks whether timer needs updating
     this.isLeftMouseDown = false;
+
+    this.touchDepressedSquaresMap = new Map(); //Map from touch identifiers to depressed squares (for depressing squares on mobile)
+    this.ongoingTouches = new Map(); //Track info about touches such as start location, time started etc.
 
     //Boards used for "edit board" variant and "zini board" variant. These persist across resets.
     this.boardEditorMines = new Array(9)
@@ -1501,6 +1832,8 @@ class Board {
 
     this.gameStage = "pregame";
 
+    flagToggleActive.value = false;
+
     //Perhaps slightly confusing - for editable boards, set this.mines to refer to either the board editor or zini explorer.
     //This way it gets saved when we switch variants
     if (this.variant === "board editor") {
@@ -1543,6 +1876,7 @@ class Board {
     }
 
     this.hoveredSquare = { x: null, y: null }; //Square that is being hovered over
+    this.touchDepressedSquaresMap = new Map(); //Map from touch identifiers to depressed squares (for depressing squares on mobile)
 
     //The states of the tiles (e.g. whether they are unrevealed or show a number amongst other things)
     this.tilesArray = new Array(this.width)
@@ -1723,6 +2057,41 @@ class Board {
   }
 
   handleMouseDown(event) {
+    if (mobileModeEnabled.value) {
+      return;
+    }
+
+    const canvasCoords = this.eventToCanvasCoord(event);
+    const flooredCoords = this.eventToFlooredTileCoords(event);
+    const unflooredCoords = this.eventToUnflooredTileCoords(event);
+
+    const coordsData = {
+      canvasCoords,
+      flooredCoords,
+      unflooredCoords,
+    };
+
+    const isDigInput = event.button === 0;
+    const isFlagInput = event.button === 2;
+    const isMiddleClick = event.button === 1;
+    const isTouchInput = false;
+    const isDown = true;
+
+    this.handlePointerInput(
+      isDigInput,
+      isFlagInput,
+      isMiddleClick,
+      isTouchInput,
+      isDown,
+      coordsData,
+      event,
+      "mouse"
+    );
+
+    return;
+
+    //OK TO DELETE THE BELOW
+
     if (
       this.gameStage !== "pregame" &&
       this.gameStage !== "running" &&
@@ -1731,8 +2100,9 @@ class Board {
       return;
     }
 
-    let flooredCoords = this.eventToFlooredTileCoords(event);
-    let unflooredCoords = this.eventToUnflooredTileCoords(event);
+    //COMMENTED OUT TO PREVENT LINT ERROR
+    //let flooredCoords = this.eventToFlooredTileCoords(event);
+    //let unflooredCoords = this.eventToUnflooredTileCoords(event);
 
     if (this.quickPaintActive) {
       this.handleQuickPaintClick(
@@ -1750,13 +2120,13 @@ class Board {
       return;
     }
 
-    if (event.button === 0) {
-      this.holdDownLeftMouse(flooredCoords.tileX, flooredCoords.tileY);
+    if (this.isButtonPressed(event.button, 0)) {
+      this.holdDownDig(flooredCoords.tileX, flooredCoords.tileY);
       this.draw();
     }
 
     if (
-      event.button === 2 &&
+      this.isButtonPressed(event.button, 2) &&
       event.target === mainCanvas.value &&
       this.gameStage === "running"
     ) {
@@ -1766,14 +2136,50 @@ class Board {
   }
 
   handleMouseUp(event) {
+    if (mobileModeEnabled.value) {
+      return;
+    }
+
+    const canvasCoords = this.eventToCanvasCoord(event);
+    const flooredCoords = this.eventToFlooredTileCoords(event);
+    const unflooredCoords = this.eventToUnflooredTileCoords(event);
+
+    const coordsData = {
+      canvasCoords,
+      flooredCoords,
+      unflooredCoords,
+    };
+
+    const isDigInput = event.button === 0;
+    const isFlagInput = event.button === 2;
+    const isMiddleClick = event.button === 1;
+    const isTouchInput = false;
+    const isDown = false;
+
+    this.handlePointerInput(
+      isDigInput,
+      isFlagInput,
+      isMiddleClick,
+      isTouchInput,
+      isDown,
+      coordsData,
+      event,
+      "mouse"
+    );
+
+    return;
+
+    //OK TO DELETE THE BELOW
+
     if (event.button !== 0) {
       //Ignore all mouse up events except for left mouse up
       return;
     }
 
-    let canvasCoords = this.eventToCanvasCoord(event);
-    let flooredCoords = this.eventToFlooredTileCoords(event);
-    let unflooredCoords = this.eventToUnflooredTileCoords(event);
+    //COMMENTED OUT TO PREVENT LINT ERROR
+    //let canvasCoords = this.eventToCanvasCoord(event);
+    //let flooredCoords = this.eventToFlooredTileCoords(event);
+    //let unflooredCoords = this.eventToUnflooredTileCoords(event);
 
     if (
       this.gameStage !== "pregame" &&
@@ -1857,17 +2263,14 @@ class Board {
     this.draw();
   }
 
-  handleMouseMove(event) {
+  handleMouseMove(event, isEnter, isLeave) {
+    if (mobileModeEnabled.value) {
+      return;
+    }
+
     if (this.gameStage !== "pregame" && this.gameStage !== "running") {
       return; //only track mouse when game is running or just before
     }
-
-    //Commented out as we need to track when the canvas is left
-    /*
-    if (event.target !== mainCanvas.value) {
-      return;
-    }
-    */
 
     if (this.quickPaintActive) {
       //Do nothing as quickpaint
@@ -1880,13 +2283,644 @@ class Board {
 
     let unflooredCoords = this.eventToUnflooredTileCoords(event);
 
+    const isLeftDown = Boolean(event.buttons & 1); //checks if left mouse button down
+
     const requiresRedraw = this.mouseMove(
       unflooredCoords.tileX,
-      unflooredCoords.tileY
+      unflooredCoords.tileY,
+      isEnter,
+      isLeave,
+      isLeftDown
     );
     if (requiresRedraw) {
       this.draw();
     }
+  }
+
+  handleTouchStart(event) {
+    if (!mobileModeEnabled.value) {
+      return;
+    }
+
+    //Adapted from https://developer.mozilla.org/en-US/docs/Web/API/Touch_events
+
+    //event.preventDefault();
+    console.log("touchstart.");
+
+    const touches = event.changedTouches;
+
+    let shouldPreventDefault = false;
+    if (mobileScrollSetting.value === "zero" && this.gameStage === "running") {
+      //If zero, we assume that the scroll gets prevented, but then stop if coniditons are met
+      shouldPreventDefault = true;
+    }
+
+    for (let touch of touches) {
+      console.log(`touchstart: ${touch.identifier}.`);
+
+      const canvasCoords = this.eventToCanvasCoord(touch);
+      const flooredCoords = this.eventToFlooredTileCoords(touch);
+      const unflooredCoords = this.eventToUnflooredTileCoords(touch);
+
+      const coordsData = {
+        canvasCoords,
+        flooredCoords,
+        unflooredCoords,
+      };
+
+      let isScrollingZero = false;
+      if (
+        this.tilesArray[flooredCoords.tileX]?.[flooredCoords.tileY]?.state === 0
+      ) {
+        //If we have the scroll on zeros setting then this touch gets blocked, and we let the touch through
+        isScrollingZero = true;
+        shouldPreventDefault = false;
+      }
+
+      let isDigInput;
+      let isFlagInput;
+
+      if (mobileModeEnabled.value && flagToggleActive.value) {
+        isDigInput = false;
+        isFlagInput = true;
+      } else {
+        isDigInput = true;
+        isFlagInput = false;
+      }
+
+      const isMiddleClick = false;
+      const isTouchInput = true;
+
+      let isDown;
+
+      if (touchRevealTiming.value === "end") {
+        isDown = true; //Normally the first touch is down, and the release is up (like mousedown/mouseup except for touches)
+      } else if (touchRevealTiming.value === "start") {
+        //This is very hacky
+        isDown = false;
+        //If we are timing it to reveal the square when the finger first makes contact
+        //then we fake it by sending an "up" input immediately
+        //Later on we deactivate the touch, so it doesn't get processed for a second time
+      }
+
+      const touchIdentifier = touch.identifier;
+
+      const screenCoords = {
+        x: touch.screenX,
+        y: touch.screenY,
+      };
+
+      this.ongoingTouches.set(touchIdentifier, {
+        startTime: event.timeStamp,
+        startCoordsData: structuredClone(coordsData), //Ugly, but just in case it gets changed in handePointerInput function.
+        startScreenCoords: screenCoords,
+        active: true, //Changes to false if the touch is cancelled (e.g. it moved more than x distance or lasted more than y seconds)
+        isScrollingZero: isScrollingZero,
+      });
+
+      if (isScrollingZero) {
+        //this touch is for scrolling, so doesn't need to be processed further
+        continue;
+      }
+
+      this.handlePointerInput(
+        isDigInput,
+        isFlagInput,
+        isMiddleClick,
+        isTouchInput,
+        isDown,
+        coordsData,
+        event,
+        touchIdentifier
+      );
+
+      if (touchRevealTiming.value === "start") {
+        //Sicne we already processed the touch on the start, we deactivate so it doesn't get processed again
+        this.ongoingTouches.get(touchIdentifier).active = false;
+      }
+    }
+
+    if (shouldPreventDefault) {
+      event.preventDefault();
+    }
+  }
+
+  handleTouchEnd(event) {
+    if (!mobileModeEnabled.value) {
+      return;
+    }
+
+    //Adapted from https://developer.mozilla.org/en-US/docs/Web/API/Touch_events
+
+    //event.preventDefault();
+    console.log("touchend.");
+
+    const touches = event.changedTouches;
+
+    let redrawNeededForBlockedTouched = false;
+
+    let shouldPreventDefault = false;
+    if (mobileScrollSetting.value === "zero" && this.gameStage === "running") {
+      //If zero, we assume that the scroll gets prevented, but then stop if coniditons are met
+      shouldPreventDefault = true;
+    }
+
+    for (let touch of touches) {
+      console.log(`touchend: ${touch.identifier}.`);
+
+      //Get touch entry and delete it (whilst hanging onto reference inside this function)
+      let thisTouch = this.ongoingTouches.get(touch.identifier);
+      this.ongoingTouches.delete(touch.identifier);
+
+      if (thisTouch.isScrollingZero) {
+        shouldPreventDefault = false;
+        continue;
+      }
+
+      let isDigInput;
+      let isFlagInput;
+
+      const isLongPress =
+        event.timeStamp - thisTouch.startTime >= touchLongPressTime.value;
+
+      //Note - below is the same as doing isFlagMode XOR isLongPress
+      if (mobileModeEnabled.value && flagToggleActive.value != isLongPress) {
+        isDigInput = false;
+        isFlagInput = true;
+      } else {
+        isDigInput = true;
+        isFlagInput = false;
+      }
+
+      const isMiddleClick = false;
+      const isTouchInput = true;
+      const isDown = false;
+      const touchIdentifier = touch.identifier;
+
+      const endCanvasCoords = this.eventToCanvasCoord(touch);
+      const endFlooredCoords = this.eventToFlooredTileCoords(touch);
+      const endUnflooredCoords = this.eventToUnflooredTileCoords(touch);
+
+      const endCoordsData = {
+        canvasCoords: endCanvasCoords,
+        flooredCoords: endFlooredCoords,
+        unflooredCoords: endUnflooredCoords,
+      };
+
+      let coordsData;
+
+      if (touchRevealLocation.value === "start") {
+        coordsData = thisTouch.startCoordsData;
+      } else if (touchRevealLocation.value === "end") {
+        coordsData = endCoordsData;
+      } else if (touchRevealLocation.value === "block") {
+        //Check touch start and touch end are on the same square. Otherwise cancel the touch
+        //But only if the touch is on the board, otherwise use end location
+        if (
+          this.checkCoordsInBounds(
+            endCoordsData.flooredCoords.tileX,
+            endCoordsData.flooredCoords.tileY
+          )
+        ) {
+          if (
+            thisTouch.startCoordsData.flooredCoords.tileX ===
+              endCoordsData.flooredCoords.tileX &&
+            thisTouch.startCoordsData.flooredCoords.tileY ===
+              endCoordsData.flooredCoords.tileY
+          ) {
+            coordsData = endCoordsData;
+          } else {
+            //Cancel touch on board as it started and ended on different square
+            thisTouch.active = false;
+          }
+        } else {
+          coordsData = endCoordsData;
+        }
+      }
+
+      //Check if touch has exceeded max time
+      if (event.timeStamp - thisTouch.startTime >= touchMaxTime.value) {
+        //Cancel touch if it has went on too long
+        thisTouch.active = false;
+      }
+
+      //Check touch has moved max distance
+      if (
+        Math.sqrt(
+          (touch.screenX - thisTouch.startScreenCoords.x) ** 2 +
+            (touch.screenY - thisTouch.startScreenCoords.y) ** 2
+        ) /
+          this.tileSize >=
+        touchScrollDistance.value
+      ) {
+        //Cancel touch as it has moved too much
+        thisTouch.active = false;
+      }
+
+      if (!thisTouch.active) {
+        //Touch was deactivated, so remove depressed square if needed and exit instead of processing further
+        this.updateDepressedSquares(null, null, isDown, touchIdentifier);
+        redrawNeededForBlockedTouched = true;
+        continue;
+      }
+
+      this.handlePointerInput(
+        isDigInput,
+        isFlagInput,
+        isMiddleClick,
+        isTouchInput,
+        isDown,
+        coordsData,
+        event,
+        touchIdentifier
+      );
+    }
+
+    if (shouldPreventDefault) {
+      event.preventDefault();
+    }
+
+    if (redrawNeededForBlockedTouched) {
+      this.draw();
+    }
+  }
+
+  handleTouchMove(event) {
+    if (!mobileModeEnabled.value) {
+      return;
+    }
+
+    //NOTE - currently we don't save position changes to stats, but we may start doing this in the future
+    //It's a bit more complicated than tracking the mouse as there can be multiple simultaneous paths
+    //that start and stop. So we'd also have to save identifier information
+
+    //Adapted from https://developer.mozilla.org/en-US/docs/Web/API/Touch_events
+    //event.preventDefault();
+    console.log("touchmove.");
+
+    if (this.gameStage !== "pregame" && this.gameStage !== "running") {
+      return; //only track touch moves when game is running or just before
+    }
+    if (this.quickPaintActive) {
+      //Do nothing as quickpaint
+      return;
+    }
+    if (this.gameStage === "edit") {
+      //Do nothing as edit mode
+      return;
+    }
+
+    const touches = event.changedTouches;
+
+    let requiresRedraw = false;
+
+    let shouldPreventDefault = false;
+    if (mobileScrollSetting.value === "zero" && this.gameStage === "running") {
+      //If zero, we assume that the scroll gets prevented, but then stop if coniditons are met
+      shouldPreventDefault = true;
+    }
+
+    for (let touch of touches) {
+      console.log(`touchmove: ${touch.identifier}.`);
+
+      let thisTouch = this.ongoingTouches.get(touch.identifier);
+
+      if (thisTouch.isScrollingZero) {
+        shouldPreventDefault = false;
+        continue; //This touch is scrolling, so no need to process further
+      }
+
+      if (!thisTouch.active) {
+        continue;
+      }
+
+      let needsDeactivating = false;
+
+      //Check if touch has exceeded max time
+      if (event.timeStamp - thisTouch.startTime >= touchMaxTime.value) {
+        needsDeactivating = true;
+      }
+
+      //Check touch has moved max distance
+      if (
+        Math.sqrt(
+          (touch.screenX - thisTouch.startScreenCoords.x) ** 2 +
+            (touch.screenY - thisTouch.startScreenCoords.y) ** 2
+        ) /
+          this.tileSize >=
+        touchScrollDistance.value
+      ) {
+        needsDeactivating = true;
+      }
+
+      if (needsDeactivating) {
+        thisTouch.active = false;
+        this.updateDepressedSquares(null, null, false, touch.identifier);
+        requiresRedraw = true;
+        continue;
+      }
+
+      if (touchRevealLocation.value === "end") {
+        const flooredCoords = this.eventToFlooredTileCoords(touch);
+
+        const isDown = true;
+        const touchIdentifier = touch.identifier;
+
+        let thisTouchNeededRedraw = this.updateDepressedSquares(
+          flooredCoords.tileX,
+          flooredCoords.tileY,
+          isDown,
+          touchIdentifier
+        );
+
+        if (thisTouchNeededRedraw) {
+          requiresRedraw = true;
+        }
+      }
+    }
+
+    if (shouldPreventDefault) {
+      event.preventDefault();
+    }
+
+    if (requiresRedraw) {
+      this.draw();
+    }
+  }
+
+  handleTouchCancel(event) {
+    if (!mobileModeEnabled.value) {
+      return;
+    }
+
+    //Adapted from https://developer.mozilla.org/en-US/docs/Web/API/Touch_events
+
+    //event.preventDefault();
+    console.log("touchcancel.");
+
+    const touches = event.changedTouches;
+
+    let requiresRedraw = false;
+
+    let shouldPreventDefault = false;
+    if (mobileScrollSetting.value === "zero" && this.gameStage === "running") {
+      //If zero, we assume that the scroll gets prevented, but then stop if coniditons are met
+      shouldPreventDefault = true;
+    }
+
+    for (let touch of touches) {
+      console.log(`touchcancel: ${touch.identifier}.`);
+
+      let thisTouch = this.ongoingTouches.get(touch.identifier);
+      this.ongoingTouches.delete(touch.identifier);
+
+      if (thisTouch.isScrollingZero) {
+        shouldPreventDefault = false;
+        continue;
+      }
+
+      if (!thisTouch.active) {
+        continue;
+      }
+
+      const isDown = false;
+      const touchIdentifier = touch.identifier;
+
+      let thisTouchNeededRedraw = this.updateDepressedSquares(
+        null,
+        null,
+        isDown,
+        touchIdentifier
+      );
+
+      if (thisTouchNeededRedraw) {
+        requiresRedraw = true;
+      }
+    }
+
+    if (shouldPreventDefault) {
+      event.preventDefault();
+    }
+
+    if (requiresRedraw) {
+      this.draw();
+    }
+  }
+
+  handlePageScroll(event) {
+    //On mobile, if the page starts scrolling, we should cancel all active touches.
+    //Try keep this function fast as page scroll gets called a lot
+
+    console.log("scroll triggered");
+
+    let redrawRequired = false;
+
+    for (let touch of this.ongoingTouches.values()) {
+      if (touch.active) {
+        redrawRequired = true;
+      }
+      touch.active = false;
+    }
+    this.touchDepressedSquaresMap.clear();
+
+    if (redrawRequired) {
+      this.draw();
+    }
+  }
+
+  /* OK TO DELETE
+  isButtonPressed(button, compareValue) {
+    //Checks if a button is pressed taking into account that the flag toggle flips it
+    if (mobileModeEnabled.value && flagToggleActive.value) {
+      //swap left/right mouse buttons
+      if (button === 0) {
+        button = 2;
+      } else if (button === 2) {
+        button = 0;
+      }
+    }
+
+    return button === compareValue;
+  }
+  */
+
+  handlePointerInput(
+    isDigInput,
+    isFlagInput,
+    isMiddleClick,
+    isTouchInput,
+    isDown,
+    coordsData,
+    event,
+    touchIdentifier
+  ) {
+    //generic handler for left/right up/down and also touch
+
+    let isDrawRequired = false;
+
+    const mouseDownOrTouchUp =
+      (!isTouchInput && isDown) || (isTouchInput && !isDown);
+
+    let flooredCoords = coordsData.flooredCoords;
+    let unflooredCoords = coordsData.unflooredCoords;
+    let canvasCoords = coordsData.canvasCoords;
+
+    // ############### Section for mostly mouse down stuff #################
+
+    //Handle clicks in quickpaint, and exit early
+    if (this.quickPaintActive && this.gameStage === "running") {
+      if (mouseDownOrTouchUp) {
+        this.handleQuickPaintClick(
+          flooredCoords.tileX,
+          flooredCoords.tileY,
+          isDigInput,
+          isFlagInput,
+          isMiddleClick,
+          event
+        );
+        this.draw();
+      }
+      return;
+    }
+
+    //handle clicks in edit mode and exit early if nothing to do
+    if (this.gameStage === "edit") {
+      if (mouseDownOrTouchUp && (isDigInput || isFlagInput)) {
+        this.handleEditClick(flooredCoords.tileX, flooredCoords.tileY);
+        this.draw();
+      }
+
+      return;
+    }
+
+    //Depress squares when hovered over with mouse down
+    if (this.gameStage === "running" && isDown && isDigInput) {
+      isDrawRequired = this.holdDownDig(
+        flooredCoords.tileX,
+        flooredCoords.tileY,
+        touchIdentifier
+      );
+    }
+
+    //Depress squares when hovered over with flag toggled on with mobile (chord on flag mode)
+    if (this.gameStage === "running" && isDown && isFlagInput && isTouchInput) {
+      isDrawRequired = this.holdDownTouchFlag(
+        flooredCoords.tileX,
+        flooredCoords.tileY,
+        touchIdentifier
+      );
+    }
+
+    //Flag square for mouse
+    if (
+      this.gameStage === "running" &&
+      isDown &&
+      isFlagInput &&
+      !isTouchInput
+    ) {
+      this.attemptFlag(unflooredCoords.tileX, unflooredCoords.tileY);
+      isDrawRequired = true;
+    }
+
+    // ############### Section for mostly mouse up stuff #################
+
+    //Check for face click and exit early if it was clicked on
+    if (
+      (!isTouchInput && isDigInput && !isDown) ||
+      (isTouchInput && (isDigInput || isFlagInput) && !isDown)
+    ) {
+      let wasClickOnFace = this.attemptFaceClick(
+        canvasCoords,
+        flooredCoords,
+        touchIdentifier
+      );
+      if (wasClickOnFace) {
+        //Don't process click further
+        this.draw(); //just in case
+        return; //Note that this includes clicks on face that then got cancelled.
+      }
+    }
+
+    //Do first click on board
+    if (this.gameStage === "pregame" && !isDown && isDigInput) {
+      const generationResult = this.generateBoard(
+        flooredCoords.tileX,
+        flooredCoords.tileY
+      );
+      if (generationResult.success) {
+        this.gameStage = "running";
+        //Game then continues with the code below providing the click to open the first square.
+        //Slightly hacky, but we also optionally change where the first click is if the board
+        //received requires a different first click
+        if (generationResult.rewrittenFirstClick) {
+          //unflooredCoords as these are what attemptChordOrDig uses.
+          unflooredCoords.tileX = generationResult.rewrittenFirstClick.x;
+          unflooredCoords.tileY = generationResult.rewrittenFirstClick.y;
+        }
+      } else {
+        this.updateDepressedSquares(
+          flooredCoords.tileX,
+          flooredCoords.tileY,
+          false,
+          touchIdentifier
+        );
+        this.draw();
+        return; //Don't start game. Click not inbounds, or something else went wrong
+      }
+    }
+
+    let needToCheckForWinOrLoss = false;
+
+    //Try to chord or open square (e.g. mouse left click)
+    if (this.gameStage === "running" && !isDown && isDigInput) {
+      this.attemptChordOrDig(
+        unflooredCoords.tileX,
+        unflooredCoords.tileY,
+        touchIdentifier
+      );
+      needToCheckForWinOrLoss = true;
+      isDrawRequired = true;
+    }
+
+    //Try to flag or chord (when the flag toggle is active on mobile)
+    if (
+      this.gameStage === "running" &&
+      isFlagInput &&
+      !isDown &&
+      isTouchInput
+    ) {
+      this.attemptFlagOrChord(
+        unflooredCoords.tileX,
+        unflooredCoords.tileY,
+        touchIdentifier
+      );
+      needToCheckForWinOrLoss = true;
+      isDrawRequired = true;
+    }
+
+    //Check if board is complete (note that checking gameStage is redundant but defensive)
+    if (this.gameStage === "running" && needToCheckForWinOrLoss) {
+      if (this.blasted) {
+        this.doLose();
+      } else if (this.checkWin()) {
+        this.doWin();
+      }
+    }
+
+    if (isDrawRequired) {
+      this.draw();
+    }
+  }
+
+  showClickFlagToggleWarning() {
+    //Slightly hacky as this triggers on clicking the flag icon
+    //which normally gets blocked by preventDefault if the button receives a touch event.
+    window.alert(
+      "Flag toggle button only works with touch events. " +
+        "Consider requesting the mobile site. If you have a " +
+        "valid use case that needs the flag button with mouse events " +
+        "then please let me (llama) know about it"
+    );
   }
 
   generateBoard(tileX, tileY) {
@@ -2094,7 +3128,7 @@ class Board {
     }
   }
 
-  attemptChordOrDig(unflooredTileX, unflooredTileY) {
+  attemptChordOrDig(unflooredTileX, unflooredTileY, touchIdentifier) {
     let time = this.getTime();
 
     let { tileX, tileY } = this.unflooredToFlooredTileCoords(
@@ -2102,7 +3136,7 @@ class Board {
       unflooredTileY
     );
 
-    this.updateDepressedSquares(tileX, tileY, false); //Undepress square as we have just done leftMouseUp
+    this.updateDepressedSquares(tileX, tileY, false, touchIdentifier); //Undepress square as we have just done leftMouseUp
 
     if (!this.checkCoordsInBounds(tileX, tileY)) {
       //Click not on board, exit (doesn't count as wasted click)
@@ -2120,10 +3154,67 @@ class Board {
     }
   }
 
-  holdDownLeftMouse(tileX, tileY) {
+  attemptFlagOrChord(unflooredTileX, unflooredTileY, touchIdentifier) {
+    let time = this.getTime();
+
+    let { tileX, tileY } = this.unflooredToFlooredTileCoords(
+      unflooredTileX,
+      unflooredTileY
+    );
+
+    //Undepress square as we have just done ended a touch input
+    //Note that flag touch inputs on numbers will depress surrounding squares as this does a chord
+    this.updateDepressedSquares(tileX, tileY, false, touchIdentifier);
+
+    if (!this.checkCoordsInBounds(tileX, tileY)) {
+      //Click not on board, exit (doesn't count as wasted click)
+      return;
+    }
+
+    if (typeof this.tilesArray[tileX][tileY].state === "number") {
+      //Attempt chord tile
+      this.chord(tileX, tileY, true, time);
+    } else {
+      //Try to flag the square
+      //Code is slightly scuffed since this repeats some checks (such as square inbounds), but I'm too lazy to fix
+      this.attemptFlag(unflooredTileX, unflooredTileY);
+    }
+  }
+
+  holdDownDig(tileX, tileY, touchIdentifier) {
     //Don't track this in stats yet (but may add in future)
     //All this does is depress the current square or surrounding squares as the user pressed down left mouse
-    this.updateDepressedSquares(tileX, tileY, true);
+    const requiresRedraw = this.updateDepressedSquares(
+      tileX,
+      tileY,
+      true,
+      touchIdentifier
+    );
+
+    return requiresRedraw;
+  }
+
+  holdDownTouchFlag(tileX, tileY, touchIdentifier) {
+    let requiresRedraw;
+
+    //Only depress stuff if hovering over a number (i.e. for a chord)
+    if (typeof this.tilesArray[tileX]?.[tileY]?.state === "number") {
+      requiresRedraw = this.updateDepressedSquares(
+        tileX,
+        tileY,
+        true,
+        touchIdentifier
+      );
+    } else {
+      requiresRedraw = this.updateDepressedSquares(
+        null,
+        null,
+        true,
+        touchIdentifier
+      );
+    }
+
+    return requiresRedraw;
   }
 
   openTile(x, y) {
@@ -2150,7 +3241,7 @@ class Board {
     }
   }
 
-  mouseMove(unflooredTileX, unflooredTileY) {
+  mouseMove(unflooredTileX, unflooredTileY, isEnter, isLeave, isLeftDown) {
     let time = this.getTime();
 
     let { tileX, tileY } = this.unflooredToFlooredTileCoords(
@@ -2161,18 +3252,30 @@ class Board {
     const requiresRedraw = this.updateDepressedSquares(
       tileX,
       tileY,
-      this.isLeftMouseDown
+      isLeftDown,
+      "mouse"
     );
 
     if (!this.gameStage === "pregame") {
-      this.stats.addMouseMove(unflooredTileX, unflooredTileY, time);
+      if (isEnter) {
+        this.stats.addMouseEnter(unflooredTileX, unflooredTileY, time);
+      } else if (isLeave) {
+        this.stats.addMouseLeave(unflooredTileX, unflooredTileY, time);
+      } else {
+        this.stats.addMouseMove(unflooredTileX, unflooredTileY, time);
+      }
     }
 
     return requiresRedraw;
   }
 
-  updateDepressedSquares(tileX, tileY, newIsLeftMouseDownValue) {
-    //Handle depressing squares when left mouse is down and over an square or an number (in which case this "prepares" the chord)
+  updateDepressedSquares(
+    tileX,
+    tileY,
+    newIsLeftMouseDownValue,
+    touchIdentifier = "mouse"
+  ) {
+    //Handle depressing squares when left mouse is down and over an square or a number (in which case this "prepares" the chord)
 
     //Set tileX/tileY to null if out of bounds
     if (!this.checkCoordsInBounds(tileX, tileY)) {
@@ -2180,43 +3283,93 @@ class Board {
       tileY = null;
     }
 
-    const leftMouseDownChanged =
-      this.isLeftMouseDown !== newIsLeftMouseDownValue;
+    //Find out where the current hovered square is and whether it is depressed.
+    //This works a bit differently for touches as we can have multiple depressed at once
+    let isCurrentlyDown;
+    let currentLocation;
 
+    if (touchIdentifier === "mouse") {
+      isCurrentlyDown = this.isLeftMouseDown;
+      currentLocation = this.hoveredSquare;
+    } else {
+      isCurrentlyDown = this.touchDepressedSquaresMap.has(touchIdentifier);
+      if (isCurrentlyDown) {
+        currentLocation = this.touchDepressedSquaresMap.get(touchIdentifier);
+      } else {
+        currentLocation = { x: null, y: null };
+      }
+    }
+
+    const leftMouseDownChanged = isCurrentlyDown !== newIsLeftMouseDownValue;
     const hoveredSquareMoved =
-      tileX !== this.hoveredSquare.x || tileY !== this.hoveredSquare.y;
+      tileX !== currentLocation.x || tileY !== currentLocation.y;
 
     if (!hoveredSquareMoved && !leftMouseDownChanged) {
       const requiresRedraw = false;
       return requiresRedraw;
     }
 
-    //Maybe slightly excessive, but easier to clear out hover and reapply each time rather than going through all cases
+    //Maybe slightly excessive and inefficient, but easier to clear out hover and reapply each time rather than going through all cases
+
+    let clearHover = (hoverSquareX, hoverSquareY) => {
+      for (let x = hoverSquareX - 1; x <= hoverSquareX + 1; x++) {
+        for (let y = hoverSquareY - 1; y <= hoverSquareY + 1; y++) {
+          if (this.tilesArray[x]?.[y]) {
+            this.tilesArray[x][y].depressed = false;
+          }
+        }
+      }
+    };
 
     //Clear out old hover (3x3 block so we don't have to check whether it was a chord or singleton)
-    for (let x = this.hoveredSquare.x - 1; x <= this.hoveredSquare.x + 1; x++) {
-      for (
-        let y = this.hoveredSquare.y - 1;
-        y <= this.hoveredSquare.y + 1;
-        y++
-      ) {
-        if (this.tilesArray[x]?.[y]) {
-          this.tilesArray[x][y].depressed = false;
-        }
+    //clear mouse hover
+    if (
+      this.hoveredSquare.x !== null &&
+      this.hoveredSquare.y !== null &&
+      this.isLeftMouseDown
+    ) {
+      clearHover(this.hoveredSquare.x, this.hoveredSquare.y);
+    }
+    //clear touch hover
+    for (let touchedSquare of this.touchDepressedSquaresMap.values()) {
+      if (touchedSquare.x !== null && touchedSquare.y !== null) {
+        clearHover(touchedSquare.x, touchedSquare.y);
       }
     }
 
-    //Apply new hover
-    if (tileX !== null && tileY !== null && newIsLeftMouseDownValue) {
+    //Update which squares we store as being hovered
+    if (touchIdentifier === "mouse") {
+      //for mouse
+      this.hoveredSquare.x = tileX;
+      this.hoveredSquare.y = tileY;
+      this.isLeftMouseDown = newIsLeftMouseDownValue;
+    } else {
+      //for touch
+      if (newIsLeftMouseDownValue) {
+        //add if newly touched square
+        this.touchDepressedSquaresMap.set(touchIdentifier, {
+          x: tileX,
+          y: tileY,
+        });
+      } else {
+        //remove if no longer touched
+        this.touchDepressedSquaresMap.delete(touchIdentifier);
+      }
+    }
+
+    //Apply new hover for all squares (from touch and from mouse)
+    let applyHover = (hoverSquareX, hoverSquareY) => {
       //Single square
-      if (this.tilesArray[tileX][tileY].state === UNREVEALED) {
-        this.tilesArray[tileX][tileY].depressed = true;
+      if (this.tilesArray[hoverSquareX][hoverSquareY].state === UNREVEALED) {
+        this.tilesArray[hoverSquareX][hoverSquareY].depressed = true;
       }
 
       //Chord
-      if (typeof this.tilesArray[tileX][tileY].state === "number") {
-        for (let x = tileX - 1; x <= tileX + 1; x++) {
-          for (let y = tileY - 1; y <= tileY + 1; y++) {
+      if (
+        typeof this.tilesArray[hoverSquareX][hoverSquareY].state === "number"
+      ) {
+        for (let x = hoverSquareX - 1; x <= hoverSquareX + 1; x++) {
+          for (let y = hoverSquareY - 1; y <= hoverSquareY + 1; y++) {
             //Note that the middle square automatically gets excluded as it's been revealed
             if (this.tilesArray[x]?.[y]?.state === UNREVEALED) {
               this.tilesArray[x][y].depressed = true;
@@ -2224,14 +3377,31 @@ class Board {
           }
         }
       }
-    }
+    };
 
-    this.hoveredSquare.x = tileX;
-    this.hoveredSquare.y = tileY;
-    this.isLeftMouseDown = newIsLeftMouseDownValue;
+    //apply mouse hover
+    if (
+      this.hoveredSquare.x !== null &&
+      this.hoveredSquare.y !== null &&
+      this.isLeftMouseDown
+    ) {
+      applyHover(this.hoveredSquare.x, this.hoveredSquare.y);
+    }
+    //apply touch hover
+    for (let touchedSquare of this.touchDepressedSquaresMap.values()) {
+      if (touchedSquare.x !== null && touchedSquare.y !== null) {
+        applyHover(touchedSquare.x, touchedSquare.y);
+      }
+    }
 
     const requiresRedraw = true;
     return requiresRedraw;
+  }
+
+  clearAllDepressedSquares() {
+    this.hoveredSquare = { x: null, y: null };
+    this.isLeftMouseDown = false;
+    this.touchDepressedSquaresMap.clear();
   }
 
   getNumberSurroundingMines(x, y) {
@@ -2282,6 +3452,8 @@ class Board {
     }
 
     if (this.tilesArray[x][y].state === this.getNumberSurroundingFlags(x, y)) {
+      let hadUnrevealedNeighbour = false;
+
       //Correct number of flags, so do chord
       for (let i = x - 1; i <= x + 1; i++) {
         for (let j = y - 1; j <= y + 1; j++) {
@@ -2293,11 +3465,16 @@ class Board {
           }
           if (this.tilesArray[i][j].state === UNREVEALED) {
             this.openTile(i, j);
+            hadUnrevealedNeighbour = true;
           }
         }
       }
       if (includeInStats) {
-        this.stats.addChord(x, y, time);
+        if (hadUnrevealedNeighbour) {
+          this.stats.addChord(x, y, time);
+        } else {
+          this.stats.addWastedChord(x, y, time);
+        }
       }
     } else {
       if (includeInStats) {
@@ -2367,6 +3544,61 @@ class Board {
     showStatsBlock.value = true;
   }
 
+  attemptFaceClick(canvasCoords, flooredCoords, touchIdentifier) {
+    if (
+      this.gameStage !== "pregame" &&
+      showBorders.value &&
+      canvasCoords.canvasRawY <= boardTopPadding.value
+    ) {
+      //Check if face is being clicked on
+      const topPanelMiddleWidth = (this.width * this.tileSize) / 2;
+      const topPanelInnerPadding = this.tileSize / 4;
+      const faceWidth = topPanelHeight.value - 2 * topPanelInnerPadding;
+      const faceStartX =
+        boardHorizontalPadding.value + topPanelMiddleWidth - faceWidth / 2;
+      const faceStartY =
+        topPanelTopAndBottomBorder.value + topPanelInnerPadding;
+
+      const isWithinSmallHitbox =
+        canvasCoords.canvasRawX >= faceStartX &&
+        canvasCoords.canvasRawX <= faceStartX + faceWidth &&
+        canvasCoords.canvasRawY >= faceStartY &&
+        canvasCoords.canvasRawY <= faceStartY + faceWidth;
+
+      const isWithinLargeHitbox =
+        canvasCoords.canvasRawX >= boardHorizontalPadding.value &&
+        canvasCoords.canvasRawX <=
+          boardHorizontalPadding.value + this.width * this.tileSize &&
+        canvasCoords.canvasRawY >= topPanelTopAndBottomBorder.value &&
+        canvasCoords.canvasRawY <=
+          topPanelTopAndBottomBorder.value + topPanelHeight.value;
+
+      const useSmallHitbox =
+        faceHitbox.value === "face" ||
+        (faceHitbox.value === "adaptive" && this.gameStage === "running");
+
+      if (
+        (useSmallHitbox && isWithinSmallHitbox) ||
+        (!useSmallHitbox && isWithinLargeHitbox)
+      ) {
+        if (!this.confirmBoardResetIfQuickPaint()) {
+          return true; //Clicked on, but stopped, though still need to stop processing click further
+        }
+
+        this.updateDepressedSquares(
+          flooredCoords.tileX, //Coords not strictly necessary, but including incase this changes
+          flooredCoords.tileY,
+          false,
+          touchIdentifier
+        );
+        game.reset(); //Reset and don't process the click any further
+        return true; //reset, don't process click further
+      }
+    }
+
+    return false; //Not clicked on
+  }
+
   toggleQuickPaint() {
     if (this.gameStage !== "running") {
       window.alert("QuickPaint can only be used when a game is in progress");
@@ -2377,7 +3609,7 @@ class Board {
     showQuickPaintOptions.value = this.quickPaintActive;
 
     if (this.quickPaintActive) {
-      this.updateDepressedSquares(null, null, false);
+      this.clearAllDepressedSquares();
 
       if (this.isFirstQuickPaint) {
         this.quickPaintMode = "guess";
@@ -2768,10 +4000,17 @@ class Board {
     this.draw();
   }
 
-  handleQuickPaintClick(tileX, tileY, event) {
+  handleQuickPaintClick(
+    tileX,
+    tileY,
+    isDigInput,
+    isFlagInput,
+    isMiddleClick,
+    event
+  ) {
     const button = event.button;
 
-    if (button === 1) {
+    if (isMiddleClick) {
       //middle click, doesn't need to be inbounds.
       this.clearClearableMarkings();
       event.preventDefault();
@@ -2783,7 +4022,7 @@ class Board {
       return;
     }
 
-    if (button !== 0 && button !== 2) {
+    if (!isDigInput && !isFlagInput) {
       //not left/right click. Ignore
       return;
     }
@@ -2795,7 +4034,7 @@ class Board {
 
     if (quickPaintMinimalMode.value) {
       //minimal mode only has right click = orange, left click = dots
-      if (button === 2) {
+      if (isFlagInput) {
         if (
           tileState !== UNREVEALED ||
           (oldColour !== null && oldColour !== "orange")
@@ -2814,7 +4053,7 @@ class Board {
         }
       }
 
-      if (button === 0) {
+      if (isDigInput) {
         let newDots;
         newDots = (oldDots + 1) % 3; //cycle dots forward
 
@@ -2830,16 +4069,16 @@ class Board {
       }
 
       let newColour;
-      if (this.quickPaintMode === "known" && button === 2) {
+      if (this.quickPaintMode === "known" && isFlagInput) {
         newColour = "red";
       }
-      if (this.quickPaintMode === "known" && button === 0) {
+      if (this.quickPaintMode === "known" && isDigInput) {
         newColour = "green";
       }
-      if (this.quickPaintMode === "guess" && button === 2) {
+      if (this.quickPaintMode === "guess" && isFlagInput) {
         newColour = "orange";
       }
-      if (this.quickPaintMode === "guess" && button === 0) {
+      if (this.quickPaintMode === "guess" && isDigInput) {
         newColour = "white";
       }
 
@@ -2875,9 +4114,9 @@ class Board {
       thisTile.paintColour = newColour;
     } else if (this.quickPaintMode === "dots") {
       let newDots;
-      if (button === 0) {
+      if (isDigInput) {
         newDots = (oldDots + 1) % 3; //cycle dots forward
-      } else if (button === 2) {
+      } else if (isFlagInput) {
         newDots = (oldDots + 2) % 3; //cycle dots backward
       }
 
@@ -2898,13 +4137,8 @@ class Board {
     );
   }
 
-  handleEditClick(tileX, tileY, event) {
+  handleEditClick(tileX, tileY) {
     //Click on the edit board - typically will toggle a mine
-
-    if (event.button !== 0) {
-      return;
-    }
-
     if (!this.checkCoordsInBounds(tileX, tileY)) {
       return; //just incase
     }
@@ -2959,12 +4193,12 @@ class Board {
   }
 
   switchToPlayMode() {
-    if (this.variant == "board editor") {
+    if (this.variant === "board editor") {
       this.editingEditBoard = false;
       this.gameStage = "pregame";
       isCurrentlyEditModeDisplay.value = false;
       this.resetBoard();
-    } else if (this.variant == "zini explorer") {
+    } else if (this.variant === "zini explorer") {
       this.editingZiniBoard = false;
       this.gameStage = "pregame";
       isCurrentlyEditModeDisplay.value = false;
@@ -4148,6 +5382,24 @@ class BoardStats {
     });
   }
 
+  addMouseEnter(x, y, time) {
+    this.moves.push({
+      type: "mouse_enter",
+      x,
+      y,
+      time,
+    });
+  }
+
+  addMouseLeave(x, y, time) {
+    this.moves.push({
+      type: "mouse_leave",
+      x,
+      y,
+      time,
+    });
+  }
+
   makeRepeatFlagsWasted() {
     //If someone flags a correct square, unflags and then reflags
     // only the first flag should be "effective" and the reflag should be wasted
@@ -4159,7 +5411,7 @@ class BoardStats {
     for (let i = onlyEffectiveFlags.length - 1; i >= 0; i--) {
       const thisFlag = onlyEffectiveFlags[i];
 
-      let firstFlagOccurenceOnSameSquare = onlyEffectiveFlags.indexOf(
+      let firstFlagOccurenceOnSameSquare = onlyEffectiveFlags.findIndex(
         (click) => click.x === thisFlag.x && click.y === thisFlag.y
       );
 
@@ -4278,9 +5530,28 @@ class BoardStats {
 
     const bestZini = eightZini; //Change when I do a better zini
 
-    const clicks = this.clicks.length;
+    const totalClicks = this.clicks.length;
 
-    const eff = (100 * solved3bv) / clicks;
+    const clicksObject = {
+      total: totalClicks,
+      effective: this.clicks.filter(
+        (c) => c.type === "left" || c.type === "right" || c.type === "chord"
+      ).length,
+      wasted: this.clicks.filter(
+        (c) =>
+          c.type === "wasted_left" ||
+          c.type === "wasted_right" ||
+          c.type === "wasted_chord"
+      ).length,
+      left: this.clicks.filter((c) => c.type === "left").length,
+      leftWasted: this.clicks.filter((c) => c.type === "wasted_left").length,
+      chord: this.clicks.filter((c) => c.type === "chord").length,
+      chordWasted: this.clicks.filter((c) => c.type === "wasted_chord").length,
+      right: this.clicks.filter((c) => c.type === "right").length,
+      rightWasted: this.clicks.filter((c) => c.type === "wasted_right").length,
+    };
+
+    const eff = (100 * solved3bv) / totalClicks;
     const maxEff = (100 * bbbv) / bestZini;
 
     const pttaLink = this.getPttaLink();
@@ -4294,7 +5565,7 @@ class BoardStats {
       statsObject.value.bbbvs = bbbvs.toFixed(3);
       statsObject.value.eff = eff.toFixed(0);
       statsObject.value.maxEff = maxEff.toFixed(0);
-      statsObject.value.clicks = clicks;
+      statsObject.value.clicks = clicksObject;
       statsObject.value.eightZini = eightZini;
       statsObject.value.womZini = womZini;
       statsObject.value.womHzini = womHzini;
@@ -4310,7 +5581,7 @@ class BoardStats {
       statsObject.value.bbbvs = bbbvs.toFixed(3);
       statsObject.value.eff = eff.toFixed(0);
       statsObject.value.maxEff = maxEff.toFixed(0);
-      statsObject.value.clicks = clicks;
+      statsObject.value.clicks = clicksObject;
       statsObject.value.eightZini = eightZini;
       statsObject.value.womZini = womZini;
       statsObject.value.womHzini = womHzini;
