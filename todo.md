@@ -10,8 +10,6 @@ have board-history for exploring past replays (and replays of same game get grou
 
 Use setters and getters for tilesArray (formerly called revealedNumbers). Like setTileState(x, y, newState) and setTileDepressed(x, y, true)
 
-Look at mouseEvent.buttons to check whether the left button is depressed when hovering (fixes issues with left click down outside the window etc)
-
 Fix lag on large boards (maybe have canvas draw() that doesn't refresh whole board and only redraws the relevant area?)
 
 Make unfocus a function and call it from all various inputs (where sensible?)
@@ -76,17 +74,11 @@ zini idea: Simulated annealing zini where we randomise priorities/premium adjust
 
 Be more consistent with using this.variant vs variant.value in Board class.
 
-What do I need for board editor?
-
-hide quickpaint button on edit mode?
-maybe mode switch a toggle button (or similar)
-import ptta button
+hide quickpaint button when board editor is in edit mode?
 
 Can we change gameStage to be a ref?
 
 Can I do anything with mutally exclusive min group theory? See discord message from 195 guy 17/01/2025
-
-Can I do early release for hc + cashew? Need planned features page?
 
 For zini - is there a way to analyse benefit of flags? Flag premiums? Some measure of how reusable flags are?
 
@@ -112,11 +104,7 @@ Note that random zini is bad at discovering global improvements that are very sp
 Note example gets missed on ptt unless iterations is quite high
 https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=4005&m=vvvvvvvv000000010000000194i94i95vvvvvvvv
 
-Have board editor do "something" when face is clicked (maybe just tell user to click edit/play toggle?)
-
 Have page with zini benchmarks on diff sizes (beg/int/exp) and comparison to 1-way zini (similar to data I sent Janitor)
-
-Need to have "toggle flag" button before early release
 
 Beware of provably "never chords" coming up during inclusion-exclusion zini
 
@@ -128,8 +116,6 @@ For inclusion-exclusion zini, allow taking multiple moves at the same time as lo
 
 Figure out whether using old zini check or new zini check is faster (and also how effective it is)
 Beware that high eff games are extraordinary, so may need to use higher cutoff than 99%
-
-[fixed but needs testing] Wasted flags stat is incorrect. Flags on non-mine squares are always wasted. Unflags are always wasted.
 
 Make a fun 404 page?
 

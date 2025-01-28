@@ -1379,11 +1379,6 @@ watchEffect(() => {
   } else {
     effShuffleManager && effShuffleManager.deactivateBackgroundGeneration();
   }
-  /* OK TO DELETE
-  if (variant.value === "board editor" || variant.value === "zini explorer") {
-    game.board && game.board.revertUnappliedWidthHeightSetting();
-  }
-  */
 });
 watch([boardWidth, boardHeight, boardMines, minimumEff], () => {
   if (variant.value === "eff boards" && generateEffBoardsInBackground.value) {
@@ -1986,13 +1981,6 @@ class Board {
 
     this.switchToEditMode();
 
-    /* OK TO DELETE
-    this.mineCount = 0;
-    this.unflagged = 0;
-
-    this.openBoardForEdit(); //set tilesArray to all be zeros
-    */
-
     this.draw();
   }
 
@@ -2089,50 +2077,6 @@ class Board {
     );
 
     return;
-
-    //OK TO DELETE THE BELOW
-
-    if (
-      this.gameStage !== "pregame" &&
-      this.gameStage !== "running" &&
-      this.gameStage !== "edit"
-    ) {
-      return;
-    }
-
-    //COMMENTED OUT TO PREVENT LINT ERROR
-    //let flooredCoords = this.eventToFlooredTileCoords(event);
-    //let unflooredCoords = this.eventToUnflooredTileCoords(event);
-
-    if (this.quickPaintActive) {
-      this.handleQuickPaintClick(
-        flooredCoords.tileX,
-        flooredCoords.tileY,
-        event
-      );
-      this.draw();
-      return;
-    }
-
-    if (this.gameStage === "edit") {
-      this.handleEditClick(flooredCoords.tileX, flooredCoords.tileY, event);
-      this.draw();
-      return;
-    }
-
-    if (this.isButtonPressed(event.button, 0)) {
-      this.holdDownDig(flooredCoords.tileX, flooredCoords.tileY);
-      this.draw();
-    }
-
-    if (
-      this.isButtonPressed(event.button, 2) &&
-      event.target === mainCanvas.value &&
-      this.gameStage === "running"
-    ) {
-      this.attemptFlag(unflooredCoords.tileX, unflooredCoords.tileY);
-      this.draw();
-    }
   }
 
   handleMouseUp(event) {
@@ -2168,99 +2112,6 @@ class Board {
     );
 
     return;
-
-    //OK TO DELETE THE BELOW
-
-    if (event.button !== 0) {
-      //Ignore all mouse up events except for left mouse up
-      return;
-    }
-
-    //COMMENTED OUT TO PREVENT LINT ERROR
-    //let canvasCoords = this.eventToCanvasCoord(event);
-    //let flooredCoords = this.eventToFlooredTileCoords(event);
-    //let unflooredCoords = this.eventToUnflooredTileCoords(event);
-
-    if (
-      this.gameStage !== "pregame" &&
-      showBorders.value &&
-      canvasCoords.canvasRawY <= boardTopPadding.value
-    ) {
-      //Check if face is being clicked on
-      const topPanelMiddleWidth = (this.width * this.tileSize) / 2;
-      const topPanelInnerPadding = this.tileSize / 4;
-      const faceWidth = topPanelHeight.value - 2 * topPanelInnerPadding;
-      const faceStartX =
-        boardHorizontalPadding.value + topPanelMiddleWidth - faceWidth / 2;
-      const faceStartY =
-        topPanelTopAndBottomBorder.value + topPanelInnerPadding;
-      if (
-        canvasCoords.canvasRawX >= faceStartX &&
-        canvasCoords.canvasRawX <= faceStartX + faceWidth &&
-        canvasCoords.canvasRawY >= faceStartY &&
-        canvasCoords.canvasRawY <= faceStartY + faceWidth
-      ) {
-        if (!this.confirmBoardResetIfQuickPaint()) {
-          return;
-        }
-
-        this.updateDepressedSquares(
-          flooredCoords.tileX, //Coords not strictly necessary, but including incase this changes
-          flooredCoords.tileY,
-          false
-        );
-        game.reset(); //Reset and don't process the click any further
-        return;
-      }
-    }
-
-    if (this.gameStage !== "pregame" && this.gameStage !== "running") {
-      return; //Clicks on the board (as opposed to on face) do nothing on win/lose screen
-    }
-
-    if (this.quickPaintActive) {
-      //Do nothing as quickpaint uses mouseDown
-      return;
-    }
-    if (this.gameStage === "edit") {
-      //Do nothing as edit clicks use mouseDown
-      return;
-    }
-
-    if (this.gameStage === "pregame") {
-      const generationResult = this.generateBoard(
-        flooredCoords.tileX,
-        flooredCoords.tileY
-      );
-      if (generationResult.success) {
-        this.gameStage = "running";
-        //Game then continues with the code below providing the click to open the first square.
-        //Slightly hacky, but we also optionally change where the first click is if the board
-        //received requires a different first click
-        if (generationResult.rewrittenFirstClick) {
-          //unflooredCoords as these are what attemptChordOrDig uses.
-          unflooredCoords.tileX = generationResult.rewrittenFirstClick.x;
-          unflooredCoords.tileY = generationResult.rewrittenFirstClick.y;
-        }
-      } else {
-        this.updateDepressedSquares(
-          flooredCoords.tileX,
-          flooredCoords.tileY,
-          false
-        );
-        return; //Don't start game. Click not inbounds, or something else went wrong
-      }
-    }
-
-    this.attemptChordOrDig(unflooredCoords.tileX, unflooredCoords.tileY);
-
-    if (this.blasted) {
-      this.doLose();
-    } else if (this.checkWin()) {
-      this.doWin();
-    }
-
-    this.draw();
   }
 
   handleMouseMove(event, isEnter, isLeave) {
@@ -2727,22 +2578,6 @@ class Board {
       this.draw();
     }
   }
-
-  /* OK TO DELETE
-  isButtonPressed(button, compareValue) {
-    //Checks if a button is pressed taking into account that the flag toggle flips it
-    if (mobileModeEnabled.value && flagToggleActive.value) {
-      //swap left/right mouse buttons
-      if (button === 0) {
-        button = 2;
-      } else if (button === 2) {
-        button = 0;
-      }
-    }
-
-    return button === compareValue;
-  }
-  */
 
   handlePointerInput(
     isDigInput,
