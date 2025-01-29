@@ -53,10 +53,10 @@
           :options="
             Object.freeze([
               'normal',
-              'board editor',
-              'mean openings',
               'eff boards',
+              'board editor',
               'zini explorer',
+              'mean openings',
             ])
           "
           stack-label
@@ -222,6 +222,83 @@
           {{ effBoardsStoredFirstClickDisplay }})</span
         >
       </div>
+      <div v-if="variant === 'mean openings'" class="flex q-mt-md">
+        <q-select
+          class="q-mx-md q-mb-md"
+          outlined
+          options-dense
+          dense
+          transition-duration="100"
+          input-debounce="0"
+          v-model="meanOpeningMineDensity"
+          style="width: 200px; flex-shrink: 0"
+          :options="[
+            { label: '10%', value: 0.1 },
+            { label: '20%', value: 0.2 },
+            { label: '30%', value: 0.3 },
+            { label: '40%', value: 0.4 },
+            { label: '50%', value: 0.5 },
+            { label: '60%', value: 0.6 },
+            { label: '70%', value: 0.7 },
+            { label: '80%', value: 0.8 },
+            { label: '90%', value: 0.9 },
+            { label: '100%', value: 1 },
+          ]"
+          emit-value
+          map-options
+          stack-label
+          label="Opening target mine density"
+          @update:model-value="game.reset()"
+        ></q-select>
+        <q-select
+          class="q-mx-md q-mb-md"
+          outlined
+          options-dense
+          dense
+          transition-duration="100"
+          input-debounce="0"
+          v-model="meanOpeningFlagDensity"
+          style="width: 175px; flex-shrink: 0"
+          :options="[
+            { label: '0%', value: 0 },
+            { label: '10%', value: 0.1 },
+            { label: '20%', value: 0.2 },
+            { label: '30%', value: 0.3 },
+            { label: '40%', value: 0.4 },
+            { label: '50%', value: 0.5 },
+            { label: '60%', value: 0.6 },
+            { label: '70%', value: 0.7 },
+            { label: '80%', value: 0.8 },
+            { label: '100%', value: 1 },
+          ]"
+          emit-value
+          map-options
+          stack-label
+          label="Flag density"
+          @update:model-value="game.reset()"
+        ></q-select>
+        <q-select
+          class="q-mx-md q-mb-md"
+          outlined
+          options-dense
+          dense
+          transition-duration="100"
+          input-debounce="0"
+          v-model="meanMineClickBehaviour"
+          style="width: 175px; flex-shrink: 0"
+          :options="[
+            { label: 'Flag', value: 'flag' },
+            { label: 'Blast', value: 'blast' },
+            { label: 'Shield within 0.5 seconds', value: 'shield' },
+            { label: 'Ignore clicks', value: 'ignore' },
+          ]"
+          emit-value
+          map-options
+          stack-label
+          label="Mean mine click action"
+          @update:model-value="game.reset()"
+        ></q-select>
+      </div>
 
       <div
         class="clearfix q-my-md"
@@ -287,52 +364,6 @@
                 @mouseenter="showStatsClicksTable = true"
                 @mouseleave="showStatsClicksTable = false"
               >
-                <!--
-                <q-tooltip
-                  anchor="top middle"
-                  self="bottom middle"
-                  :offset="[10, 10]"
-                >
-                  <table style="text-align: right">
-                    <thead>
-                      <tr>
-                        <th></th>
-                        <th>Active</th>
-                        <th>Wasted</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <th>Left</th>
-                        <td>
-                          {{ statsObject.clicks.left }}
-                        </td>
-                        <td>
-                          {{ statsObject.clicks.leftWasted }}
-                        </td>
-                      </tr>
-                      <tr>
-                        <th>Right</th>
-                        <td>
-                          {{ statsObject.clicks.right }}
-                        </td>
-                        <td>
-                          {{ statsObject.clicks.rightWasted }}
-                        </td>
-                      </tr>
-                      <tr>
-                        <th>Chord</th>
-                        <td>
-                          {{ statsObject.clicks.chord }}
-                        </td>
-                        <td>
-                          {{ statsObject.clicks.chordWasted }}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </q-tooltip>
-                -->
                 <q-menu
                   anchor="top middle"
                   self="bottom middle"
@@ -1409,6 +1440,10 @@ let touchMaxTime = ref(1000); //When do long touches get cancelled (maybe these 
 let touchScrollDistance = ref(3); //When do touches that move a lot unlock the scroll
 let faceHitbox = ref("adaptive"); //Hitbox for when the face is click to trigger a reset
 
+let meanOpeningMineDensity = ref(0.3); //mean opening settings
+let meanOpeningFlagDensity = ref(1);
+let meanMineClickBehaviour = ref("shield"); //flag, blast, shield for 0.5 seconds, ignore
+
 let bulkIterations = ref(1000);
 function bulkrun() {
   //Entries are diffs and counts
@@ -1836,6 +1871,8 @@ class Board {
     } else if (this.variant === "zini explorer") {
       this.mines = this.ziniExplorerMines;
     } else {
+      this.unprocessedMeanZeros = null;
+      this.meanMineStates = null; //Only matters for mean openings variant
       this.mines = null;
     }
 
@@ -1845,19 +1882,6 @@ class Board {
       this.height = this.mines[0].length;
       this.mineCount = this.mines.flat().filter((val) => val).length;
     }
-
-    /*
-    //board editor/zini explorer use different width/height/mines
-    if (this.variant === "board editor") {
-      this.width = this.boardEditorMines.length;
-      this.height = this.boardEditorMines[0].length;
-      this.mineCount = this.boardEditorMines.flat().filter((val) => val).length;
-    } else if (this.variant === "zini explorer") {
-      this.width = this.ziniExplorerMines.length;
-      this.height = this.ziniExplorerMines[0].length;
-      this.mineCount = this.ziniExplorerMines.flat().filter((val) => val).length;
-    }
-    */
 
     if (this.variant === "board editor" && this.editingEditBoard) {
       this.gameStage = "edit";
@@ -2708,10 +2732,13 @@ class Board {
 
     //Try to chord or open square (e.g. mouse left click)
     if (this.gameStage === "running" && !isDown && isDigInput) {
+      let operation = "chorddig";
+
       this.attemptChordOrDig(
         unflooredCoords.tileX,
         unflooredCoords.tileY,
-        touchIdentifier
+        touchIdentifier,
+        event.timeStamp
       );
       needToCheckForWinOrLoss = true;
       isDrawRequired = true;
@@ -2731,6 +2758,14 @@ class Board {
       );
       needToCheckForWinOrLoss = true;
       isDrawRequired = true;
+    }
+
+    //Check if an opening has occured on mean openings
+    if (
+      this.variant === "mean openings" &&
+      this.unprocessedMeanZeros?.length !== 0
+    ) {
+      this.makeOpeningMean(event.timeStamp);
     }
 
     //Check if board is complete (note that checking gameStage is redundant but defensive)
@@ -2793,6 +2828,25 @@ class Board {
       this.variant === "zini explorer"
     ) {
       //Do nothing as this.mines is constant on these modes, so doesn't need to be regenerated?
+    } else if (this.variant === "mean openings") {
+      //meanMineStates 2d array tracks which squares contain mines that will only show once an opening is opened
+      this.meanMineStates = new Array(this.width).fill(0).map(() =>
+        new Array(this.height).fill(0).map(() => {
+          let singleMeanSquare = {
+            isMine: false, //all squares start off with no mean mines
+            changedToMineTimestamp: null,
+          };
+          return singleMeanSquare;
+        })
+      );
+      this.unprocessedMeanZeros = []; //List of recently opened coords that need processing to check if they can have a mean mine.
+      this.mines = BoardGenerator.basicShuffle(
+        this.width,
+        this.height,
+        this.mineCount,
+        firstClick,
+        zeroStart.value
+      );
     } else {
       this.mines = BoardGenerator.basicShuffle(
         this.width,
@@ -2845,36 +2899,6 @@ class Board {
   getTime() {
     return performance.now() - this.boardStartTime;
   }
-
-  /*
-  reset() {
-    //Which squares contain mines
-    if (pttaUrl.value !== "") {
-      this.mines = BoardGenerator.readFromPtta(
-        this.width,
-        this.height,
-        this.mineCount
-      );
-    } else {
-      this.mines = BoardGenerator.basicShuffle(
-        this.width,
-        this.height,
-        this.mineCount
-      );
-    }
-
-    //Which squares have revealed etc
-    this.tilesArray = new Array(this.width)
-      .fill(0)
-      .map(() =>
-        new Array(this.height).fill(0).map(() => new Tile(UNREVEALED))
-      );
-
-    this.blasted = false;
-    this.openedTiles = 0;
-    this.stats = new BoardStats(this.mines);
-  }
-  */
 
   checkCoordsInBounds(tileX, tileY) {
     if (tileX === null || tileY === null) {
@@ -2945,7 +2969,11 @@ class Board {
       //Flag the square
       this.tilesArray[tileX][tileY].state = FLAG;
       this.unflagged--;
-      if (this.mines[tileX][tileY]) {
+      if (
+        this.mines[tileX][tileY] ||
+        (this.variant === "mean openings" &&
+          this.meanMineStates[tileX][tileY].isMine)
+      ) {
         //Flags on correct square count towards effective clicks
         this.stats.addRight(tileX, tileY, time);
       } else {
@@ -2963,7 +2991,12 @@ class Board {
     }
   }
 
-  attemptChordOrDig(unflooredTileX, unflooredTileY, touchIdentifier) {
+  attemptChordOrDig(
+    unflooredTileX,
+    unflooredTileY,
+    touchIdentifier,
+    eventTimestamp
+  ) {
     let time = this.getTime();
 
     let { tileX, tileY } = this.unflooredToFlooredTileCoords(
@@ -2982,8 +3015,50 @@ class Board {
       //Attempt chord tile
       this.chord(tileX, tileY, true, time);
     } else if (this.tilesArray[tileX][tileY].state === UNREVEALED) {
-      this.openTile(tileX, tileY);
-      this.stats.addLeft(tileX, tileY, time);
+      //Attempt to dig tile, although this behaviour may be changed on mean openings mode
+      let doDig = true;
+
+      if (
+        this.variant === "mean openings" &&
+        this.meanMineStates[tileX][tileY].isMine
+      ) {
+        //Clicked on a mean mine. So this either blasts, flags, shields or ignores depending on settings
+
+        if (meanMineClickBehaviour.value === "blast") {
+          //Do nothing as we will blast later since doDig is set
+          doDig = true; //defensive
+        } else if (meanMineClickBehaviour.value === "flag") {
+          //Click becomes a flag instead
+          doDig = false;
+          this.tilesArray[tileX][tileY].state = FLAG;
+          this.unflagged--;
+          this.stats.addRight(tileX, tileY, time);
+        } else if (meanMineClickBehaviour.value === "shield") {
+          //Waste if click occurred within 0.5s, otherwise blast
+          if (
+            eventTimestamp <=
+            this.meanMineStates[tileX][tileY].changedToMineTimestamp + 500
+          ) {
+            //Click occred soon after mean mine was placed, click just gets wasted
+            doDig = false;
+            this.stats.addWastedLeft(tileX, tileY, time);
+          } else {
+            //Click happened after, so should blast
+            doDig = true; //defensive
+          }
+        } else if (meanMineClickBehaviour.value === "ignore") {
+          doDig = false;
+          //Not sure whether it is best to waste click or ignore it entirely. I've chosen to waste as maybe people care about clicks per second stat.
+          this.stats.addWastedLeft(tileX, tileY, time);
+        } else {
+          throw new Error("illegal value for meanMineClickBehaviour");
+        }
+      }
+
+      if (doDig) {
+        this.openTile(tileX, tileY);
+        this.stats.addLeft(tileX, tileY, time);
+      }
     } else {
       this.stats.addWastedLeft(tileX, tileY, time);
     }
@@ -3062,7 +3137,11 @@ class Board {
       return;
     }
 
-    if (this.mines[x][y]) {
+    const isNormalMine = this.mines[x][y];
+    const isMeanMine =
+      this.variant === "mean openings" && this.meanMineStates[x][y].isMine;
+
+    if (isNormalMine || isMeanMine) {
       this.tilesArray[x][y].state = MINERED;
       this.blasted = true;
     } else {
@@ -3071,6 +3150,9 @@ class Board {
       this.openedTiles++;
 
       if (number === 0) {
+        if (this.variant === "mean openings") {
+          this.unprocessedMeanZeros.push({ x, y });
+        }
         this.chord(x, y, false);
       }
     }
@@ -3239,7 +3321,7 @@ class Board {
     this.touchDepressedSquaresMap.clear();
   }
 
-  getNumberSurroundingMines(x, y) {
+  getNumberSurroundingMines(x, y, includeMeanMines = false) {
     let count = 0;
     for (let i = x - 1; i <= x + 1; i++) {
       for (let j = y - 1; j <= y + 1; j++) {
@@ -3249,7 +3331,9 @@ class Board {
         if (!this.checkCoordsInBounds(i, j)) {
           continue; //ignore squares outside board
         }
-        if (this.mines[i][j]) {
+        const isNormalMine = this.mines[i][j];
+        const isMeanMine = includeMeanMines && this.meanMineStates[i][j].isMine;
+        if (isNormalMine || isMeanMine) {
           count++;
         }
       }
@@ -3286,10 +3370,15 @@ class Board {
       return; //Can only chord numbers
     }
 
-    if (this.tilesArray[x][y].state === this.getNumberSurroundingFlags(x, y)) {
+    const isChordedTileZero = this.tilesArray[x][y].state === 0;
+
+    if (
+      this.tilesArray[x][y].state === this.getNumberSurroundingFlags(x, y) ||
+      isChordedTileZero
+    ) {
       let hadUnrevealedNeighbour = false;
 
-      //Correct number of flags, so do chord
+      //Correct number of flags (or a zero tile), so do chord
       for (let i = x - 1; i <= x + 1; i++) {
         for (let j = y - 1; j <= y + 1; j++) {
           if (i === x && j === y) {
@@ -3297,6 +3386,12 @@ class Board {
           }
           if (!this.checkCoordsInBounds(i, j)) {
             continue; //ignore squares outside board
+          }
+          if (isChordedTileZero && this.tilesArray[i][j].state === FLAG) {
+            //Openings will open everything around them and annihilate neighbouring flags.
+            //Note that because we change the state to UNREVEALED, it then gets opened by follow if statement
+            this.tilesArray[i][j].state = UNREVEALED;
+            this.unflagged++;
           }
           if (this.tilesArray[i][j].state === UNREVEALED) {
             this.openTile(i, j);
@@ -3332,8 +3427,12 @@ class Board {
   blast() {
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
+        const isNormalMine = this.mines[x][y];
+        const isMeanMine =
+          this.variant === "mean openings" && this.meanMineStates[x][y].isMine;
+
         if (
-          this.mines[x][y] &&
+          (isNormalMine || isMeanMine) &&
           this.tilesArray[x][y].state !== FLAG &&
           this.tilesArray[x][y].state !== MINERED
         ) {
@@ -3357,7 +3456,14 @@ class Board {
   markRemainingFlags() {
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
-        if (this.mines[x][y] && this.tilesArray[x][y].state === UNREVEALED) {
+        const isNormalMine = this.mines[x][y];
+        const isMeanMine =
+          this.variant === "mean openings" && this.meanMineStates[x][y].isMine;
+
+        if (
+          (isNormalMine || isMeanMine) &&
+          this.tilesArray[x][y].state === UNREVEALED
+        ) {
           this.tilesArray[x][y].state = FLAG;
         }
       }
@@ -3372,6 +3478,175 @@ class Board {
     } else {
       return false;
     }
+  }
+
+  makeOpeningMean(eventTimestamp) {
+    //Runs through newly opened zeros and attempts to make them a mine.
+
+    //Randomly set some of this squares to be provisional mines
+    for (let zero of this.unprocessedMeanZeros) {
+      if (Math.random() < meanOpeningMineDensity.value) {
+        this.meanMineStates[zero.x][zero.y].isMine = true;
+        this.meanMineStates[zero.x][zero.y].changedToMineTimestamp =
+          eventTimestamp;
+      }
+    }
+
+    //https://stackoverflow.com/a/31054543
+    let shuffledUnprocessedZeros = this.unprocessedMeanZeros
+      .map((n) => [Math.random(), n])
+      .sort()
+      .map((n) => n[1]);
+
+    //Do another pass to make sure each mine can be deduced from basic logic
+    for (let zero of shuffledUnprocessedZeros) {
+      if (!this.meanMineStates[zero.x][zero.y].isMine) {
+        continue;
+      }
+
+      let neighbours = [
+        { x: zero.x - 1, y: zero.y - 1 },
+        { x: zero.x - 1, y: zero.y },
+        { x: zero.x - 1, y: zero.y + 1 },
+        { x: zero.x, y: zero.y - 1 },
+        { x: zero.x, y: zero.y + 1 },
+        { x: zero.x + 1, y: zero.y - 1 },
+        { x: zero.x + 1, y: zero.y },
+        { x: zero.x + 1, y: zero.y + 1 },
+      ];
+      neighbours = neighbours.filter((square) =>
+        this.checkCoordsInBounds(square.x, square.y)
+      );
+
+      let hasGoodNeighbour = false; //A good neighbour is one that tells us this square is a mine
+
+      //Check number neighbours to see if any of them can determine this square to be a mine
+      for (let neighbour of neighbours) {
+        if (this.meanMineStates[neighbour.x][neighbour.y].isMine) {
+          //If the neighbour is a mine then it gives no info, keep looking.
+          continue;
+        }
+
+        //Check if the neighbour is "maxed out" - that is, all it's surrounding unrevealed squares are mines.
+        let neighbourNeighbours = [
+          { x: neighbour.x - 1, y: neighbour.y - 1 },
+          { x: neighbour.x - 1, y: neighbour.y },
+          { x: neighbour.x - 1, y: neighbour.y + 1 },
+          { x: neighbour.x, y: neighbour.y - 1 },
+          { x: neighbour.x, y: neighbour.y + 1 },
+          { x: neighbour.x + 1, y: neighbour.y - 1 },
+          { x: neighbour.x + 1, y: neighbour.y },
+          { x: neighbour.x + 1, y: neighbour.y + 1 },
+        ];
+        neighbourNeighbours = neighbourNeighbours.filter((square) =>
+          this.checkCoordsInBounds(square.x, square.y)
+        );
+
+        let foundUnrevealedSafe = false;
+
+        for (let neighbourNeighbour of neighbourNeighbours) {
+          //Check if the neighbour to our main cell has neighbours that are unrevealed safe
+          if (
+            this.tilesArray[neighbourNeighbour.x][neighbourNeighbour.y] ===
+              UNREVEALED &&
+            !this.mines[neighbourNeighbour.x][neighbourNeighbour.y] &&
+            !this.meanMineStates[neighbourNeighbour.x][neighbourNeighbour.y]
+              .isMine
+          ) {
+            foundUnrevealedSafe = true;
+            break;
+          }
+        }
+
+        if (!foundUnrevealedSafe) {
+          //Neighbour is surrounded by mines or safe squares.
+          // It is good as it tells us our square is a mine.
+          hasGoodNeighbour = true;
+          break;
+        }
+      }
+
+      //If we have a read on our square, then keep it as a mine
+      //Otherwise, we need to "unmine" one of the neighbouring mines
+      //or, barring that, unmine the square itself.
+
+      //Good case - keep this square a mine
+      if (hasGoodNeighbour) {
+        continue;
+      }
+
+      const mineNeighbours = neighbours.filter(
+        (n) => this.meanMineStates[n.x][n.y].isMine
+      );
+
+      if (mineNeighbours.length !== 0) {
+        //Bad case - try to change a neighbour square to a non-mine
+        const randomMineNeighbour =
+          mineNeighbours[Math.floor(Math.random() * mineNeighbours.length)];
+
+        this.meanMineStates[randomMineNeighbour.x][
+          randomMineNeighbour.y
+        ].isMine = false;
+        this.meanMineStates[randomMineNeighbour.x][
+          randomMineNeighbour.y
+        ].changedToMineTimestamp = null;
+      } else {
+        //Very bad case - change the square itself to be a non-mine
+        this.meanMineStates[zero.x][zero.y].isMine = false;
+        this.meanMineStates[zero.x][zero.y].changedToMineTimestamp = null;
+      }
+    }
+
+    let cellsThatNeedNumber = [];
+
+    //Do a final pass to make sure number states are updated and squares with means mines are revealed
+
+    for (let zero of this.unprocessedMeanZeros) {
+      if (this.meanMineStates[zero.x][zero.y].isMine) {
+        //Close squares with mean mines, or change to flag
+        if (Math.random() < meanOpeningFlagDensity.value) {
+          this.tilesArray[zero.x][zero.y].state = FLAG;
+        } else {
+          this.unflagged++;
+          this.tilesArray[zero.x][zero.y].state = UNREVEALED;
+        }
+      }
+
+      //Mark neighbours that need to have their number calculated
+      for (let x = zero.x - 1; x <= zero.x + 1; x++) {
+        for (let y = zero.y - 1; y <= zero.y + 1; y++) {
+          if (
+            this.checkCoordsInBounds(x, y) &&
+            !this.meanMineStates[x][y].isMine
+          ) {
+            cellsThatNeedNumber.push({ x, y });
+          }
+        }
+      }
+    }
+
+    //De-duplicate the list of cellsThatNeedNumber
+    //https://stackoverflow.com/questions/2218999/how-to-remove-all-duplicates-from-an-array-of-objects
+    cellsThatNeedNumber = cellsThatNeedNumber.filter(
+      (square, index, self) =>
+        index ===
+        self.findIndex(
+          (otherSquare) =>
+            otherSquare.x === square.x && otherSquare.y === square.y
+        )
+    );
+
+    //Compute numbers to show for all cells that need this
+    for (let cell of cellsThatNeedNumber) {
+      this.tilesArray[cell.x][cell.y].state = this.getNumberSurroundingMines(
+        cell.x,
+        cell.y,
+        true
+      );
+    }
+
+    //Truncate as all squares have been processed
+    this.unprocessedMeanZeros = [];
   }
 
   calculateAndDisplayStats(isWin) {

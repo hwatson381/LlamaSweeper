@@ -150,3 +150,19 @@ pointermove may be better than touch move as touchmove only triggers for ~10px m
 Have the flag-toggle track properly when zoomed in (is this even possible?)
 
 Consider making topbar scrollable?
+
+zini idea - do initial inclusion-exclusion analysis. And then when playing, we try to
+do the following: play near solved stuff/edge of board. And we also treat areas that are
+never flags/always nf click as also being like the edge of the board. This is because
+those regions are quite fixed.
+
+For mean openings, is it possible to be generous with chords (e.g. not requiring mean squares to all be flagged?)
+
+Is it worth making an online repo for very high eff boards (this can then be pulled from instead of generated on client?)
+
+Interesting sub ptta example
+https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=2&m=000000000000000000000000000000000000000000mmg80854k0
+Relies on greedy rule failing.
+
+Would there be any reason to deprioritise clicks saves that come from chain merge rather than normal?
+Possibly, but seems complicated and both categories of click save have possiblity of being "invalidated" later
