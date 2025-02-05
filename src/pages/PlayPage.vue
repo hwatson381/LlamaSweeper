@@ -289,7 +289,7 @@
           :options="[
             { label: 'Flag', value: 'flag' },
             { label: 'Blast', value: 'blast' },
-            { label: 'Shield within 0.5 seconds', value: 'shield' },
+            { label: 'Shield for 0.5s', value: 'shield' },
             { label: 'Ignore clicks', value: 'ignore' },
           ]"
           emit-value
@@ -312,6 +312,7 @@
           @mouseup="game.handleMouseUp($event)"
           @mousemove="game.handleMouseMove($event)"
           @mouseenter="game.handleMouseEnter($event)"
+          @mouseleave="game.handleMouseLeave($event)"
           @touchstart="game.handleTouchStart($event)"
           @touchmove="game.handleTouchMove($event)"
           @touchend="game.handleTouchEnd($event)"
@@ -476,6 +477,81 @@
                 </q-item>
               </q-list>
             </q-btn-dropdown>
+            <br />
+            <br />
+            <q-btn-dropdown
+              v-if="variant !== 'mean openings'"
+              color="primary"
+              label="Watch"
+            >
+              <q-list>
+                <q-item
+                  clickable
+                  v-close-popup
+                  @click="game.board.initReplay('replay')"
+                >
+                  <q-item-section>
+                    <q-item-label>Replay</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-item
+                  clickable
+                  v-close-popup
+                  @click="game.board.initReplay('8-way')"
+                >
+                  <q-item-section>
+                    <q-item-label>8-way ZiNi</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-item
+                  clickable
+                  v-close-popup
+                  @click="game.board.initReplay('womzini')"
+                >
+                  <q-item-section>
+                    <q-item-label>WoM ZiNi</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-item
+                  clickable
+                  v-close-popup
+                  @click="game.board.initReplay('womzinifix')"
+                >
+                  <q-item-section>
+                    <q-item-label>WoM ZiNi Improved</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-item
+                  clickable
+                  v-close-popup
+                  @click="game.board.initReplay('womhzini')"
+                >
+                  <q-item-section>
+                    <q-item-label>WoM HZiNi</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-item
+                  clickable
+                  v-close-popup
+                  @click="game.board.initReplay('compare')"
+                >
+                  <q-item-section>
+                    <q-item-label>ZiNi Comparison</q-item-label>
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-btn-dropdown>
+            <q-btn
+              v-else
+              color="primary"
+              label="Replay"
+              @click="game.board.initReplay('replay')"
+            ></q-btn>
           </q-card-section>
         </q-card>
       </div>
@@ -863,7 +939,8 @@
                 <q-checkbox
                   v-model="quickPaintOnlyTrivialLogic"
                   label="QuickPaint only use single number logic (e.g. no 1-2 patterns)"
-                />
+                /><br />
+                <q-checkbox v-model="reorderZini" label="Reorder ZiNi Replay" />
               </div>
             </q-tab-panel>
           </q-tab-panels>
@@ -1035,7 +1112,7 @@
   </q-dialog>
 
   <button
-    v-if="mobileModeEnabled"
+    v-if="mobileModeEnabled && !replayIsShown"
     :class="{
       'flag-toggle': true,
       'flag-active': flagToggleActive,
@@ -1049,6 +1126,131 @@
       @mousedown="game.board.showClickFlagToggleWarning()"
     />
   </button>
+
+  <div
+    v-if="replayIsShown"
+    class="replay-bar row q-pa-sm"
+    style="
+      position: fixed;
+      background-color: lightgray;
+      bottom: 10px;
+      left: 0;
+      right: 0;
+      margin: auto;
+      width: calc(100vw - 40px);
+      max-width: 1000px;
+      border-radius: 10px;
+      box-shadow: 3px 4px 10px black;
+      gap: 6px;
+      align-items: center;
+    "
+  >
+    <q-btn dense color="white" text-color="black">
+      <q-icon
+        :name="replayIsPlaying ? 'pause' : 'play_arrow'"
+        @click="
+          game.board && game.board.replay && game.board.replay.togglePausePlay()
+        "
+      ></q-icon>
+    </q-btn>
+    <q-btn
+      dense
+      color="white"
+      text-color="black"
+      @click="
+        game.board &&
+          game.board.replay &&
+          game.board.replay.jumpToPreviousClick()
+      "
+    >
+      <q-icon name="skip_previous"></q-icon>
+    </q-btn>
+    <q-btn
+      dense
+      color="white"
+      text-color="black"
+      @click="
+        game.board && game.board.replay && game.board.replay.jumpToNextClick()
+      "
+    >
+      <q-icon name="skip_next"></q-icon>
+    </q-btn>
+    <q-btn
+      v-if="!replayTypeForceSteppy"
+      dense
+      color="white"
+      text-color="black"
+      @click="game.board?.replay?.cycleReplayType()"
+    >
+      <q-icon v-if="replayTypeSelector === 'accurate'" name="route"></q-icon>
+      <q-icon v-if="replayTypeSelector === 'rounded'" name="timeline"></q-icon>
+      <q-icon
+        v-if="replayTypeSelector === 'steppy'"
+        name="sym_o_steppers"
+      ></q-icon>
+    </q-btn>
+    <q-slider
+      v-model="replaySpeedMultiplierUnderlying"
+      :min="0"
+      :max="40"
+      snap
+      color="green"
+      :dark="false"
+      class="q-px-sm"
+      style="width: 90px"
+    />
+    <q-chip square color="white" text-color="black">
+      {{
+        replaySpeedMultiplier >= 10
+          ? replaySpeedMultiplier.toFixed(1)
+          : replaySpeedMultiplier.toFixed(2)
+      }}x
+    </q-chip>
+    <div
+      style="
+        width: 250px;
+        flex-grow: 1;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      "
+    >
+      <q-slider
+        v-model.number="replayProgress"
+        :min="replayBarStartValue"
+        :max="replayBarLastValue"
+        :step="replayBarStepSize"
+        :snap="replayBarIsSnappy"
+        color="blue"
+        :dark="false"
+        class="q-px-sm no-transition-slider"
+        style="width: 170px; flex-grow: 1"
+        @update:model-value="
+          (val) => game.board?.replay?.handleSliderChange(val)
+        "
+        @pan="(phase) => (replayIsPanning = phase === 'start')"
+      />
+      <q-input
+        v-model="replayProgressRounded"
+        filled
+        dense
+        style="max-width: 80px"
+        bg-color="white"
+        color="black"
+        :dark="false"
+        @update:model-value="
+          (val) => game.board?.replay?.handleInputChange(val)
+        "
+        @blur="replayIsInputting = false"
+        @focus="replayIsInputting = true"
+        @keydown.stop="
+          () => {
+            /* no-op to stop arrow keys doing stuff */
+          }
+        "
+      />
+    </div>
+  </div>
 </template>
 
 <style scoped>
@@ -1136,6 +1338,7 @@ onUnmounted(() => {
   window.removeEventListener("scroll", handlePageScroll);
   game.unmount();
   effShuffleManager.killAllWorkers();
+  game?.board?.replay?.pause();
 });
 
 function handleKeyDown(event) {
@@ -1149,6 +1352,14 @@ function handleKeyDown(event) {
   }
   if (event.key === "w") {
     game.board.handleCycleQuickPaintModeKeypress();
+    event.preventDefault();
+  }
+  if (event.key === "ArrowLeft") {
+    game.board.replay && game.board.replay.jumpToPreviousClick();
+    event.preventDefault();
+  }
+  if (event.key === "ArrowRight") {
+    game.board.replay && game.board.replay.jumpToNextClick();
     event.preventDefault();
   }
 }
@@ -1444,6 +1655,35 @@ let meanOpeningMineDensity = ref(0.3); //mean opening settings
 let meanOpeningFlagDensity = ref(1);
 let meanMineClickBehaviour = ref("shield"); //flag, blast, shield for 0.5 seconds, ignore
 
+let replayProgress = ref(-1);
+let replayProgressRounded = ref(-1); //Same as replayProgress, but only to 3 d.p.
+let replayIsPlaying = ref(false);
+let replayBarStartValue = ref(0); //First value that can be jumped to on replay bar
+let replayBarLastValue = ref(100); //Last value that can be jumped to on replay bar
+let replayBarStepSize = ref(1); //Step size for replay bar
+let replayBarIsSnappy = ref(false); //Whether the replay bar should snap to certain points
+let replayTypeSelector = ref("accurate"); //accurate, rounded, steppy
+let replayTypeForceSteppy = ref(false);
+let replayType = computed(() =>
+  replayTypeForceSteppy.value ? "steppy" : replayTypeSelector.value
+);
+let replayIsShown = ref(false);
+let replaySpeedMultiplierUnderlying = ref(20);
+let replaySpeedMultiplier = computed(() => {
+  const multiplyOptions = [
+    0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6,
+    0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7,
+    1.8, 1.9, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20,
+  ];
+
+  let result = multiplyOptions[replaySpeedMultiplierUnderlying.value];
+
+  return result;
+});
+let replayIsPanning = ref(false);
+let replayIsInputting = ref(false);
+let reorderZini = ref(false);
+
 let bulkIterations = ref(1000);
 function bulkrun() {
   //Entries are diffs and counts
@@ -1459,11 +1699,11 @@ function bulkrun() {
     );
 
     benchmark.startTime("one-way");
-    let oneZini = algorithms.calcOneWayZini(mines);
+    let oneZini = algorithms.calcOneWayZini(mines).total;
     benchmark.stopTime("one-way");
 
     benchmark.startTime("8-way");
-    let eightZini = algorithms.calcEightWayZini(mines);
+    let eightZini = algorithms.calcEightWayZini(mines).total;
     benchmark.stopTime("8-way");
 
     //wom zini without correction
@@ -1538,8 +1778,16 @@ function bulkrun2() {
 
     let bbbv = algorithms.calc3bv(mines, false, preprocessedData).bbbv;
 
-    let singleZini = algorithms.calcBasicZini(mines, false, preprocessedData);
-    let eightZini = algorithms.calcBasicZini(mines, true, preprocessedData);
+    let singleZini = algorithms.calcBasicZini(
+      mines,
+      false,
+      preprocessedData
+    ).total;
+    let eightZini = algorithms.calcBasicZini(
+      mines,
+      true,
+      preprocessedData
+    ).total;
 
     //Find data so far for the particular 3bv value of this board
     let this3bvEntry = bbbvsMap.get(bbbv);
@@ -1631,11 +1879,19 @@ function bulkrun3() {
     let bbbv = algorithms.calc3bv(mines, false, preprocessedData).bbbv;
 
     benchmark.startTime("single-zini");
-    let singleZini = algorithms.calcBasicZini(mines, false, preprocessedData);
+    let singleZini = algorithms.calcBasicZini(
+      mines,
+      false,
+      preprocessedData
+    ).total;
     benchmark.stopTime("single-zini");
 
     benchmark.startTime("eight-zini");
-    let eightZini = algorithms.calcBasicZini(mines, true, preprocessedData);
+    let eightZini = algorithms.calcBasicZini(
+      mines,
+      true,
+      preprocessedData
+    ).total;
     benchmark.stopTime("eight-zini");
 
     let oldCheckTriggered =
@@ -1871,7 +2127,7 @@ class Board {
     } else if (this.variant === "zini explorer") {
       this.mines = this.ziniExplorerMines;
     } else {
-      this.unprocessedMeanZeros = null;
+      this.unprocessedMeanZeros = [];
       this.meanMineStates = null; //Only matters for mean openings variant
       this.mines = null;
     }
@@ -1914,6 +2170,12 @@ class Board {
     this.unflagged = this.mineCount;
     this.integerTimer = 0;
     this.boardStartTime = 0;
+    this.cursor = { x: null, y: null };
+    if (this.replay) {
+      this.replay.pause();
+      replayIsShown.value = false;
+    }
+    this.replay = null;
 
     this.clearTimerTimeout();
 
@@ -2624,6 +2886,25 @@ class Board {
     let unflooredCoords = coordsData.unflooredCoords;
     let canvasCoords = coordsData.canvasCoords;
 
+    // ########## Check for face click #############
+
+    //Check for face click and exit early if it was clicked on
+    if (
+      (!isTouchInput && isDigInput && !isDown) ||
+      (isTouchInput && (isDigInput || isFlagInput) && !isDown)
+    ) {
+      let wasClickOnFace = this.attemptFaceClick(
+        canvasCoords,
+        flooredCoords,
+        touchIdentifier
+      );
+      if (wasClickOnFace) {
+        //Don't process click further
+        this.draw(); //just in case
+        return; //Note that this includes clicks on face that then got cancelled.
+      }
+    }
+
     // ############### Section for mostly mouse down stuff #################
 
     //Handle clicks in quickpaint, and exit early
@@ -2646,6 +2927,16 @@ class Board {
     if (this.gameStage === "edit") {
       if (mouseDownOrTouchUp && (isDigInput || isFlagInput)) {
         this.handleEditClick(flooredCoords.tileX, flooredCoords.tileY);
+        this.draw();
+      }
+
+      return;
+    }
+
+    //handle clicks in replay mode and exit early if nothing to do
+    if (this.gameStage === "replay") {
+      if (mouseDownOrTouchUp && (isDigInput || isFlagInput)) {
+        this.handleReplayClick(flooredCoords.tileX, flooredCoords.tileY);
         this.draw();
       }
 
@@ -2677,28 +2968,11 @@ class Board {
       isFlagInput &&
       !isTouchInput
     ) {
-      this.attemptFlag(unflooredCoords.tileX, unflooredCoords.tileY);
+      this.attemptFlag(unflooredCoords.tileX, unflooredCoords.tileY, true);
       isDrawRequired = true;
     }
 
     // ############### Section for mostly mouse up stuff #################
-
-    //Check for face click and exit early if it was clicked on
-    if (
-      (!isTouchInput && isDigInput && !isDown) ||
-      (isTouchInput && (isDigInput || isFlagInput) && !isDown)
-    ) {
-      let wasClickOnFace = this.attemptFaceClick(
-        canvasCoords,
-        flooredCoords,
-        touchIdentifier
-      );
-      if (wasClickOnFace) {
-        //Don't process click further
-        this.draw(); //just in case
-        return; //Note that this includes clicks on face that then got cancelled.
-      }
-    }
 
     //Do first click on board
     if (this.gameStage === "pregame" && !isDown && isDigInput) {
@@ -2732,8 +3006,6 @@ class Board {
 
     //Try to chord or open square (e.g. mouse left click)
     if (this.gameStage === "running" && !isDown && isDigInput) {
-      let operation = "chorddig";
-
       this.attemptChordOrDig(
         unflooredCoords.tileX,
         unflooredCoords.tileY,
@@ -2835,6 +3107,9 @@ class Board {
           let singleMeanSquare = {
             isMine: false, //all squares start off with no mean mines
             changedToMineTimestamp: null,
+            startsFlagged: null, //if revealed, should be a flag or unrevealed?
+            isActive: false, //used during replays - whether the square is "in play" (e.g. acts like a mine if it is one)
+            isLocked: false, //whether the square's final state has been decided
           };
           return singleMeanSquare;
         })
@@ -2876,7 +3151,7 @@ class Board {
   }
 
   updateIntegerTimerIfNeeded() {
-    let newTimerValue = Math.floor(this.getTime() / 1000);
+    let newTimerValue = Math.floor(this.getTime());
 
     if (newTimerValue !== this.integerTimer) {
       this.integerTimer = newTimerValue;
@@ -2897,7 +3172,7 @@ class Board {
   }
 
   getTime() {
-    return performance.now() - this.boardStartTime;
+    return (performance.now() - this.boardStartTime) / 1000;
   }
 
   checkCoordsInBounds(tileX, tileY) {
@@ -2952,7 +3227,7 @@ class Board {
     return { tileX: Math.floor(tileX), tileY: Math.floor(tileY) };
   }
 
-  attemptFlag(unflooredTileX, unflooredTileY) {
+  attemptFlag(unflooredTileX, unflooredTileY, includeInStats = false) {
     let time = this.getTime();
 
     let { tileX, tileY } = this.unflooredToFlooredTileCoords(
@@ -2975,19 +3250,47 @@ class Board {
           this.meanMineStates[tileX][tileY].isMine)
       ) {
         //Flags on correct square count towards effective clicks
-        this.stats.addRight(tileX, tileY, time);
+        includeInStats &&
+          this.stats.addRight(
+            tileX,
+            tileY,
+            unflooredTileX,
+            unflooredTileY,
+            time
+          );
       } else {
         //Flags on incorrect square are wasted
-        this.stats.addWastedRight(tileX, tileY, time);
+        includeInStats &&
+          this.stats.addWastedRight(
+            tileX,
+            tileY,
+            unflooredTileX,
+            unflooredTileY,
+            time
+          );
       }
     } else if (this.tilesArray[tileX][tileY].state === FLAG) {
       //Unflag a square
       this.tilesArray[tileX][tileY].state = UNREVEALED;
       this.unflagged++;
-      this.stats.addWastedRight(tileX, tileY, time);
+      includeInStats &&
+        this.stats.addWastedRight(
+          tileX,
+          tileY,
+          unflooredTileX,
+          unflooredTileY,
+          time
+        );
     } else {
       //Wasted flag input
-      this.stats.addWastedRight(tileX, tileY, time);
+      includeInStats &&
+        this.stats.addWastedRight(
+          tileX,
+          tileY,
+          unflooredTileX,
+          unflooredTileY,
+          time
+        );
     }
   }
 
@@ -3013,7 +3316,7 @@ class Board {
 
     if (typeof this.tilesArray[tileX][tileY].state === "number") {
       //Attempt chord tile
-      this.chord(tileX, tileY, true, time);
+      this.chord(tileX, tileY, true, time, unflooredTileX, unflooredTileY);
     } else if (this.tilesArray[tileX][tileY].state === UNREVEALED) {
       //Attempt to dig tile, although this behaviour may be changed on mean openings mode
       let doDig = true;
@@ -3032,7 +3335,13 @@ class Board {
           doDig = false;
           this.tilesArray[tileX][tileY].state = FLAG;
           this.unflagged--;
-          this.stats.addRight(tileX, tileY, time);
+          this.stats.addRight(
+            tileX,
+            tileY,
+            unflooredTileX,
+            unflooredTileY,
+            time
+          );
         } else if (meanMineClickBehaviour.value === "shield") {
           //Waste if click occurred within 0.5s, otherwise blast
           if (
@@ -3041,7 +3350,13 @@ class Board {
           ) {
             //Click occred soon after mean mine was placed, click just gets wasted
             doDig = false;
-            this.stats.addWastedLeft(tileX, tileY, time);
+            this.stats.addWastedLeft(
+              tileX,
+              tileY,
+              unflooredTileX,
+              unflooredTileY,
+              time
+            );
           } else {
             //Click happened after, so should blast
             doDig = true; //defensive
@@ -3049,7 +3364,13 @@ class Board {
         } else if (meanMineClickBehaviour.value === "ignore") {
           doDig = false;
           //Not sure whether it is best to waste click or ignore it entirely. I've chosen to waste as maybe people care about clicks per second stat.
-          this.stats.addWastedLeft(tileX, tileY, time);
+          this.stats.addWastedLeft(
+            tileX,
+            tileY,
+            unflooredTileX,
+            unflooredTileY,
+            time
+          );
         } else {
           throw new Error("illegal value for meanMineClickBehaviour");
         }
@@ -3057,10 +3378,16 @@ class Board {
 
       if (doDig) {
         this.openTile(tileX, tileY);
-        this.stats.addLeft(tileX, tileY, time);
+        this.stats.addLeft(tileX, tileY, unflooredTileX, unflooredTileY, time);
       }
     } else {
-      this.stats.addWastedLeft(tileX, tileY, time);
+      this.stats.addWastedLeft(
+        tileX,
+        tileY,
+        unflooredTileX,
+        unflooredTileY,
+        time
+      );
     }
   }
 
@@ -3083,11 +3410,11 @@ class Board {
 
     if (typeof this.tilesArray[tileX][tileY].state === "number") {
       //Attempt chord tile
-      this.chord(tileX, tileY, true, time);
+      this.chord(tileX, tileY, true, time, unflooredTileX, unflooredTileY);
     } else {
       //Try to flag the square
       //Code is slightly scuffed since this repeats some checks (such as square inbounds), but I'm too lazy to fix
-      this.attemptFlag(unflooredTileX, unflooredTileY);
+      this.attemptFlag(unflooredTileX, unflooredTileY, true);
     }
   }
 
@@ -3139,7 +3466,9 @@ class Board {
 
     const isNormalMine = this.mines[x][y];
     const isMeanMine =
-      this.variant === "mean openings" && this.meanMineStates[x][y].isMine;
+      this.variant === "mean openings" &&
+      this.meanMineStates[x][y].isMine &&
+      this.meanMineStates[x][y].isActive;
 
     if (isNormalMine || isMeanMine) {
       this.tilesArray[x][y].state = MINERED;
@@ -3173,7 +3502,7 @@ class Board {
       "mouse"
     );
 
-    if (!this.gameStage === "pregame") {
+    if (this.gameStage !== "pregame") {
       if (isEnter) {
         this.stats.addMouseEnter(unflooredTileX, unflooredTileY, time);
       } else if (isLeave) {
@@ -3332,7 +3661,10 @@ class Board {
           continue; //ignore squares outside board
         }
         const isNormalMine = this.mines[i][j];
-        const isMeanMine = includeMeanMines && this.meanMineStates[i][j].isMine;
+        const isMeanMine =
+          includeMeanMines &&
+          this.meanMineStates[i][j].isMine &&
+          this.meanMineStates[i][j].isActive;
         if (isNormalMine || isMeanMine) {
           count++;
         }
@@ -3361,7 +3693,14 @@ class Board {
     return count;
   }
 
-  chord(x, y, includeInStats = false, time = 0) {
+  chord(
+    x,
+    y,
+    includeInStats = false,
+    time = 0,
+    unflooredX = undefined,
+    unflooredY = undefined
+  ) {
     if (!this.checkCoordsInBounds(x, y)) {
       return; //ignore squares outside board
     }
@@ -3401,14 +3740,14 @@ class Board {
       }
       if (includeInStats) {
         if (hadUnrevealedNeighbour) {
-          this.stats.addChord(x, y, time);
+          this.stats.addChord(x, y, unflooredX, unflooredY, time);
         } else {
-          this.stats.addWastedChord(x, y, time);
+          this.stats.addWastedChord(x, y, unflooredX, unflooredY, time);
         }
       }
     } else {
       if (includeInStats) {
-        this.stats.addWastedChord(x, y, time);
+        this.stats.addWastedChord(x, y, unflooredX, unflooredY, time);
       }
     }
   }
@@ -3417,10 +3756,14 @@ class Board {
     this.blast();
     this.gameStage = "lost";
     const finalTime = this.getTime();
-    this.stats.addEndTime(finalTime);
+    this.stats.addEndTime(finalTime, false);
     this.stats.makeRepeatFlagsWasted();
+    if (this.gameStage === "mean openings") {
+      this.stats.addMeanMines(this.meanMineStates);
+    }
+    this.clearAllDepressedSquares();
     this.clearTimerTimeout();
-    this.integerTimer = Math.floor(finalTime / 1000);
+    this.integerTimer = Math.floor(finalTime);
     this.calculateAndDisplayStats(false);
   }
 
@@ -3429,7 +3772,9 @@ class Board {
       for (let y = 0; y < this.height; y++) {
         const isNormalMine = this.mines[x][y];
         const isMeanMine =
-          this.variant === "mean openings" && this.meanMineStates[x][y].isMine;
+          this.variant === "mean openings" &&
+          this.meanMineStates[x][y].isMine &&
+          this.meanMineStates[x][y].isActive;
 
         if (
           (isNormalMine || isMeanMine) &&
@@ -3446,10 +3791,14 @@ class Board {
     this.markRemainingFlags();
     this.gameStage = "won";
     const finalTime = this.getTime();
-    this.stats.addEndTime(finalTime);
+    this.stats.addEndTime(finalTime, true);
     this.stats.makeRepeatFlagsWasted();
+    if (this.gameStage === "mean openings") {
+      this.stats.addMeanMines(this.meanMineStates);
+    }
+    this.clearAllDepressedSquares();
     this.clearTimerTimeout();
-    this.integerTimer = Math.floor(finalTime / 1000);
+    this.integerTimer = Math.floor(finalTime);
     this.calculateAndDisplayStats(true);
   }
 
@@ -3458,7 +3807,9 @@ class Board {
       for (let y = 0; y < this.height; y++) {
         const isNormalMine = this.mines[x][y];
         const isMeanMine =
-          this.variant === "mean openings" && this.meanMineStates[x][y].isMine;
+          this.variant === "mean openings" &&
+          this.meanMineStates[x][y].isMine &&
+          this.meanMineStates[x][y].isActive;
 
         if (
           (isNormalMine || isMeanMine) &&
@@ -3483,8 +3834,13 @@ class Board {
   makeOpeningMean(eventTimestamp) {
     //Runs through newly opened zeros and attempts to make them a mine.
 
-    //Randomly set some of this squares to be provisional mines
+    //Randomly set some of these squares to be provisional mines
     for (let zero of this.unprocessedMeanZeros) {
+      if (this.meanMineStates[zero.x][zero.y].isLocked) {
+        //Locked mines have their state set from before
+        continue;
+      }
+
       if (Math.random() < meanOpeningMineDensity.value) {
         this.meanMineStates[zero.x][zero.y].isMine = true;
         this.meanMineStates[zero.x][zero.y].changedToMineTimestamp =
@@ -3493,13 +3849,14 @@ class Board {
     }
 
     //https://stackoverflow.com/a/31054543
-    let shuffledUnprocessedZeros = this.unprocessedMeanZeros
+    let shuffledUnprocessedUnlockedZeros = this.unprocessedMeanZeros
+      .filter((n) => !this.meanMineStates[n.x][n.y].isLocked)
       .map((n) => [Math.random(), n])
       .sort()
       .map((n) => n[1]);
 
-    //Do another pass to make sure each mine can be deduced from basic logic
-    for (let zero of shuffledUnprocessedZeros) {
+    //Do another pass to make sure each new mine can be deduced from basic logic
+    for (let zero of shuffledUnprocessedUnlockedZeros) {
       if (!this.meanMineStates[zero.x][zero.y].isMine) {
         continue;
       }
@@ -3602,13 +3959,18 @@ class Board {
     //Do a final pass to make sure number states are updated and squares with means mines are revealed
 
     for (let zero of this.unprocessedMeanZeros) {
+      this.meanMineStates[zero.x][zero.y].isActive = true;
+      this.meanMineStates[zero.x][zero.y].isLocked = true;
+
       if (this.meanMineStates[zero.x][zero.y].isMine) {
         //Close squares with mean mines, or change to flag
         if (Math.random() < meanOpeningFlagDensity.value) {
           this.tilesArray[zero.x][zero.y].state = FLAG;
+          this.meanMineStates[zero.x][zero.y].startsFlagged = true;
         } else {
           this.unflagged++;
           this.tilesArray[zero.x][zero.y].state = UNREVEALED;
+          this.meanMineStates[zero.x][zero.y].startsFlagged = false;
         }
       }
 
@@ -3647,6 +4009,17 @@ class Board {
 
     //Truncate as all squares have been processed
     this.unprocessedMeanZeros = [];
+  }
+
+  resetMeanMinesActiveness() {
+    //Used during replays - an active mean mine is one that has been opened via an opening
+    //And so the next click on it will blast (dependent on settings)
+
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        this.meanMineStates[x][y].isActive = false;
+      }
+    }
   }
 
   calculateAndDisplayStats(isWin) {
@@ -4263,6 +4636,18 @@ class Board {
     this.openBoardForEdit(); //refreshes all numbers. Maybe too inefficient?
   }
 
+  handleReplayClick(tileX, tileY) {
+    //clicks on replay board will try to jump to timestamp before square is revealed
+
+    if (!this.checkCoordsInBounds(tileX, tileY)) {
+      return; //just incase
+    }
+
+    if (this.replay) {
+      this.replay.handleReplayClick(tileX, tileY);
+    }
+  }
+
   importPttaBoard() {
     if (this.variant !== "board editor" && this.variant !== "zini explorer") {
       return;
@@ -4335,6 +4720,10 @@ class Board {
     this.drawBorders();
     this.drawCoords();
     this.drawTopBar();
+
+    if (this.gameStage === "replay") {
+      this.drawCursor();
+    }
   }
 
   drawTiles() {
@@ -4676,6 +5065,119 @@ class Board {
       topPanelHeight.value
     );
   }
+
+  drawCursor() {
+    //Cursor shown on replays
+    if (
+      this.cursor === null ||
+      this.cursor.x === null ||
+      this.cursor.y === null
+    ) {
+      return;
+    }
+
+    const ctx = mainCanvas.value.getContext("2d");
+
+    const cursorStartX =
+      boardHorizontalPadding.value + this.cursor.x * this.tileSize;
+    const cursorStartY = boardTopPadding.value + this.cursor.y * this.tileSize;
+
+    const mouseImg = skinManager.getImage("cursor");
+
+    const aspectRatio = mouseImg.width / mouseImg.height;
+
+    const cursorHeight = (this.tileSize * 3) / 4; //Height will be 3/4 of a tile
+    const cursorWidth = cursorHeight * aspectRatio;
+
+    ctx.drawImage(
+      mouseImg,
+      cursorStartX,
+      cursorStartY,
+      cursorWidth,
+      cursorHeight
+    );
+  }
+
+  initReplay(replayType) {
+    this.gameStage = "replay";
+    replayIsShown.value = true;
+
+    if (this.replay) {
+      this.replay.pause();
+    }
+
+    let replayParams;
+    let isReorderableZini = false;
+
+    switch (replayType) {
+      case "replay":
+        replayParams = {
+          clicks: this.stats.clicks,
+          moves: this.stats.moves,
+          board: this,
+          isWin: this.stats.isWin,
+          forceSteppy: false,
+        };
+        isReorderableZini = false;
+        break;
+      case "8-way":
+        replayParams = {
+          clicks: this.stats.eightZiniPath,
+          board: this,
+          forceSteppy: true,
+        };
+        isReorderableZini = true;
+        break;
+      case "womzini":
+        if (this.stats.womZini !== null) {
+          this.stats.lateCalcWomZiniStats();
+        }
+        replayParams = {
+          clicks: this.stats.womZiniPath,
+          board: this,
+          forceSteppy: true,
+        };
+        isReorderableZini = true;
+        break;
+      case "womzinifix":
+        if (this.stats.womZini !== null) {
+          this.stats.lateCalcWomZiniStats();
+        }
+        replayParams = {
+          clicks: this.stats.cWomZiniPath,
+          board: this,
+          forceSteppy: true,
+        };
+        isReorderableZini = true;
+        break;
+      case "womhzini":
+        if (this.stats.womHzini !== null) {
+          this.stats.lateCalcWomZiniStats();
+        }
+        replayParams = {
+          clicks: this.stats.womHziniPath,
+          board: this,
+          forceSteppy: true,
+        };
+        isReorderableZini = false;
+        break;
+      case "compare":
+        window.alert("Compare replay is not implemented");
+        break;
+      default:
+        window.alert("Replay type unavailable");
+        throw new Error("Replay type unavailable");
+    }
+
+    if (isReorderableZini && reorderZini.value) {
+      replayParams.clicks = algorithms.reorderZiniClicks(
+        replayParams.clicks,
+        this.mines
+      );
+    }
+
+    this.replay = new Replay(replayParams);
+  }
 }
 
 class Tile {
@@ -4809,6 +5311,7 @@ class SkinManager {
       ["t_left", "/img/borders/t_left_2x.png"],
       ["t_right", "/img/borders/t_right_2x.png"],
       ["f_unpressed", "/img/borders/face_unpressed.svg"],
+      ["cursor", "/img/other/cursor.svg"],
     ];
     this.imagesLoadedCount = 0;
     this.imagesToLoadCount = keyImageMapping.length;
@@ -5427,85 +5930,98 @@ class BoardStats {
     this.mines = structuredClone(minesArray);
     this.clicks = [];
     this.moves = []; //Mouse movements, use separate array as this can get quite large
+    this.isWin = null;
   }
 
-  addLeft(x, y, time) {
+  addLeft(x, y, xRaw, yRaw, time) {
     this.clicks.push({
       type: "left",
       x,
       y,
+      xRaw,
+      yRaw,
       time,
     });
   }
 
-  addRight(x, y, time) {
+  addRight(x, y, xRaw, yRaw, time) {
     this.clicks.push({
       type: "right",
       x,
       y,
+      xRaw,
+      yRaw,
       time,
     });
   }
 
-  addChord(x, y, time) {
+  addChord(x, y, xRaw, yRaw, time) {
     this.clicks.push({
       type: "chord",
       x,
       y,
+      xRaw,
+      yRaw,
       time,
     });
   }
 
-  addWastedLeft(x, y, time) {
+  addWastedLeft(x, y, xRaw, yRaw, time) {
     this.clicks.push({
       type: "wasted_left",
       x,
       y,
+      xRaw,
+      yRaw,
       time,
     });
   }
 
-  addWastedRight(x, y, time) {
+  addWastedRight(x, y, xRaw, yRaw, time) {
     this.clicks.push({
       type: "wasted_right",
       x,
       y,
+      xRaw,
+      yRaw,
       time,
     });
   }
 
-  addWastedChord(x, y, time) {
+  addWastedChord(x, y, xRaw, yRaw, time) {
     this.clicks.push({
       type: "wasted_chord",
       x,
       y,
+      xRaw,
+      yRaw,
       time,
     });
   }
 
-  addMouseMove(x, y, time) {
+  addMouseMove(xRaw, yRaw, time) {
     this.moves.push({
       type: "mouse_move",
-      x,
-      y,
+      xRaw,
+      yRaw,
       time,
     });
   }
 
-  addMouseEnter(x, y, time) {
+  addMouseEnter(xRaw, yRaw, time) {
     this.moves.push({
       type: "mouse_enter",
-      x,
-      y,
+      xRaw,
+      yRaw,
       time,
     });
   }
 
-  addMouseLeave(x, y, time) {
+  addMouseLeave(xRaw, yRaw, time) {
     this.moves.push({
       type: "mouse_leave",
-      x,
-      y,
+      xRaw,
+      yRaw,
       time,
     });
   }
@@ -5539,7 +6055,10 @@ class BoardStats {
   }
 
   calcZinis(includeWomZini) {
-    this.eightZini = algorithms.calcEightWayZini(this.mines);
+    let eightZiniResult = algorithms.calcEightWayZini(this.mines);
+
+    this.eightZini = eightZiniResult.total;
+    this.eightZiniPath = eightZiniResult.clicks;
 
     //Also do wom zini
     if (includeWomZini) {
@@ -5553,15 +6072,23 @@ class BoardStats {
         algorithms.calcWomZiniAndHZini(this.mines, true);
 
       this.womZini = womZini.total;
+      this.womZiniPath = womZini.clicks;
       this.womHzini = womHzini.total;
+      this.womHziniPath = womHzini.clicks;
 
       this.cWomZini = cWomZini.total;
+      this.cWomZiniPath = cWomZini.clicks;
       this.cWomHzini = cWomHzini.total;
+      this.cWomHziniPath = cWomHzini.clicks;
     } else {
       this.womZini = null;
+      this.womZiniPath = null;
       this.womHzini = null;
+      this.womHziniPath = null;
       this.cWomZini = null;
+      this.cWomZiniPath = null;
       this.cWomHzini = null;
+      this.cWomHziniPath = null;
     }
   }
 
@@ -5623,7 +6150,7 @@ class BoardStats {
   }
 
   calcStats(isWin, tilesArray) {
-    const time = this.endTime / 1000;
+    const time = this.endTime;
     this.calc3bv(tilesArray);
     const solved3bv = this.solved3bv;
     const bbbv = this.bbbv;
@@ -5714,8 +6241,16 @@ class BoardStats {
     statsObject.value.cWomHzini = cWomHzini;
   }
 
-  addEndTime(time) {
+  addEndTime(time, isWin) {
+    this.isWin = isWin;
     this.endTime = time;
+  }
+
+  addMeanMines(meanMineStates) {
+    this.meanMineStates = structuredClone(meanMineStates);
+
+    //Reset activiness of mines (defensive)
+    this.meanMineStates.forEach((c) => c.forEach((c.isActive = false)));
   }
 }
 
@@ -5725,7 +6260,705 @@ class BoardHistory {
   constructor() {}
 }
 
-//Need main loop somewhere
+class Replay {
+  constructor({
+    clicks,
+    moves = [],
+    board,
+    isWin = true,
+    isComplete = true,
+    forceSteppy = false,
+  }) {
+    this.clicks = clicks;
+    this.moves = moves;
+    this.rawTime = null;
+    this.currentClickIndex = null;
+    this.currentClickIndexLerped = null;
+    this.isPlaying = false;
+    this.board = board;
+    this.performWastedClicks = true;
+
+    this.isWin = isWin;
+    this.isComplete = isComplete;
+
+    replayTypeForceSteppy.value = forceSteppy;
+
+    this.millisPerSteppyTurn = 500; //milliseconds to pass before we advance to next click on "steppy" mode
+
+    this.tLastFrame = null;
+
+    this.jumpToSpecificClickLerped(-1);
+
+    this.setupReplayBar();
+
+    this.play();
+  }
+
+  //Jump to a "steppy" time - e.g. replay stepper
+  jumpToSpecificClickLerped(newClickIndexLerped) {
+    //Restrict based on the range of clicks that can actually happen
+    newClickIndexLerped = clamp(
+      newClickIndexLerped,
+      -1,
+      this.clicks.length - 1
+    );
+
+    this.currentClickIndexLerped = newClickIndexLerped; //Possible no-op, but needed if the value has changed
+
+    let newClickIndex = Math.floor(newClickIndexLerped);
+
+    //Figure out what timer should show and where the mouse should be
+    this.rawTime = this.lerpedClickIndexToRawTime(newClickIndexLerped);
+
+    this.board.cursor =
+      this.lerpedClickIndexToCursorPosition(newClickIndexLerped);
+
+    this.board.integerTimer = Math.max(Math.floor(this.rawTime), 0);
+
+    //If the click index hasn't changed, then no moves get performed. However, the mouse/timer position may change
+    if (newClickIndex === this.currentClickIndex) {
+      if (newClickIndex === this.clicks.length - 1) {
+        //Pause if playhead at the end. This would be checked later, though can get missed if it hits replay end during a pan
+        !replayIsPanning.value && !replayIsInputting.value && this.pause();
+      }
+      return;
+    }
+
+    let clickHead = this.currentClickIndex;
+
+    this.currentClickIndex = newClickIndex;
+
+    if (clickHead === null || newClickIndex < clickHead) {
+      clickHead = -1;
+
+      //Full reset of tiles
+      this.board.tilesArray = new Array(this.board.width)
+        .fill(0)
+        .map(() =>
+          new Array(this.board.height).fill(0).map(() => new Tile(UNREVEALED))
+        );
+
+      this.board.unflagged = this.board.mineCount;
+
+      if (this.board.variant === "mean openings") {
+        this.board.resetMeanMinesActiveness();
+      }
+    }
+
+    for (
+      let clickPointer = clickHead + 1;
+      clickPointer <= newClickIndex;
+      clickPointer++
+    ) {
+      //Get next click
+      let clickToDo = this.clicks[clickPointer];
+
+      if (!this.performWastedClicks && clickToDo.type.startsWith("wasted")) {
+        continue;
+      }
+
+      switch (clickToDo.type) {
+        case "left":
+          this.board.openTile(clickToDo.x, clickToDo.y);
+          break;
+        case "wasted_left":
+          //Do nothing
+          break;
+        case "chord":
+          this.board.chord(clickToDo.x, clickToDo.y, false);
+          break;
+        case "wasted_chord":
+          //Do nothing
+          break;
+        case "right":
+          this.board.attemptFlag(clickToDo.x, clickToDo.y, false);
+          break;
+        case "wasted_right":
+          //Do something as it may be an unflag
+          this.board.attemptFlag(clickToDo.x, clickToDo.y, false);
+          break;
+        default:
+          throw new Error("Disallowed click type seen in replay");
+      }
+
+      if (
+        this.board.variant === "mean openings" &&
+        this.board.unprocessedMeanZeros?.length !== 0
+      ) {
+        this.board.makeOpeningMean();
+      }
+    }
+
+    //Pause if we have hit the end, also, blast if lost, flagged all if won
+    if (newClickIndex === this.clicks.length - 1) {
+      if (this.isComplete) {
+        this.isWin && this.board.markRemainingFlags();
+        !this.isWin && this.board.blast();
+      }
+      !replayIsPanning.value && !replayIsInputting.value && this.pause();
+    }
+  }
+
+  jumpToNextClick() {
+    if (this.currentClickIndex === this.clicks.length - 1) {
+      this.pause();
+      return;
+    }
+
+    this.tLastFrame = null; //So we don't immediately jump back to where we were before
+
+    this.jumpToSpecificClickLerped(this.currentClickIndex + 1);
+
+    this.updateReplayBarValue();
+
+    this.board.draw(); //as we may be paused
+  }
+
+  jumpToPreviousClick() {
+    if (this.currentClickIndex === -1) {
+      return;
+    }
+
+    this.tLastFrame = null; //So we don't immediately jump back to where we were before
+
+    this.jumpToSpecificClickLerped(this.currentClickIndex - 1);
+
+    this.updateReplayBarValue();
+
+    this.board.draw(); //as we may be paused
+  }
+
+  lerpedClickIndexToRawTime(lerpedClickIndex) {
+    const flooredClickIndex = Math.floor(lerpedClickIndex);
+    const lerp = lerpedClickIndex - flooredClickIndex;
+
+    let rawTime;
+
+    if (lerpedClickIndex < 0) {
+      //Before first click
+      rawTime = lerpedClickIndex; //This means when starting, we assume it is up to 1 second before the first click
+    } else if (flooredClickIndex === this.clicks.length - 1) {
+      //At last click
+      rawTime = this.clicks.at(-1).time ?? 0;
+    } else {
+      //Inbetween clicks, so need to check both and lerp
+      const firstRawTime = this.clicks[flooredClickIndex].time ?? 0;
+      const secondRawTime = this.clicks[flooredClickIndex + 1].time ?? 0;
+
+      rawTime = (1 - lerp) * firstRawTime + lerp * secondRawTime;
+    }
+
+    return rawTime;
+  }
+
+  lerpedClickIndexToCursorPosition(lerpedClickIndex) {
+    if (this.clicks.length === 0) {
+      return { x: 0, y: 0 };
+    }
+
+    const flooredClickIndex = Math.floor(lerpedClickIndex);
+    const lerp = lerpedClickIndex - flooredClickIndex;
+
+    let cursor;
+
+    if (lerpedClickIndex < 0) {
+      //Before first click
+      if (replayType.value === "accurate") {
+        cursor = { x: this.clicks[0].xRaw, y: this.clicks[0].yRaw };
+      } else {
+        cursor = { x: this.clicks[0].x + 0.5, y: this.clicks[0].y + 0.5 };
+      }
+    } else if (flooredClickIndex === this.clicks.length - 1) {
+      //At last click
+      if (replayType.value === "accurate") {
+        cursor = { x: this.clicks.at(-1).xRaw, y: this.clicks.at(-1).yRaw };
+      } else {
+        cursor = {
+          x: this.clicks.at(-1).x + 0.5,
+          y: this.clicks.at(-1).y + 0.5,
+        };
+      }
+    } else {
+      //Inbetween clicks, so need to find clicks before and after and lerp
+      if (replayType.value === "accurate") {
+        //Accurate replay also needs to check the moves array
+        cursor =
+          this.getAccurateCursorFromlerpedClickIndexBetweenClicks(
+            lerpedClickIndex
+          );
+      } else {
+        const firstCursor = {
+          x: this.clicks[flooredClickIndex].x,
+          y: this.clicks[flooredClickIndex].y,
+        };
+        const secondCursor = {
+          x: this.clicks[flooredClickIndex + 1].x,
+          y: this.clicks[flooredClickIndex + 1].y,
+        };
+
+        cursor = {
+          x: (1 - lerp) * firstCursor.x + lerp * secondCursor.x + 0.5, //+0.5 needed to centre the click
+          y: (1 - lerp) * firstCursor.y + lerp * secondCursor.y + 0.5,
+        };
+      }
+    }
+
+    return cursor;
+  }
+
+  //This is for the special case where we know there is a click before and after, and also need to look at mvoes array
+  getAccurateCursorFromlerpedClickIndexBetweenClicks(lerpedClickIndex) {
+    //Check clicks and moves etc to find where the cursor should be
+    const flooredClickIndex = Math.floor(lerpedClickIndex);
+    const lerpForClicks = lerpedClickIndex - flooredClickIndex;
+
+    //clicks before and after
+    let firstDataPoint = this.clicks[flooredClickIndex];
+    let secondDataPoint = this.clicks[flooredClickIndex + 1];
+
+    //Compute raw time
+    const firstRawTime = firstDataPoint.time;
+    const secondRawTime = secondDataPoint.time;
+    const rawTime =
+      (1 - lerpForClicks) * firstRawTime + lerpForClicks * secondRawTime;
+
+    //Look to see if there are moves before
+    let { above: moveAfter, below: moveBefore } =
+      this.findArrayEntryBeforeAndAfterTime(this.moves, rawTime);
+
+    //Update first data point if the data in the moves array is closer to the time we are looking for
+    if (moveBefore !== null && moveBefore.time > firstDataPoint.time) {
+      firstDataPoint = moveBefore;
+    }
+
+    //Likewise for second data point
+    if (moveAfter !== null && moveAfter.time < secondDataPoint.time) {
+      secondDataPoint = moveAfter;
+    }
+
+    //Check special case where the mouse left
+    if (firstDataPoint.type === "mouse_leave") {
+      return { x: null, y: null };
+    }
+
+    let refinedLerp =
+      (rawTime - firstDataPoint.time) /
+      (secondDataPoint.time - firstDataPoint.time);
+
+    let lerpedPosition = {
+      x:
+        (1 - refinedLerp) * firstDataPoint.xRaw +
+        refinedLerp * secondDataPoint.xRaw,
+      y:
+        (1 - refinedLerp) * firstDataPoint.yRaw +
+        refinedLerp * secondDataPoint.yRaw,
+    };
+
+    return lerpedPosition;
+  }
+
+  findArrayEntryBeforeAndAfterTime(array, time) {
+    //Takes array with elements such as {time: 1.23}
+    //And returns the entries before and after it
+
+    //see here https://stackoverflow.com/questions/1344500/efficient-way-to-insert-a-number-into-a-sorted-array-of-numbers
+
+    var low = 0,
+      high = array.length;
+
+    while (low < high) {
+      var mid = (low + high) >>> 1;
+      if (array[mid].time < time) low = mid + 1;
+      else high = mid;
+    }
+
+    //Low becomes the index where an element at the given time would be spliced in.
+
+    let elementAbove = array[low]; //Possibly undefined
+    let elementBelow = array[low - 1]; //Possibly undefined
+
+    return {
+      above: elementAbove ?? null,
+      below: elementBelow ?? null,
+      aboveIndex: low ?? null,
+      belowIndex: low - 1 ?? null,
+    };
+  }
+
+  forwardSearchForClickIndexlerped(newRawTime) {
+    //Loop forwards to locate value to use for currentClickIndexLerped
+
+    let beforeIndex = null;
+    let afterIndex = null;
+
+    for (
+      let i = Math.max(this.currentClickIndex, 0);
+      i < this.clicks.length;
+      i++
+    ) {
+      if (this.clicks[i].time <= newRawTime) {
+        beforeIndex = i;
+      } else {
+        afterIndex = i;
+        break;
+      }
+    }
+
+    if (beforeIndex === null) {
+      //Must be at the start
+      return Math.max(newRawTime, -1);
+    }
+
+    if (afterIndex === null) {
+      //Must be at the end
+      return this.clicks.length - 1;
+    }
+
+    //If we get here, we have a click before and after the time
+    //So use lerp stuff to adjust return value based on how close we are to the before and after clicks
+
+    return (
+      beforeIndex +
+      (newRawTime - this.clicks[beforeIndex].time) /
+        (this.clicks[afterIndex].time - this.clicks[beforeIndex].time)
+    );
+  }
+
+  binarySearchForClickIndexLerped(newRawTime) {
+    let {
+      above: clickAfter,
+      below: clickBefore,
+      belowIndex: beforeIndex,
+    } = this.findArrayEntryBeforeAndAfterTime(this.clicks, newRawTime);
+
+    if (clickBefore === null) {
+      //Must be at the start
+      return Math.max(newRawTime, -1);
+    }
+
+    if (clickAfter === null) {
+      //Must be at the end
+      return this.clicks.length - 1;
+    }
+
+    //If we get here, we should do lerp stuff to find click index
+
+    return (
+      beforeIndex +
+      (newRawTime - clickBefore.time) / (clickAfter.time - clickBefore.time)
+    );
+  }
+
+  //Regular update based on the amount of time that passed.
+  doUpdate(tFrame) {
+    if (this.tLastFrame === null) {
+      this.tLastFrame = tFrame;
+    }
+
+    let delta = tFrame - this.tLastFrame;
+    this.tLastFrame = tFrame;
+
+    if (replayIsPanning.value || replayIsInputting.value) {
+      delta = 0; //When panning/inputting, we do a soft pause
+    }
+
+    if (replayType.value === "steppy") {
+      let clickIndexDelta =
+        (delta / this.millisPerSteppyTurn) * replaySpeedMultiplier.value;
+
+      this.currentClickIndexLerped += clickIndexDelta;
+
+      this.jumpToSpecificClickLerped(this.currentClickIndexLerped);
+    } else {
+      //accurate or rounded replay types
+
+      let timeDelta = (delta / 1000) * replaySpeedMultiplier.value;
+
+      let newRawTime = this.rawTime + timeDelta;
+
+      this.currentClickIndexLerped =
+        this.forwardSearchForClickIndexlerped(newRawTime);
+
+      this.jumpToSpecificClickLerped(this.currentClickIndexLerped);
+    }
+
+    this.updateReplayBarValue();
+  }
+
+  //reqAnimFrame loop used when playing
+  doReplayLoop(tFrame) {
+    this.reqAnimFrameHandle = window.requestAnimationFrame(
+      this.doReplayLoop.bind(this)
+    );
+
+    this.doUpdate(tFrame);
+
+    this.board.draw();
+  }
+
+  //Sets up reqAnimFrame loop
+  play() {
+    if (!this.isPlaying) {
+      this.isPlaying = true;
+      replayIsPlaying.value = true;
+
+      this.tLastFrame = null; //So that we don't simulate all the time that's passed since pausing
+
+      if (this.currentClickIndex === this.clicks.length - 1) {
+        //If we are already at the end then playing should jump to the start
+        this.jumpToSpecificClickLerped(-1);
+      }
+
+      this.reqAnimFrameHandle = window.requestAnimationFrame(
+        this.doReplayLoop.bind(this)
+      );
+    }
+  }
+
+  pause() {
+    if (this.isPlaying) {
+      window.cancelAnimationFrame(this.reqAnimFrameHandle);
+      this.isPlaying = false;
+      replayIsPlaying.value = false;
+
+      this.tLastFrame = null; //So that we don't simulate passing (defensive, probably not needed0)
+
+      this.board.draw(); //just in case
+    }
+  }
+
+  togglePausePlay() {
+    if (this.isPlaying) {
+      this.pause();
+    } else {
+      this.play();
+    }
+  }
+
+  cycleReplayType() {
+    this.pause();
+
+    switch (replayTypeSelector.value) {
+      case "accurate":
+        replayTypeSelector.value = "rounded";
+        break;
+      case "rounded":
+        replayTypeSelector.value = "steppy";
+        break;
+      case "steppy":
+        replayTypeSelector.value = "accurate";
+        break;
+      default:
+        throw new Error("illegal value");
+    }
+
+    this.setupReplayBar();
+
+    //Small hacky way to get it to update mouse position for replay type
+    this.jumpToSpecificClickLerped(this.currentClickIndexLerped);
+
+    this.board.draw();
+  }
+
+  setupReplayBar() {
+    replayBarStartValue.value = -1;
+    if (replayType.value === "steppy") {
+      replayBarLastValue.value = this.clicks.length - 1;
+      replayBarStepSize.value = 1;
+      replayBarIsSnappy.value = true;
+    } else {
+      //accurate/rounded replay type
+      replayBarLastValue.value = this.clicks.at(-1)?.time;
+      replayBarStepSize.value = 0; //All values allowed
+      replayBarIsSnappy.value = false;
+    }
+
+    this.updateReplayBarValue();
+  }
+
+  updateReplayBarValue() {
+    if (replayType.value === "steppy") {
+      replayProgress.value = this.currentClickIndexLerped;
+      if (!replayIsInputting.value) {
+        //Guard against changing value whilst we are editing it
+        replayProgressRounded.value = this.currentClickIndexLerped.toFixed(3);
+      }
+    } else {
+      //accurate/rounded replay type
+      replayProgress.value = this.rawTime;
+      if (!replayIsInputting.value) {
+        //Guard against changing value whilst we are editing it
+        replayProgressRounded.value = this.rawTime.toFixed(3);
+      }
+    }
+  }
+
+  handleSliderChange(newValue) {
+    //Update stuff when the user changes the slider
+
+    this.tLastFrame = null; //So we don't immediately jump back to where we were before
+
+    if (replayType.value === "steppy") {
+      this.jumpToSpecificClickLerped(newValue);
+    } else {
+      //accurate/rounded replay type
+      this.currentClickIndexLerped =
+        this.binarySearchForClickIndexLerped(newValue);
+
+      this.jumpToSpecificClickLerped(this.currentClickIndexLerped);
+    }
+
+    this.updateReplayBarValue();
+
+    this.board.draw();
+  }
+
+  handleInputChange(newValue) {
+    //This is for updating the time of a replay using the input box to the right of the slider
+    //First we figure out which time to update with
+    let floatVal = parseFloat(newValue);
+
+    let valueToUpdateWith;
+
+    if (!Number.isFinite(floatVal)) {
+      return; //Do nothing
+    }
+
+    if (replayBarLastValue.value.toFixed(3) === floatVal.toFixed(3)) {
+      //f we are at the end of the replay, then allow small rounding to hit the final click
+      valueToUpdateWith = replayBarLastValue.value;
+    } else {
+      valueToUpdateWith = clamp(
+        floatVal,
+        replayBarStartValue.value,
+        replayBarLastValue.value
+      );
+    }
+
+    //After figuring out which time to change to, we do the same as if it was a slider change
+    this.handleSliderChange(valueToUpdateWith);
+  }
+
+  handleReplayClick(x, y) {
+    //Clicking on a square will jump to just before that square was revealed
+    const { numbersArray, openingLabels, preprocessedOpenings } =
+      algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
+        this.board.mines
+      );
+
+    const openingsLabelsTouched = [];
+
+    //check what openings it touches
+    for (let i = x - 1; i <= x + 1; i++) {
+      for (let j = y - 1; j <= y + 1; j++) {
+        if (!this.board.checkCoordsInBounds(i, j)) {
+          continue;
+        }
+
+        const neighbourOpeningLabel = openingLabels[i][j];
+        if (
+          typeof neighbourOpeningLabel === "number" &&
+          neighbourOpeningLabel !== 0
+        ) {
+          if (!openingsLabelsTouched.includes(neighbourOpeningLabel)) {
+            openingsLabelsTouched.push(neighbourOpeningLabel);
+          }
+        }
+      }
+    }
+
+    let clickIndex = null;
+    let revealedByOpeningIndex = null;
+
+    for (let i = 0; i < this.clicks.length; i++) {
+      const thisClick = this.clicks[i];
+
+      if (
+        thisClick.type === "left" &&
+        thisClick.x === x &&
+        thisClick.y === y &&
+        numbersArray[x][y] !== 0
+      ) {
+        //Square was directly left clicked on, and wasn't an opening
+        clickIndex = i;
+        break;
+      }
+
+      if (
+        thisClick.type === "left" &&
+        numbersArray[thisClick.x][thisClick.y] === 0 &&
+        openingsLabelsTouched.includes(openingLabels[thisClick.x][thisClick.y])
+      ) {
+        //This click was an opening that would reveal this square
+        if (revealedByOpeningIndex === null) {
+          revealedByOpeningIndex = i;
+        }
+        break;
+      }
+
+      if (
+        thisClick.type === "right" &&
+        thisClick.x === x &&
+        thisClick.y === y
+      ) {
+        //square was flagged
+        clickIndex = i;
+        break;
+      }
+
+      if (
+        thisClick.type === "chord" &&
+        Math.abs(thisClick.x - x) <= 1 &&
+        Math.abs(thisClick.y - y) <= 1
+      ) {
+        //square was revealed from chord
+        clickIndex = i;
+        break;
+      }
+
+      //Also check case where it was a chord that opened the opening that this cell is a part of
+      if (thisClick.type === "chord") {
+        for (let k = thisClick.x - 1; k <= thisClick.x + 1; k++) {
+          for (let l = thisClick.y - 1; l <= thisClick.y + 1; l++) {
+            if (!this.board.checkCoordsInBounds(k, l)) {
+              continue;
+            }
+            if (numbersArray[k][l] !== 0) {
+              //Only need to look at chord neighbours that are zeros
+              continue;
+            }
+
+            const neighbourOpeningLabel = openingLabels[k][l];
+
+            if (openingsLabelsTouched.includes(neighbourOpeningLabel)) {
+              //The chord has a neighbouring zero that opens our square
+              if (revealedByOpeningIndex === null) {
+                revealedByOpeningIndex = i;
+              }
+              //Ideally would break out of both loops here, but code would be messier and performance doesn't matter...
+            }
+          }
+        }
+      }
+    }
+
+    if (clickIndex === null) {
+      //Square wasn't found from direct reveal. Instead look at when it was revealed by an opening
+      clickIndex = revealedByOpeningIndex;
+    }
+
+    if (clickIndex !== null) {
+      if (replayType.value === "steppy") {
+        //Jump to click before the one that reveals the square
+        this.handleSliderChange(clickIndex - 1);
+      } else {
+        //Jump to 0.5 seconds before the click that reveals the square
+        this.handleSliderChange(this.clicks[clickIndex].time - 0.5);
+      }
+      this.play();
+    }
+  }
+}
 
 const algorithms = new Algorithms(); //Could probably change to have all static methods, so no need to init?
 const benchmark = new Benchmark();

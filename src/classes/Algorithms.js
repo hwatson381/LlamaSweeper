@@ -224,7 +224,10 @@ class Algorithms {
       }
     }
 
-    return currentZiniValue; //Consider also returning currentClicksArray
+    return {
+      total: currentZiniValue,
+      clicks: currentClicksArray
+    };
   }
 
   doBasicZiniStep(
@@ -986,7 +989,7 @@ class Algorithms {
         candidateMinesArray,
         false, //one-way
         preprocessedData
-      );
+      ).total;
 
       //If saving 1.15x as many clicks as one-way zini (plus 2 more) would exceed the goal then investigate further (by checking 8-way zini)
 
@@ -1003,7 +1006,7 @@ class Algorithms {
           candidateMinesArray,
           true, //eight-way
           preprocessedData
-        );
+        ).total;
 
         if (bbbv / eightWayZini >= targetEff / 100) {
           //Successfully found a board with at least min eff
@@ -1174,6 +1177,91 @@ class Algorithms {
         clicks: hziniClicks
       }
     }
+  }
+
+  reorderZiniClicks(clicks, mines) {
+    clicks = structuredClone(clicks); //Just to prevent issues with changing references
+
+    const width = mines.length;
+    const height = mines[0].length;
+
+    const { numbersArray, openingLabels, preprocessedOpenings } =
+      this.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
+        mines
+      );
+
+    let clickGroupings = {
+      opening: [],
+      setupClick: [],
+      flags: [],
+      chords: [],
+      cleanup: [],
+    }
+
+    for (let click of clicks) {
+      if (click.type === 'left') {
+        //Check if this is opening an opening
+        if (numbersArray[click.x][click.y] === 0) {
+          clickGroupings.opening.push(click);
+          continue;
+        }
+
+        //Check if this is clicking on the edge of an opening, and if so then shift it
+        let neighbourZero = null;
+        for (let i = click.x - 1; i <= click.x + 1; i++) {
+          let breakOuter = false
+          for (let j = click.y - 1; j <= click.y + 1; j++) {
+            if (i < 0 || i >= width || j < 0 || j >= height) {
+              continue;
+            }
+            if (numbersArray[i][j] === 0) {
+              neighbourZero = { x: i, y: j };
+              breakOuter = true;
+              break;
+            }
+          }
+
+          if (breakOuter) {
+            break;
+          }
+        }
+
+        //If the left click is next to an opening, we instead click on the opening
+        if (neighbourZero) {
+          click.x = neighbourZero.x
+          click.y = neighbourZero.y
+          clickGroupings.opening.push(click);
+          continue;
+        }
+
+        let isChordedLater = clicks.some((otherClick) =>
+          otherClick.type === 'chord' && otherClick.x === click.x && otherClick.y === click.y
+        );
+
+        if (isChordedLater) {
+          clickGroupings.setupClick.push(click);
+          continue;
+        } else {
+          clickGroupings.cleanup.push(click);
+          continue;
+        }
+      }
+
+      if (click.type === 'right') {
+        clickGroupings.flags.push(click);
+        continue; //Not needed, defensive incase we add more groupings
+      }
+
+      if (click.type === 'chord') {
+        clickGroupings.chords.push(click);
+        continue; //Not needed, defensive incase we add more groupings
+      }
+    }
+
+    //Combine the clicks into a new array with all the different groupings
+    clicks = [...clickGroupings.opening, ...clickGroupings.setupClick, ...clickGroupings.flags, ...clickGroupings.chords, ...clickGroupings.cleanup];
+
+    return clicks;
   }
 }
 

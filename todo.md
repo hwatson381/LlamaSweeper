@@ -89,6 +89,7 @@ replay
 8-way replay
 womzini replay
 womzini improved replay
+womhzini
 click-loss replay (in future)
 
 post game (or post zini run), do a click save heatmap showing the locations of where all the click saves were.
@@ -118,6 +119,8 @@ Figure out whether using old zini check or new zini check is faster (and also ho
 Beware that high eff games are extraordinary, so may need to use higher cutoff than 99%
 
 Make a fun 404 page?
+Background could be a minesweeper grid from an incomplete game (so lots of flagged squares, and some unflagged squares)
+404 page not found = mine not found?
 
 Maybe openings should annihilate flags instead of being blocked by them?
 
@@ -156,9 +159,9 @@ do the following: play near solved stuff/edge of board. And we also treat areas 
 never flags/always nf click as also being like the edge of the board. This is because
 those regions are quite fixed.
 
-For mean openings, is it possible to be generous with chords (e.g. not requiring mean squares to all be flagged?)
+For mean openings, is it possible to be generous with chords (e.g. not requiring mean squares to all be flagged?). Maybe allow this if within 0.5s using the shield setting?
 
-Is it worth making an online repo for very high eff boards (this can then be pulled from instead of generated on client?)
+Is it worth making an online repo for very high eff boards (this can then be pulled from instead of generating on client?)
 
 Interesting sub ptta example
 https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=2&m=000000000000000000000000000000000000000000mmg80854k0
@@ -166,3 +169,89 @@ Relies on greedy rule failing.
 
 Would there be any reason to deprioritise clicks saves that come from chain merge rather than normal?
 Possibly, but seems complicated and both categories of click save have possiblity of being "invalidated" later
+
+What else is needed for release? Just replay + click loss?
+Can I clean up menus?
+Should I include more zinis?
+Do I try find some bugs to fix?
+More zini explorer features?
+
+click-loss implementation?
+Should I have another array for analysis info (similar to clicks/moves)
+
+Replay system can abuse scroll into view to follow clicks?
+
+Allow having a different level of zoom for watching replays?
+
+click loss replay? Have some sort of eval bar for how the 100-way zini changes after each click?
+E.g. this could be the number of zini's that reach maximum value? Or maybe based on the average zini value?
+
+tap edge of screen to scroll?
+
+////////////////////
+
+beware of triggering win extra stuff (e.g. win cond) from replays
+
+Can the replay controls be a component?
+
+Is it right to have -1 as a special value for click index stuff?
+
+Break up board class using composition.
+E.g. do stuff like the below to handling drawing logic
+this.renderer = new Renderer(this); //for drawing logic
+this.inputHandler = new InputHanlder(this); //for mouse/touch events
+this.quickPaintHandler = new QuickpaintHandler(this); //for quickpaint stuff
+
+Max achievable eff stat? This would only be for lost games - it would be the eff given that zini continues your game
+
+alt icons for steppy:
+stairs
+sym_o_stairs_2
+sym_o_steppers
+
+Find a good way to show clicks (normal and wasted) on replays
+
+replays start at end and highlight clicked/chorded squares (makes it easy to compare zini vs normal etc)
+
+In a few places I use both v-model and @update:model-value
+This is bad practise. Consider changing to :modelValue and @update:model-value
+
+Would the replay be more accurate if it used the timeStamp property from events instead of performance.now()?
+
+Gadget idea - hotkey to show coords by mouse when hovering square?
+Better idea - show coords in all cells (in small font)
+
+Some bugs to figure out with meanMines -
+Because of timing issue, we end up "using" them before openings have expanded
+So instead need to find a way around this
+
+Maybe having special logic when gameStage = "replay"?
+
+zini replay could show where the mines are?
+
+WHEN I GET BACK -
+[done, need to test] Implement this.reorderZiniClicks
+[done] fix mean openings replays
+replay idea - click on board during replay jumps you to timestamp of when that square got revealedNumbers
+
+coords on each cell that invert colours (so always readable?). Do excel style coords (alphabetical?)
+
+Enable keyboard clicks?
+
+mean openings - option to treat meanMine squares as always being flags for chording?
+
+For replay idea - do something that still jumps to nearest click if the click is on a flag that is never revealed.
+Or do we just jump straight to the end?
+Maybe look at when the flag gets smothered?
+
+wom hzini is completely broken
+
+if replay jumper can't find something for this tile, check when the latest neighbour tile was done. Otherwise, jump to the end.
+
+Make a "llamasweeper - best features" video
+
+Have a mobile scroll option, similar to scroll on zeros, but that includes non-unrevealed-safe bordering regions
+This way it would work on the mean mines setting.
+Maybe could be called something like "non-frontier scroll" or "enclosed-scroll"
+
+Move replay stuff to separate file

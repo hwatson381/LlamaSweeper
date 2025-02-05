@@ -20,3 +20,11 @@ body.body--dark .q-page a:link {
 body.body--dark .q-page a:visited {
   color: #e788f1;
 }
+
+.no-transition-slider .q-slider__thumb {
+  transition: none;
+}
+
+.no-transition-slider.q-slider--inactive .q-slider__selection {
+  transition: none;
+}
