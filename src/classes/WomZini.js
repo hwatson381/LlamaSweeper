@@ -111,7 +111,7 @@ class WomZini {
       for (let f = 0; f < n; f++) {
         for (let _ = 0; _ < l; _++) {
           if (m.g[f * l + _]) {
-            if (!openingsLabelsClicked.includes(m.g[f * l + _])) {
+            if (!openingsLabelsClicked.includes(m.g[f * l + _]) && m.t[f * l + _] === 0) {
               openingsLabelsClicked.push(m.g[f * l + _]);
               clicks.push({ type: 'left', x: f, y: _ });
             }

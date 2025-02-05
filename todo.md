@@ -5,7 +5,6 @@ Move project files over to WSL2 (this is needed for hot-reload to work?)
 
 stuff for play page:
 implement zini alg
-add replays
 have board-history for exploring past replays (and replays of same game get grouped up)
 
 Use setters and getters for tilesArray (formerly called revealedNumbers). Like setTileState(x, y, newState) and setTileDepressed(x, y, true)
@@ -16,8 +15,6 @@ Make unfocus a function and call it from all various inputs (where sensible?)
 
 Be careful with setTimeouts to not have loads of them running at the same time...
 Remove on component unmount?
-
-Include raw coords in BoardStats.clicks info
 
 Make algorithms class static
 
@@ -68,8 +65,6 @@ During inclusion-exclusion zini, try profile how much each chord affects the glo
 
 Add freesweeper to others page?
 
-make stuff that lets you edit boards and show what the path is that womzini took
-
 zini idea: Simulated annealing zini where we randomise priorities/premium adjustments to find neighbour solutions
 
 Be more consistent with using this.variant vs variant.value in Board class.
@@ -78,19 +73,9 @@ hide quickpaint button when board editor is in edit mode?
 
 Can we change gameStage to be a ref?
 
-Can I do anything with mutally exclusive min group theory? See discord message from 195 guy 17/01/2025
+Can I do anything with mutually exclusive mine group theory? See discord message from 195 guy 17/01/2025
 
 For zini - is there a way to analyse benefit of flags? Flag premiums? Some measure of how reusable flags are?
-
-and also have:
-menu button for "watch"
-with options for:
-replay
-8-way replay
-womzini replay
-womzini improved replay
-womhzini
-click-loss replay (in future)
 
 post game (or post zini run), do a click save heatmap showing the locations of where all the click saves were.
 This may even be useful for doing a genetic zini algorithm where we breed solutions by "subtracting" heatmaps
@@ -121,8 +106,6 @@ Beware that high eff games are extraordinary, so may need to use higher cutoff t
 Make a fun 404 page?
 Background could be a minesweeper grid from an incomplete game (so lots of flagged squares, and some unflagged squares)
 404 page not found = mine not found?
-
-Maybe openings should annihilate flags instead of being blocked by them?
 
 Count games tested in x amount of time for eff board gen (this is a way to check the speed improvements help)
 
@@ -221,32 +204,11 @@ Would the replay be more accurate if it used the timeStamp property from events 
 Gadget idea - hotkey to show coords by mouse when hovering square?
 Better idea - show coords in all cells (in small font)
 
-Some bugs to figure out with meanMines -
-Because of timing issue, we end up "using" them before openings have expanded
-So instead need to find a way around this
-
-Maybe having special logic when gameStage = "replay"?
-
 zini replay could show where the mines are?
-
-WHEN I GET BACK -
-[done, need to test] Implement this.reorderZiniClicks
-[done] fix mean openings replays
-replay idea - click on board during replay jumps you to timestamp of when that square got revealedNumbers
 
 coords on each cell that invert colours (so always readable?). Do excel style coords (alphabetical?)
 
 Enable keyboard clicks?
-
-mean openings - option to treat meanMine squares as always being flags for chording?
-
-For replay idea - do something that still jumps to nearest click if the click is on a flag that is never revealed.
-Or do we just jump straight to the end?
-Maybe look at when the flag gets smothered?
-
-wom hzini is completely broken
-
-if replay jumper can't find something for this tile, check when the latest neighbour tile was done. Otherwise, jump to the end.
 
 Make a "llamasweeper - best features" video
 

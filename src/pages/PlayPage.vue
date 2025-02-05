@@ -291,6 +291,7 @@
             { label: 'Blast', value: 'blast' },
             { label: 'Shield for 0.5s', value: 'shield' },
             { label: 'Ignore clicks', value: 'ignore' },
+            { label: 'Ignore + chordable', value: 'chordable' },
           ]"
           emit-value
           map-options
@@ -3361,7 +3362,10 @@ class Board {
             //Click happened after, so should blast
             doDig = true; //defensive
           }
-        } else if (meanMineClickBehaviour.value === "ignore") {
+        } else if (
+          meanMineClickBehaviour.value === "ignore" ||
+          meanMineClickBehaviour.value === "chordable"
+        ) {
           doDig = false;
           //Not sure whether it is best to waste click or ignore it entirely. I've chosen to waste as maybe people care about clicks per second stat.
           this.stats.addWastedLeft(
@@ -3684,7 +3688,14 @@ class Board {
         if (!this.checkCoordsInBounds(i, j)) {
           continue; //ignore squares outside board
         }
-        if (this.tilesArray[i][j].state === FLAG) {
+
+        const isChordableMeanMine =
+          this.variant === "mean openings" &&
+          meanMineClickBehaviour.value === "chordable" &&
+          this.meanMineStates[i][j].isMine &&
+          this.meanMineStates[i][j].isActive;
+
+        if (this.tilesArray[i][j].state === FLAG || isChordableMeanMine) {
           count++;
         }
       }
@@ -3732,7 +3743,15 @@ class Board {
             this.tilesArray[i][j].state = UNREVEALED;
             this.unflagged++;
           }
-          if (this.tilesArray[i][j].state === UNREVEALED) {
+          const isChordableMeanMine =
+            this.variant === "mean openings" &&
+            meanMineClickBehaviour.value === "chordable" &&
+            this.meanMineStates[i][j].isMine &&
+            this.meanMineStates[i][j].isActive;
+          if (
+            this.tilesArray[i][j].state === UNREVEALED &&
+            !isChordableMeanMine
+          ) {
             this.openTile(i, j);
             hadUnrevealedNeighbour = true;
           }
@@ -6841,6 +6860,88 @@ class Replay {
 
   handleReplayClick(x, y) {
     //Clicking on a square will jump to just before that square was revealed
+    let targetIndex = null;
+
+    let {
+      clickIndex: mainClickIndex,
+      revealedByOpeningIndex: mainRevealedByOpeningIndex,
+    } = this.findFirstInteractionForSquare(x, y);
+
+    //Check if the square gets directly revealed (and not by an opening)
+    if (mainClickIndex !== null && targetIndex === null) {
+      targetIndex = mainClickIndex;
+    }
+
+    //Check if the square gets revealed by an opening
+    if (mainRevealedByOpeningIndex !== null && targetIndex === null) {
+      targetIndex = mainRevealedByOpeningIndex;
+    }
+
+    //If we still haven't found this square, then look at when the neighbouring cells were revealed
+    if (targetIndex === null) {
+      let allNeighboursBestIndex = null;
+
+      for (let i = x - 1; i <= x + 1; i++) {
+        for (let j = y - 1; j <= y + 1; j++) {
+          if (!this.board.checkCoordsInBounds(i, j)) {
+            continue;
+          }
+
+          let {
+            clickIndex: neighbourClickIndex,
+            revealedByOpeningIndex: neighbourRevealedByOpeningIndex,
+          } = this.findFirstInteractionForSquare(i, j);
+
+          //Check if this neighbour is an improvement
+          let neighbourBest = null;
+
+          //First try look at when the neighbour was interacted with
+          // and, barring that, look at when it was opened (if part of an opening)
+          if (neighbourClickIndex !== null) {
+            neighbourBest = neighbourClickIndex;
+          } else if (neighbourRevealedByOpeningIndex !== null) {
+            neighbourBest = neighbourRevealedByOpeningIndex;
+          }
+
+          //If neighbour was interacted with, and this interaction was later than other neighbours
+          //Then update current best for all neighbours
+          if (neighbourBest !== null) {
+            if (
+              allNeighboursBestIndex === null ||
+              neighbourBest > allNeighboursBestIndex
+            ) {
+              allNeighboursBestIndex = neighbourBest;
+            }
+          }
+        }
+      }
+
+      if (allNeighboursBestIndex !== null) {
+        targetIndex = allNeighboursBestIndex;
+      }
+    }
+
+    //If we still haven't found it, then jump to the end
+    if (targetIndex === null) {
+      targetIndex = this.clicks.length - 1;
+    }
+
+    if (replayType.value === "steppy") {
+      //Jump to click before the one that reveals the square
+      this.handleSliderChange(targetIndex - 1);
+    } else {
+      //Jump to 0.5 seconds before the click that reveals the square
+      this.handleSliderChange(this.clicks[targetIndex].time - 0.5);
+    }
+    this.play();
+  }
+
+  findFirstInteractionForSquare(x, y) {
+    //Used by replay jumper
+    //There are various rules for finding which time/index to jump to when a square is clicked on
+    //Primarily, we find when the square was first revealed normally
+    //and also when it was first revealed as part of an opening
+
     const { numbersArray, openingLabels, preprocessedOpenings } =
       algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
         this.board.mines
@@ -6942,21 +7043,10 @@ class Replay {
       }
     }
 
-    if (clickIndex === null) {
-      //Square wasn't found from direct reveal. Instead look at when it was revealed by an opening
-      clickIndex = revealedByOpeningIndex;
-    }
-
-    if (clickIndex !== null) {
-      if (replayType.value === "steppy") {
-        //Jump to click before the one that reveals the square
-        this.handleSliderChange(clickIndex - 1);
-      } else {
-        //Jump to 0.5 seconds before the click that reveals the square
-        this.handleSliderChange(this.clicks[clickIndex].time - 0.5);
-      }
-      this.play();
-    }
+    return {
+      clickIndex,
+      revealedByOpeningIndex,
+    };
   }
 }
 

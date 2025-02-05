@@ -18,7 +18,7 @@
 
       <q-tabs align="left">
         <q-route-tab to="/" label="Home" />
-        <q-route-tab to="/play" label="My Minesweeper Variants" />
+        <q-route-tab to="/play" label="My Variants" />
         <q-route-tab to="/others" label="Other Variants and Resources" />
         <q-route-tab to="/about" label="About" />
       </q-tabs>
