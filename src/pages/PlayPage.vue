@@ -814,8 +814,16 @@
                   style="width: 175px; flex-shrink: 0"
                   :options="[
                     {
-                      label: 'Only scroll on zeros',
+                      label: 'Scroll on zeros',
                       value: 'zero',
+                    },
+                    {
+                      label: 'Scroll on interior (flag version)',
+                      value: 'enclosed flag',
+                    },
+                    {
+                      label: 'Scroll on interior (nf version)',
+                      value: 'enclosed nf',
                     },
                     { label: 'Disable scroll', value: 'disable' },
                     { label: 'Enable scroll', value: 'enable' },
@@ -823,9 +831,38 @@
                   emit-value
                   map-options
                   stack-label
-                  label="Touch Reveal Location"
-                ></q-select
-                ><br />
+                  label="Touch Scroll Behaviour"
+                ></q-select>
+                <div
+                  v-if="
+                    mobileScrollSetting === 'enclosed nf' ||
+                    mobileScrollSetting === 'enclosed flag'
+                  "
+                  class="flex q-mb-sm"
+                >
+                  <q-checkbox
+                    v-model="mobileEnclosedScrollLetThrough"
+                    label="Let interior clicks through"
+                    style="flex-shrink: 0"
+                    class="q-mr-md"
+                  />
+                  <div
+                    v-if="!mobileEnclosedScrollLetThrough"
+                    class="text-negative"
+                    style="flex: 1 1 240px"
+                  >
+                    <span v-if="mobileScrollSetting === 'enclosed nf'"
+                      ><b>Danger:</b> having this unticked will cause problems
+                      if you play using flags.</span
+                    >
+                    <span v-if="mobileScrollSetting === 'enclosed flag'"
+                      ><b>Warning:</b> having this unticked will stop you from
+                      placing deeply interior flags. You will still be able to
+                      minecount using QuickPaint.</span
+                    >
+                  </div>
+                </div>
+                <br v-else />
                 <q-select
                   class="q-mx-md q-mb-md"
                   outlined
@@ -879,7 +916,7 @@
                   dense
                   min="80"
                   max="400"
-                  style="width: 110px"
+                  style="width: 150px"
                 /><br />
                 <q-input
                   debounce="100"
@@ -889,7 +926,7 @@
                   dense
                   min="300"
                   max="1500"
-                  style="width: 110px"
+                  style="width: 150px"
                 /><br />
                 <q-input
                   debounce="100"
@@ -899,7 +936,7 @@
                   dense
                   min="2"
                   max="5"
-                  style="width: 140px"
+                  style="width: 150px"
                 /><br />
                 <q-select
                   class="q-mx-md q-mb-md"
@@ -1124,7 +1161,6 @@
       name="flag"
       :color="flagToggleActive ? 'white' : 'black'"
       size="3em"
-      @mousedown="game.board.showClickFlagToggleWarning()"
     />
   </button>
 
@@ -1134,7 +1170,7 @@
     style="
       position: fixed;
       background-color: lightgray;
-      bottom: 10px;
+      bottom: 15px;
       left: 0;
       right: 0;
       margin: auto;
@@ -1144,6 +1180,7 @@
       box-shadow: 3px 4px 10px black;
       gap: 6px;
       align-items: center;
+      touch-action: none;
     "
   >
     <q-btn dense color="white" text-color="black">
@@ -1197,7 +1234,7 @@
       snap
       color="green"
       :dark="false"
-      class="q-px-sm"
+      class="q-px-sm no-transition-slider"
       style="width: 90px"
     />
     <q-chip square color="white" text-color="black">
@@ -1644,7 +1681,14 @@ let isCurrentlyEditModeDisplay = ref(true); //Lines up with game.board.gameStage
 
 let flagToggleActive = ref(false); //Whether to swap left and right mouse buttons
 let mobileModeEnabled = ref(isMobile()); //Flag toggle starts enabled on mobile, disabled on desktop
-let mobileScrollSetting = ref("zero"); //Affects whether touches can trigger scroll
+let mobileScrollSetting = ref("enclosed flag"); //Affects whether touches can trigger scroll
+let mobileEnclosedScrollLetThrough = ref(true); //Whether clicks can still affect the board on enclosed setting (typically placing flags)
+let scrollLetThroughActive = computed(
+  () =>
+    (mobileScrollSetting.value === "enclosed nf" ||
+      mobileScrollSetting.value === "enclosed flag") &&
+    mobileEnclosedScrollLetThrough.value
+);
 let touchRevealLocation = ref("start"); //Whether we use the location of the touch at the start of it or the end of it
 let touchRevealTiming = ref("end"); //Does it reveal the tile on finger up or finger down
 let touchLongPressTime = ref(250); //When does long press = flag (or dig) get triggered
@@ -2442,20 +2486,20 @@ class Board {
 
     //Adapted from https://developer.mozilla.org/en-US/docs/Web/API/Touch_events
 
-    //event.preventDefault();
-    console.log("touchstart.");
-
     const touches = event.changedTouches;
 
     let shouldPreventDefault = false;
-    if (mobileScrollSetting.value === "zero" && this.gameStage === "running") {
+    if (
+      (mobileScrollSetting.value === "zero" ||
+        mobileScrollSetting.value === "enclosed nf" ||
+        mobileScrollSetting.value === "enclosed flag") &&
+      this.gameStage === "running"
+    ) {
       //If zero, we assume that the scroll gets prevented, but then stop if coniditons are met
       shouldPreventDefault = true;
     }
 
     for (let touch of touches) {
-      console.log(`touchstart: ${touch.identifier}.`);
-
       const canvasCoords = this.eventToCanvasCoord(touch);
       const flooredCoords = this.eventToFlooredTileCoords(touch);
       const unflooredCoords = this.eventToUnflooredTileCoords(touch);
@@ -2466,12 +2510,31 @@ class Board {
         unflooredCoords,
       };
 
-      let isScrollingZero = false;
+      let isScrollingTouch = false;
       if (
+        mobileScrollSetting.value === "zero" &&
         this.tilesArray[flooredCoords.tileX]?.[flooredCoords.tileY]?.state === 0
       ) {
         //If we have the scroll on zeros setting then this touch gets blocked, and we let the touch through
-        isScrollingZero = true;
+        isScrollingTouch = true;
+        shouldPreventDefault = false;
+      }
+
+      if (
+        mobileScrollSetting.value === "enclosed nf" &&
+        this.gameStage === "running" &&
+        this.isTileEnclosed(flooredCoords.tileX, flooredCoords.tileY, false)
+      ) {
+        isScrollingTouch = true;
+        shouldPreventDefault = false;
+      }
+
+      if (
+        mobileScrollSetting.value === "enclosed flag" &&
+        this.gameStage === "running" &&
+        this.isTileEnclosed(flooredCoords.tileX, flooredCoords.tileY, true)
+      ) {
+        isScrollingTouch = true;
         shouldPreventDefault = false;
       }
 
@@ -2513,10 +2576,10 @@ class Board {
         startCoordsData: structuredClone(coordsData), //Ugly, but just in case it gets changed in handePointerInput function.
         startScreenCoords: screenCoords,
         active: true, //Changes to false if the touch is cancelled (e.g. it moved more than x distance or lasted more than y seconds)
-        isScrollingZero: isScrollingZero,
+        isScrollingTouch: isScrollingTouch,
       });
 
-      if (isScrollingZero) {
+      if (isScrollingTouch && !scrollLetThroughActive.value) {
         //this touch is for scrolling, so doesn't need to be processed further
         continue;
       }
@@ -2550,29 +2613,31 @@ class Board {
 
     //Adapted from https://developer.mozilla.org/en-US/docs/Web/API/Touch_events
 
-    //event.preventDefault();
-    console.log("touchend.");
-
     const touches = event.changedTouches;
 
     let redrawNeededForBlockedTouched = false;
 
     let shouldPreventDefault = false;
-    if (mobileScrollSetting.value === "zero" && this.gameStage === "running") {
+    if (
+      (mobileScrollSetting.value === "zero" ||
+        mobileScrollSetting.value === "enclosed nf" ||
+        mobileScrollSetting.value === "enclosed flag") &&
+      this.gameStage === "running"
+    ) {
       //If zero, we assume that the scroll gets prevented, but then stop if coniditons are met
       shouldPreventDefault = true;
     }
 
     for (let touch of touches) {
-      console.log(`touchend: ${touch.identifier}.`);
-
       //Get touch entry and delete it (whilst hanging onto reference inside this function)
       let thisTouch = this.ongoingTouches.get(touch.identifier);
       this.ongoingTouches.delete(touch.identifier);
 
-      if (thisTouch.isScrollingZero) {
+      if (thisTouch.isScrollingTouch) {
         shouldPreventDefault = false;
-        continue;
+        if (!scrollLetThroughActive.value) {
+          continue;
+        }
       }
 
       let isDigInput;
@@ -2693,8 +2758,6 @@ class Board {
     //that start and stop. So we'd also have to save identifier information
 
     //Adapted from https://developer.mozilla.org/en-US/docs/Web/API/Touch_events
-    //event.preventDefault();
-    console.log("touchmove.");
 
     if (this.gameStage !== "pregame" && this.gameStage !== "running") {
       return; //only track touch moves when game is running or just before
@@ -2713,19 +2776,24 @@ class Board {
     let requiresRedraw = false;
 
     let shouldPreventDefault = false;
-    if (mobileScrollSetting.value === "zero" && this.gameStage === "running") {
+    if (
+      (mobileScrollSetting.value === "zero" ||
+        mobileScrollSetting.value === "enclosed nf" ||
+        mobileScrollSetting.value === "enclosed flag") &&
+      this.gameStage === "running"
+    ) {
       //If zero, we assume that the scroll gets prevented, but then stop if coniditons are met
       shouldPreventDefault = true;
     }
 
     for (let touch of touches) {
-      console.log(`touchmove: ${touch.identifier}.`);
-
       let thisTouch = this.ongoingTouches.get(touch.identifier);
 
-      if (thisTouch.isScrollingZero) {
+      if (thisTouch.isScrollingTouch) {
         shouldPreventDefault = false;
-        continue; //This touch is scrolling, so no need to process further
+        if (!scrollLetThroughActive.value) {
+          continue; //This touch is scrolling, so no need to process further
+        }
       }
 
       if (!thisTouch.active) {
@@ -2793,28 +2861,30 @@ class Board {
 
     //Adapted from https://developer.mozilla.org/en-US/docs/Web/API/Touch_events
 
-    //event.preventDefault();
-    console.log("touchcancel.");
-
     const touches = event.changedTouches;
 
     let requiresRedraw = false;
 
     let shouldPreventDefault = false;
-    if (mobileScrollSetting.value === "zero" && this.gameStage === "running") {
+    if (
+      (mobileScrollSetting.value === "zero" ||
+        mobileScrollSetting.value === "enclosed nf" ||
+        mobileScrollSetting.value === "enclosed flag") &&
+      this.gameStage === "running"
+    ) {
       //If zero, we assume that the scroll gets prevented, but then stop if coniditons are met
       shouldPreventDefault = true;
     }
 
     for (let touch of touches) {
-      console.log(`touchcancel: ${touch.identifier}.`);
-
       let thisTouch = this.ongoingTouches.get(touch.identifier);
       this.ongoingTouches.delete(touch.identifier);
 
-      if (thisTouch.isScrollingZero) {
+      if (thisTouch.isScrollingTouch) {
         shouldPreventDefault = false;
-        continue;
+        if (!scrollLetThroughActive.value) {
+          continue;
+        }
       }
 
       if (!thisTouch.active) {
@@ -3053,17 +3123,6 @@ class Board {
     if (isDrawRequired) {
       this.draw();
     }
-  }
-
-  showClickFlagToggleWarning() {
-    //Slightly hacky as this triggers on clicking the flag icon
-    //which normally gets blocked by preventDefault if the button receives a touch event.
-    window.alert(
-      "Flag toggle button only works with touch events. " +
-        "Consider requesting the mobile site. If you have a " +
-        "valid use case that needs the flag button with mouse events " +
-        "then please let me (llama) know about it"
-    );
   }
 
   generateBoard(tileX, tileY) {
@@ -3923,8 +3982,8 @@ class Board {
         for (let neighbourNeighbour of neighbourNeighbours) {
           //Check if the neighbour to our main cell has neighbours that are unrevealed safe
           if (
-            this.tilesArray[neighbourNeighbour.x][neighbourNeighbour.y] ===
-              UNREVEALED &&
+            this.tilesArray[neighbourNeighbour.x][neighbourNeighbour.y]
+              .state === UNREVEALED &&
             !this.mines[neighbourNeighbour.x][neighbourNeighbour.y] &&
             !this.meanMineStates[neighbourNeighbour.x][neighbourNeighbour.y]
               .isMine
@@ -4039,6 +4098,167 @@ class Board {
         this.meanMineStates[x][y].isActive = false;
       }
     }
+  }
+
+  isTileEnclosed(tileX, tileY, useFlagVersion) {
+    //Check if a tile is surrounded in such a way that we trivially
+    // know that all it's neighbours are revealed or known mines
+
+    if (!this.checkCoordsInBounds(tileX, tileY)) {
+      return false;
+    }
+
+    if (this.gameStage !== "running") {
+      throw new Error("Enclosed setting should only apply during running game");
+    }
+
+    //As an initial check, look to see if any of the 3x3 block centred on tileX, tileY
+    //have squares that are safe, but unrevealed
+
+    for (let x = tileX - 1; x <= tileX + 1; x++) {
+      for (let y = tileY - 1; y <= tileY + 1; y++) {
+        if (!this.checkCoordsInBounds(x, y)) {
+          continue;
+        }
+        const isMeanMine =
+          this.variant === "mean openings" &&
+          this.meanMineStates[x][y].isMine &&
+          this.meanMineStates[x][y].isActive;
+
+        const isNormalOrMeanMine = this.mines[x][y] || isMeanMine;
+
+        if (
+          typeof this.tilesArray[x][y].state !== "number" &&
+          !isNormalOrMeanMine
+        ) {
+          //Found square in 3x3 block that is unrevealed and safe. So return false as the centre square is not enclosed by known mines
+          return false;
+        }
+      }
+    }
+
+    //In the more complicate case, we need to work out which squares surrounding the centre tile are obvious mines
+    //Look at the 5x5 block of numbers, and collect the list of mines which are confirmed by these
+
+    //Confirmed mines: {x: number, y: number} coord pairs of squares known to be mines
+    //Ideally, we'd use a set for this, and remove duplicated, but it's neglibile for performance
+    let confirmedMines = [];
+
+    //Get mines confirmed by 5x5 block centred on tileX, tileY
+    for (let x = tileX - 2; x <= tileX + 2; x++) {
+      for (let y = tileY - 2; y <= tileY + 2; y++) {
+        if (!this.checkCoordsInBounds(x, y)) {
+          continue;
+        }
+        if (typeof this.tilesArray[x][y].state !== "number") {
+          continue;
+        }
+
+        confirmedMines = confirmedMines.concat(
+          this.getMinesConfirmedByTile(x, y)
+        );
+      }
+    }
+
+    //Check mines in 3x3 block centred on tileX, tileY to make sure they are all confirmed
+    for (let x = tileX - 1; x <= tileX + 1; x++) {
+      for (let y = tileY - 1; y <= tileY + 1; y++) {
+        if (!this.checkCoordsInBounds(x, y)) {
+          continue;
+        }
+        if (typeof this.tilesArray[x][y].state === "number") {
+          continue;
+        }
+
+        //Note - these tiles are guaranteed to be mines due to the loop we did at the start of the method
+        if (
+          !confirmedMines.some(
+            (confMine) => x === confMine.x && y === confMine.y
+          )
+        ) {
+          //Return false as we have found a mine in the 3x3 block that isn't confirmed by basic logic
+          return false;
+        }
+      }
+    }
+
+    //Special case for flaggers. Tiles that can be flagged to use in a chord should not be scrollable
+    if (this.tilesArray[tileX][tileY].state === UNREVEALED && useFlagVersion) {
+      //Check numbers adjacent to centre tile
+      //Make sure each number is maxed out (and therefore can't be chorded)
+      for (let x = tileX - 1; x <= tileX + 1; x++) {
+        for (let y = tileY - 1; y <= tileY + 1; y++) {
+          if (!this.checkCoordsInBounds(x, y)) {
+            continue;
+          }
+          if (typeof this.tilesArray[x][y].state !== "number") {
+            continue;
+          }
+          if (this.tilesArray[x][y].state === 0) {
+            continue;
+          }
+
+          let minesConfedByCentreAdjacentNumber = this.getMinesConfirmedByTile(
+            x,
+            y
+          );
+
+          if (minesConfedByCentreAdjacentNumber.length === 0) {
+            //We know that the tile adjacent to centre, is not a zero, so if it was maxed out
+            //it would confirm mines equal to it's number
+            //But because it confirms no mines, then it must have surrounding safe squares
+            //So it may get chorded. Therefore are flag is not enclosed
+            return false; //ret false as flag may be used for chording
+          }
+        }
+      }
+    }
+
+    return true;
+  }
+
+  getMinesConfirmedByTile(tileX, tileY) {
+    if (typeof this.tilesArray[tileX][tileY].state !== "number") {
+      throw new Error(
+        "This function is expected to be called on a number tile"
+      );
+    }
+
+    let potentiallyConfirmedMines = [];
+
+    for (let x = tileX - 1; x <= tileX + 1; x++) {
+      for (let y = tileY - 1; y <= tileY + 1; y++) {
+        if (!this.checkCoordsInBounds(x, y)) {
+          continue;
+        }
+        if (x === tileX && y === tileY) {
+          continue;
+        }
+
+        const isMeanMine =
+          this.variant === "mean openings" &&
+          this.meanMineStates[x][y].isMine &&
+          this.meanMineStates[x][y].isActive;
+
+        const isNormalOrMeanMine = this.mines[x][y] || isMeanMine;
+
+        if (isNormalOrMeanMine) {
+          //Neighbour is a mine. If the centre square turns out to be maxed out then this mine is proven
+          potentiallyConfirmedMines.push({ x, y });
+        } else if (
+          typeof this.tilesArray[x][y].state !== "number" &&
+          !isNormalOrMeanMine
+        ) {
+          //Neighbour is unrevealed and safe. Therefore the centre square is NOT maxed out
+          //So we cannot deduce any of the mines used basic "max out" logic
+          return [];
+        } else {
+          //Neighbour is revealed and safe, do nothing
+        }
+      }
+    }
+
+    return potentiallyConfirmedMines;
   }
 
   calculateAndDisplayStats(isWin) {

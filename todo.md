@@ -216,4 +216,20 @@ Have a mobile scroll option, similar to scroll on zeros, but that includes non-u
 This way it would work on the mean mines setting.
 Maybe could be called something like "non-frontier scroll" or "enclosed-scroll"
 
-Move replay stuff to separate file
+Move replay stuff to separate file (may need some work to convert refs to dependencies)
+Could having it in sep component work?
+
+dumb idea - train neural network to assign premiums for zini?
+
+Need to do option for letting through scrolling touch, or wasting it (if possible)
+
+Buy domain?
+
+Have some sort of shield against accidental scrolls? E.g. don't scroll on openings revealed in last 0.5s?
+
+Crazy refactoring
+then basic click-loss replay
+
+Replay bar is fiddly on mobile. Maybe make multiplier editable as a number (or have dropdown) by clicking the chip (box with 1.00x)
+
+Remove warning on the flag toggle button (click listener)

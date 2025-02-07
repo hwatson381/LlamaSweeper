@@ -57,7 +57,11 @@
                   >, and also the first (currently only) to get
                   <a href="https://minesweeper.online/game/3439056000"
                     >100% on evil</a
-                  >.
+                  >. In regular efficiency, I recently got the world record in
+                  <a href="https://minesweeper.online/game/4116811644">
+                    beginner</a
+                  >. This is probably the luckiest thing that has happened to me
+                  and will ever happen to me.
                 </p>
                 <p>
                   Outside of minesweeper, I play Team Fortress 2 too much and I
@@ -71,8 +75,8 @@
                   of a TAS I made for Google Snake. So I now infrequently post
                   videos of Google Snake on there (mods/tases that I make).
                   There are also some old videos about minesweeper and random
-                  coding projects. As of writing, the channel has 25k subs and
-                  19 million views, which I'm pretty proud of :).
+                  coding projects. As of writing, the channel has 27k subs and
+                  20 million views, which I'm pretty proud of :).
                 </p>
               </q-tab-panel>
 
