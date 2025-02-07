@@ -2,10 +2,12 @@ import OrganisedPremiums from "src/classes/OrganisedPremiums.js";
 import WomZini from "./WomZini";
 
 class Algorithms {
-  constructor() { }
+  constructor() {
+    throw new Error('Algorithms class only has static methods, and cannot be instantiated')
+  }
 
-  calcBasicZini(mines, is8Way, preprocessedData = false) {
-    //PreprocessedData is the result from algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines)
+  static calcBasicZini(mines, is8Way, preprocessedData = false) {
+    //PreprocessedData is the result from Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines)
     //Which means that we don't have to run that function multiple times
 
     //Get various data structures which information about numbers and openings
@@ -230,7 +232,7 @@ class Algorithms {
     };
   }
 
-  doBasicZiniStep(
+  static doBasicZiniStep(
     squareInfo,
     flagStates,
     revealedStates,
@@ -460,7 +462,7 @@ class Algorithms {
     return { newlyRevealed: squaresRevealedDuringStep, onlyNFRemaining: false };
   }
 
-  nfClickEverythingForZini(
+  static nfClickEverythingForZini(
     squareInfo,
     revealedStates,
     preprocessedOpenings,
@@ -501,23 +503,23 @@ class Algorithms {
     }
   }
 
-  //preprocessedData is the result from algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines)
+  //preprocessedData is the result from Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines)
   //Which means that we don't have to run that function multiple times
-  calcEightWayZini(mines, preprocessedData = false) {
+  static calcEightWayZini(mines, preprocessedData = false) {
     //8-way zini
     const is8Way = true;
 
     return this.calcBasicZini(mines, is8Way, preprocessedData);
   }
 
-  calcOneWayZini(mines, preprocessedData = false) {
+  static calcOneWayZini(mines, preprocessedData = false) {
     //1-way zini
     const is8Way = false;
 
     return this.calcBasicZini(mines, is8Way, preprocessedData);
   }
 
-  updatePremiumForCoord(
+  static updatePremiumForCoord(
     x,
     y,
     squareInfo,
@@ -601,7 +603,7 @@ class Algorithms {
   //Numbers array gives the numbers of each cell.
   //OpeningLabels tracks which squares are part of the same openings or on opening edges.
   //Preprocessed openings tracks which squares are the edge and inside of openings
-  getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines) {
+  static getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines) {
     const width = mines.length;
     const height = mines[0].length;
 
@@ -688,7 +690,7 @@ class Algorithms {
     };
   }
 
-  floodOpeningForProcessing(
+  static floodOpeningForProcessing(
     x,
     y,
     mines,
@@ -800,7 +802,7 @@ class Algorithms {
     }
   }
 
-  calc3bv(mines, tilesArray = false, preprocessedData = false) {
+  static calc3bv(mines, tilesArray = false, preprocessedData = false) {
     // Basic idea = generate grid of numbers
     // Do flood fill with the zeros - this will label openings and find which squares touch which openings
     // Maybe can reuse openings in zini calc? (Or not needed?)
@@ -866,12 +868,12 @@ class Algorithms {
     };
   }
 
-  fast2dArrayCopy(toBeCopied) {
+  static fast2dArrayCopy(toBeCopied) {
     //shallow copy for 2d arrays
     return toBeCopied.map((arr) => arr.slice());
   }
 
-  fisherYatesArrayShuffle(arr) {
+  static fisherYatesArrayShuffle(arr) {
     //https://stackoverflow.com/questions/59810241/how-to-fisher-yates-shuffle-a-javascript-array
     var i = arr.length,
       j,
@@ -884,7 +886,7 @@ class Algorithms {
     }
   }
 
-  basicShuffle(
+  static basicShuffle(
     width,
     height,
     mineCount,
@@ -944,7 +946,7 @@ class Algorithms {
     return minesArray;
   }
 
-  effBoardShuffle(
+  static effBoardShuffle(
     width,
     height,
     mineCount,
@@ -1024,7 +1026,7 @@ class Algorithms {
     return minesArray;
   }
 
-  get99thPercentileSubzini(width, height, mineCount, bbbv, oneWayZini) {
+  static get99thPercentileSubzini(width, height, mineCount, bbbv, oneWayZini) {
     //For "normal" boards, this is based on data from bulkrun2, otherwise it's a guess
 
     const boardKey = `${width}-${height}-${mineCount}`;
@@ -1094,7 +1096,7 @@ class Algorithms {
     }
   }
 
-  getRandomZeroCell(minesArray) {
+  static getRandomZeroCell(minesArray) {
     //Finds a random zero cell on board to click
     //Inefficient, but only runs when we've found a good board, which isn't that often
 
@@ -1131,7 +1133,7 @@ class Algorithms {
   }
 
   //Note - wom zini has a off-by-one error with handling premiums for opening edges
-  calcWomZiniAndHZini(mines, applyOpeningEdgeCorrection = false) {
+  static calcWomZiniAndHZini(mines, applyOpeningEdgeCorrection = false) {
     const preprocessedData = this.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
       mines
     );
@@ -1179,7 +1181,7 @@ class Algorithms {
     }
   }
 
-  reorderZiniClicks(clicks, mines) {
+  static reorderZiniClicks(clicks, mines) {
     clicks = structuredClone(clicks); //Just to prevent issues with changing references
 
     const width = mines.length;

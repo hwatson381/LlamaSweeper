@@ -347,11 +347,11 @@
                 'zini-match':
                   variant === 'eff boards' &&
                   statsObject.isWonGame &&
-                  statsObject.clicks.total === statsObject.zini,
+                  statsObject.clicks.total === statsObject.eightZini,
                 'sub-zini':
                   variant === 'eff boards' &&
                   statsObject.isWonGame &&
-                  statsObject.clicks.total < statsObject.zini,
+                  statsObject.clicks.total < statsObject.eightZini,
               }"
             >
               Eff: {{ statsObject.eff }}%
@@ -1744,21 +1744,21 @@ function bulkrun() {
     );
 
     benchmark.startTime("one-way");
-    let oneZini = algorithms.calcOneWayZini(mines).total;
+    let oneZini = Algorithms.calcOneWayZini(mines).total;
     benchmark.stopTime("one-way");
 
     benchmark.startTime("8-way");
-    let eightZini = algorithms.calcEightWayZini(mines).total;
+    let eightZini = Algorithms.calcEightWayZini(mines).total;
     benchmark.stopTime("8-way");
 
     //wom zini without correction
     benchmark.startTime("wom-zini-hzini-no-corr");
-    let womZini = algorithms.calcWomZiniAndHZini(mines, false).womZini.total;
+    let womZini = Algorithms.calcWomZiniAndHZini(mines, false).womZini.total;
     benchmark.stopTime("wom-zini-hzini-no-corr");
 
     //wom zini with correction
     benchmark.startTime("wom-zini-hzini-with-corr");
-    let womFixZini = algorithms.calcWomZiniAndHZini(mines, true).womZini.total;
+    let womFixZini = Algorithms.calcWomZiniAndHZini(mines, true).womZini.total;
     benchmark.stopTime("wom-zini-hzini-with-corr");
 
     let thisOneDiff = oneZini - womZini;
@@ -1819,16 +1819,16 @@ function bulkrun2() {
     );
 
     let preprocessedData =
-      algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
+      Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
 
-    let bbbv = algorithms.calc3bv(mines, false, preprocessedData).bbbv;
+    let bbbv = Algorithms.calc3bv(mines, false, preprocessedData).bbbv;
 
-    let singleZini = algorithms.calcBasicZini(
+    let singleZini = Algorithms.calcBasicZini(
       mines,
       false,
       preprocessedData
     ).total;
-    let eightZini = algorithms.calcBasicZini(
+    let eightZini = Algorithms.calcBasicZini(
       mines,
       true,
       preprocessedData
@@ -1919,12 +1919,12 @@ function bulkrun3() {
     );
 
     let preprocessedData =
-      algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
+      Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
 
-    let bbbv = algorithms.calc3bv(mines, false, preprocessedData).bbbv;
+    let bbbv = Algorithms.calc3bv(mines, false, preprocessedData).bbbv;
 
     benchmark.startTime("single-zini");
-    let singleZini = algorithms.calcBasicZini(
+    let singleZini = Algorithms.calcBasicZini(
       mines,
       false,
       preprocessedData
@@ -1932,7 +1932,7 @@ function bulkrun3() {
     benchmark.stopTime("single-zini");
 
     benchmark.startTime("eight-zini");
-    let eightZini = algorithms.calcBasicZini(
+    let eightZini = Algorithms.calcBasicZini(
       mines,
       true,
       preprocessedData
@@ -1946,7 +1946,7 @@ function bulkrun3() {
     let newCheckTriggered =
       bbbv /
         (singleZini -
-          algorithms.get99thPercentileSubzini(
+          Algorithms.get99thPercentileSubzini(
             boardWidth.value,
             boardHeight.value,
             boardMines.value,
@@ -5409,7 +5409,7 @@ class Board {
     }
 
     if (isReorderableZini && reorderZini.value) {
-      replayParams.clicks = algorithms.reorderZiniClicks(
+      replayParams.clicks = Algorithms.reorderZiniClicks(
         replayParams.clicks,
         this.mines
       );
@@ -5640,7 +5640,7 @@ class BoardGenerator {
     safeCoord = null,
     isOpening = false
   ) {
-    return algorithms.basicShuffle(
+    return Algorithms.basicShuffle(
       width,
       height,
       mineCount,
@@ -5748,7 +5748,7 @@ class BoardGenerator {
   }
 
   static fisherYatesArrayShuffle(arr) {
-    algorithms.fisherYatesArrayShuffle(arr);
+    Algorithms.fisherYatesArrayShuffle(arr);
   }
 }
 
@@ -5817,7 +5817,7 @@ class EffShuffleManager {
       //do nothing
     }
 
-    let minesArray = algorithms.effBoardShuffle(
+    let minesArray = Algorithms.effBoardShuffle(
       width,
       height,
       mineCount,
@@ -5831,7 +5831,7 @@ class EffShuffleManager {
       return false;
     } else {
       if (effFirstClickType.value === "random") {
-        firstClick = algorithms.getRandomZeroCell(minesArray);
+        firstClick = Algorithms.getRandomZeroCell(minesArray);
       }
 
       if (effFirstClickType.value === "same") {
@@ -6287,14 +6287,14 @@ class BoardStats {
   }
 
   calc3bv(tilesArray) {
-    let { bbbv, solved3bv } = algorithms.calc3bv(this.mines, tilesArray);
+    let { bbbv, solved3bv } = Algorithms.calc3bv(this.mines, tilesArray);
 
     this.bbbv = bbbv;
     this.solved3bv = solved3bv;
   }
 
   calcZinis(includeWomZini) {
-    let eightZiniResult = algorithms.calcEightWayZini(this.mines);
+    let eightZiniResult = Algorithms.calcEightWayZini(this.mines);
 
     this.eightZini = eightZiniResult.total;
     this.eightZiniPath = eightZiniResult.clicks;
@@ -6302,13 +6302,13 @@ class BoardStats {
     //Also do wom zini
     if (includeWomZini) {
       //wom zini without correction
-      let { womZini, womHzini } = algorithms.calcWomZiniAndHZini(
+      let { womZini, womHzini } = Algorithms.calcWomZiniAndHZini(
         this.mines,
         false
       );
       //wom zini with correction
       let { womZini: cWomZini, womHzini: cWomHzini } =
-        algorithms.calcWomZiniAndHZini(this.mines, true);
+        Algorithms.calcWomZiniAndHZini(this.mines, true);
 
       this.womZini = womZini.total;
       this.womZiniPath = womZini.clicks;
@@ -7163,7 +7163,7 @@ class Replay {
     //and also when it was first revealed as part of an opening
 
     const { numbersArray, openingLabels, preprocessedOpenings } =
-      algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
+      Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
         this.board.mines
       );
 
@@ -7270,7 +7270,6 @@ class Replay {
   }
 }
 
-const algorithms = new Algorithms(); //Could probably change to have all static methods, so no need to init?
 const benchmark = new Benchmark();
 const skinManager = new SkinManager();
 var effShuffleManager = new EffShuffleManager(); //Needs to be var to stop an access-before-init error

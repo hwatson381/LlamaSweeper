@@ -1,8 +1,6 @@
 //Worker that helps us generate eff boards in the background
 import Algorithms from "src/classes/Algorithms";
 
-let algorithms = new Algorithms();
-
 const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 let workerId = characters.charAt(Math.floor(Math.random() * characters.length));
 
@@ -90,9 +88,9 @@ function doCurrentTask() {
 
   /*
     Slightly scuffed, since we should probably just make an alternate version
-    of algorithms.effBoardShuffle instead...
+    of Algorithms.effBoardShuffle instead...
 
-    The way this loop works currently is that it does loops of algorithms.effBoardShuffle
+    The way this loop works currently is that it does loops of Algorithms.effBoardShuffle
     until it exceeds time limit or finds MAX_BOARDS_TO_FIND_PER_TASK boards
   */
   while (true) {
@@ -100,7 +98,7 @@ function doCurrentTask() {
       break;
     }
 
-    let minesArray = algorithms.effBoardShuffle(
+    let minesArray = Algorithms.effBoardShuffle(
       currentTask.width,
       currentTask.height,
       currentTask.mineCount,
@@ -111,7 +109,7 @@ function doCurrentTask() {
 
     if (minesArray) {
       if (firstClickCoords === null) {
-        firstClickCoords = algorithms.getRandomZeroCell(minesArray);
+        firstClickCoords = Algorithms.getRandomZeroCell(minesArray);
       }
 
       foundBoards.push({

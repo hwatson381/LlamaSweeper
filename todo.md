@@ -16,8 +16,6 @@ Make unfocus a function and call it from all various inputs (where sensible?)
 Be careful with setTimeouts to not have loads of them running at the same time...
 Remove on component unmount?
 
-Make algorithms class static
-
 Undo button? Too similar to replay feature?
 
 inclusion-exclusion zini:
