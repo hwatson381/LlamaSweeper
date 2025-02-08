@@ -1163,132 +1163,32 @@
       size="3em"
     />
   </button>
-
-  <div
-    v-if="replayIsShown"
-    class="replay-bar row q-pa-sm"
-    style="
-      position: fixed;
-      background-color: lightgray;
-      bottom: 15px;
-      left: 0;
-      right: 0;
-      margin: auto;
-      width: calc(100vw - 40px);
-      max-width: 1000px;
-      border-radius: 10px;
-      box-shadow: 3px 4px 10px black;
-      gap: 6px;
-      align-items: center;
-      touch-action: none;
+  <ReplayBar
+    v-show="replayIsShown"
+    :replay-is-playing="replayIsPlaying"
+    :replay-progress="replayProgress"
+    :replay-progress-rounded="replayProgressRounded"
+    :replay-bar-start-value="replayBarStartValue"
+    :replay-bar-last-value="replayBarLastValue"
+    :replay-type-force-steppy="replayTypeForceSteppy"
+    @toggle-play-pause="
+      game.board && game.board.replay && game.board.replay.togglePausePlay()
+    "
+    @jump-to-previous-click="game?.board?.replay?.jumpToPreviousClick()"
+    @jump-to-next-click="game?.board?.replay?.jumpToNextClick()"
+    @speed-multiplier-change="(val) => (replaySpeedMultiplier = val)"
+    @is-inputting-change="(val) => (replayIsInputting = val)"
+    @is-panning-change="(val) => (replayIsPanning = val)"
+    @handle-slider-change="(val) => game.board?.replay?.handleSliderChange(val)"
+    @handle-input-change="(val) => game.board?.replay?.handleInputChange(val)"
+    @replay-type-change="
+      (val) => {
+        replayType = val;
+        game.board?.replay?.refreshForReplayTypeChange();
+      }
     "
   >
-    <q-btn dense color="white" text-color="black">
-      <q-icon
-        :name="replayIsPlaying ? 'pause' : 'play_arrow'"
-        @click="
-          game.board && game.board.replay && game.board.replay.togglePausePlay()
-        "
-      ></q-icon>
-    </q-btn>
-    <q-btn
-      dense
-      color="white"
-      text-color="black"
-      @click="
-        game.board &&
-          game.board.replay &&
-          game.board.replay.jumpToPreviousClick()
-      "
-    >
-      <q-icon name="skip_previous"></q-icon>
-    </q-btn>
-    <q-btn
-      dense
-      color="white"
-      text-color="black"
-      @click="
-        game.board && game.board.replay && game.board.replay.jumpToNextClick()
-      "
-    >
-      <q-icon name="skip_next"></q-icon>
-    </q-btn>
-    <q-btn
-      v-if="!replayTypeForceSteppy"
-      dense
-      color="white"
-      text-color="black"
-      @click="game.board?.replay?.cycleReplayType()"
-    >
-      <q-icon v-if="replayTypeSelector === 'accurate'" name="route"></q-icon>
-      <q-icon v-if="replayTypeSelector === 'rounded'" name="timeline"></q-icon>
-      <q-icon
-        v-if="replayTypeSelector === 'steppy'"
-        name="sym_o_steppers"
-      ></q-icon>
-    </q-btn>
-    <q-slider
-      v-model="replaySpeedMultiplierUnderlying"
-      :min="0"
-      :max="40"
-      snap
-      color="green"
-      :dark="false"
-      class="q-px-sm no-transition-slider"
-      style="width: 90px"
-    />
-    <q-chip square color="white" text-color="black">
-      {{
-        replaySpeedMultiplier >= 10
-          ? replaySpeedMultiplier.toFixed(1)
-          : replaySpeedMultiplier.toFixed(2)
-      }}x
-    </q-chip>
-    <div
-      style="
-        width: 250px;
-        flex-grow: 1;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      "
-    >
-      <q-slider
-        v-model.number="replayProgress"
-        :min="replayBarStartValue"
-        :max="replayBarLastValue"
-        :step="replayBarStepSize"
-        :snap="replayBarIsSnappy"
-        color="blue"
-        :dark="false"
-        class="q-px-sm no-transition-slider"
-        style="width: 170px; flex-grow: 1"
-        @update:model-value="
-          (val) => game.board?.replay?.handleSliderChange(val)
-        "
-        @pan="(phase) => (replayIsPanning = phase === 'start')"
-      />
-      <q-input
-        v-model="replayProgressRounded"
-        filled
-        dense
-        style="max-width: 80px"
-        bg-color="white"
-        color="black"
-        :dark="false"
-        @update:model-value="
-          (val) => game.board?.replay?.handleInputChange(val)
-        "
-        @blur="replayIsInputting = false"
-        @focus="replayIsInputting = true"
-        @keydown.stop="
-          () => {
-            /* no-op to stop arrow keys doing stuff */
-          }
-        "
-      />
-    </div>
-  </div>
+  </ReplayBar>
 </template>
 
 <style scoped>
@@ -1356,10 +1256,13 @@ import {
   watchEffect,
   watch,
 } from "vue";
+
 import Benchmark from "src/classes/Benchmark.js";
 import Algorithms from "src/classes/Algorithms";
 import Replay from "src/classes/Replay";
 import Utils from "src/classes/Utils";
+
+import ReplayBar from "src/components/ReplayBar.vue";
 
 defineOptions({
   name: "PlayPage",
@@ -1691,30 +1594,14 @@ let meanOpeningFlagDensity = ref(1);
 let meanMineClickBehaviour = ref("shield"); //flag, blast, shield for 0.5 seconds, ignore
 
 let replayProgress = ref(-1);
-let replayProgressRounded = ref(-1); //Same as replayProgress, but only to 3 d.p.
+let replayProgressRounded = ref("-1.000"); //Same as replayProgress, but only to 3 d.p.
 let replayIsPlaying = ref(false);
 let replayBarStartValue = ref(0); //First value that can be jumped to on replay bar
 let replayBarLastValue = ref(100); //Last value that can be jumped to on replay bar
-let replayBarStepSize = ref(1); //Step size for replay bar
-let replayBarIsSnappy = ref(false); //Whether the replay bar should snap to certain points
-let replayTypeSelector = ref("accurate"); //accurate, rounded, steppy
 let replayTypeForceSteppy = ref(false);
-let replayType = computed(() =>
-  replayTypeForceSteppy.value ? "steppy" : replayTypeSelector.value
-);
+let replayType = ref("accurate");
 let replayIsShown = ref(false);
-let replaySpeedMultiplierUnderlying = ref(20);
-let replaySpeedMultiplier = computed(() => {
-  const multiplyOptions = [
-    0.01, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6,
-    0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7,
-    1.8, 1.9, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20,
-  ];
-
-  let result = multiplyOptions[replaySpeedMultiplierUnderlying.value];
-
-  return result;
-});
+let replaySpeedMultiplier = ref(1);
 let replayIsPanning = ref(false);
 let replayIsInputting = ref(false);
 let reorderZini = ref(false);
@@ -5415,11 +5302,8 @@ class Board {
       replayType,
       replaySpeedMultiplier,
       replayIsPlaying,
-      replayTypeSelector,
       replayBarStartValue,
       replayBarLastValue,
-      replayBarStepSize,
-      replayBarIsSnappy,
       replayProgress,
       replayProgressRounded,
     };

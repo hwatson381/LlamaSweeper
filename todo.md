@@ -221,8 +221,6 @@ dumb idea - train neural network to assign premiums for zini?
 
 Need to do option for letting through scrolling touch, or wasting it (if possible)
 
-Buy domain?
-
 Have some sort of shield against accidental scrolls? E.g. don't scroll on openings revealed in last 0.5s?
 
 Crazy refactoring
@@ -230,4 +228,7 @@ then basic click-loss replay
 
 Replay bar is fiddly on mobile. Maybe make multiplier editable as a number (or have dropdown) by clicking the chip (box with 1.00x)
 
-Remove warning on the flag toggle button (click listener)
+refactoring
+
+clean up for release
+click loss replay

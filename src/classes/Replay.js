@@ -474,22 +474,8 @@ class Replay {
     }
   }
 
-  cycleReplayType() {
+  refreshForReplayTypeChange() {
     this.pause();
-
-    switch (this.refs.replayTypeSelector.value) {
-      case "accurate":
-        this.refs.replayTypeSelector.value = "rounded";
-        break;
-      case "rounded":
-        this.refs.replayTypeSelector.value = "steppy";
-        break;
-      case "steppy":
-        this.refs.replayTypeSelector.value = "accurate";
-        break;
-      default:
-        throw new Error("illegal value");
-    }
 
     this.setupReplayBar();
 
@@ -503,13 +489,9 @@ class Replay {
     this.refs.replayBarStartValue.value = -1;
     if (this.refs.replayType.value === "steppy") {
       this.refs.replayBarLastValue.value = this.clicks.length - 1;
-      this.refs.replayBarStepSize.value = 1;
-      this.refs.replayBarIsSnappy.value = true;
     } else {
       //accurate/rounded replay type
       this.refs.replayBarLastValue.value = this.clicks.at(-1)?.time;
-      this.refs.replayBarStepSize.value = 0; //All values allowed
-      this.refs.replayBarIsSnappy.value = false;
     }
 
     this.updateReplayBarValue();
