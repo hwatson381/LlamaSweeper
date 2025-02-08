@@ -1262,9 +1262,13 @@ import Algorithms from "src/classes/Algorithms";
 import Replay from "src/classes/Replay";
 import BoardStats from "src/classes/BoardStats";
 import EffShuffleManager from "src/classes/EffShuffleManager";
+import BoardGenerator from "src/classes/BoardGenerator";
+import SkinManager from "src/classes/SkinManager";
 import Utils from "src/classes/Utils";
 
 import ReplayBar from "src/components/ReplayBar.vue";
+
+import CONSTANTS from "src/includes/Constants";
 
 defineOptions({
   name: "PlayPage",
@@ -1318,10 +1322,6 @@ function handlePageScroll(event) {
 }
 
 const mainCanvas = useTemplateRef("main-canvas");
-const UNREVEALED = "UNREVEALED";
-const FLAG = "FLAG";
-const MINE = "MINE";
-const MINERED = "MINERED";
 
 let showStatsBlock = ref(false);
 let statsObject = ref({
@@ -2123,7 +2123,7 @@ class Board {
     this.tilesArray = new Array(this.width)
       .fill(0)
       .map(() =>
-        new Array(this.height).fill(0).map(() => new Tile(UNREVEALED))
+        new Array(this.height).fill(0).map(() => new Tile(CONSTANTS.UNREVEALED))
       );
   }
 
@@ -2203,7 +2203,7 @@ class Board {
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
         if (this.mines[x][y]) {
-          this.tilesArray[x][y].state = MINE;
+          this.tilesArray[x][y].state = CONSTANTS.MINE;
           continue;
         }
 
@@ -2897,7 +2897,11 @@ class Board {
     }
 
     //Depress squares when hovered over with mouse down
-    if (this.gameStage === "running" && isDown && isDigInput) {
+    if (
+      (this.gameStage === "running" || this.gameStage === "pregame") &&
+      isDown &&
+      isDigInput
+    ) {
       isDrawRequired = this.holdDownDig(
         flooredCoords.tileX,
         flooredCoords.tileY,
@@ -3025,7 +3029,8 @@ class Board {
         this.width,
         this.height,
         this.mineCount,
-        firstClick
+        firstClick,
+        effShuffleManager
       );
 
       if (effBoardResult === false) {
@@ -3078,7 +3083,7 @@ class Board {
     this.tilesArray = new Array(this.width)
       .fill(0)
       .map(() =>
-        new Array(this.height).fill(0).map(() => new Tile(UNREVEALED))
+        new Array(this.height).fill(0).map(() => new Tile(CONSTANTS.UNREVEALED))
       );
 
     this.stats = new BoardStats(this.mines, { statsObject });
@@ -3182,9 +3187,9 @@ class Board {
       return;
     }
 
-    if (this.tilesArray[tileX][tileY].state === UNREVEALED) {
+    if (this.tilesArray[tileX][tileY].state === CONSTANTS.UNREVEALED) {
       //Flag the square
-      this.tilesArray[tileX][tileY].state = FLAG;
+      this.tilesArray[tileX][tileY].state = CONSTANTS.FLAG;
       this.unflagged--;
       if (
         this.mines[tileX][tileY] ||
@@ -3211,9 +3216,9 @@ class Board {
             time
           );
       }
-    } else if (this.tilesArray[tileX][tileY].state === FLAG) {
+    } else if (this.tilesArray[tileX][tileY].state === CONSTANTS.FLAG) {
       //Unflag a square
-      this.tilesArray[tileX][tileY].state = UNREVEALED;
+      this.tilesArray[tileX][tileY].state = CONSTANTS.UNREVEALED;
       this.unflagged++;
       includeInStats &&
         this.stats.addWastedRight(
@@ -3259,7 +3264,7 @@ class Board {
     if (typeof this.tilesArray[tileX][tileY].state === "number") {
       //Attempt chord tile
       this.chord(tileX, tileY, true, time, unflooredTileX, unflooredTileY);
-    } else if (this.tilesArray[tileX][tileY].state === UNREVEALED) {
+    } else if (this.tilesArray[tileX][tileY].state === CONSTANTS.UNREVEALED) {
       //Attempt to dig tile, although this behaviour may be changed on mean openings mode
       let doDig = true;
 
@@ -3275,7 +3280,7 @@ class Board {
         } else if (meanMineClickBehaviour.value === "flag") {
           //Click becomes a flag instead
           doDig = false;
-          this.tilesArray[tileX][tileY].state = FLAG;
+          this.tilesArray[tileX][tileY].state = CONSTANTS.FLAG;
           this.unflagged--;
           this.stats.addRight(
             tileX,
@@ -3405,7 +3410,7 @@ class Board {
     }
 
     //Opens a square, possibly triggering an opening recursively
-    if (this.tilesArray[x][y].state !== UNREVEALED) {
+    if (this.tilesArray[x][y].state !== CONSTANTS.UNREVEALED) {
       return;
     }
 
@@ -3416,7 +3421,7 @@ class Board {
       this.meanMineStates[x][y].isActive;
 
     if (isNormalMine || isMeanMine) {
-      this.tilesArray[x][y].state = MINERED;
+      this.tilesArray[x][y].state = CONSTANTS.MINERED;
       this.blasted = true;
     } else {
       const number = this.getNumberSurroundingMines(x, y);
@@ -3551,7 +3556,10 @@ class Board {
     //Apply new hover for all squares (from touch and from mouse)
     let applyHover = (hoverSquareX, hoverSquareY) => {
       //Single square
-      if (this.tilesArray[hoverSquareX][hoverSquareY].state === UNREVEALED) {
+      if (
+        this.tilesArray[hoverSquareX][hoverSquareY].state ===
+        CONSTANTS.UNREVEALED
+      ) {
         this.tilesArray[hoverSquareX][hoverSquareY].depressed = true;
       }
 
@@ -3562,7 +3570,7 @@ class Board {
         for (let x = hoverSquareX - 1; x <= hoverSquareX + 1; x++) {
           for (let y = hoverSquareY - 1; y <= hoverSquareY + 1; y++) {
             //Note that the middle square automatically gets excluded as it's been revealed
-            if (this.tilesArray[x]?.[y]?.state === UNREVEALED) {
+            if (this.tilesArray[x]?.[y]?.state === CONSTANTS.UNREVEALED) {
               this.tilesArray[x][y].depressed = true;
             }
           }
@@ -3636,7 +3644,10 @@ class Board {
           this.meanMineStates[i][j].isMine &&
           this.meanMineStates[i][j].isActive;
 
-        if (this.tilesArray[i][j].state === FLAG || isChordableMeanMine) {
+        if (
+          this.tilesArray[i][j].state === CONSTANTS.FLAG ||
+          isChordableMeanMine
+        ) {
           count++;
         }
       }
@@ -3678,10 +3689,13 @@ class Board {
           if (!this.checkCoordsInBounds(i, j)) {
             continue; //ignore squares outside board
           }
-          if (isChordedTileZero && this.tilesArray[i][j].state === FLAG) {
+          if (
+            isChordedTileZero &&
+            this.tilesArray[i][j].state === CONSTANTS.FLAG
+          ) {
             //Openings will open everything around them and annihilate neighbouring flags.
-            //Note that because we change the state to UNREVEALED, it then gets opened by follow if statement
-            this.tilesArray[i][j].state = UNREVEALED;
+            //Note that because we change the state to CONSTANTS.UNREVEALED, it then gets opened by follow if statement
+            this.tilesArray[i][j].state = CONSTANTS.UNREVEALED;
             this.unflagged++;
           }
           const isChordableMeanMine =
@@ -3690,7 +3704,7 @@ class Board {
             this.meanMineStates[i][j].isMine &&
             this.meanMineStates[i][j].isActive;
           if (
-            this.tilesArray[i][j].state === UNREVEALED &&
+            this.tilesArray[i][j].state === CONSTANTS.UNREVEALED &&
             !isChordableMeanMine
           ) {
             this.openTile(i, j);
@@ -3738,10 +3752,10 @@ class Board {
 
         if (
           (isNormalMine || isMeanMine) &&
-          this.tilesArray[x][y].state !== FLAG &&
-          this.tilesArray[x][y].state !== MINERED
+          this.tilesArray[x][y].state !== CONSTANTS.FLAG &&
+          this.tilesArray[x][y].state !== CONSTANTS.MINERED
         ) {
-          this.tilesArray[x][y].state = MINE;
+          this.tilesArray[x][y].state = CONSTANTS.MINE;
         }
       }
     }
@@ -3773,9 +3787,9 @@ class Board {
 
         if (
           (isNormalMine || isMeanMine) &&
-          this.tilesArray[x][y].state === UNREVEALED
+          this.tilesArray[x][y].state === CONSTANTS.UNREVEALED
         ) {
-          this.tilesArray[x][y].state = FLAG;
+          this.tilesArray[x][y].state = CONSTANTS.FLAG;
         }
       }
     }
@@ -3865,7 +3879,7 @@ class Board {
           //Check if the neighbour to our main cell has neighbours that are unrevealed safe
           if (
             this.tilesArray[neighbourNeighbour.x][neighbourNeighbour.y]
-              .state === UNREVEALED &&
+              .state === CONSTANTS.UNREVEALED &&
             !this.mines[neighbourNeighbour.x][neighbourNeighbour.y] &&
             !this.meanMineStates[neighbourNeighbour.x][neighbourNeighbour.y]
               .isMine
@@ -3925,11 +3939,11 @@ class Board {
       if (this.meanMineStates[zero.x][zero.y].isMine) {
         //Close squares with mean mines, or change to flag
         if (Math.random() < meanOpeningFlagDensity.value) {
-          this.tilesArray[zero.x][zero.y].state = FLAG;
+          this.tilesArray[zero.x][zero.y].state = CONSTANTS.FLAG;
           this.meanMineStates[zero.x][zero.y].startsFlagged = true;
         } else {
           this.unflagged++;
-          this.tilesArray[zero.x][zero.y].state = UNREVEALED;
+          this.tilesArray[zero.x][zero.y].state = CONSTANTS.UNREVEALED;
           this.meanMineStates[zero.x][zero.y].startsFlagged = false;
         }
       }
@@ -4065,7 +4079,10 @@ class Board {
     }
 
     //Special case for flaggers. Tiles that can be flagged to use in a chord should not be scrollable
-    if (this.tilesArray[tileX][tileY].state === UNREVEALED && useFlagVersion) {
+    if (
+      this.tilesArray[tileX][tileY].state === CONSTANTS.UNREVEALED &&
+      useFlagVersion
+    ) {
       //Check numbers adjacent to centre tile
       //Make sure each number is maxed out (and therefore can't be chorded)
       for (let x = tileX - 1; x <= tileX + 1; x++) {
@@ -4249,7 +4266,7 @@ class Board {
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
         if (
-          this.tilesArray[x][y].state !== UNREVEALED &&
+          this.tilesArray[x][y].state !== CONSTANTS.UNREVEALED &&
           this.tilesArray[x][y].paintColour !== null
         ) {
           this.tilesArray[x][y].paintColour = null;
@@ -4268,7 +4285,10 @@ class Board {
       for (let y = 0; y < this.height; y++) {
         const thisTile = this.tilesArray[x][y];
 
-        if (thisTile.state === FLAG || thisTile.paintColour === "red") {
+        if (
+          thisTile.state === CONSTANTS.FLAG ||
+          thisTile.paintColour === "red"
+        ) {
           redCount--;
           orangeCount--;
         }
@@ -4303,7 +4323,7 @@ class Board {
     //prepopulate knowledge with where flags and safes (numbers) are
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
-        if (this.tilesArray[x][y].state === FLAG) {
+        if (this.tilesArray[x][y].state === CONSTANTS.FLAG) {
           knownMines[x][y] = true;
         }
         if (typeof this.tilesArray[x][y].state === "number") {
@@ -4518,7 +4538,7 @@ class Board {
     //Now that all logic has been deduced, paint stuff to match this
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
-        if (this.tilesArray[x][y].state !== UNREVEALED) {
+        if (this.tilesArray[x][y].state !== CONSTANTS.UNREVEALED) {
           continue;
         }
         if (knownSafes[x][y] && !quickPaintInitialOnlyMines.value) {
@@ -4640,7 +4660,7 @@ class Board {
       //minimal mode only has right click = orange, left click = dots
       if (isFlagInput) {
         if (
-          tileState !== UNREVEALED ||
+          tileState !== CONSTANTS.UNREVEALED ||
           (oldColour !== null && oldColour !== "orange")
         ) {
           return;
@@ -4668,7 +4688,7 @@ class Board {
       this.quickPaintMode === "known" ||
       this.quickPaintMode === "guess"
     ) {
-      if (tileState !== UNREVEALED) {
+      if (tileState !== CONSTANTS.UNREVEALED) {
         return;
       }
 
@@ -4774,7 +4794,7 @@ class Board {
       return;
     }
 
-    let pttMines = BoardGenerator.readFromPtta();
+    let pttMines = BoardGenerator.readFromPtta(pttaUrl.value);
 
     if (this.variant === "board editor") {
       this.boardEditorMines = pttMines;
@@ -5316,7 +5336,7 @@ class Board {
 
 class Tile {
   constructor(state) {
-    this.state = state; //Possible values are numbers (e.g. 0, 1, 2... and stuff like UNREVEALED etc)
+    this.state = state; //Possible values are numbers (e.g. 0, 1, 2... and stuff like CONSTANTS.UNREVEALED etc)
     this.depressed = false;
     this.paintColour = null; //values such as red, green, orange, white
     this.paintDots = 0; //values can be 0, 1, 2
@@ -5326,7 +5346,8 @@ class Tile {
     const ctx = mainCanvas.value.getContext("2d");
 
     //Depressed squares get drawn as an open tile
-    const toDraw = this.state === UNREVEALED && this.depressed ? 0 : this.state;
+    const toDraw =
+      this.state === CONSTANTS.UNREVEALED && this.depressed ? 0 : this.state;
 
     ctx.drawImage(skinManager.getImage(toDraw), rawX, rawY, size, size);
   }
@@ -5420,233 +5441,6 @@ class Tile {
   }
 }
 
-class SkinManager {
-  constructor() {
-    const keyImageMapping = [
-      [0, "/img/tiles/type0.svg"],
-      [1, "/img/tiles/type1.svg"],
-      [2, "/img/tiles/type2.svg"],
-      [3, "/img/tiles/type3.svg"],
-      [4, "/img/tiles/type4.svg"],
-      [5, "/img/tiles/type5.svg"],
-      [6, "/img/tiles/type6.svg"],
-      [7, "/img/tiles/type7.svg"],
-      [8, "/img/tiles/type8.svg"],
-      [UNREVEALED, "/img/tiles/closed.svg"],
-      [FLAG, "/img/tiles/flag.svg"],
-      [MINE, "/img/tiles/mine.svg"],
-      [MINERED, "/img/tiles/mine_red.svg"],
-      ["b_hor", "/img/borders/border_hor_2x.png"],
-      ["b_vert", "/img/borders/border_vert_2x.png"],
-      ["b_c_bot_left", "/img/borders/corner_bottom_left_2x.png"],
-      ["b_c_bot_right", "/img/borders/corner_bottom_right_2x.png"],
-      ["b_c_up_left", "/img/borders/corner_up_left_2x.png"],
-      ["b_c_up_right", "/img/borders/corner_up_right_2x.png"],
-      ["t_left", "/img/borders/t_left_2x.png"],
-      ["t_right", "/img/borders/t_right_2x.png"],
-      ["f_unpressed", "/img/borders/face_unpressed.svg"],
-      ["cursor", "/img/other/cursor.svg"],
-    ];
-    this.imagesLoadedCount = 0;
-    this.imagesToLoadCount = keyImageMapping.length;
-    this.images = {};
-    keyImageMapping.forEach((el) => this.addImage(el[0], el[1]));
-  }
-
-  addImage(key, src) {
-    let img = new Image();
-    img.src = src;
-    if (img.complete) {
-      this.incrementImagesLoaded();
-    } else {
-      img.addEventListener("load", () => {
-        skinManager.incrementImagesLoaded();
-      });
-    }
-
-    this.images[key] = img;
-  }
-
-  incrementImagesLoaded() {
-    this.imagesLoadedCount++;
-
-    if (this.imagesLoadedCount === this.imagesToLoadCount) {
-      if (typeof this.callback === "function") {
-        this.callback();
-      }
-    }
-  }
-
-  addCallbackWhenAllLoaded(callback) {
-    if (this.imagesLoadedCount === this.imagesToLoadCount) {
-      callback();
-    } else {
-      this.callback = callback;
-    }
-  }
-
-  getImage(value) {
-    if (this.images.hasOwnProperty(value)) {
-      return this.images[value];
-    } else {
-      return this.images.MINERED;
-    }
-  }
-
-  getTopPanelColour() {
-    return "#c0c0c0";
-  }
-
-  getMineTimerTextColour() {
-    return "#000000";
-  }
-
-  getCoordTextColour() {
-    return "#000000";
-  }
-
-  getRedCounterTextColour() {
-    return "red";
-  }
-
-  getOrangeCounterTextColour() {
-    return "#000000" /*"#8f5600"*/;
-  }
-
-  getDotsCounterTextColour() {
-    return "#000000";
-  }
-
-  getDotMainColour() {
-    return "white";
-  }
-
-  getDotSecondaryColour() {
-    return "black";
-  }
-}
-
-//Class for doing different board gen. E.g. generating boards with fisher yates or maybe selecting boards with certain properties
-class BoardGenerator {
-  static basicShuffle(
-    width,
-    height,
-    mineCount,
-    safeCoord = null,
-    isOpening = false
-  ) {
-    return Algorithms.basicShuffle(
-      width,
-      height,
-      mineCount,
-      safeCoord,
-      isOpening
-    );
-  }
-
-  static effBoardShuffle(width, height, mineCount, firstClick) {
-    let effBoard = effShuffleManager.provideEffBoard(
-      width,
-      height,
-      mineCount,
-      firstClick
-    );
-
-    if (!effBoard) {
-      //Failed to generate
-      return false;
-    }
-
-    //Return value has form {mines:[[]], firstClick: {x, y}}.
-    //This is because the first click may be changed if using a pregenerated board.
-    return effBoard;
-  }
-
-  static readFromPtta() {
-    //VERY HACKY. REDO LATER
-    //Mostly lifted from ptta code...
-    let b = "";
-    let s = "";
-
-    if (pttaUrl.value === "") {
-      window.alert("PTTA NOT SET");
-      throw new Error("PTTA NOT SET");
-    }
-
-    if (pttaUrl.value.startsWith("https")) {
-      const pttaAsURL = new URL(pttaUrl.value);
-      b = pttaAsURL.searchParams.get("b");
-      s = pttaAsURL.searchParams.get("m");
-    } else {
-      window.alert("PTTA NOT URL");
-      throw new Error("PTTA NOT URL");
-    }
-
-    let width;
-    let height;
-
-    switch (b) {
-      case "1":
-        width = 9;
-        height = 9;
-        break;
-      case "2":
-        width = 16;
-        height = 16;
-        break;
-      case "3":
-        width = 30;
-        height = 16;
-        break;
-      default:
-        width = parseInt(b.substring(0, b.length / 2));
-        height = parseInt(b.substring(b.length / 2, b.length));
-        break;
-    }
-
-    if (
-      !Number.isInteger(width) ||
-      !Number.isInteger(height) ||
-      width < 1 ||
-      width > 100 ||
-      height < 1 ||
-      width > 100
-    ) {
-      window.alert("Bad value for PTT url");
-      throw new Error("Bad width height from ptt url");
-    }
-
-    const minesArray = new Array(width)
-      .fill(0)
-      .map(() => new Array(height).fill(false));
-
-    for (var i = 0; i < width * height; i += 5) {
-      var tempN = parseInt(s.charAt(i / 5), 32);
-
-      if (isNaN(tempN)) continue;
-
-      for (var j = i + 4; j >= i; j--) {
-        if (j >= width * height) {
-          tempN >>= 1;
-          continue;
-        }
-
-        //$scope.mines += tempN & 1;
-        if (tempN & (1 === 1)) {
-          minesArray[j % width][Math.floor(j / width)] = true;
-        }
-        tempN >>= 1;
-      }
-    }
-
-    return minesArray;
-  }
-
-  static fisherYatesArrayShuffle(arr) {
-    Algorithms.fisherYatesArrayShuffle(arr);
-  }
-}
-
 class BoardHistory {
   //Stores past games that we can recover and resume
   //Saves to local storage?
@@ -5655,17 +5449,24 @@ class BoardHistory {
 
 const benchmark = new Benchmark();
 const skinManager = new SkinManager();
-var effShuffleManager = new EffShuffleManager({
-  minimumEff,
-  generateEffBoardsInBackground,
-  effBoardsStoredDisplayCount,
-  effBoardsStoredFirstClickDisplay,
-  effFirstClickType,
-  effWebWorkerCount,
-  boardWidth,
-  boardHeight,
-  boardMines,
-}); //Needs to be var to stop an access-before-init error
+var effShuffleManager = new EffShuffleManager(
+  {
+    minimumEff,
+    generateEffBoardsInBackground,
+    effBoardsStoredDisplayCount,
+    effBoardsStoredFirstClickDisplay,
+    effFirstClickType,
+    effWebWorkerCount,
+    boardWidth,
+    boardHeight,
+    boardMines,
+  },
+  {
+    begEffOptions,
+    intEffOptions,
+    expEffOptions,
+  }
+); //Needs to be var to stop an access-before-init error
 const boardHistory = new BoardHistory();
 const game = new Game();
 </script>

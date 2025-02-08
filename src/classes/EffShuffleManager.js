@@ -1,8 +1,9 @@
 import Algorithms from "./Algorithms";
 
 class EffShuffleManager {
-  constructor(refs) {
+  constructor(refs, consts) {
     this.refs = refs;
+    this.consts = consts;
 
     this.isWorkerPoolInitialised = false;
     this.workerPool = [];
@@ -325,7 +326,7 @@ class EffShuffleManager {
       //beginner
       if (key.startsWith("9-9-10-")) {
         if (
-          begEffOptions.includes(targetEff) ||
+          this.consts.begEffOptions.includes(targetEff) ||
           targetEff > begEffSlowGenPoint
         ) {
           //Don't garbage collect beg if it's a dropdown option or above a certain value
@@ -336,7 +337,7 @@ class EffShuffleManager {
       //int
       if (key.startsWith("16-16-40-")) {
         if (
-          intEffOptions.includes(targetEff) ||
+          this.consts.intEffOptions.includes(targetEff) ||
           targetEff > intEffSlowGenPoint
         ) {
           //Don't garbage collect int if it's a dropdown option or above a certain value
@@ -347,7 +348,7 @@ class EffShuffleManager {
       //exp
       if (key.startsWith("16-16-40-")) {
         if (
-          expEffOptions.includes(targetEff) ||
+          this.consts.expEffOptions.includes(targetEff) ||
           targetEff > expEffSlowGenPoint
         ) {
           //Don't garbage collect exp if it's a dropdown option or above a certain value
