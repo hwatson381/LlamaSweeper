@@ -229,8 +229,13 @@ then basic click-loss replay
 Replay bar is fiddly on mobile. Maybe make multiplier editable as a number (or have dropdown) by clicking the chip (box with 1.00x)
 
 refactoring
+need to split out drawing stuff into "drawHandler"
 
 clean up for release
 click loss replay
 basic zini explorer stuff?
 Or make progress with getting site live?
+
+Small bug - cancelling a touch in pregame (e.g. by moving to a different square), doesn't undepress on mobile
+
+Preload stepper icon?

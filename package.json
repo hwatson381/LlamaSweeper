@@ -10,7 +10,8 @@
     "format": "prettier --write \"**/*.{js,vue,css,html,md,json}\" --ignore-path .gitignore",
     "test": "echo \"No test specified\" && exit 0",
     "dev": "quasar dev",
-    "build": "quasar build"
+    "build": "quasar build",
+    "deploy": "push-dir --dir=dist/spa --remote=gh-pages --branch=main"
   },
   "dependencies": {
     "@quasar/extras": "^1.16.4",
@@ -19,14 +20,15 @@
     "vue-router": "^4.0.12"
   },
   "devDependencies": {
-    "eslint": "^8.57.0",
-    "eslint-plugin-vue": "^9.0.0",
-    "vite-plugin-checker": "^0.8.0",
-    "eslint-config-prettier": "^8.1.0",
-    "prettier": "^2.5.1",
     "@quasar/app-vite": "^1.9.0",
     "autoprefixer": "^10.4.2",
-    "postcss": "^8.4.14"
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^8.1.0",
+    "eslint-plugin-vue": "^9.0.0",
+    "postcss": "^8.4.14",
+    "prettier": "^2.5.1",
+    "push-dir": "^0.4.1",
+    "vite-plugin-checker": "^0.8.0"
   },
   "engines": {
     "node": "^20 || ^18 || ^16",
