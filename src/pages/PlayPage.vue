@@ -22,14 +22,6 @@
         <span>Random dev stuff box</span><br />
         <button @click="bulkrun3">Bulk run</button>
         Iterations: <input v-model.number="bulkIterations" type="text" />
-        <button
-          @click="
-            effShuffleManager.storedBoards = new Map();
-            effShuffleManager.sendWorkersCurrentTask();
-          "
-        >
-          delete stored boards
-        </button>
       </div>
       <br />
       <div
@@ -216,7 +208,7 @@
       </q-card>
       <div v-if="variant === 'eff boards'">
         Generating boards with target eff: {{ minimumEff }}% (change this in
-        settings below)
+        settings below the board)
         <span v-if="generateEffBoardsInBackground" class="text-info"
           >{{ effBoardsStoredDisplayCount }}/20 (click:
           {{ effBoardsStoredFirstClickDisplay }})</span
@@ -598,207 +590,236 @@
         </template>
       </div>
 
-      <div>
-        <q-card>
-          <q-tabs
-            v-model="settingsTab"
-            dense
-            class="text-grey"
-            active-color="primary"
-            indicator-color="primary"
-            align="justify"
-            narrow-indicator
+      <q-card
+        flat
+        bordered
+        style="max-width: 550px"
+        class="q-my-md"
+        v-if="variant === 'eff boards'"
+      >
+        <q-card-section>
+          <div class="text-h6 q-mb-sm">Eff boards config</div>
+          <div v-if="boardSizePreset === 'beg'" class="flex">
+            <q-select
+              class="q-mx-md q-mb-md"
+              outlined
+              options-dense
+              dense
+              transition-duration="100"
+              input-debounce="0"
+              v-model="begEffPreset"
+              style="width: 130px"
+              :options="begEffOptions"
+              stack-label
+              label="Target beg eff"
+            ></q-select>
+            <q-input
+              v-if="begEffPreset === 'custom'"
+              debounce="100"
+              v-model.number="begEffCustom"
+              label="Custom eff"
+              type="number"
+              dense
+              min="100"
+              max="340"
+              style="width: 110px"
+            />
+          </div>
+          <div v-if="boardSizePreset === 'int'" class="flex">
+            <q-select
+              class="q-mx-md q-mb-md"
+              outlined
+              options-dense
+              dense
+              transition-duration="100"
+              input-debounce="0"
+              v-model="intEffPreset"
+              style="width: 130px"
+              :options="intEffOptions"
+              stack-label
+              label="Target int eff"
+            ></q-select>
+            <q-input
+              v-if="intEffPreset === 'custom'"
+              debounce="100"
+              v-model.number="intEffCustom"
+              label="Custom eff"
+              type="number"
+              dense
+              min="100"
+              max="340"
+              style="width: 110px"
+            />
+          </div>
+          <div v-if="boardSizePreset === 'exp'" class="flex">
+            <q-select
+              class="q-mx-md q-mb-md"
+              outlined
+              options-dense
+              dense
+              transition-duration="100"
+              input-debounce="0"
+              v-model="expEffPreset"
+              style="width: 130px"
+              :options="expEffOptions"
+              stack-label
+              label="Target exp eff"
+            ></q-select>
+            <q-input
+              v-if="expEffPreset === 'custom'"
+              debounce="100"
+              v-model.number="expEffCustom"
+              label="Custom eff"
+              type="number"
+              dense
+              min="100"
+              max="340"
+              style="width: 110px"
+            />
+          </div>
+          <div v-if="boardSizePreset === 'custom'">
+            <q-input
+              debounce="100"
+              v-model.number="customEffCustom"
+              label="Minimum Custom eff"
+              type="number"
+              dense
+              min="100"
+              max="340"
+              style="width: 110px"
+            />
+          </div>
+          <div
+            v-if="browserSupportsWebWorkers"
+            class="flex q-mb-sm"
+            style="align-items: center"
           >
-            <q-tab name="main" label="Main Settings" />
-            <q-tab name="other" label="Other Settings" />
-          </q-tabs>
+            <q-checkbox
+              class="q-mr-md"
+              style="flex-shrink: 0"
+              v-model="generateEffBoardsInBackground"
+              label="Generate in background"
+            />
+            <div
+              v-if="
+                effBoardShowSlowGenerationWarning &&
+                !generateEffBoardsInBackground
+              "
+              class="text-info"
+              style="flex: 1 1 200px"
+            >
+              <b>IMPORTANT:</b> Recommended for high target efficiency
+            </div>
+          </div>
+          <div v-if="browserSupportsConcurrency" class="flex q-mb-sm">
+            <q-select
+              class="q-mx-md q-mb-md"
+              outlined
+              options-dense
+              dense
+              transition-duration="100"
+              input-debounce="200"
+              v-model="effWebWorkerCount"
+              style="width: 210px; flex-shrink: 0"
+              :options="effWebWorkerCountOptions"
+              stack-label
+              label="Number of background workers"
+              @update:model-value="effShuffleManager.reinitWorkers()"
+            ></q-select>
+            <div
+              v-if="
+                effBoardShowSlowGenerationWarning &&
+                generateEffBoardsInBackground
+              "
+              class="text-info"
+              style="flex: 1 1 215px"
+            >
+              Consider increasing this if background generation is too slow
+            </div>
+          </div>
+          <div class="flex q-mb-sm">
+            <q-select
+              class="q-mx-md q-mb-md"
+              outlined
+              options-dense
+              dense
+              transition-duration="100"
+              input-debounce="0"
+              v-model="effFirstClickType"
+              @update:model-value="
+                effShuffleManager.sendUpdateFirstClickIfNeeded()
+              "
+              style="width: 150px; flex-shrink: 0"
+              :options="[
+                {
+                  label: 'Mouse',
+                  value: 'same',
+                },
+                { label: 'Random zero tile', value: 'random' },
+                { label: 'Top left corner', value: 'corner' },
+                { label: 'Middle', value: 'middle' },
+              ]"
+              emit-value
+              map-options
+              stack-label
+              label="First click location"
+            ></q-select>
+            <div
+              v-if="generateEffBoardsInBackground"
+              class="text-info"
+              style="flex: 1 1 215px"
+            >
+              Boards generated in the background will use the value of this
+              setting at time of generation and will ignore the "Mouse" option
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
 
-          <q-separator />
+      <div class="q-py-md" style="max-width: 700px">
+        <q-list bordered class="rounded-borders">
+          <q-expansion-item
+            expand-separator
+            icon="tune"
+            label="General settings"
+          >
+            <q-card>
+              <q-card-section>
+                <q-checkbox v-model="zeroStart" label="Zero Start" />
+                <br />
+                <q-select
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="faceHitbox"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    {
+                      label: 'Adaptive',
+                      value: 'adaptive',
+                    },
+                    { label: 'Just face', value: 'face' },
+                    { label: 'Whole bar', value: 'bar' },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Face Hitbox"
+                ></q-select>
+              </q-card-section>
+            </q-card>
+          </q-expansion-item>
 
-          <q-tab-panels v-model="settingsTab" animated>
-            <q-tab-panel name="main">
-              <div class="text-h6">Main Settings</div>
-              <div>
-                <template v-if="variant === 'eff boards'">
-                  <div v-if="boardSizePreset === 'beg'" class="flex">
-                    <q-select
-                      class="q-mx-md q-mb-md"
-                      outlined
-                      options-dense
-                      dense
-                      transition-duration="100"
-                      input-debounce="0"
-                      v-model="begEffPreset"
-                      style="width: 145px"
-                      :options="begEffOptions"
-                      stack-label
-                      label="Target beg eff"
-                    ></q-select>
-                    <q-input
-                      v-if="begEffPreset === 'custom'"
-                      debounce="100"
-                      v-model.number="begEffCustom"
-                      label="Custom eff"
-                      type="number"
-                      dense
-                      min="100"
-                      max="340"
-                      style="width: 110px"
-                    />
-                  </div>
-                  <div v-if="boardSizePreset === 'int'" class="flex">
-                    <q-select
-                      class="q-mx-md q-mb-md"
-                      outlined
-                      options-dense
-                      dense
-                      transition-duration="100"
-                      input-debounce="0"
-                      v-model="intEffPreset"
-                      style="width: 145px"
-                      :options="intEffOptions"
-                      stack-label
-                      label="Target int eff"
-                    ></q-select>
-                    <q-input
-                      v-if="intEffPreset === 'custom'"
-                      debounce="100"
-                      v-model.number="intEffCustom"
-                      label="Custom eff"
-                      type="number"
-                      dense
-                      min="100"
-                      max="340"
-                      style="width: 110px"
-                    />
-                  </div>
-                  <div v-if="boardSizePreset === 'exp'" class="flex">
-                    <q-select
-                      class="q-mx-md q-mb-md"
-                      outlined
-                      options-dense
-                      dense
-                      transition-duration="100"
-                      input-debounce="0"
-                      v-model="expEffPreset"
-                      style="width: 145px"
-                      :options="expEffOptions"
-                      stack-label
-                      label="Target exp eff"
-                    ></q-select>
-                    <q-input
-                      v-if="expEffPreset === 'custom'"
-                      debounce="100"
-                      v-model.number="expEffCustom"
-                      label="Custom eff"
-                      type="number"
-                      dense
-                      min="100"
-                      max="340"
-                      style="width: 110px"
-                    />
-                  </div>
-                  <div v-if="boardSizePreset === 'custom'">
-                    <q-input
-                      debounce="100"
-                      v-model.number="customEffCustom"
-                      label="Minimum Custom eff"
-                      type="number"
-                      dense
-                      min="100"
-                      max="340"
-                      style="width: 110px"
-                    />
-                  </div>
-                  <div
-                    v-if="browserSupportsWebWorkers"
-                    class="flex q-mb-sm"
-                    style="align-items: center"
-                  >
-                    <q-checkbox
-                      class="q-mr-md"
-                      style="flex-shrink: 0"
-                      v-model="generateEffBoardsInBackground"
-                      label="Generate in background"
-                    />
-                    <div
-                      v-if="
-                        effBoardShowSlowGenerationWarning &&
-                        !generateEffBoardsInBackground
-                      "
-                      class="text-info"
-                      style="flex: 1 1 200px"
-                    >
-                      <b>IMPORTANT:</b> Recommended for high target efficiency
-                    </div>
-                  </div>
-                  <div v-if="browserSupportsConcurrency" class="flex q-mb-sm">
-                    <q-select
-                      class="q-mx-md q-mb-md"
-                      outlined
-                      options-dense
-                      dense
-                      transition-duration="100"
-                      input-debounce="200"
-                      v-model="effWebWorkerCount"
-                      style="width: 270px; flex-shrink: 0"
-                      :options="effWebWorkerCountOptions"
-                      stack-label
-                      label="Workers used for background generation"
-                      @update:model-value="effShuffleManager.reinitWorkers()"
-                    ></q-select>
-                    <div
-                      v-if="
-                        effBoardShowSlowGenerationWarning &&
-                        generateEffBoardsInBackground
-                      "
-                      class="text-info"
-                      style="flex: 1 1 215px"
-                    >
-                      Consider increasing this if background generation is too
-                      slow
-                    </div>
-                  </div>
-                  <div class="flex q-mb-sm">
-                    <q-select
-                      class="q-mx-md q-mb-md"
-                      outlined
-                      options-dense
-                      dense
-                      transition-duration="100"
-                      input-debounce="0"
-                      v-model="effFirstClickType"
-                      @update:model-value="
-                        effShuffleManager.sendUpdateFirstClickIfNeeded()
-                      "
-                      style="width: 175px; flex-shrink: 0"
-                      :options="[
-                        {
-                          label: 'Mouse',
-                          value: 'same',
-                        },
-                        { label: 'Random zero tile', value: 'random' },
-                        { label: 'Top left corner', value: 'corner' },
-                        { label: 'Middle', value: 'middle' },
-                      ]"
-                      emit-value
-                      map-options
-                      stack-label
-                      label="First click location"
-                    ></q-select>
-                    <div
-                      v-if="generateEffBoardsInBackground"
-                      class="text-info"
-                      style="flex: 1 1 215px"
-                    >
-                      Boards generated in the background will use the value of
-                      this setting at time of generation and will ignore the
-                      "Mouse" option
-                    </div>
-                  </div>
-                </template>
-
-                <q-checkbox v-model="zeroStart" label="Zero Start" /><br />
+          <q-expansion-item
+            expand-separator
+            icon="smartphone"
+            label="Mobile/Touch settings"
+          >
+            <q-card>
+              <q-card-section>
                 <q-checkbox
                   v-model="mobileModeEnabled"
                   label="Use Mobile Mode"
@@ -937,35 +958,18 @@
                   min="2"
                   max="5"
                   style="width: 150px"
-                /><br />
-                <q-select
-                  class="q-mx-md q-mb-md"
-                  outlined
-                  options-dense
-                  dense
-                  transition-duration="100"
-                  input-debounce="0"
-                  v-model="faceHitbox"
-                  style="width: 175px; flex-shrink: 0"
-                  :options="[
-                    {
-                      label: 'Adaptive',
-                      value: 'adaptive',
-                    },
-                    { label: 'Just face', value: 'face' },
-                    { label: 'Whole bar', value: 'bar' },
-                  ]"
-                  emit-value
-                  map-options
-                  stack-label
-                  label="Face Hitbox"
-                ></q-select>
-              </div>
-            </q-tab-panel>
+                />
+              </q-card-section>
+            </q-card>
+          </q-expansion-item>
 
-            <q-tab-panel name="other">
-              <div class="text-h6">Other Settings</div>
-              <div>
+          <q-expansion-item
+            expand-separator
+            icon="brush"
+            label="QuickPaint settings"
+          >
+            <q-card>
+              <q-card-section>
                 <q-checkbox
                   v-model="quickPaintInitialOnlyMines"
                   label="QuickPaint only solves mines"
@@ -977,12 +981,23 @@
                 <q-checkbox
                   v-model="quickPaintOnlyTrivialLogic"
                   label="QuickPaint only use single number logic (e.g. no 1-2 patterns)"
-                /><br />
+                />
+              </q-card-section>
+            </q-card>
+          </q-expansion-item>
+
+          <q-expansion-item
+            expand-separator
+            icon="play_circle_filled"
+            label="Replay settings"
+          >
+            <q-card>
+              <q-card-section>
                 <q-checkbox v-model="reorderZini" label="Reorder ZiNi Replay" />
-              </div>
-            </q-tab-panel>
-          </q-tab-panels>
-        </q-card>
+              </q-card-section>
+            </q-card>
+          </q-expansion-item>
+        </q-list>
       </div>
 
       <br />
@@ -1445,7 +1460,6 @@ let customWarning = computed(() => {
 });
 
 let variant = ref("normal");
-let settingsTab = ref("main");
 let zeroStart = ref(true);
 
 let begEffPreset = ref(200);
