@@ -10,7 +10,7 @@
     "format": "prettier --write \"**/*.{js,vue,css,html,md,json}\" --ignore-path .gitignore",
     "test": "echo \"No test specified\" && exit 0",
     "dev": "quasar dev",
-    "build": "quasar build",
+    "build": "quasar build && cp CNAME dist/spa",
     "deploy": "push-dir --dir=dist/spa --remote=gh-pages --branch=main"
   },
   "dependencies": {
