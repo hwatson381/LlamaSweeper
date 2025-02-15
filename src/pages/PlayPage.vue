@@ -11,6 +11,7 @@
         don't align with my plans.
       </p>
       <div
+        v-if="devMode"
         style="
           border: 1px solid white;
           margin: 5px;
@@ -939,6 +940,11 @@
                   max="400"
                   style="width: 150px"
                 /><br />
+                <q-checkbox
+                  v-model="touchLongPressDisabled"
+                  label="Disable long press"
+                  style="flex-shrink: 0"
+                /><br />
                 <q-input
                   debounce="100"
                   v-model.number="touchMaxTime"
@@ -958,6 +964,63 @@
                   min="2"
                   max="5"
                   style="width: 150px"
+                /><br />
+                <q-select
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="flagToggleLocationClass"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    {
+                      label: 'Bottom Right',
+                      value: 'toggle-bot-right',
+                    },
+                    {
+                      label: 'Bottom Left',
+                      value: 'toggle-bot-left',
+                    },
+                    {
+                      label: 'Hidden',
+                      value: 'toggle-hidden',
+                    },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Mode toggle location"
+                />
+                <br />
+                <q-select
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="flagToggleSizeClass"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    {
+                      label: 'Normal',
+                      value: 'toggle-normal',
+                    },
+                    {
+                      label: 'Large',
+                      value: 'toggle-large',
+                    },
+                    {
+                      label: 'Small',
+                      value: 'toggle-small',
+                    },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Mode toggle size"
                 />
               </q-card-section>
             </q-card>
@@ -1166,16 +1229,20 @@
 
   <button
     v-if="mobileModeEnabled && !replayIsShown"
-    :class="{
-      'flag-toggle': true,
-      'flag-active': flagToggleActive,
-    }"
+    :class="[
+      {
+        'flag-toggle': true,
+        'flag-active': flagToggleActive,
+      },
+      flagToggleLocationClass,
+      flagToggleSizeClass,
+    ]"
     @touchstart.prevent="flagToggleActive = !flagToggleActive"
   >
     <q-icon
       name="flag"
       :color="flagToggleActive ? 'white' : 'black'"
-      size="3em"
+      :class="[flagToggleSizeClass, 'flag-toggle-icon']"
     />
   </button>
   <ReplayBar
@@ -1232,24 +1299,61 @@ body.body--dark #eff-stat.sub-zini {
 }
 
 .flag-toggle {
-  width: 80px;
-  height: 80px;
   background-color: rgba(29, 33, 37, 0.9);
-  border-radius: 10% 0 0 0;
   border: unset;
-  border-left: 1px solid white;
-  border-top: 1px solid white;
   display: flex;
   justify-content: center;
   align-items: center;
   position: fixed;
-  right: -1px;
-  bottom: -1px;
   touch-action: none;
 }
 
 .flag-active {
   background-color: rgba(102, 23, 23, 0.9);
+}
+
+.flag-toggle.toggle-bot-right {
+  border-radius: 10% 0 0 0;
+  border-left: 1px solid white;
+  border-top: 1px solid white;
+  right: -1px;
+  bottom: -1px;
+}
+
+.flag-toggle.toggle-bot-left {
+  border-radius: 0 10% 0 0;
+  border-right: 1px solid white;
+  border-top: 1px solid white;
+  left: -1px;
+  bottom: -1px;
+}
+
+.flag-toggle.toggle-hidden {
+  display: none !important;
+}
+
+.flag-toggle.toggle-normal {
+  width: 80px;
+  height: 80px;
+}
+.flag-toggle-icon.toggle-normal {
+  font-size: 3em;
+}
+
+.flag-toggle.toggle-large {
+  width: 120px;
+  height: 120px;
+}
+.flag-toggle-icon.toggle-large {
+  font-size: 4.5em;
+}
+
+.flag-toggle.toggle-small {
+  width: 50px;
+  height: 50px;
+}
+.flag-toggle-icon.toggle-small {
+  font-size: 2em;
 }
 
 .stats-click-table-container {
@@ -1291,7 +1395,7 @@ defineOptions({
 });
 
 onMounted(() => {
-  document.body.addEventListener("keydown", handleKeyDown);
+  document.body.addEventListener("keydown", handleKeyDown, true);
   document.body.addEventListener("scroll", handlePageScroll);
   skinManager.addCallbackWhenAllLoaded(() => {
     game.initialise();
@@ -1299,7 +1403,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  document.body.removeEventListener("keydown", handleKeyDown);
+  document.body.removeEventListener("keydown", handleKeyDown, true);
   window.removeEventListener("scroll", handlePageScroll);
   game.unmount();
   effShuffleManager.killAllWorkers();
@@ -1308,24 +1412,46 @@ onUnmounted(() => {
 
 function handleKeyDown(event) {
   if (event.key === " " || event.key === "F2") {
-    game.reset();
+    if (
+      document.activeElement?.nodeName === "INPUT" &&
+      document.activeElement?.classList?.contains("q-field__native")
+    ) {
+      //We are on an input element, so let the space input go to that instead
+      return; //Exit early, without resetting the board or cancelling the event
+    }
+
+    if (
+      document.activeElement?.nodeName === "INPUT" &&
+      document.activeElement?.classList?.contains("q-select__focus-target") &&
+      document.activeElement?.getAttribute("aria-expanded") === "true"
+    ) {
+      //We are on an open select element. So let that handle the space input instead
+      return;
+    }
+
+    //There were some issues with quasar components stealing the spacebar input.
+    //Hence we defocus all elements except some input elements
+    document.activeElement?.blur();
     event.preventDefault();
+    event.stopPropagation();
+
+    game.reset();
   }
   if (event.key === "q") {
     game.board.toggleQuickPaint();
-    event.preventDefault();
+    //event.preventDefault();
   }
   if (event.key === "w") {
     game.board.handleCycleQuickPaintModeKeypress();
-    event.preventDefault();
+    //event.preventDefault();
   }
   if (event.key === "ArrowLeft") {
     game.board.replay && game.board.replay.jumpToPreviousClick();
-    event.preventDefault();
+    //event.preventDefault();
   }
   if (event.key === "ArrowRight") {
     game.board.replay && game.board.replay.jumpToNextClick();
-    event.preventDefault();
+    //event.preventDefault();
   }
 }
 
@@ -1590,6 +1716,8 @@ let pttaImportModal = ref(false);
 let isCurrentlyEditModeDisplay = ref(true); //Lines up with game.board.gameStage = 'edit' - consider making ...gameStage a ref instead.
 
 let flagToggleActive = ref(false); //Whether to swap left and right mouse buttons
+let flagToggleLocationClass = ref("toggle-bot-right");
+let flagToggleSizeClass = ref("toggle-normal");
 let mobileModeEnabled = ref(Utils.isMobile()); //Flag toggle starts enabled on mobile, disabled on desktop
 let mobileScrollSetting = ref("enclosed flag"); //Affects whether touches can trigger scroll
 let mobileEnclosedScrollLetThrough = ref(true); //Whether clicks can still affect the board on enclosed setting (typically placing flags)
@@ -1602,6 +1730,7 @@ let scrollLetThroughActive = computed(
 let touchRevealLocation = ref("start"); //Whether we use the location of the touch at the start of it or the end of it
 let touchRevealTiming = ref("end"); //Does it reveal the tile on finger up or finger down
 let touchLongPressTime = ref(250); //When does long press = flag (or dig) get triggered
+let touchLongPressDisabled = ref(false);
 let touchMaxTime = ref(1000); //When do long touches get cancelled (maybe these become scrolls?)
 let touchScrollDistance = ref(3); //When do touches that move a lot unlock the scroll
 let faceHitbox = ref("adaptive"); //Hitbox for when the face is click to trigger a reset
@@ -1622,6 +1751,8 @@ let replaySpeedMultiplier = ref(1);
 let replayIsPanning = ref(false);
 let replayIsInputting = ref(false);
 let reorderZini = ref(false);
+
+let devMode = localStorage.getItem("devMode") === "1" ? true : false;
 
 let bulkIterations = ref(1000);
 function bulkrun() {
@@ -2545,6 +2676,7 @@ class Board {
       let isFlagInput;
 
       const isLongPress =
+        !touchLongPressDisabled.value &&
         event.timeStamp - thisTouch.startTime >= touchLongPressTime.value;
 
       //Note - below is the same as doing isFlagMode XOR isLongPress
@@ -3006,6 +3138,21 @@ class Board {
       );
       needToCheckForWinOrLoss = true;
       isDrawRequired = true;
+    }
+
+    //Edge case - cancel mobile long-press flag input in pregame (otherwise depressed squares get stuck)
+    if (
+      this.gameStage === "pregame" &&
+      isFlagInput &&
+      !isDown &&
+      isTouchInput
+    ) {
+      this.updateDepressedSquares(
+        flooredCoords,
+        flooredCoords,
+        false,
+        touchIdentifier
+      );
     }
 
     //Check if an opening has occured on mean openings

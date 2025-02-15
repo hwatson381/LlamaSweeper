@@ -9,7 +9,7 @@
         based on my personal preference, don't take too seriously.
       </p>
 
-      <p style="font-weight: bold; color: red">
+      <p v-if="devMode" style="font-weight: bold; color: red">
         SECRET DEV PAGE: ADD variants with
         <a href="/#/data-entry">data-entry page</a>
       </p>
@@ -69,14 +69,7 @@
       >
         Nothing matched search criteria
       </div>
-      <div
-        style="
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-          grid-gap: 1rem;
-          justify-items: center;
-        "
-      >
+      <div class="variants-grid">
         <VariantCard
           v-for="variant in filteredVariants"
           :key="variant.id"
@@ -87,6 +80,27 @@
     </div>
   </q-page>
 </template>
+
+<style scoped>
+.variants-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  grid-gap: 1rem;
+  justify-items: center;
+}
+
+@media only screen and (max-width: 520px) {
+  .variants-grid {
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  }
+}
+
+@media only screen and (max-width: 420px) {
+  .variants-grid {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  }
+}
+</style>
 
 <script setup>
 import { computed, ref } from "vue";
@@ -145,4 +159,6 @@ let filteredVariants = computed(() => {
       }
     });
 });
+
+let devMode = localStorage.getItem("devMode") === "1" ? true : false;
 </script>

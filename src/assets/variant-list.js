@@ -241,7 +241,7 @@ let variantList = [
   {
     "name": "carykh knightsweeper",
     "url": "https://htwins.net/minesweeper/",
-    "desc": "Minesweeper, but with different rules for how the neighbouring cells are counted. For example, the numbers could count mines that are a knights move away or that are orthoganally adjacent (no diagonals). There are lots of different rules to choose from. The rules used can be changed by clicking on the box which has the pattern (\"normal\" is the default pattern). This was made by the youtuber carykh.",
+    "desc": "Minesweeper, but with different rules for how the neighbouring cells are counted. For example, the numbers could count mines that are a knights move away or that are orthogonally adjacent (no diagonals). There are lots of different rules to choose from. The rules used can be changed by clicking on the box which has the pattern (\"normal\" is the default pattern). This was made by the youtuber carykh.",
     "image": "/img/variants/carykh.png",
     "tags": [
       "game"
@@ -340,7 +340,7 @@ let variantList = [
   {
     "name": "Metasweeper",
     "url": "https://github.com/eee555/Metasweeper",
-    "desc": "A modern desktop minesweeper clone. It saves replays of games and has resizeable cells and is capable of display game statistics including using custom formulae. It features several different types of no-guess mode (including variations where it automatically makes guesses correct). It supports English/German/Polish/Chinese. Games played on this mode can be submitted to the Open minesweeper website. The download link can be found under \"Releases\" on the github page (download + run the latest .exe file to install).",
+    "desc": "A modern desktop minesweeper clone. It saves replays of games and has resizable cells and is capable of display game statistics including using custom formulae. It features several different types of no-guess mode (including variations where it automatically makes guesses correct). It supports English/German/Polish/Chinese. Games played on this mode can be submitted to the Open minesweeper website. The download link can be found under \"Releases\" on the github page (download + run the latest .exe file to install).",
     "image": "/img/variants/metasweeper.png",
     "tags": [
       "game"

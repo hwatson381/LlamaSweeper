@@ -72,7 +72,7 @@
                   <a href="https://www.youtube.com/watch?v=cgb8ylQ6WQY"
                     >video</a
                   >
-                  of a TAS I made for Google Snake. So I now infrequently post
+                  of a TAS I made for Google Snake. So, I now infrequently post
                   videos of Google Snake on there (mods/tases that I make).
                   There are also some old videos about minesweeper and random
                   coding projects. As of writing, the channel has 27k subs and
@@ -120,8 +120,8 @@
                   else with.
                 </p>
                 <p>
-                  I also run a different website in collabation with some others
-                  for playing
+                  I also run a different website in collaboration with some
+                  others for playing
                   <a href="https://googlesnakemods.com/">modded google snake</a
                   >.
                 </p>

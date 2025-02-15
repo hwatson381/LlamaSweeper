@@ -236,6 +236,16 @@ click loss replay
 basic zini explorer stuff?
 Or make progress with getting site live?
 
-Small bug - cancelling a touch in pregame (e.g. by moving to a different square), doesn't undepress on mobile
+Is there some large scale hack we can do to prevent issues with buttons/toggle capturing spacebar?
+Maybe using capture on event listener, and then preventing default based on value of activeElement?
+Try useCapture = true and also calling stopPropagation (stopImmediate?)
 
-Preload stepper icon?
+The solution seems quite ugly since on some elements, spacebar does both actions (e.g. typing a space and reseting the board).
+
+Maybe a better way is to find out how to individually disable spacebar on specific problem components?
+
+Add quicker way to reset on mobile
+Mobile reset button that appears on blast?
+Option to reset based on amount of time passed, or perhaps quick reset for games with under 30% progress?
+
+Should keydownhandler be on #q-app element instead of document.body?

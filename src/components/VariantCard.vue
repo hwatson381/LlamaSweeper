@@ -1,8 +1,8 @@
 <template>
-  <div style="width: 500px">
+  <div class="card-container">
     <q-card bordered>
       <q-card-section horizontal class="variant-card-header">
-        <div style="width: 360px; padding: 5px">
+        <div class="card-details">
           <q-card-section>
             <div class="text-h6">{{ variant.name }}</div>
             <div
@@ -56,6 +56,11 @@
                 :label="tag"
               />
             </div>
+            <q-img
+              v-if="!compactView"
+              class="card-image show-large q-mt-md"
+              :src="variant.image"
+            />
             <q-btn
               v-if="compactView"
               color="secondary"
@@ -67,7 +72,7 @@
           </q-card-section>
         </div>
 
-        <q-img width="140px" height="140px" :src="variant.image" />
+        <q-img class="card-image show-small" :src="variant.image" />
       </q-card-section>
       <q-card-section v-if="!compactView">
         <p>
@@ -113,6 +118,82 @@ body.body--dark .variant-rating-number {
 
 body.body--dark .awareness-badge {
   color: white;
+}
+
+.card-container {
+  width: 500px;
+}
+
+.card-details {
+  width: 360px;
+  padding: 5px;
+}
+
+.card-image {
+  width: 140px;
+  height: 140px;
+}
+
+.show-large {
+  display: none;
+}
+
+@media only screen and (max-width: 520px) {
+  .card-container {
+    width: 400px;
+  }
+
+  .card-details {
+    width: 300px;
+    padding: 5px;
+  }
+
+  .card-image {
+    width: 100px;
+    height: 100px;
+  }
+}
+
+/*
+@media only screen and (max-width: 420px) {
+  .card-container {
+    width: 350px;
+  }
+
+  .card-details {
+    width: 280px;
+    padding: 5px;
+  }
+
+  .card-image {
+    width: 70px;
+    height: 70px;
+  }
+}
+*/
+
+@media only screen and (max-width: 420px) {
+  .card-container {
+    width: 340px;
+  }
+
+  .card-details {
+    width: 340px;
+    padding: 5px;
+  }
+
+  .card-image {
+    width: 100%;
+    height: 100%;
+  }
+
+  .show-small {
+    display: none;
+  }
+
+  .show-large {
+    display: flex;
+  }
 }
 </style>
 

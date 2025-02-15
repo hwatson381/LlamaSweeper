@@ -110,6 +110,12 @@
         "
       />
     </div>
+    <!-- below is needed for to preload icon for steppy -->
+    <q-icon
+      name="sym_o_steppers"
+      style="visibility: hidden; position: absolute"
+    ></q-icon>
+    <!--end of preload-->
   </div>
 </template>
 
