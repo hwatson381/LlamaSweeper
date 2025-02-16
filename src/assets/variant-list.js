@@ -106,7 +106,7 @@ let variantList = [
   },
   {
     "name": "Open Minesweeper",
-    "url": "https://fff666.top/",
+    "url": "https://openms.top/#/",
     "desc": "This is a new modern minesweeper website under active development. It has a ranking with support for several different clones including metasweeper. It also has a section for guides. The website is created by a team of mostly Chinese minesweeper players, although it supports several languages.",
     "image": "/img/variants/openms.png",
     "tags": [

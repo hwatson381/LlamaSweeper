@@ -11,8 +11,6 @@ Use setters and getters for tilesArray (formerly called revealedNumbers). Like s
 
 Fix lag on large boards (maybe have canvas draw() that doesn't refresh whole board and only redraws the relevant area?)
 
-Make unfocus a function and call it from all various inputs (where sensible?)
-
 Be careful with setTimeouts to not have loads of them running at the same time...
 Remove on component unmount?
 
@@ -132,6 +130,7 @@ I've removed maximum-scale=1, minimum-scale=1, . Needs testing. Works, but looks
 pointermove may be better than touch move as touchmove only triggers for ~10px movements
 
 Have the flag-toggle track properly when zoomed in (is this even possible?)
+See here: https://stackoverflow.com/questions/26193667/css-positionfixed-mobile-zoom
 
 Consider making topbar scrollable?
 
@@ -178,7 +177,7 @@ Is it right to have -1 as a special value for click index stuff?
 Break up board class using composition.
 E.g. do stuff like the below to handling drawing logic
 this.renderer = new Renderer(this); //for drawing logic
-this.inputHandler = new InputHanlder(this); //for mouse/touch events
+this.inputHandler = new InputHandler(this); //for mouse/touch events
 this.quickPaintHandler = new QuickpaintHandler(this); //for quickpaint stuff
 
 Max achievable eff stat? This would only be for lost games - it would be the eff given that zini continues your game
@@ -209,8 +208,6 @@ Enable keyboard clicks?
 Make a "llamasweeper - best features" video
 
 dumb idea - train neural network to assign premiums for zini?
-
-Need to do option for letting through scrolling touch, or wasting it (if possible)
 
 Have some sort of shield against accidental scrolls? E.g. don't scroll on openings revealed in last 0.5s?
 
