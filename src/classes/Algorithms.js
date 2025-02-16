@@ -6,7 +6,7 @@ class Algorithms {
     throw new Error('Algorithms class only has static methods, and cannot be instantiated')
   }
 
-  static calcBasicZini(mines, is8Way, preprocessedData = false) {
+  static calcBasicZini(mines, is8Way, preprocessedData = false, initialRevealedStates = false, initialFlagStates = false) {
     //PreprocessedData is the result from Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines)
     //Which means that we don't have to run that function multiple times
 
@@ -25,14 +25,24 @@ class Algorithms {
     const height = mines[0].length;
 
     //false for unrevealed, true for revealed
-    const revealedStates = new Array(width)
-      .fill(0)
-      .map(() => new Array(height).fill(false));
+    let revealedStates;
+    if (initialRevealedStates) {
+      revealedStates = initialRevealedStates;
+    } else {
+      revealedStates = new Array(width)
+        .fill(0)
+        .map(() => new Array(height).fill(false));
+    }
 
     //false for unflagged, true for flagged
-    const flagStates = new Array(width)
-      .fill(0)
-      .map(() => new Array(height).fill(false));
+    let flagStates;
+    if (initialFlagStates) {
+      flagStates = initialFlagStates
+    } else {
+      flagStates = new Array(width)
+        .fill(0)
+        .map(() => new Array(height).fill(false));
+    }
 
     //saved info for square about what the neighbours are
     const squareInfo = new Array(width).fill(0).map(() =>
@@ -505,11 +515,11 @@ class Algorithms {
 
   //preprocessedData is the result from Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines)
   //Which means that we don't have to run that function multiple times
-  static calcEightWayZini(mines, preprocessedData = false) {
+  static calcEightWayZini(mines, preprocessedData = false, initialRevealedStates = false, initialFlagStates = false) {
     //8-way zini
     const is8Way = true;
 
-    return this.calcBasicZini(mines, is8Way, preprocessedData);
+    return this.calcBasicZini(mines, is8Way, preprocessedData, initialRevealedStates, initialFlagStates);
   }
 
   static calcOneWayZini(mines, preprocessedData = false) {

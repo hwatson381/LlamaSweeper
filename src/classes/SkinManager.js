@@ -104,6 +104,18 @@ class SkinManager {
   getDotSecondaryColour() {
     return "black";
   }
+
+  getClickGainColour() {
+    return 'green';
+  }
+
+  getClickLossColour() {
+    return 'red';
+  }
+
+  getClickNeutralColour() {
+    return 'yellow';
+  }
 }
 
 export default SkinManager;

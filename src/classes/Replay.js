@@ -9,6 +9,7 @@ class Replay {
     isWin = true,
     isComplete = true,
     forceSteppy = false,
+    analysis = false
   }, refs) {
     this.refs = refs;
 
@@ -23,6 +24,7 @@ class Replay {
 
     this.isWin = isWin;
     this.isComplete = isComplete;
+    this.analysis = analysis;
 
     this.refs.replayTypeForceSteppy.value = forceSteppy;
 
@@ -118,6 +120,15 @@ class Replay {
           break;
         default:
           throw new Error("Disallowed click type seen in replay");
+      }
+
+      if (this.analysis && this.analysis.ziniDeltas) {
+        //For compare replay, check if this move gained/lost a click
+        let thisZiniDelta = this.analysis.ziniDeltas.get(clickPointer);
+
+        if (thisZiniDelta !== undefined) {
+          this.board.tilesArray[clickToDo.x][clickToDo.y].addZiniDelta(thisZiniDelta.isClickGain);
+        }
       }
 
       if (

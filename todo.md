@@ -173,8 +173,6 @@ tap edge of screen to scroll?
 
 beware of triggering win extra stuff (e.g. win cond) from replays
 
-Can the replay controls be a component?
-
 Is it right to have -1 as a special value for click index stuff?
 
 Break up board class using composition.
@@ -210,21 +208,11 @@ Enable keyboard clicks?
 
 Make a "llamasweeper - best features" video
 
-Have a mobile scroll option, similar to scroll on zeros, but that includes non-unrevealed-safe bordering regions
-This way it would work on the mean mines setting.
-Maybe could be called something like "non-frontier scroll" or "enclosed-scroll"
-
-Move replay stuff to separate file (may need some work to convert refs to dependencies)
-Could having it in sep component work?
-
 dumb idea - train neural network to assign premiums for zini?
 
 Need to do option for letting through scrolling touch, or wasting it (if possible)
 
 Have some sort of shield against accidental scrolls? E.g. don't scroll on openings revealed in last 0.5s?
-
-Crazy refactoring
-then basic click-loss replay
 
 Replay bar is fiddly on mobile. Maybe make multiplier editable as a number (or have dropdown) by clicking the chip (box with 1.00x)
 
@@ -234,18 +222,17 @@ need to split out drawing stuff into "drawHandler"
 clean up for release
 click loss replay
 basic zini explorer stuff?
-Or make progress with getting site live?
-
-Is there some large scale hack we can do to prevent issues with buttons/toggle capturing spacebar?
-Maybe using capture on event listener, and then preventing default based on value of activeElement?
-Try useCapture = true and also calling stopPropagation (stopImmediate?)
-
-The solution seems quite ugly since on some elements, spacebar does both actions (e.g. typing a space and reseting the board).
-
-Maybe a better way is to find out how to individually disable spacebar on specific problem components?
+save some settings to client (such as tileSize)
+implement chain merge zini, so that I can improve click-loss replay?
 
 Add quicker way to reset on mobile
 Mobile reset button that appears on blast?
 Option to reset based on amount of time passed, or perhaps quick reset for games with under 30% progress?
 
 Should keydownhandler be on #q-app element instead of document.body?
+
+8-way zini is too volatile? Though not worth implementing a better zini just yet.
+
+[probably skip] Includes moves info in click-loss replay?
+
+Small bug - wasted flags that lose the game get removed from click-loss replay

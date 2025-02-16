@@ -3,13 +3,27 @@
     <div class="q-pa-md">
       <h5>Llama's minesweeper variants</h5>
       <p>
-        This is just a bunch of minesweeper variants I made. I should put an
-        explanation of what they are somewhere... Variants can be changed with
-        the dropdown immediately below. This is very much a work in progress, so
-        some of the variants will be very incomplete. Feedback/suggestions are
-        welcome, although I reserve the right to ignore any suggestions that
-        don't align with my plans.
+        This is just a bunch of minesweeper variants I made. Variants can be
+        changed with the dropdown immediately below. This is very much a work in
+        progress, so some of the variants will be very incomplete.
+        Feedback/suggestions are welcome, although I reserve the right to ignore
+        any suggestions that don't align with my plans.
       </p>
+      <div>
+        <span class="text-h6">Descriptions</span><br />
+        <b>normal:</b> just regular minesweeper<br />
+        <b>eff boards:</b> this lets you play minesweeper boards that have a
+        high potential efficiency. Efficiency is a measure of how many clicks a
+        game took to solve relative to the number of clicks it would take to
+        solve with only using left clicks. <br />
+        <b>board editor:</b> this lets you create your own minesweeper
+        configuration and play it. <br />
+        <b>zini explorer:</b> this has tools for working out how to play a
+        minesweeper board using the minimum number of clicks.<br />
+        <b>mean openings:</b> this is similar to regular minesweeper, except
+        that openings will get randomly filled with mines when revealed
+        (openings are the regions that get expanded automatically).
+      </div>
       <div
         v-if="devMode"
         style="
@@ -535,7 +549,7 @@
                   @click="game.board.initReplay('compare')"
                 >
                   <q-item-section>
-                    <q-item-label>ZiNi Comparison</q-item-label>
+                    <q-item-label>Click loss/gain</q-item-label>
                   </q-item-section>
                 </q-item>
               </q-list>
@@ -1379,6 +1393,7 @@ import {
 import Benchmark from "src/classes/Benchmark.js";
 import Algorithms from "src/classes/Algorithms";
 import Replay from "src/classes/Replay";
+import CompareReplay from "src/classes/CompareReplay";
 import BoardStats from "src/classes/BoardStats";
 import EffShuffleManager from "src/classes/EffShuffleManager";
 import BoardGenerator from "src/classes/BoardGenerator";
@@ -1752,6 +1767,7 @@ let replayIsPanning = ref(false);
 let replayIsInputting = ref(false);
 let reorderZini = ref(false);
 
+let showZiniCompareWarning = ref(true);
 let devMode = localStorage.getItem("devMode") === "1" ? true : false;
 
 let bulkIterations = ref(1000);
@@ -5025,6 +5041,7 @@ class Board {
     this.drawTopBar();
 
     if (this.gameStage === "replay") {
+      this.drawTilesZiniDelta();
       this.drawCursor();
     }
   }
@@ -5045,6 +5062,18 @@ class Board {
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
         this.tilesArray[x][y].drawPaint(
+          x * this.tileSize + boardHorizontalPadding.value,
+          y * this.tileSize + boardTopPadding.value,
+          this.tileSize
+        );
+      }
+    }
+  }
+
+  drawTilesZiniDelta() {
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        this.tilesArray[x][y].drawZiniDelta(
           x * this.tileSize + boardHorizontalPadding.value,
           y * this.tileSize + boardTopPadding.value,
           this.tileSize
@@ -5402,13 +5431,6 @@ class Board {
   }
 
   initReplay(replayToInit) {
-    this.gameStage = "replay";
-    replayIsShown.value = true;
-
-    if (this.replay) {
-      this.replay.pause();
-    }
-
     let replayParams;
     let isReorderableZini = false;
 
@@ -5465,7 +5487,29 @@ class Board {
         isReorderableZini = false;
         break;
       case "compare":
-        window.alert("Compare replay is not implemented");
+        let compareReplay = CompareReplay.generate(
+          this.mines,
+          this.stats.clicks
+        );
+        if (compareReplay.ziniDeltas.size === 0) {
+          window.alert("No click losses/gains found");
+          return;
+        }
+        showZiniCompareWarning.value &&
+          window.alert(
+            "This shows where clicks were lost/gained by 8-way zini. I intend to upgrade this to use a better zini algorithm."
+          );
+        showZiniCompareWarning.value = false;
+        replayParams = {
+          clicks: compareReplay.clicks,
+          board: this,
+          isWin: this.stats.isWin,
+          forceSteppy: false,
+          analysis: {
+            ziniDeltas: compareReplay.ziniDeltas,
+          },
+        };
+        isReorderableZini = false;
         break;
       default:
         window.alert("Replay type unavailable");
@@ -5477,6 +5521,13 @@ class Board {
         replayParams.clicks,
         this.mines
       );
+    }
+
+    this.gameStage = "replay";
+    replayIsShown.value = true;
+
+    if (this.replay) {
+      this.replay.pause();
     }
 
     let refs = {
