@@ -276,7 +276,7 @@ class BoardStats {
       this.refs.statsObject.value.time = time.toFixed(3);
       this.refs.statsObject.value.total3bv = bbbv;
       this.refs.statsObject.value.bbbvs = bbbvs.toFixed(3);
-      this.refs.statsObject.value.eff = eff.toFixed(0);
+      this.refs.statsObject.value.eff = Math.round(eff);
       this.refs.statsObject.value.maxEff = maxEff.toFixed(0);
       this.refs.statsObject.value.clicks = clicksObject;
       this.refs.statsObject.value.eightZini = eightZini;
@@ -292,7 +292,7 @@ class BoardStats {
       this.refs.statsObject.value.solved3bv = solved3bv;
       this.refs.statsObject.value.total3bv = bbbv;
       this.refs.statsObject.value.bbbvs = bbbvs.toFixed(3);
-      this.refs.statsObject.value.eff = eff.toFixed(0);
+      this.refs.statsObject.value.eff = Math.round(eff);
       this.refs.statsObject.value.maxEff = maxEff.toFixed(0);
       this.refs.statsObject.value.clicks = clicksObject;
       this.refs.statsObject.value.eightZini = eightZini;

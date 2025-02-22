@@ -233,3 +233,28 @@ Should keydownhandler be on #q-app element instead of document.body?
 [probably skip] Includes moves info in click-loss replay?
 
 Small bug - wasted flags that lose the game get removed from click-loss replay
+
+Having checkbox for showing transparent numbers during replay?
+
+Have checkboxes for UPK, where we show transparent numbers during a game?
+Or maybe even have "layer 1" UPK, where we only show transparent numbers that neighbour stuff?
+
+Transparent tiles too faint?
+Trnasparent tiles cause lag - is it just because of transparency, or could it be because they have large width/height?
+Consider having small numbers in bottom right instead of doing transparency stuff?
+Show "zero" as a number for transparent
+
+Have Discord preview (opengraph)
+
+Continue to implement handleZiniExploreClick
+
+Can I do annotations for classic zini explorer mode?
+Dots for clicks? Or maybe outlines, like blue for chord, dark grey for click?
+
+face-click should probably be allowed on zini explorer
+(currently buggy as it hides board without clearing solution)
+
+Allow exporting to ptta from board editor/zini explorer
+
+When changing edit board on analyse mode, we could try preserve openings when opening-click is overwritten
+Though this is probably not worth the effort

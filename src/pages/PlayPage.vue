@@ -37,6 +37,7 @@
         <span>Random dev stuff box</span><br />
         <button @click="bulkrun3">Bulk run</button>
         Iterations: <input v-model.number="bulkIterations" type="text" />
+        <button @click="dialogTest">QDialog</button>
       </div>
       <br />
       <div
@@ -359,6 +360,10 @@
                   variant === 'eff boards' &&
                   statsObject.isWonGame &&
                   statsObject.clicks.total < statsObject.eightZini,
+                'excellent-eff':
+                  variant === 'eff boards' &&
+                  statsObject.isWonGame &&
+                  excellentEff,
               }"
             >
               Eff: {{ statsObject.eff }}%
@@ -562,10 +567,94 @@
             ></q-btn>
           </q-card-section>
         </q-card>
+
+        <q-card
+          square
+          v-if="variant === 'zini explorer' && !isCurrentlyEditModeDisplay"
+          style="float: left; margin-bottom: 10px"
+        >
+          <q-card-section>
+            <div v-if="analyseDisplayMode === 'classic'">
+              {{ classicPathBreakdown.lefts }} lefts <br />
+              {{ classicPathBreakdown.rights }} flags <br />
+              {{ classicPathBreakdown.chords }} chords <br />
+              {{ classicPathBreakdown.remaining3bv }} remaining 3bv <br />
+              ----- <br />
+              {{ analyseZiniTotal }} zini <br />
+              ----- <br />
+              {{ analyse3bv }} 3bv / {{ analyseZiniTotal }} zini =
+              {{ analyseEff }}% eff
+            </div>
+            <div v-else>
+              {{ chainBreakdown.chains }} chains <br />
+              {{ chainBreakdown.flags }} flags <br />
+              {{ chainBreakdown.chords }} chords <br />
+              {{ chainBreakdown.remaining3bv }} remaining 3bv <br />
+              ----- <br />
+              {{ analyseZiniTotal }} zini <br />
+              ----- <br />
+              {{ analyse3bv }} 3bv / {{ analyseZiniTotal }} zini =
+              {{ analyseEff }}% eff
+            </div>
+            <div>
+              <q-select
+                class="q-mx-md q-mb-md"
+                outlined
+                options-dense
+                dense
+                transition-duration="100"
+                input-debounce="0"
+                v-model="analyseDisplayMode"
+                style="width: 175px; flex-shrink: 0"
+                :options="[
+                  {
+                    label: 'Classic',
+                    value: 'classic',
+                  },
+                  { label: 'Chain', value: 'chain' },
+                ]"
+                emit-value
+                map-options
+                stack-label
+                label="Input/Display Mode"
+              />
+            </div>
+            <div>-------</div>
+            <div>Run algorithm</div>
+            <div>
+              <q-select
+                class="q-mx-md q-mb-md"
+                outlined
+                options-dense
+                dense
+                transition-duration="100"
+                input-debounce="0"
+                v-model="analyseAlgorithm"
+                style="width: 175px; flex-shrink: 0"
+                :options="[
+                  {
+                    label: '8 Way Zini',
+                    value: '8 way',
+                  },
+                  { label: 'WoM Zini', value: 'womzini' },
+                ]"
+                emit-value
+                map-options
+                stack-label
+                label="Choose Algorithm"
+              />
+              <q-btn
+                @click="console.log('running zini alg')"
+                color="positive"
+                label="run"
+              />
+            </div>
+          </q-card-section>
+        </q-card>
       </div>
       <div class="flex q-ma-md" style="gap: 10px">
         <q-btn-toggle
-          v-if="variant === 'board editor' || variant === 'zini explorer'"
+          v-if="variant === 'board editor'"
           v-model="isCurrentlyEditModeDisplay"
           push
           glossy
@@ -579,6 +668,24 @@
               val
                 ? game.board.switchToEditMode()
                 : game.board.switchToPlayMode();
+            }
+          "
+        />
+        <q-btn-toggle
+          v-if="variant === 'zini explorer'"
+          v-model="isCurrentlyEditModeDisplay"
+          push
+          glossy
+          toggle-color="primary"
+          :options="[
+            { label: 'Edit', value: true },
+            { label: 'Analyse', value: false },
+          ]"
+          @update:model-value="
+            (val) => {
+              val
+                ? game.board.switchToEditMode()
+                : game.board.switchToAnalyseMode();
             }
           "
         />
@@ -1070,7 +1177,15 @@
           >
             <q-card>
               <q-card-section>
-                <q-checkbox v-model="reorderZini" label="Reorder ZiNi Replay" />
+                <q-checkbox
+                  v-model="reorderZini"
+                  label="Reorder ZiNi Replay"
+                /><br />
+                <q-checkbox
+                  v-model="replayShowTransparentNumbers"
+                  label="Show semi-transparent numbers"
+                  @update:model-value="game?.board?.replay?.refreshAndDraw()"
+                />
               </q-card-section>
             </q-card>
           </q-expansion-item>
@@ -1253,11 +1368,7 @@
     ]"
     @touchstart.prevent="flagToggleActive = !flagToggleActive"
   >
-    <q-icon
-      name="flag"
-      :color="flagToggleActive ? 'white' : 'black'"
-      :class="[flagToggleSizeClass, 'flag-toggle-icon']"
-    />
+    <q-icon name="flag" :class="[flagToggleSizeClass, 'flag-toggle-icon']" />
   </button>
   <ReplayBar
     v-show="replayIsShown"
@@ -1304,6 +1415,10 @@
   color: #986d00;
 }
 
+#eff-stat.excellent-eff {
+  color: #770083;
+}
+
 body.body--dark #eff-stat.zini-match {
   color: lime;
 }
@@ -1312,8 +1427,13 @@ body.body--dark #eff-stat.sub-zini {
   color: gold;
 }
 
+body.body--dark #eff-stat.excellent-eff {
+  color: #cb00ff;
+}
+
 .flag-toggle {
-  background-color: rgba(29, 33, 37, 0.9);
+  background-color: rgba(124, 128, 131, 0.9);
+  border-color: #4d4d4d !important;
   border: unset;
   display: flex;
   justify-content: center;
@@ -1322,22 +1442,31 @@ body.body--dark #eff-stat.sub-zini {
   touch-action: none;
 }
 
+body.body--dark .flag-toggle {
+  background-color: rgba(29, 33, 37, 0.9);
+  border-color: white !important;
+}
+
 .flag-active {
+  background-color: rgba(176, 74, 74, 0.9);
+}
+
+body.body--dark .flag-active {
   background-color: rgba(102, 23, 23, 0.9);
 }
 
 .flag-toggle.toggle-bot-right {
   border-radius: 10% 0 0 0;
-  border-left: 1px solid white;
-  border-top: 1px solid white;
+  border-left: 1px solid;
+  border-top: 1px solid;
   right: -1px;
   bottom: -1px;
 }
 
 .flag-toggle.toggle-bot-left {
   border-radius: 0 10% 0 0;
-  border-right: 1px solid white;
-  border-top: 1px solid white;
+  border-right: 1px solid;
+  border-top: 1px solid;
   left: -1px;
   bottom: -1px;
 }
@@ -1370,6 +1499,14 @@ body.body--dark #eff-stat.sub-zini {
   font-size: 2em;
 }
 
+.flag-toggle-icon {
+  color: black;
+}
+
+body.body--dark .flag-active .flag-toggle-icon {
+  color: white;
+}
+
 .stats-click-table-container {
   background-color: #e0e0e0;
 }
@@ -1400,10 +1537,14 @@ import BoardGenerator from "src/classes/BoardGenerator";
 import SkinManager from "src/classes/SkinManager";
 import Tile from "src/classes/Tile";
 import Utils from "src/classes/Utils";
+import ZiniExplore from "src/classes/ZiniExplore";
 
 import ReplayBar from "src/components/ReplayBar.vue";
 
 import CONSTANTS from "src/includes/Constants";
+
+import { useQuasar } from "quasar";
+const $q = useQuasar();
 
 defineOptions({
   name: "PlayPage",
@@ -1689,6 +1830,23 @@ let effBoardShowSlowGenerationWarning = computed(() => {
   }
   return false;
 });
+//excellent eff affects whether we show eff stat in purple for eff boards.
+let excellentEff = computed(() => {
+  switch (boardSizePreset.value) {
+    case "beg":
+      return statsObject.value.eff >= 300;
+    case "int":
+      return statsObject.value.eff >= 220;
+    case "exp":
+      statsObject.value.eff >= 175;
+    case "custom":
+      return false;
+    default:
+      throw new Error("Disallowed preset");
+  }
+
+  return false;
+});
 let effWebWorkerCountOptions = [];
 if (typeof window.navigator.hardwareConcurrency === "number") {
   for (let i = 1; i <= window.navigator.hardwareConcurrency; i = i * 2) {
@@ -1766,6 +1924,25 @@ let replaySpeedMultiplier = ref(1);
 let replayIsPanning = ref(false);
 let replayIsInputting = ref(false);
 let reorderZini = ref(false);
+let replayShowTransparentNumbers = ref(true);
+
+let analyseDisplayMode = ref("classic");
+let analyseAlgorithm = ref("8 way");
+let classicPathBreakdown = ref({
+  lefts: 0,
+  rights: 0,
+  chords: 0,
+  remaining3bv: 0,
+});
+let chainBreakdown = ref({
+  chains: 0,
+  flags: 0,
+  chords: 0,
+  remaining3bv: 0,
+});
+let analyseZiniTotal = ref(0);
+let analyse3bv = ref(0);
+let analyseEff = ref(0);
 
 let showZiniCompareWarning = ref(true);
 let devMode = localStorage.getItem("devMode") === "1" ? true : false;
@@ -2032,6 +2209,29 @@ function bulkrun3() {
   benchmark.clearAll();
 }
 
+function dialogTest() {
+  $q.dialog({
+    title: "Current click path",
+    message: "Would you like to preserve the current click path?",
+    ok: {
+      label: "Preserve",
+    },
+    cancel: {
+      label: "Reset",
+    },
+    persistent: true,
+  })
+    .onOk(() => {
+      // console.log('>>>> OK')
+    })
+    .onCancel(() => {
+      // console.log('>>>> Cancel')
+    })
+    .onDismiss(() => {
+      // console.log('I am triggered on both OK and Cancel')
+    });
+}
+
 class Game {
   constructor() {}
 
@@ -2172,6 +2372,16 @@ class Board {
     this.editingEditBoard = true;
     this.editingZiniBoard = true;
 
+    this.ziniExplore = new ZiniExplore(this, {
+      analyseDisplayMode,
+      analyseAlgorithm,
+      classicPathBreakdown,
+      chainBreakdown,
+      analyseZiniTotal,
+      analyse3bv,
+      analyseEff,
+    });
+
     this.resetBoard();
   }
 
@@ -2231,6 +2441,9 @@ class Board {
     } else if (this.variant === "zini explorer" && this.editingZiniBoard) {
       this.gameStage = "edit";
       isCurrentlyEditModeDisplay.value = true;
+    } else if (this.variant === "zini explorer" && !this.editingZiniBoard) {
+      this.gameStage = "analyse";
+      isCurrentlyEditModeDisplay.value = false;
     } else {
       this.gameStage = "pregame";
       isCurrentlyEditModeDisplay.value = false;
@@ -2278,6 +2491,13 @@ class Board {
       boardTopPadding.value +
       boardBottomPadding.value;
 
+    if (this.gameStage === "analyse") {
+      if (!isVariantChange) {
+        this.ziniExplore.clearCurrentPath();
+      }
+      this.ziniExplore.refreshForEditedBoard();
+    }
+
     this.draw();
   }
 
@@ -2291,6 +2511,20 @@ class Board {
             () => new Tile(CONSTANTS.UNREVEALED, { mainCanvas }, skinManager)
           )
       );
+  }
+
+  populateTransparentNumbers() {
+    //Transparent numbers that can show during replays (amongst other use cases)
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        if (this.mines[x][y]) {
+          this.tilesArray[x][y].unrevealedState = "cl_mine";
+        } else {
+          const squareNumber = this.getNumberSurroundingMines(x, y, false);
+          this.tilesArray[x][y].unrevealedState = "cl_" + squareNumber;
+        }
+      }
+    }
   }
 
   saveGameIfRunning() {
@@ -2356,6 +2590,7 @@ class Board {
     } else if (variant.value === "zini explorer") {
       this.ziniExplorerMines = newBoardMines;
       this.mines = this.ziniExplorerMines; //set mines as a reference to zini explorer mines
+      this.ziniExplore.clearCurrentPath();
     }
 
     this.switchToEditMode();
@@ -3050,6 +3285,20 @@ class Board {
         this.draw();
       }
 
+      return;
+    }
+
+    //handle clicks in analyse mode (used by zini explorer)
+    if (this.gameStage === "analyse") {
+      if (mouseDownOrTouchUp) {
+        this.handleZiniExploreClick(
+          flooredCoords.tileX,
+          flooredCoords.tileY,
+          isDigInput,
+          isFlagInput
+        );
+        this.draw();
+      }
       return;
     }
 
@@ -4967,6 +5216,19 @@ class Board {
     }
   }
 
+  handleZiniExploreClick(tileX, tileY, isDigInput, isFlagInput) {
+    if (!this.checkCoordsInBounds(tileX, tileY)) {
+      return; //just incase
+    }
+
+    this.ziniExplore.handleZiniExploreClick(
+      tileX,
+      tileY,
+      isDigInput,
+      isFlagInput
+    );
+  }
+
   importPttaBoard() {
     if (this.variant !== "board editor" && this.variant !== "zini explorer") {
       return;
@@ -4995,9 +5257,9 @@ class Board {
       //isCurrentlyEditModeDisplay.value = true; //commented out as gets set from resetBoard
       this.resetBoard(true); //force a harder reset as if we were switching variants
     } else if (this.variant === "zini explorer") {
-      //this.editingZiniBoard = true; //commented out as gets set from resetBoard
+      this.editingZiniBoard = true;
       //this.gameStage = "edit"; //commented out as gets set from resetBoard
-      isCurrentlyEditModeDisplay.value = true;
+      //isCurrentlyEditModeDisplay.value = true; //commented out as gets set from resetBoard
       this.resetBoard(true); //force a harder reset as if we were switching variants
     } else {
       //do nothing
@@ -5013,10 +5275,7 @@ class Board {
       isCurrentlyEditModeDisplay.value = false;
       this.resetBoard();
     } else if (this.variant === "zini explorer") {
-      this.editingZiniBoard = false;
-      this.gameStage = "pregame";
-      isCurrentlyEditModeDisplay.value = false;
-      this.resetBoard();
+      throw new Error("Analyse mode not available on zini explorer");
     } else {
       //do nothing
     }
@@ -5024,8 +5283,20 @@ class Board {
     this.draw();
   }
 
-  switchToAnalysisMode() {
-    //For zini explorer?
+  switchToAnalyseMode() {
+    if (this.variant === "board editor") {
+      throw new Error("Analyse mode not available on board editor");
+    } else if (this.variant === "zini explorer") {
+      this.editingZiniBoard = false;
+      this.gameStage = "analyse";
+      isCurrentlyEditModeDisplay.value = false;
+      //this.resetBoard(); //Is this needed?
+      this.ziniExplore.refreshForEditedBoard();
+    } else {
+      //do nothing
+    }
+
+    this.draw();
   }
 
   draw() {
@@ -5293,11 +5564,16 @@ class Board {
       );
     }
 
-    //Draw timer
+    //Draw timer (or zini value if analysing on zini explorer)
     if (showTimer.value) {
+      let timerOrZini = this.integerTimer;
+      if (this.variant === "zini explorer" && this.gameStage === "analyse") {
+        timerOrZini = analyseZiniTotal.value;
+      }
+
       ctx.textAlign = "right";
       ctx.fillText(
-        this.integerTimer,
+        timerOrZini,
         timerStartX,
         mineTimerStartY,
         mineTimerMaxWidth
@@ -5541,6 +5817,7 @@ class Board {
       replayBarLastValue,
       replayProgress,
       replayProgressRounded,
+      replayShowTransparentNumbers,
     };
 
     this.replay = new Replay(replayParams, refs);
@@ -5571,6 +5848,9 @@ var effShuffleManager = new EffShuffleManager(
     begEffOptions,
     intEffOptions,
     expEffOptions,
+    begEffSlowGenPoint,
+    intEffSlowGenPoint,
+    expEffSlowGenPoint,
   }
 ); //Needs to be var to stop an access-before-init error
 const boardHistory = new BoardHistory();

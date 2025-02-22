@@ -9,6 +9,7 @@ class Tile {
     this.depressed = false;
     this.paintColour = null; //values such as red, green, orange, white
     this.paintDots = 0; //values can be 0, 1, 2
+    this.unrevealedState = null; //State to draw instead of UNREVEALED (e.g. for drawing transparent tiles)
 
     this.ziniDelta = {
       loss: false,
@@ -19,9 +20,17 @@ class Tile {
   draw(rawX, rawY, size) {
     const ctx = this.refs.mainCanvas.value.getContext("2d");
 
-    //Depressed squares get drawn as an open tile
-    const toDraw =
-      this.state === CONSTANTS.UNREVEALED && this.depressed ? 0 : this.state;
+    //Depressed squares get drawn as a zero tile
+    let toDraw;
+    if (this.state !== CONSTANTS.UNREVEALED) {
+      toDraw = this.state;
+    } else if (this.depressed) {
+      toDraw = 0;
+    } else if (this.unrevealedState !== null) {
+      toDraw = this.unrevealedState;
+    } else {
+      toDraw = CONSTANTS.UNREVEALED
+    }
 
     ctx.drawImage(this.skinManager.getImage(toDraw), rawX, rawY, size, size);
   }

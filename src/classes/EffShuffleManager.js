@@ -327,7 +327,7 @@ class EffShuffleManager {
       if (key.startsWith("9-9-10-")) {
         if (
           this.consts.begEffOptions.includes(targetEff) ||
-          targetEff > begEffSlowGenPoint
+          targetEff > this.consts.begEffSlowGenPoint
         ) {
           //Don't garbage collect beg if it's a dropdown option or above a certain value
           continue;
@@ -338,7 +338,7 @@ class EffShuffleManager {
       if (key.startsWith("16-16-40-")) {
         if (
           this.consts.intEffOptions.includes(targetEff) ||
-          targetEff > intEffSlowGenPoint
+          targetEff > this.consts.intEffSlowGenPoint
         ) {
           //Don't garbage collect int if it's a dropdown option or above a certain value
           continue;
@@ -349,7 +349,7 @@ class EffShuffleManager {
       if (key.startsWith("16-16-40-")) {
         if (
           this.consts.expEffOptions.includes(targetEff) ||
-          targetEff > expEffSlowGenPoint
+          targetEff > this.consts.expEffSlowGenPoint
         ) {
           //Don't garbage collect exp if it's a dropdown option or above a certain value
           continue;

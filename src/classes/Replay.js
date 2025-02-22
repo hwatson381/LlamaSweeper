@@ -79,6 +79,10 @@ class Replay {
       //Full reset of tiles
       this.board.resetTiles();
 
+      if (this.refs.replayShowTransparentNumbers.value) {
+        this.board.populateTransparentNumbers();
+      }
+
       this.board.unflagged = this.board.mineCount;
 
       if (this.board.variant === "mean openings") {
@@ -760,6 +764,16 @@ class Replay {
       clickIndex,
       revealedByOpeningIndex,
     };
+  }
+
+  refreshAndDraw() {
+    const currentClickIndexLerped = this.currentClickIndexLerped;
+
+    this.currentClickIndex = null;
+    this.currentClickIndexLerped = null;
+
+    this.jumpToSpecificClickLerped(currentClickIndexLerped);
+    this.board.draw();
   }
 }
 
