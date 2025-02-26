@@ -618,6 +618,39 @@
                 stack-label
                 label="Input/Display Mode"
               />
+              <!--DELETE ME<q-checkbox
+                v-model="analyseShowPremiums"
+                label="Show premiums"
+                @update:model-value="
+                  game?.board?.ziniExplore?.updateUiAndBoard()
+                "
+              />-->
+              <q-select
+                class="q-mx-md q-mb-md"
+                outlined
+                options-dense
+                dense
+                transition-duration="100"
+                input-debounce="0"
+                v-model="analyseShowPremiums"
+                style="width: 175px; flex-shrink: 0"
+                :options="[
+                  {
+                    label: 'None',
+                    value: 'none',
+                  },
+                  { label: 'Numbers', value: 'numbers' },
+                  { label: 'Numbers >= 0', value: 'numbers positive' },
+                  { label: 'Highlight Best', value: 'highlight' },
+                ]"
+                emit-value
+                map-options
+                stack-label
+                label="Show Premiums"
+                @update:model-value="
+                  game?.board?.ziniExplore?.updateUiAndBoard()
+                "
+              />
             </div>
             <div>-------</div>
             <div>Run algorithm</div>
@@ -690,6 +723,7 @@
           "
         />
         <q-btn
+          v-if="variant !== 'zini explorer'"
           @click="game.board.toggleQuickPaint()"
           color="secondary"
           label="QuickPaint (Q)"
@@ -1943,6 +1977,7 @@ let chainBreakdown = ref({
 let analyseZiniTotal = ref(0);
 let analyse3bv = ref(0);
 let analyseEff = ref(0);
+let analyseShowPremiums = ref("none");
 
 let showZiniCompareWarning = ref(true);
 let devMode = localStorage.getItem("devMode") === "1" ? true : false;
@@ -2380,6 +2415,7 @@ class Board {
       analyseZiniTotal,
       analyse3bv,
       analyseEff,
+      analyseShowPremiums,
     });
 
     this.resetBoard();
@@ -2648,6 +2684,7 @@ class Board {
     }
 
     this.ziniExplorerMines = this.mines;
+    this.ziniExplore.clearCurrentPath();
     variant.value = "zini explorer";
     this.editingZiniBoard = true;
 
@@ -5240,6 +5277,7 @@ class Board {
       this.boardEditorMines = pttMines;
     } else if (this.variant === "zini explorer") {
       this.ziniExplorerMines = pttMines;
+      this.ziniExplore.clearCurrentPath();
     }
 
     this.revertUnappliedWidthHeightSetting();
@@ -5303,7 +5341,11 @@ class Board {
     const ctx = mainCanvas.value.getContext("2d");
     ctx.clearRect(0, 0, mainCanvas.value.width, mainCanvas.value.height);
 
-    this.drawTiles();
+    if (this.gameStage === "analyse" || this.gameStage === "replay") {
+      this.drawTilesAndAnalysis();
+    } else {
+      this.drawTiles();
+    }
     if (this.quickPaintActive) {
       this.drawTilesPaint();
     }
@@ -5312,9 +5354,15 @@ class Board {
     this.drawTopBar();
 
     if (this.gameStage === "replay") {
-      this.drawTilesZiniDelta();
+      //this.drawTilesZiniDelta();
       this.drawCursor();
     }
+
+    /* DELETE ME
+    if (this.gameStage === "analyse") {
+      this.drawTilesExploreAnalysis();
+    }
+    */
   }
 
   drawTiles() {
@@ -5345,6 +5393,32 @@ class Board {
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
         this.tilesArray[x][y].drawZiniDelta(
+          x * this.tileSize + boardHorizontalPadding.value,
+          y * this.tileSize + boardTopPadding.value,
+          this.tileSize
+        );
+      }
+    }
+  }
+
+  /* DELETE ME
+  drawTilesExploreAnalysis() {
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        this.tilesArray[x][y].drawExploreAnalysis(
+          x * this.tileSize + boardHorizontalPadding.value,
+          y * this.tileSize + boardTopPadding.value,
+          this.tileSize
+        );
+      }
+    }
+  }
+  */
+
+  drawTilesAndAnalysis() {
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        this.tilesArray[x][y].drawIncludingAnalysis(
           x * this.tileSize + boardHorizontalPadding.value,
           y * this.tileSize + boardTopPadding.value,
           this.tileSize

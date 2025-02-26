@@ -27,6 +27,18 @@ class SkinManager {
       ['cl_6', '/img/tiles_transparent/closed6.svg'],
       ['cl_7', '/img/tiles_transparent/closed7.svg'],
       ['cl_8', '/img/tiles_transparent/closed8.svg'],
+      ['raw_open', '/img/raw/open.svg'],
+      ['raw_closed', '/img/raw/closed.svg'],
+      ['raw_0', '/img/raw/type0.svg'], // this is empty image, as zero tiles have no number
+      ['raw_1', '/img/raw/type1.svg'],
+      ['raw_2', '/img/raw/type2.svg'],
+      ['raw_3', '/img/raw/type3.svg'],
+      ['raw_4', '/img/raw/type4.svg'],
+      ['raw_5', '/img/raw/type5.svg'],
+      ['raw_6', '/img/raw/type6.svg'],
+      ['raw_7', '/img/raw/type7.svg'],
+      ['raw_8', '/img/raw/type8.svg'],
+      ['raw_flag', '/img/raw/flag.svg'],
       ["b_hor", "/img/borders/border_hor_2x.png"],
       ["b_vert", "/img/borders/border_vert_2x.png"],
       ["b_c_bot_left", "/img/borders/corner_bottom_left_2x.png"],
@@ -117,15 +129,31 @@ class SkinManager {
   }
 
   getClickGainColour() {
-    return 'green';
+    return '#C3FFA0'; //previously 'green'
   }
 
   getClickLossColour() {
-    return 'red';
+    return '#FF777A'; //previous 'red'
   }
 
   getClickNeutralColour() {
     return 'yellow';
+  }
+
+  getClassicDigColour() {
+    return '#E5FFA5'; //light yellow
+  }
+
+  getClassicChordColour() {
+    return '#A3D1FF'; //light blue
+  }
+
+  getPremiumColour() {
+    return 'black';
+  }
+
+  getHighlightColour() {
+    return '#2FEF00';
   }
 }
 

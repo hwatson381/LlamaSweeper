@@ -128,7 +128,7 @@ class ZiniExplore {
       }
     }
 
-    let isChorded = this.classicPath.some(c => c.type === 'chorded' && c.x === tileX && c.y === tileY);
+    let isChorded = this.classicPath.some(c => c.type === 'chord' && c.x === tileX && c.y === tileY);
 
     let isChordable = false;
     //Chordable if it has an unrevealed neighbour and right number of flags
@@ -248,13 +248,13 @@ class ZiniExplore {
 
       for (let i = 0; i < this.classicPath.length; i++) {
         let possibleFlagClick = this.classicPath[i];
-        if (!possibleFlagClick.type !== 'right') {
+        if (possibleFlagClick.type !== 'right') {
           continue;
         }
         if (Math.abs(possibleFlagClick.x - removedChord.x) <= 1 &&
           Math.abs(possibleFlagClick.y - removedChord.y) <= 1) {
           flagIndicesToCheck.add(i);
-          break;
+          continue;
         }
       }
     }
@@ -268,7 +268,7 @@ class ZiniExplore {
       let flagHasKeptNeighbourChord = false
       for (let i = 0; i < pathWithInvalidChordsRemoved.length; i++) {
         let possibleNeighbouringKeptChord = pathWithInvalidChordsRemoved[i];
-        if (!possibleNeighbouringKeptChord.type !== 'chord') {
+        if (possibleNeighbouringKeptChord.type !== 'chord') {
           continue;
         }
         if (Math.abs(possibleNeighbouringKeptChord.x - flagToCheck.x) <= 1 &&
@@ -281,6 +281,13 @@ class ZiniExplore {
       if (!flagHasKeptNeighbourChord) {
         flagsIndicesToRemove.push(flagIndexToCheck);
       }
+    }
+
+    //Unmark the flags on the board that were removed
+    for (let i of flagsIndicesToRemove) {
+      let flagToRemove = this.classicPath[i];
+
+      this.board.tilesArray[flagToRemove.x][flagToRemove.y].state = CONSTANTS.UNREVEALED;
     }
 
     //Finally, remove the flags that are no longer needed (were only used by invalid chord)
@@ -311,6 +318,119 @@ class ZiniExplore {
     }
   }
 
+  updatePremiums() {
+    const width = this.board.mines.length;
+    const height = this.board.mines[0].length;
+
+    //array of saved info for square about what the neighbours are
+    const squareInfo = Algorithms.computeSquareInfo(
+      this.board.mines,
+      this.preprocessedData.numbersArray,
+      this.preprocessedData.openingLabels
+    );
+
+    //Figure out which flags/revealed squares are based on board states
+    const flagStates = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(false));
+    const revealedStates = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(false));
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (this.board.tilesArray[x][y].state === CONSTANTS.FLAG) {
+          flagStates[x][y] = true;
+          continue
+        }
+        if (typeof this.board.tilesArray[x][y].state === 'number') {
+          revealedStates[x][y] = true
+        }
+      }
+    }
+
+    //store premiums of opening + chording each cell
+    const premiums = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(null));
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (this.board.mines[x][y]) {
+          continue;
+        }
+        Algorithms.updatePremiumForCoord(
+          x,
+          y,
+          squareInfo,
+          flagStates,
+          revealedStates,
+          premiums,
+          this.preprocessedData.preprocessedOpenings
+        );
+      }
+    }
+
+    console.log(premiums)
+
+    let highestPremium = premiums
+      .flat()
+      .filter(s => s !== null)
+      .reduce(function (p, v) {
+        return (p > v ? p : v);
+      }, -1);
+
+    if (this.refs.analyseShowPremiums.value === 'highlight' && highestPremium === -1) {
+      //exit early on highlight if no non-negative premiums
+      return;
+    }
+
+    //Add premium info to tiles
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        //Only add premiums when a cell has potential to be chorded
+        if (this.board.mines[x][y]) {
+          //Mines can't be chorded!
+          continue;
+        }
+        if (this.preprocessedData.numbersArray[x][y] === 0) {
+          //Zeros can't be chorded
+          continue;
+        }
+        //Check if there is an unopened safe neighbour cell
+        let hasUnopenedSafeNeighbour = false
+        for (let i = x - 1; i <= x + 1; i++) {
+          for (let j = y - 1; j <= y + 1; j++) {
+            if (i < 0 || j < 0 || i >= width || j >= height) {
+              continue;
+            }
+            if (this.board.tilesArray[i][j].state === CONSTANTS.UNREVEALED && !this.board.mines[i][j]) {
+              hasUnopenedSafeNeighbour = true;
+            }
+          }
+        }
+        if (!hasUnopenedSafeNeighbour) {
+          //Never chordable
+          continue;
+        }
+        if (
+          this.refs.analyseShowPremiums.value === 'numbers' ||
+          (
+            this.refs.analyseShowPremiums.value === 'numbers positive' &&
+            premiums[x][y] >= 0
+          )
+        ) {
+          //On numbers mode, we show the number of the premium in the cell
+          this.board.tilesArray[x][y].addPremium(premiums[x][y]);
+        }
+        if (this.refs.analyseShowPremiums.value === 'highlight' && premiums[x][y] === highestPremium) {
+          //On highlight mode, we just highlight the top cells 
+          this.board.tilesArray[x][y].addHighlight();
+        }
+      }
+    }
+  }
+
   clearCurrentPath() {
     this.classicPath = [];
     this.chains = [];
@@ -330,7 +450,24 @@ class ZiniExplore {
     this.board.populateTransparentNumbers();
     this.updateFlagCounter();
     this.updateZiniSumRefs();
+    this.updateTileAnnotations();
+    if (this.refs.analyseShowPremiums.value !== 'none') {
+      this.updatePremiums();
+    }
     this.board.draw();
+  }
+
+  updateTileAnnotations() {
+    if (this.refs.analyseDisplayMode.value === 'classic') {
+      for (const click of this.classicPath) {
+        if (click.type === 'left') {
+          this.board.tilesArray[click.x][click.y].addClassicDig();
+        }
+        if (click.type === 'chord') {
+          this.board.tilesArray[click.x][click.y].addClassicChord();
+        }
+      }
+    }
   }
 }
 

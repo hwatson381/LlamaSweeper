@@ -234,8 +234,6 @@ Should keydownhandler be on #q-app element instead of document.body?
 
 Small bug - wasted flags that lose the game get removed from click-loss replay
 
-Having checkbox for showing transparent numbers during replay?
-
 Have checkboxes for UPK, where we show transparent numbers during a game?
 Or maybe even have "layer 1" UPK, where we only show transparent numbers that neighbour stuff?
 
@@ -251,10 +249,16 @@ Continue to implement handleZiniExploreClick
 Can I do annotations for classic zini explorer mode?
 Dots for clicks? Or maybe outlines, like blue for chord, dark grey for click?
 
-face-click should probably be allowed on zini explorer
-(currently buggy as it hides board without clearing solution)
-
 Allow exporting to ptta from board editor/zini explorer
 
 When changing edit board on analyse mode, we could try preserve openings when opening-click is overwritten
 Though this is probably not worth the effort
+
+Show which cells are 3bv? Overlaps too much with A-O-S clone?
+
+Considering dimming instead of transparenting unrevealed
+
+Can premiums be made to "negate"
+ctx.globalCompositeOperation = "difference", and then use white font?
+
+Do I need the box behind premiums? (currently set-able with window.box = true)

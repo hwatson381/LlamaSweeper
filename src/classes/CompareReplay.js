@@ -13,8 +13,6 @@ class CompareReplay {
 
     let projectedZinis = []; //Array of what zinis would be assuming the game was continued
 
-
-
     //calculate projected zinis
     const ziniAtStart = Algorithms.calcEightWayZini(mines).total //Special case as not covered by for loop
 
@@ -40,6 +38,13 @@ class CompareReplay {
     }
 
     for (let i = 1; i < clicks.length; i++) {
+      if (i === clicks.length - 1) {
+        //Special case - don't treat last click as wasted if it was a left on a mine
+        if (clicks[i].type === 'left' && mines[clicks[i].x][clicks[i].y]) {
+          continue;
+        }
+      }
+
       if (projectedZinis[i] > projectedZinis[i - 1]) {
         ziniDeltas.set(i, { isClickGain: false })
       } else if (projectedZinis[i] < projectedZinis[i - 1]) {

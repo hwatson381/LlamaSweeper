@@ -44,78 +44,8 @@ class Algorithms {
         .map(() => new Array(height).fill(false));
     }
 
-    //saved info for square about what the neighbours are
-    const squareInfo = new Array(width).fill(0).map(() =>
-      new Array(height).fill(0).map(() => {
-        return {
-          isMine: false,
-          number: null, //Set later
-          is3bv: null, //Set later. Note that this info can also be determined by whether this.number = 0 and this.openingsTouched.size = 0
-          labelIfOpening: null, //Set later if this is a zero square. This gives the "identifier" of the opening this square is part of
-          mineNeighbours: [],
-          safeNeighbours: [],
-          nonOpening3bvNeighbours: [], //i.e. single "protected" squares
-          openingsTouched: new Set(), //These correspond to "3bv" that are openings. Values are the labels of the openings it touches
-        };
-      })
-    );
-
-    for (let x = 0; x < width; x++) {
-      for (let y = 0; y < height; y++) {
-        const thisSquare = squareInfo[x][y];
-
-        //Is this square a mine
-        if (mines[x][y]) {
-          thisSquare.isMine = true;
-          continue;
-        }
-        //What number is this square
-        thisSquare.number = numbersArray[x][y];
-
-        //Is the square 3bv
-        if (openingLabels[x][y] === 0 || numbersArray[x][y] === 0) {
-          thisSquare.is3bv = true;
-        } else {
-          thisSquare.is3bv = false;
-        }
-
-        if (numbersArray[x][y] === 0) {
-          thisSquare.labelIfOpening = openingLabels[x][y];
-        }
-
-        //Gather info about the neighbours of this square
-        for (let i = x - 1; i <= x + 1; i++) {
-          for (let j = y - 1; j <= y + 1; j++) {
-            if (i < 0 || i >= width || j < 0 || j >= height) {
-              continue; //Neighbour Square outside board
-            }
-            if (i === x && j === y) {
-              continue; //The square itself is not a neighbour
-            }
-
-            if (mines[i][j]) {
-              thisSquare.mineNeighbours.push({ x: i, y: j });
-              continue;
-            } else {
-              thisSquare.safeNeighbours.push({ x: i, y: j });
-            }
-
-            if (openingLabels[i][j] === 0) {
-              //Neighbour cell is a protected square
-              thisSquare.nonOpening3bvNeighbours.push({ x: i, y: j });
-            } else if (
-              typeof openingLabels[i][j] === "number" &&
-              numbersArray[x][y] !== 0
-            ) {
-              //Neighbour cell belongs to the opening with label openingLabels[i][j]
-              //Note that openingsTouched is a set since a square can have multiple neighbours belonging to the same opening
-              //Also note that we don't track openings touched if the square itself is a zero as this messes up zini calc
-              thisSquare.openingsTouched.add(openingLabels[i][j]);
-            }
-          }
-        }
-      }
-    }
+    //array of saved info for square about what the neighbours are
+    const squareInfo = this.computeSquareInfo(mines, numbersArray, openingLabels);
 
     //store premiums of opening + chording each cell
     const premiums = new Array(width)
@@ -470,6 +400,86 @@ class Algorithms {
     }
 
     return { newlyRevealed: squaresRevealedDuringStep, onlyNFRemaining: false };
+  }
+
+  static computeSquareInfo(mines, numbersArray, openingLabels) {
+    const width = mines.length;
+    const height = mines[0].length;
+
+    //saved info for square about what the neighbours are
+    const squareInfo = new Array(width).fill(0).map(() =>
+      new Array(height).fill(0).map(() => {
+        return {
+          isMine: false,
+          number: null, //Set later
+          is3bv: null, //Set later. Note that this info can also be determined by whether this.number = 0 and this.openingsTouched.size = 0
+          labelIfOpening: null, //Set later if this is a zero square. This gives the "identifier" of the opening this square is part of
+          mineNeighbours: [],
+          safeNeighbours: [],
+          nonOpening3bvNeighbours: [], //i.e. single "protected" squares
+          openingsTouched: new Set(), //These correspond to "3bv" that are openings. Values are the labels of the openings it touches
+        };
+      })
+    );
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        const thisSquare = squareInfo[x][y];
+
+        //Is this square a mine
+        if (mines[x][y]) {
+          thisSquare.isMine = true;
+          continue;
+        }
+        //What number is this square
+        thisSquare.number = numbersArray[x][y];
+
+        //Is the square 3bv
+        if (openingLabels[x][y] === 0 || numbersArray[x][y] === 0) {
+          thisSquare.is3bv = true;
+        } else {
+          thisSquare.is3bv = false;
+        }
+
+        if (numbersArray[x][y] === 0) {
+          thisSquare.labelIfOpening = openingLabels[x][y];
+        }
+
+        //Gather info about the neighbours of this square
+        for (let i = x - 1; i <= x + 1; i++) {
+          for (let j = y - 1; j <= y + 1; j++) {
+            if (i < 0 || i >= width || j < 0 || j >= height) {
+              continue; //Neighbour Square outside board
+            }
+            if (i === x && j === y) {
+              continue; //The square itself is not a neighbour
+            }
+
+            if (mines[i][j]) {
+              thisSquare.mineNeighbours.push({ x: i, y: j });
+              continue;
+            } else {
+              thisSquare.safeNeighbours.push({ x: i, y: j });
+            }
+
+            if (openingLabels[i][j] === 0) {
+              //Neighbour cell is a protected square
+              thisSquare.nonOpening3bvNeighbours.push({ x: i, y: j });
+            } else if (
+              typeof openingLabels[i][j] === "number" &&
+              numbersArray[x][y] !== 0
+            ) {
+              //Neighbour cell belongs to the opening with label openingLabels[i][j]
+              //Note that openingsTouched is a set since a square can have multiple neighbours belonging to the same opening
+              //Also note that we don't track openings touched if the square itself is a zero as this messes up zini calc
+              thisSquare.openingsTouched.add(openingLabels[i][j]);
+            }
+          }
+        }
+      }
+    }
+
+    return squareInfo;
   }
 
   static nfClickEverythingForZini(

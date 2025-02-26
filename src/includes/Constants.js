@@ -1,8 +1,8 @@
 const CONSTANTS = Object.freeze({
-  UNREVEALED: "UNREVEALED",
-  FLAG: "FLAG",
-  MINE: "MINE",
-  MINERED: "MINERED",
+  UNREVEALED: "unrevealed",
+  FLAG: "flag",
+  MINE: "mine",
+  MINERED: "minered",
 })
 
 export default CONSTANTS
