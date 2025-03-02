@@ -284,5 +284,6 @@ Better pattern. Ptta fails this, whereas pure chain merge will spot it
 
 Make breakdown look nice
 Improve faded/dimmed numbers/mines etc
+Add some algorithms that can be run from zini explorer (e.g. wom/8-way)
 
 Does send to zini explorer work for mean openings?

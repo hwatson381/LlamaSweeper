@@ -575,16 +575,39 @@
         >
           <q-card-section>
             <div>
-              {{ classicPathBreakdown.lefts }} lefts <br />
-              {{ classicPathBreakdown.rights }} flags <br />
-              {{ classicPathBreakdown.chords }} chords <br />
-              {{ classicPathBreakdown.remaining3bv }} remaining 3bv <br />
-              ----- <br />
-              {{ analyseZiniTotal }} zini <br />
-              ----- <br />
-              {{ analyse3bv }} 3bv / {{ analyseZiniTotal }} zini =
-              {{ analyseEff }}% eff
+              <q-markup-table class="q-mb-md" dense flat bordered>
+                <thead>
+                  <tr>
+                    <th class="text-center">Left</th>
+                    <th class="text-center">Flag</th>
+                    <th class="text-center">Chord</th>
+                    <th class="text-center">Remain</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="text-right">
+                      {{ classicPathBreakdown.lefts }}
+                    </td>
+                    <td class="text-right">
+                      {{ classicPathBreakdown.rights }}
+                    </td>
+                    <td class="text-right">
+                      {{ classicPathBreakdown.chords }}
+                    </td>
+                    <td class="text-right">
+                      {{ classicPathBreakdown.remaining3bv }}
+                    </td>
+                  </tr>
+                </tbody>
+              </q-markup-table>
+
+              <p class="text-center text-h6 q-mb-sm">
+                {{ analyse3bv }} 3bv / {{ analyseZiniTotal }} zini
+              </p>
+              <p class="text-center text-h5 q-mb-sm">{{ analyseEff }}% eff</p>
             </div>
+            <q-separator />
             <div>
               <q-select
                 class="q-mx-md q-mb-md"
@@ -641,7 +664,7 @@
                 "
               />
             </div>
-            <div>-------</div>
+            <q-separator />
             <div>Run algorithm</div>
             <div>
               <q-select
