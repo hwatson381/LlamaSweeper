@@ -574,22 +574,11 @@
           style="float: left; margin-bottom: 10px"
         >
           <q-card-section>
-            <div v-if="analyseDisplayMode === 'classic'">
+            <div>
               {{ classicPathBreakdown.lefts }} lefts <br />
               {{ classicPathBreakdown.rights }} flags <br />
               {{ classicPathBreakdown.chords }} chords <br />
               {{ classicPathBreakdown.remaining3bv }} remaining 3bv <br />
-              ----- <br />
-              {{ analyseZiniTotal }} zini <br />
-              ----- <br />
-              {{ analyse3bv }} 3bv / {{ analyseZiniTotal }} zini =
-              {{ analyseEff }}% eff
-            </div>
-            <div v-else>
-              {{ chainBreakdown.chains }} chains <br />
-              {{ chainBreakdown.flags }} flags <br />
-              {{ chainBreakdown.chords }} chords <br />
-              {{ chainBreakdown.remaining3bv }} remaining 3bv <br />
               ----- <br />
               {{ analyseZiniTotal }} zini <br />
               ----- <br />
@@ -616,7 +605,7 @@
                 emit-value
                 map-options
                 stack-label
-                label="Input/Display Mode"
+                label="Input Mode"
               />
               <!--DELETE ME<q-checkbox
                 v-model="analyseShowPremiums"
@@ -1968,12 +1957,6 @@ let classicPathBreakdown = ref({
   chords: 0,
   remaining3bv: 0,
 });
-let chainBreakdown = ref({
-  chains: 0,
-  flags: 0,
-  chords: 0,
-  remaining3bv: 0,
-});
 let analyseZiniTotal = ref(0);
 let analyse3bv = ref(0);
 let analyseEff = ref(0);
@@ -2411,7 +2394,6 @@ class Board {
       analyseDisplayMode,
       analyseAlgorithm,
       classicPathBreakdown,
-      chainBreakdown,
       analyseZiniTotal,
       analyse3bv,
       analyseEff,
@@ -2686,9 +2668,19 @@ class Board {
     this.ziniExplorerMines = this.mines;
     this.ziniExplore.clearCurrentPath();
     variant.value = "zini explorer";
-    this.editingZiniBoard = true;
+
+    const pathWithoutWasted = this.stats.clicks.filter(
+      (click) => !click.type.includes("wasted")
+    );
+
+    //If it was a loss, also remove the final dig/chord
+    if (this.stats.isWin === false) {
+      pathWithoutWasted.pop();
+    }
 
     this.resetBoard(true); //full reset as needed for variant change.
+    this.ziniExplore.classicPath = structuredClone(pathWithoutWasted);
+    this.switchToAnalyseMode();
   }
 
   sendToPttCalculator() {

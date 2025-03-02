@@ -30,7 +30,7 @@ class EffShuffleManager {
 
   provideEffBoard(width, height, mineCount, firstClick) {
     const targetEff = this.refs.minimumEff.value;
-    const timeoutSeconds = 10;
+    const timeoutSeconds = 5;
 
     if (this.refs.generateEffBoardsInBackground.value) {
       //Check if we have a pre-generated board

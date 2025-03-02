@@ -91,14 +91,571 @@ class ZiniExplore {
           return true;
         }
 
-        //Remove digs if they are on one of the zeros that would reveal the square we initial clicked on
+        //Remove digs if they are on one of the zeros that would reveal the square we initially clicked on
         return !sharedZeros.some(zero => c.x === zero.x && c.y === zero.y);
       });
     }
   }
 
   handleChainClick(tileX, tileY, isDigInput, isFlagInput) {
+    //For chain input, we have the following behaviour - 
+    //Left click toggle chord
+    //Right click toggles dig
+    //Chording works even without enough flags
 
+    //Clicks on mines will always either flag or unflag
+    const squareProperties = this.getSquareProperties(tileX, tileY);
+
+    //Unflagged mine, so flag it
+    if (squareProperties.isMine && !squareProperties.isFlagged) {
+      this.classicPath.push({ type: 'right', x: tileX, y: tileY })
+      return;
+    }
+
+    //Flagged mine, so unflag it
+    if (squareProperties.isMine && squareProperties.isFlagged) {
+      this.classicPath = this.classicPath.filter(c => !(c.type === 'right' && c.x === tileX && c.y === tileY))
+      return;
+    }
+
+    //Below we can assume it is a safe tile
+
+    if (isDigInput) {
+      this.handleChainToggleChord(tileX, tileY, squareProperties);
+      return;
+    }
+
+    if (isFlagInput) {
+      this.handleChainToggleDig(tileX, tileY, squareProperties);
+      return;
+    }
+  }
+
+  handleChainToggleChord(tileX, tileY, squareProperties) {
+    //Left click on safe squares will toggle whether we chord that square.
+    //Note that this automatically flags/unflags surrounding mines if they are adjacent to the chord
+
+    //Note - we allow chording any number square, even though some of the time it will be pointless
+    //this is because we may need to chord these squares in order to merge chains
+    //if instead we only want to allow chording stuff that is next to safe's then we set
+    //canAddChainChord = squareProperties.isPotentiallyChordable
+    const canAddChainChord = !squareProperties.isZero;
+
+    //Unrevealed square, so dig it, and then chord it if possible
+    let newlyDug = false;
+
+    if (!squareProperties.isRevealed) {
+      this.classicPath.push({ type: 'left', x: tileX, y: tileY });
+      newlyDug = true; //Mark that we need to try chord it next
+    }
+
+    //digged openings need to be checked for chain merge possibilities
+    if (newlyDug && squareProperties.isZero) {
+      this.optimiseChain(tileX, tileY);
+      return;
+    }
+
+    //Chord + flag neighbours if the square hasn't been chorded before, but could be
+    if (!squareProperties.isChorded && canAddChainChord && !squareProperties.isZero) {
+      //Flag any unflagged neighbours
+      for (let x = tileX - 1; x <= tileX + 1; x++) {
+        for (let y = tileY - 1; y <= tileY + 1; y++) {
+          if (x === tileX && y === tileY) {
+            continue;
+          }
+          if (!this.board.checkCoordsInBounds(x, y)) {
+            continue; //ignore squares outside board
+          }
+          if (
+            this.board.tilesArray[x][y].state === CONSTANTS.UNREVEALED &&
+            this.board.mines[x][y]
+          ) {
+            this.classicPath.push({ type: 'right', x: x, y: y });
+          }
+        }
+      }
+
+      //Chord
+      this.classicPath.push({ type: 'chord', x: tileX, y: tileY });
+
+      this.optimiseChain(tileX, tileY);
+      return;
+    }
+
+    //Was digged, but not chorded and not chordable, so undig it
+    if (squareProperties.isDigged && !squareProperties.isChorded && !canAddChainChord) {
+      this.classicPath = this.classicPath.filter(c => !(c.type === 'left' && c.x === tileX && c.y === tileY))
+      if (squareProperties.isZero) {
+        this.optimiseChainForRemoval(tileX, tileY); //Zeros could be part of a chain, so optimisation required
+      }
+      return;
+    }
+
+    //Was chorded and possibly digged, so unchord it and possibly undig it
+    //also remove unused neighbour flags
+    if (squareProperties.isChorded) {
+      //Remove left/chord
+      this.classicPath = this.classicPath.filter(c => !((c.type === 'left' || c.type === 'chord') && c.x === tileX && c.y === tileY));
+      //Find and remove neighbour flags
+      this.classicPath = this.classicPath.filter(c => {
+        if (c.type === 'right' && Math.abs(c.x - tileX) <= 1 && Math.abs(c.y - tileY) <= 1) {
+          //For adjacent flags, we only keep them if they belong to other chords
+          let keepAdjacentFlag = this.classicPath.some(d => d.type === 'chord' && Math.abs(d.x - c.x) <= 1 && Math.abs(d.y - c.y) <= 1);
+          return keepAdjacentFlag;
+        } else {
+          //Keep lefts/digs and also flags that are not touching chord
+          return true;
+        }
+      })
+      this.optimiseChainForRemoval(tileX, tileY);
+      return;
+    }
+
+    //Was a zero that was digged from elsewhere, so undig the zero that digged it
+    if (squareProperties.isDiggedZero) {
+      const openingLabel = this.preprocessedData.openingLabels[tileX][tileY];
+
+      const sharedZeros = this.preprocessedData.preprocessedOpenings.get(openingLabel).zeros
+
+      this.classicPath = this.classicPath.filter(c => {
+        if (c.type !== 'left') {
+          //Keep chords/flags
+          return true;
+        }
+
+        return !sharedZeros.some(zero => c.x === zero.x && c.y === zero.y);
+      });
+
+      this.optimiseChainForRemoval(tileX, tileY);
+      return;
+    }
+  }
+
+  handleChainToggleDig(tileX, tileY, squareProperties) {
+    //Right click will do NF clicks on squares.
+    //For simplicity, it has no action if the square was chorded
+
+    //unrevealed, so dig it
+    if (!squareProperties.isRevealed) {
+      this.classicPath.push({ type: 'left', x: tileX, y: tileY });
+      if (squareProperties.isZero) {
+        this.optimiseChain(tileX, tileY);
+      }
+      return;
+    }
+
+    //digged, but not chorded, so undig it
+    if (squareProperties.isDigged && !squareProperties.isChorded) {
+      this.classicPath = this.classicPath.filter(c => !(c.type === 'left' && c.x === tileX && c.y === tileY))
+      if (squareProperties.isZero) {
+        this.optimiseChainForRemoval(tileX, tileY);
+      }
+      return;
+    }
+
+    //Was a zero that was digged from elsewhere, so undig the zero that digged it
+    if (squareProperties.isDiggedZero) {
+      const openingLabel = this.preprocessedData.openingLabels[tileX][tileY];
+
+      const sharedZeros = this.preprocessedData.preprocessedOpenings.get(openingLabel).zeros
+
+      this.classicPath = this.classicPath.filter(c => {
+        if (c.type !== 'left') {
+          //Keep chords/flags
+          return true;
+        }
+
+        return !sharedZeros.some(zero => c.x === zero.x && c.y === zero.y);
+      });
+
+      this.optimiseChainForRemoval(tileX, tileY);
+      return;
+    }
+  }
+
+  optimiseChain(tileX, tileY, validateSingleSeedChain = false) {
+    //takes chorded square and optimise chain that it is part of
+
+    let chords = [];
+    let smotheredDigs = []; //digs on squares that are revealed by a chord (so can be removed)
+    let seeds = []; //left clicks in the chain that we later chord
+
+    let startingMove;
+    if (this.preprocessedData.numbersArray[tileX][tileY] === 0) {
+      //If on a zero, then we start with a dig
+      startingMove = this.classicPath.find(c => c.type === 'left' && c.x === tileX && c.y === tileY);
+      seeds.push(startingMove);
+    } else {
+      //not a zero, so start from a chord
+      startingMove = this.classicPath.find(c => c.type === 'chord' && c.x === tileX && c.y === tileY);
+      const possibleSeed = this.classicPath.find(c => c.type === 'left' && c.x === tileX && c.y === tileY);
+      chords.push(startingMove);
+      //also look to see if this is seeded
+      if (possibleSeed) {
+        seeds.push(possibleSeed);
+      }
+    }
+
+    this.buildChain(startingMove, chords, smotheredDigs, seeds);
+
+    //remove smothered digs
+    this.classicPath = this.classicPath.filter(c => !smotheredDigs.includes(c));
+
+    //if there is the wrong number of seeds (1) then we may need to reorder stuff and add/remove seeds
+    if (seeds.length === 1) {
+      //Special case is when there is 1 seed. We then need to check that the ordering is correct (but only when specified by arguments)
+      if (validateSingleSeedChain) {
+        if (this.validateSingleSeedChain(chords, seeds[0])) {
+          return;
+        }
+      } else {
+        return
+      }
+    }
+
+    /* COMMENTED OUT as instead we reseed entirely
+    //Figure out which seed is the earliest, as that's the one to keep
+    let earliestSeed = this.classicPath.find(c => seeds.includes(c));
+
+    let seedsToRemove = seeds.filter(s => s !== earliestSeed);
+    //Remove all seeds except the earliest one from our path
+    this.classicPath = this.classicPath.filter(c => !seedsToRemove.includes(c));
+    */
+
+    /* new plan
+
+      New tileX etc will be the seed
+      and then other seeds will be removed
+      and we reorder from there
+
+    */
+
+    //Remove all current seeds and chords in this chain from the path
+    this.classicPath = this.classicPath.filter(c => !chords.includes(c) && !seeds.includes(c));
+
+    //Find which flags should be moved into new chain
+    let flagsToMove = this.classicPath.filter(
+      c => {
+        if (c.type !== 'right') {
+          return false;
+        }
+
+        //Check if flag needed by chain
+        if (!chords.some(ch => Math.abs(ch.x - c.x) <= 1 && Math.abs(ch.y - c.y) <= 1)) {
+          return false;
+        }
+
+        //Check if flag must remain in main path due to being adjacent to a chord there
+        if (this.classicPath.some(cl => cl.type === 'chord' && Math.abs(cl.x - c.x) <= 1 && Math.abs(cl.y - c.y) <= 1)) {
+          return false;
+        }
+
+        return true; //Flag needed by chain and not needed by rest of path
+      }
+    )
+
+    //Remove flagsToMove from classic path
+    this.classicPath = this.classicPath.filter(c => !flagsToMove.includes(c));
+
+    //Rebuild the chord chain, seeding it from (tileX, tileY)
+    let newChain = [];
+
+    //tileX/tileY is always start of chain
+    newChain.push({
+      type: 'left',
+      x: tileX,
+      y: tileY
+    });
+
+    //Then loop over chords, and add flags where needed
+    for (let chord of chords) {
+      //First add in any prerequisite flags
+      let requiredFlags = flagsToMove.filter(fl => !newChain.includes(fl) && Math.abs(fl.x - chord.x) <= 1 && Math.abs(fl.y - chord.y) <= 1);
+
+      newChain = newChain.concat(requiredFlags);
+      newChain.push(chord);
+    }
+
+    //Finally add the new chain to the end of classic path
+    this.classicPath = this.classicPath.concat(newChain);
+  }
+
+  optimiseChainForRemoval(tileX, tileY) {
+    //takes a removed chord and splits up chains it was merging
+    //this code is very ugly/confusing, as it has a lot in common with doing a single "buildChain" step to find neighbour clicks
+
+    //First find neighbour clicks, and then run optimise chain on all of them
+    let openingsLabelsToCheck = [];
+    let nonOpeningsToCheck = [];
+
+    let possiblyDependentNeighbourCoords = [];
+
+    if (this.preprocessedData.numbersArray[tileX][tileY] === 0) {
+      //If digging a zero, then just add it as an opening to check
+      openingsLabelsToCheck.push(this.preprocessedData.openingLabels[tileX][tileY])
+    } else {
+      //Otherwise check neighbours
+      for (let x = tileX - 1; x <= tileX + 1; x++) {
+        for (let y = tileY - 1; y <= tileY + 1; y++) {
+          if (x === tileX && y === tileY) {
+            continue;
+          }
+          if (!this.board.checkCoordsInBounds(x, y)) {
+            continue;
+          }
+
+          if (this.preprocessedData.numbersArray[x][y] === 0) {
+            const label = this.preprocessedData.openingLabels[x][y]
+            if (!openingsLabelsToCheck.includes(label)) {
+              openingsLabelsToCheck.push(label);
+            }
+          } else {
+            nonOpeningsToCheck.push({ x, y });
+          }
+        }
+      }
+    }
+
+    //Handle new openings
+    for (let openingLabel of openingsLabelsToCheck) {
+      let thisOpening = this.preprocessedData.preprocessedOpenings.get(openingLabel);
+
+      //zeros could be neighbours
+      for (let zero of thisOpening.zeros) {
+        if (this.classicPath.some(c => c.x === zero.x && c.y === zero.y)) {
+          possiblyDependentNeighbourCoords.push({ x: zero.x, y: zero.y });
+        }
+      }
+
+      //edges can be processed with the other nonOpening squares
+      for (let edge of thisOpening.edges) {
+        if (!nonOpeningsToCheck.some(n => n.x === edge.x && n.y === edge.y)) {
+          nonOpeningsToCheck.push({ x: edge.x, y: edge.y }); //Note - that just pushing edge would also work, I just did it this way incase edge gets new properties
+        }
+      }
+    }
+
+    //Handle nonOpening squares.
+    //Lots can happen with these depending on if they are chorded/digged/both
+    for (let nonOpeningSquare of nonOpeningsToCheck) {
+      let hasDigClick = this.classicPath.some(c => c.type === 'left' && c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y)
+      let hasChordClick = this.classicPath.some(c => c.type === 'chord' && c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y)
+
+      //Dig, but no chord means the dig was previously smothered, but now may be needed idk?
+      if (hasDigClick && !hasChordClick) {
+        possiblyDependentNeighbourCoords.push({ x: nonOpeningSquare.x, y: nonOpeningSquare.y })
+        continue;
+      }
+
+      //Chord and dig means we can spread (and likely this chain will remain the same)
+      if (hasDigClick && hasChordClick) {
+        possiblyDependentNeighbourCoords.push({ x: nonOpeningSquare.x, y: nonOpeningSquare.y })
+        continue;
+      }
+
+      //Just chord also means we can spread, and possibly this chain may need a new seed
+      if (!hasDigClick && hasChordClick) {
+        possiblyDependentNeighbourCoords.push({ x: nonOpeningSquare.x, y: nonOpeningSquare.y })
+        continue;
+      }
+    }
+
+    //Now we loop through and optimise any chains that start from neighbouring clicks.
+    //Note that we may hit chains multiple time, which is disgustingly inefficient, but may be ok in practise
+    for (let neighbourCoordsToSpreadFrom of possiblyDependentNeighbourCoords) {
+      this.optimiseChain(neighbourCoordsToSpreadFrom.x, neighbourCoordsToSpreadFrom.y, true)
+    }
+  }
+
+  buildChain(moveToSpreadFrom, chords, smotheredDigs, seeds) {
+    //Builds up a chain
+    const moveX = moveToSpreadFrom.x;
+    const moveY = moveToSpreadFrom.y;
+
+    //assume we are zero or chord
+    //assert just incase
+    if (this.preprocessedData.numbersArray[moveX][moveY] !== 0 && moveToSpreadFrom.type !== 'chord') {
+      throw new Error('Cannot spread from tile when building opening');
+    }
+
+    let nonOpeningsToCheck = []; //{x: 1, y: 2} etc squares that are non-zero (so possibly chordable)
+    let openingsLabelsToCheck = [];
+
+    if (this.preprocessedData.numbersArray[moveX][moveY] === 0) {
+      //If digging a zero, then just add it as an opening to check
+      openingsLabelsToCheck.push(this.preprocessedData.openingLabels[moveX][moveY])
+    } else {
+      //Otherwise check neighbours
+      for (let x = moveX - 1; x <= moveX + 1; x++) {
+        for (let y = moveY - 1; y <= moveY + 1; y++) {
+          if (x === moveX && y === moveY) {
+            continue;
+          }
+          if (!this.board.checkCoordsInBounds(x, y)) {
+            continue;
+          }
+
+          if (this.preprocessedData.numbersArray[x][y] === 0) {
+            const label = this.preprocessedData.openingLabels[x][y]
+            if (!openingsLabelsToCheck.includes(label)) {
+              openingsLabelsToCheck.push(label);
+            }
+          } else {
+            nonOpeningsToCheck.push({ x, y });
+          }
+        }
+      }
+    }
+
+    //Handle new openings
+    for (let openingLabel of openingsLabelsToCheck) {
+      let thisOpening = this.preprocessedData.preprocessedOpenings.get(openingLabel);
+
+      //zeros could be seeds
+      for (let zero of thisOpening.zeros) {
+        let zeroClick = this.classicPath.find(c => c.x === zero.x && c.y === zero.y);
+        if (zeroClick && !seeds.includes(zeroClick)) {
+          seeds.push(zeroClick);
+        }
+      }
+
+      //edges can be processed with the other nonOpening squares
+      for (let edge of thisOpening.edges) {
+        if (!nonOpeningsToCheck.some(n => n.x === edge.x && n.y === edge.y)) {
+          nonOpeningsToCheck.push({ x: edge.x, y: edge.y }); //Note - that just pushing edge would also work, I just did it this way incase edge gets new properties
+        }
+      }
+    }
+
+    //Handle nonOpening squares.
+    //Lots can happen with these depending on if they are chorded/digged/both
+    for (let nonOpeningSquare of nonOpeningsToCheck) {
+      //Exit early if square already accounted for
+      if (
+        chords.some(c => c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y) ||
+        smotheredDigs.some(c => c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y) ||
+        seeds.some(c => c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y)
+      ) {
+        continue;
+      }
+
+      let possibleDigClick = this.classicPath.find(c => c.type === 'left' && c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y)
+      let possibleChordClick = this.classicPath.find(c => c.type === 'chord' && c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y)
+
+      //Dig, but no chord means the dig is smothered
+      if (possibleDigClick && !possibleChordClick) {
+        smotheredDigs.push(possibleDigClick);
+        continue;
+      }
+
+      //Chord and dig means we can spread and the dig is a seed
+      if (possibleDigClick && possibleChordClick) {
+        seeds.push(possibleDigClick);
+        chords.push(possibleChordClick);
+        //Recursively add stuff from this
+        this.buildChain(possibleChordClick, chords, smotheredDigs, seeds)
+        continue;
+      }
+
+      //Just chord also means we can spread
+      if (!possibleDigClick && possibleChordClick) {
+        chords.push(possibleChordClick);
+        //Recursively add stuff from this
+        this.buildChain(possibleChordClick, chords, smotheredDigs, seeds)
+        continue;
+      }
+    }
+  }
+
+  validateSingleSeedChain(chords, seed) {
+    //run through single chain to check it is valid
+
+    //First make sure that the seed happens before the clicks (in current path)
+    for (let i = 0; i < this.classicPath.length; i++) {
+      //If we come across the seed first, then we can continue to next checks
+      if (this.classicPath[i] === seed) {
+        break;
+      }
+
+      //If we come across a chord in the chain first, then the chain is not valid.
+      if (chords.includes(this.classicPath[i])) {
+        return false;
+      }
+    }
+
+    //Now we play the seed and run through moves to make sure they are all valid
+    let allowedMoves = [seed]; //Tracks which moves can be played
+
+    let chainToCheck = [seed, ...chords];
+
+    for (let i = 0; i < chainToCheck.length; i++) {
+      const thisMove = chainToCheck[i];
+
+      if (!allowedMoves.includes(thisMove)) {
+        //Illegal move played, so chord chain is invalid
+        return false;
+      }
+
+      let nonOpeningsToCheck = []; //{x: 1, y: 2} etc squares that are non-zero (so possibly chordable)
+      let openingsLabelsToCheck = [];
+
+      if (thisMove.type === 'left') {
+        if (this.preprocessedData.numbersArray[thisMove.x][thisMove.y] === 0) {
+          openingsLabelsToCheck.push(this.preprocessedData.openingLabels[thisMove.x][thisMove.y])
+        } else {
+          nonOpeningsToCheck.push({ x: thisMove.x, y: thisMove.y });
+        }
+      } else if (thisMove.type === 'chord') {
+        //check neighbours
+        for (let x = thisMove.x - 1; x <= thisMove.x + 1; x++) {
+          for (let y = thisMove.y - 1; y <= thisMove.y + 1; y++) {
+            if (x === thisMove.x && y === thisMove.y) {
+              continue;
+            }
+            if (!this.board.checkCoordsInBounds(x, y)) {
+              continue;
+            }
+
+            if (this.preprocessedData.numbersArray[x][y] === 0) {
+              const label = this.preprocessedData.openingLabels[x][y]
+              if (!openingsLabelsToCheck.includes(label)) {
+                openingsLabelsToCheck.push(label);
+              }
+            } else {
+              nonOpeningsToCheck.push({ x, y });
+            }
+          }
+        }
+      }
+
+      //Figure out which moves are now available
+
+      //Handle new openings
+      for (let openingLabel of openingsLabelsToCheck) {
+        let thisOpening = this.preprocessedData.preprocessedOpenings.get(openingLabel);
+
+        //don't need to do anything with zeros as they can't be used in future chords
+
+        //edges can be processed with the other nonOpening squares
+        for (let edge of thisOpening.edges) {
+          if (!nonOpeningsToCheck.some(n => n.x === edge.x && n.y === edge.y)) {
+            nonOpeningsToCheck.push({ x: edge.x, y: edge.y }); //Note - that just pushing edge would also work, I just did it this way incase edge gets new properties
+          }
+        }
+      }
+
+      //Handle nonOpening squares.
+      //Non-openings squares unlock options for future chords
+      for (let nonOpeningSquare of nonOpeningsToCheck) {
+        let chordOnSquare = chords.find(c => c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y)
+
+        if (chordOnSquare && !allowedMoves.includes(chordOnSquare)) {
+          allowedMoves.push(chordOnSquare)
+        }
+      }
+    }
+
+    return true
   }
 
   getSquareProperties(tileX, tileY) {
@@ -128,14 +685,9 @@ class ZiniExplore {
       }
     }
 
-    let isChorded = this.classicPath.some(c => c.type === 'chord' && c.x === tileX && c.y === tileY);
-
-    let isChordable = false;
-    //Chordable if it has an unrevealed neighbour and right number of flags
-    if (isRevealed && !isZero && this.board.getNumberSurroundingFlags(tileX, tileY) === this.board.getNumberSurroundingMines(tileX, tileY, false)) {
-      //Check to see if any neighbours are unrevealed
-      let hasUnrevealedNeighbour = false;
-
+    //true if it has a neighbour that is unrevealed and safe
+    let isPotentiallyChordable = false;
+    if (!isZero) {
       for (let x = tileX - 1; x <= tileX + 1; x++) {
         for (let y = tileY - 1; y <= tileY + 1; y++) {
           if (x === tileX && y === tileY) {
@@ -145,17 +697,22 @@ class ZiniExplore {
             continue; //ignore squares outside board
           }
           if (
-            this.board.tilesArray[x][y].state === CONSTANTS.UNREVEALED
+            this.board.tilesArray[x][y].state === CONSTANTS.UNREVEALED &&
+            !this.board.mines[x][y]
           ) {
-            hasUnrevealedNeighbour = true;
+            isPotentiallyChordable = true;
           }
         }
       }
-
-      if (hasUnrevealedNeighbour) {
-        isChordable = true;
-      }
     }
+
+    let isChorded = this.classicPath.some(c => c.type === 'chord' && c.x === tileX && c.y === tileY);
+
+    //Chordable if it has an unrevealed neighbour and right number of flags
+    let isChordable = isRevealed &&
+      !isZero &&
+      isPotentiallyChordable &&
+      this.board.getNumberSurroundingFlags(tileX, tileY) === this.board.getNumberSurroundingMines(tileX, tileY, false);
 
     return {
       isMine,
@@ -166,6 +723,7 @@ class ZiniExplore {
       isDiggedZero,
       isChorded,
       isChordable,
+      isPotentiallyChordable
     }
   }
 
@@ -299,7 +857,7 @@ class ZiniExplore {
   }
 
   updateZiniSumRefs() {
-    if (this.refs.analyseDisplayMode.value === 'classic') {
+    if (this.refs.analyseDisplayMode.value === 'classic' || this.refs.analyseDisplayMode.value === 'chain') {
       this.refs.classicPathBreakdown.value.lefts = this.classicPath.filter(c => c.type === 'left').length;
       this.refs.classicPathBreakdown.value.rights = this.classicPath.filter(c => c.type === 'right').length;
       this.refs.classicPathBreakdown.value.chords = this.classicPath.filter(c => c.type === 'chord').length;
@@ -311,8 +869,6 @@ class ZiniExplore {
       this.refs.analyseZiniTotal.value = remaining3bv + this.classicPath.length;
       this.refs.analyse3bv.value = bbbv.bbbv;
       this.refs.analyseEff.value = Math.round((this.refs.analyse3bv.value / this.refs.analyseZiniTotal.value) * 100)
-    } else if (this.refs.analyseDisplayMode.value === 'chain') {
-      throw new Error('Not implemented')
     } else {
       throw new Error('Unrecognised display mode');
     }
@@ -458,7 +1014,7 @@ class ZiniExplore {
   }
 
   updateTileAnnotations() {
-    if (this.refs.analyseDisplayMode.value === 'classic') {
+    if (this.refs.analyseDisplayMode.value === 'classic' || this.refs.analyseDisplayMode.value === 'chain') {
       for (const click of this.classicPath) {
         if (click.type === 'left') {
           this.board.tilesArray[click.x][click.y].addClassicDig();

@@ -202,6 +202,8 @@ Better idea - show coords in all cells (in small font)
 zini replay could show where the mines are?
 
 coords on each cell that invert colours (so always readable?). Do excel style coords (alphabetical?)
+ctx.globalCompositeOperation = "difference", and then use white font?
+(I tried invert for premiums and it looked bad)
 
 Enable keyboard clicks?
 
@@ -257,8 +259,30 @@ Though this is probably not worth the effort
 Show which cells are 3bv? Overlaps too much with A-O-S clone?
 
 Considering dimming instead of transparenting unrevealed
-
-Can premiums be made to "negate"
-ctx.globalCompositeOperation = "difference", and then use white font?
+Or maybe have something where only mines are shown?
+Or mines less transparent?
+Or everything less transparent
 
 Do I need the box behind premiums? (currently set-able with window.box = true)
+
+Reduce maxwidth when drawing premiums? 1.5 x textScale never seems to be hit?
+
+For "edit" mode (on board editor and zini explorer), maybe we should allow face-click, with a warning prompt?
+
+Have button to return to previous mode (after clicking send-to button)
+
+Note - removing a chord on chain mode that splits up chains should look at each new chain
+and if a chain doesn't have a seed, it should use the seed point closest to the chord that was removed
+
+https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=2&m=0000000000u00ag04402500l805201100ag03o00000000000000
+Interesting pattern. Chain merge alone won't save us here.
+It needs some lookahead, as the chord before chain merge doesn't get done because it doesn't
+understand that there is 2-step click gain
+
+https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=2&m=0000000000u00ag04402100k8052018g08802k00u00000000000
+Better pattern. Ptta fails this, whereas pure chain merge will spot it
+
+Make breakdown look nice
+Improve faded/dimmed numbers/mines etc
+
+Does send to zini explorer work for mean openings?
