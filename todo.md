@@ -239,7 +239,6 @@ Small bug - wasted flags that lose the game get removed from click-loss replay
 Have checkboxes for UPK, where we show transparent numbers during a game?
 Or maybe even have "layer 1" UPK, where we only show transparent numbers that neighbour stuff?
 
-Transparent tiles too faint?
 Trnasparent tiles cause lag - is it just because of transparency, or could it be because they have large width/height?
 Consider having small numbers in bottom right instead of doing transparency stuff?
 Show "zero" as a number for transparent
@@ -257,11 +256,6 @@ When changing edit board on analyse mode, we could try preserve openings when op
 Though this is probably not worth the effort
 
 Show which cells are 3bv? Overlaps too much with A-O-S clone?
-
-Considering dimming instead of transparenting unrevealed
-Or maybe have something where only mines are shown?
-Or mines less transparent?
-Or everything less transparent
 
 Do I need the box behind premiums? (currently set-able with window.box = true)
 
@@ -282,8 +276,12 @@ understand that there is 2-step click gain
 https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=2&m=0000000000u00ag04402100k8052018g08802k00u00000000000
 Better pattern. Ptta fails this, whereas pure chain merge will spot it
 
-Make breakdown look nice
-Improve faded/dimmed numbers/mines etc
-Add some algorithms that can be run from zini explorer (e.g. wom/8-way)
-
 Does send to zini explorer work for mean openings?
+
+Make it possible to watch replay from zini explorer?
+
+Should dimmed exclude tile border? Probably
+(Tried this and it didn't look as good)
+
+Do we show closed mines or open mines with the "Mines" upk option
+(doesn't matter)

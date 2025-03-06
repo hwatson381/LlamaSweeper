@@ -574,122 +574,172 @@
           style="float: left; margin-bottom: 10px"
         >
           <q-card-section>
-            <div>
-              <q-markup-table class="q-mb-md" dense flat bordered>
-                <thead>
-                  <tr>
-                    <th class="text-center">Left</th>
-                    <th class="text-center">Flag</th>
-                    <th class="text-center">Chord</th>
-                    <th class="text-center">Remain</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td class="text-right">
-                      {{ classicPathBreakdown.lefts }}
-                    </td>
-                    <td class="text-right">
-                      {{ classicPathBreakdown.rights }}
-                    </td>
-                    <td class="text-right">
-                      {{ classicPathBreakdown.chords }}
-                    </td>
-                    <td class="text-right">
-                      {{ classicPathBreakdown.remaining3bv }}
-                    </td>
-                  </tr>
-                </tbody>
-              </q-markup-table>
+            <q-markup-table class="q-mb-md" dense flat bordered>
+              <thead>
+                <tr>
+                  <th class="text-center">Left</th>
+                  <th class="text-center">Flag</th>
+                  <th class="text-center">Chord</th>
+                  <th class="text-center">Remain</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="text-right">
+                    {{ classicPathBreakdown.lefts }}
+                  </td>
+                  <td class="text-right">
+                    {{ classicPathBreakdown.rights }}
+                  </td>
+                  <td class="text-right">
+                    {{ classicPathBreakdown.chords }}
+                  </td>
+                  <td class="text-right">
+                    {{ classicPathBreakdown.remaining3bv }}
+                  </td>
+                </tr>
+              </tbody>
+            </q-markup-table>
 
-              <p class="text-center text-h6 q-mb-sm">
-                {{ analyse3bv }} 3bv / {{ analyseZiniTotal }} zini
-              </p>
-              <p class="text-center text-h5 q-mb-sm">{{ analyseEff }}% eff</p>
-            </div>
-            <q-separator />
-            <div>
-              <q-select
-                class="q-mx-md q-mb-md"
-                outlined
-                options-dense
-                dense
-                transition-duration="100"
-                input-debounce="0"
-                v-model="analyseDisplayMode"
-                style="width: 175px; flex-shrink: 0"
-                :options="[
-                  {
-                    label: 'Classic',
-                    value: 'classic',
-                  },
-                  { label: 'Chain', value: 'chain' },
-                ]"
-                emit-value
-                map-options
-                stack-label
-                label="Input Mode"
-              />
-              <!--DELETE ME<q-checkbox
+            <p class="text-center text-h6 q-mb-sm">
+              {{ analyse3bv }} 3bv / {{ analyseZiniTotal }} zini
+            </p>
+            <p class="text-center text-h5 q-mb-sm">{{ analyseEff }}% eff</p>
+          </q-card-section>
+          <q-separator />
+          <q-card-section>
+            <q-select
+              class="q-mx-md q-mb-md"
+              outlined
+              options-dense
+              dense
+              transition-duration="100"
+              input-debounce="0"
+              v-model="analyseDisplayMode"
+              style="width: 175px; flex-shrink: 0"
+              :options="[
+                {
+                  label: 'Classic',
+                  value: 'classic',
+                },
+                { label: 'Chain', value: 'chain' },
+              ]"
+              emit-value
+              map-options
+              stack-label
+              label="Input Mode"
+            />
+            <!--DELETE ME<q-checkbox
                 v-model="analyseShowPremiums"
                 label="Show premiums"
                 @update:model-value="
                   game?.board?.ziniExplore?.updateUiAndBoard()
                 "
               />-->
-              <q-select
-                class="q-mx-md q-mb-md"
-                outlined
-                options-dense
-                dense
-                transition-duration="100"
-                input-debounce="0"
-                v-model="analyseShowPremiums"
-                style="width: 175px; flex-shrink: 0"
-                :options="[
-                  {
-                    label: 'None',
-                    value: 'none',
-                  },
-                  { label: 'Numbers', value: 'numbers' },
-                  { label: 'Numbers >= 0', value: 'numbers positive' },
-                  { label: 'Highlight Best', value: 'highlight' },
-                ]"
-                emit-value
-                map-options
-                stack-label
-                label="Show Premiums"
-                @update:model-value="
-                  game?.board?.ziniExplore?.updateUiAndBoard()
-                "
-              />
-            </div>
-            <q-separator />
-            <div>Run algorithm</div>
-            <div>
-              <q-select
-                class="q-mx-md q-mb-md"
-                outlined
-                options-dense
-                dense
-                transition-duration="100"
-                input-debounce="0"
-                v-model="analyseAlgorithm"
-                style="width: 175px; flex-shrink: 0"
-                :options="[
-                  {
-                    label: '8 Way Zini',
-                    value: '8 way',
-                  },
-                  { label: 'WoM Zini', value: 'womzini' },
-                ]"
-                emit-value
-                map-options
-                stack-label
-                label="Choose Algorithm"
-              />
+            <q-select
+              class="q-mx-md q-mb-md"
+              outlined
+              options-dense
+              dense
+              transition-duration="100"
+              input-debounce="0"
+              v-model="analyseHiddenStyle"
+              style="width: 175px; flex-shrink: 0"
+              :options="[
+                {
+                  label: 'None',
+                  value: 'none',
+                },
+                { label: 'Mines', value: 'mines' },
+                { label: 'Transparent', value: 'transparent3' },
+                { label: 'Very Transparent', value: 'transparent' },
+                { label: 'Transparent + mines', value: 'transparent2' },
+                /*{ label: 'Closed numbers', value: 'closed numbers' },*/
+                { label: 'Dimmed', value: 'dimmed' },
+              ]"
+              emit-value
+              map-options
+              stack-label
+              label="Show Hidden"
+              @update:model-value="game?.board?.ziniExplore?.updateUiAndBoard()"
+            />
+            <q-select
+              class="q-mx-md q-mb-md"
+              outlined
+              options-dense
+              dense
+              transition-duration="100"
+              input-debounce="0"
+              v-model="analyseShowPremiums"
+              style="width: 175px; flex-shrink: 0"
+              :options="[
+                {
+                  label: 'None',
+                  value: 'none',
+                },
+                { label: 'Numbers', value: 'numbers' },
+                { label: 'Numbers >= 0', value: 'numbers positive' },
+                { label: 'Highlight Best', value: 'highlight' },
+              ]"
+              emit-value
+              map-options
+              stack-label
+              label="Show Premiums"
+              @update:model-value="game?.board?.ziniExplore?.updateUiAndBoard()"
+            />
+          </q-card-section>
+          <q-separator />
+          <q-card-section>
+            <p class="text-center text-h6 q-mb-sm">Algorithms</p>
+            <q-select
+              class="q-mx-md q-mb-md"
+              outlined
+              options-dense
+              dense
+              transition-duration="100"
+              input-debounce="0"
+              v-model="analyseAlgorithm"
+              style="width: 175px; flex-shrink: 0"
+              :options="[
+                {
+                  label: '8 Way ZiNi',
+                  value: '8 way',
+                },
+                { label: 'WoM ZiNi', value: 'womzini' },
+                { label: 'WoM ZiNi Improved', value: 'womzinifix' },
+                { label: 'WoM HZiNi', value: 'womhzini' },
+              ]"
+              emit-value
+              map-options
+              stack-label
+              label="Choose Algorithm"
+            />
+            <q-select
+              class="q-mx-md q-mb-md"
+              outlined
+              options-dense
+              dense
+              transition-duration="100"
+              input-debounce="0"
+              v-model="analyseAlgorithmScope"
+              style="width: 175px; flex-shrink: 0"
+              :options="
+                analyseAlgorithmScopeOptions /*[
+                {
+                  label: 'From beginning',
+                  value: 'beginning',
+                },
+                { label: 'From current', value: 'current' },
+              ]*/
+              "
+              emit-value
+              map-options
+              stack-label
+              label="Scope"
+            />
+            <div class="row justify-center">
               <q-btn
-                @click="console.log('running zini alg')"
+                @click="game.board.ziniExplore.runAlgorithm()"
                 color="positive"
                 label="run"
               />
@@ -1227,9 +1277,31 @@
                   v-model="reorderZini"
                   label="Reorder ZiNi Replay"
                 /><br />
-                <q-checkbox
-                  v-model="replayShowTransparentNumbers"
-                  label="Show semi-transparent numbers"
+                <q-select
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="replayShowHidden"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    {
+                      label: 'None',
+                      value: 'none',
+                    },
+                    { label: 'Mines', value: 'mines' },
+                    { label: 'Transparent', value: 'transparent3' },
+                    { label: 'Very Transparent', value: 'transparent' },
+                    { label: 'Transparent + mines', value: 'transparent2' },
+                    /*{ label: 'Closed numbers', value: 'closed numbers' },*/
+                    { label: 'Dimmed', value: 'dimmed' },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Show hidden tiles"
                   @update:model-value="game?.board?.replay?.refreshAndDraw()"
                 />
               </q-card-section>
@@ -1390,7 +1462,7 @@
           and then click load. This works because the bit at the end of the URL
           on the PTTACGfans calculator encodes board data.
         </p>
-        <q-input dense v-model="pttaUrl" label="Ptt Url" /><br />
+        <q-input dense v-model="pttaUrl" label="Ptt Url" v-focus /><br />
         <q-btn @click="game.board.importPttaBoard()" color="primary"
           >Load</q-btn
         >
@@ -1970,10 +2042,11 @@ let replaySpeedMultiplier = ref(1);
 let replayIsPanning = ref(false);
 let replayIsInputting = ref(false);
 let reorderZini = ref(false);
-let replayShowTransparentNumbers = ref(true);
+let replayShowHidden = ref("transparent3");
 
 let analyseDisplayMode = ref("classic");
 let analyseAlgorithm = ref("8 way");
+let analyseAlgorithmScope = ref("current");
 let classicPathBreakdown = ref({
   lefts: 0,
   rights: 0,
@@ -1984,6 +2057,41 @@ let analyseZiniTotal = ref(0);
 let analyse3bv = ref(0);
 let analyseEff = ref(0);
 let analyseShowPremiums = ref("none");
+let analyseHiddenStyle = ref("transparent3");
+let analyseAlgorithmScopeOptions = computed(() => {
+  const eightWayOpts = [
+    {
+      label: "From beginning",
+      value: "beginning",
+    },
+    { label: "From current", value: "current" },
+  ];
+  const basicOpts = [
+    {
+      label: "From beginning",
+      value: "beginning",
+    },
+  ];
+  if (analyseAlgorithm.value === "8 way") {
+    return eightWayOpts;
+  } else {
+    return basicOpts;
+  }
+});
+watchEffect(() => {
+  if (analyseAlgorithm.value === "8 way") {
+    //Do nothing
+  } else {
+    //Change scope to beginning if it's a disallowed value
+    if (analyseAlgorithmScope.value !== "beginning") {
+      analyseAlgorithmScope.value = "beginning";
+    }
+  }
+});
+
+const vFocus = {
+  mounted: (el) => el.focus(),
+};
 
 let showZiniCompareWarning = ref(true);
 let devMode = localStorage.getItem("devMode") === "1" ? true : false;
@@ -2416,6 +2524,8 @@ class Board {
     this.ziniExplore = new ZiniExplore(this, {
       analyseDisplayMode,
       analyseAlgorithm,
+      analyseAlgorithmScope,
+      analyseHiddenStyle,
       classicPathBreakdown,
       analyseZiniTotal,
       analyse3bv,
@@ -2554,15 +2664,62 @@ class Board {
       );
   }
 
-  populateTransparentNumbers() {
-    //Transparent numbers that can show during replays (amongst other use cases)
+  populateHiddenNumbers(type) {
+    if (type === "none") {
+      return;
+    }
+
+    //Transparent/dimmed numbers that can show during replays (amongst other use cases)
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
         if (this.mines[x][y]) {
-          this.tilesArray[x][y].unrevealedState = "cl_mine";
+          switch (type) {
+            case "mines":
+              this.tilesArray[x][y].unrevealedState = "cl_mine";
+              break;
+            case "transparent":
+              this.tilesArray[x][y].unrevealedState = "tr_mine";
+              break;
+            case "transparent2":
+              this.tilesArray[x][y].unrevealedState = "cl_mine";
+              break;
+            case "transparent3":
+              this.tilesArray[x][y].unrevealedState = "tr2_mine";
+              break;
+            /*
+            case "closed numbers":
+              this.tilesArray[x][y].unrevealedState = "cl_mine";
+              break;
+            */
+            case "dimmed":
+              this.tilesArray[x][y].unrevealedState = "dm_mine";
+              break;
+          }
         } else {
           const squareNumber = this.getNumberSurroundingMines(x, y, false);
-          this.tilesArray[x][y].unrevealedState = "cl_" + squareNumber;
+          switch (type) {
+            case "mines":
+              //mines only, so don't draw numbeds
+              this.tilesArray[x][y].unrevealedState = CONSTANTS.UNREVEALED;
+              break;
+            case "transparent":
+              this.tilesArray[x][y].unrevealedState = "tr_" + squareNumber;
+              break;
+            case "transparent2":
+              this.tilesArray[x][y].unrevealedState = "tr_" + squareNumber;
+              break;
+            case "transparent3":
+              this.tilesArray[x][y].unrevealedState = "tr2_" + squareNumber;
+              break;
+            /*
+            case "closed numbers":
+              this.tilesArray[x][y].unrevealedState = "cl_" + squareNumber;
+              break;
+            */
+            case "dimmed":
+              this.tilesArray[x][y].unrevealedState = "dm_" + squareNumber;
+              break;
+          }
         }
       }
     }
@@ -3464,9 +3621,9 @@ class Board {
       !isDown &&
       isTouchInput
     ) {
-      this.updateDepressedSquares(
-        flooredCoords,
-        flooredCoords,
+      isDrawRequired = this.updateDepressedSquares(
+        flooredCoords.tileX,
+        flooredCoords.tileY,
         false,
         touchIdentifier
       );
@@ -5857,7 +6014,10 @@ class Board {
           this.stats.clicks
         );
         if (compareReplay.ziniDeltas.size === 0) {
-          window.alert("No click losses/gains found");
+          $q.dialog({
+            title: "Alert",
+            message: "No click losses/gains found",
+          });
           return;
         }
         showZiniCompareWarning.value &&
@@ -5906,7 +6066,7 @@ class Board {
       replayBarLastValue,
       replayProgress,
       replayProgressRounded,
-      replayShowTransparentNumbers,
+      replayShowHidden,
     };
 
     this.replay = new Replay(replayParams, refs);

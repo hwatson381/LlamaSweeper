@@ -79,8 +79,8 @@ class Replay {
       //Full reset of tiles
       this.board.resetTiles();
 
-      if (this.refs.replayShowTransparentNumbers.value) {
-        this.board.populateTransparentNumbers();
+      if (this.refs.replayShowHidden.value !== 'none') {
+        this.board.populateHiddenNumbers(this.refs.replayShowHidden.value);
       }
 
       this.board.unflagged = this.board.mineCount;

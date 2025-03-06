@@ -461,6 +461,28 @@ let variantList = [
     ],
     "rating": 4.1,
     "popularity": 1
+  },
+  {
+    "name": "GM Puzzles",
+    "url": "https://www.gmpuzzles.com/blog/category/objectplacement/minesweeper/",
+    "desc": "A collection of handcrafted logic puzzles. These puzzles each have custom rules. For example, some puzzles will be based around sudoku, some will allow multiple mines in a cell, some will use hexagonal grids, and so on. Logic players will love this.",
+    "image": "/img/variants/gm_puzzles.png",
+    "tags": [
+      "game"
+    ],
+    "rating": 4.2,
+    "popularity": 2
+  },
+  {
+    "name": "Puzzle Minesweeper",
+    "url": "https://www.puzzle-minesweeper.com/",
+    "desc": "A no guess minesweeper website where a set of numbers scattered around the board is revealed at the start and you have to mark the remaining tiles as being mines or safe. Note that marking a tile as safe does not reveal a number.",
+    "image": "/img/variants/puzzle_ms.png",
+    "tags": [
+      "game"
+    ],
+    "rating": 3.7,
+    "popularity": 2
   }
 ]
 

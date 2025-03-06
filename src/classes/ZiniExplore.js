@@ -18,8 +18,6 @@ class ZiniExplore {
   }
 
   handleZiniExploreClick(tileX, tileY, isDigInput, isFlagInput) {
-    console.log('received zini explore clicks')
-
     if (this.refs.analyseDisplayMode.value === 'classic') {
       this.handleClassicClick(tileX, tileY, isDigInput, isFlagInput);
     } else if (this.refs.analyseDisplayMode.value === 'chain') {
@@ -886,24 +884,7 @@ class ZiniExplore {
     );
 
     //Figure out which flags/revealed squares are based on board states
-    const flagStates = new Array(width)
-      .fill(0)
-      .map(() => new Array(height).fill(false));
-    const revealedStates = new Array(width)
-      .fill(0)
-      .map(() => new Array(height).fill(false));
-
-    for (let x = 0; x < width; x++) {
-      for (let y = 0; y < height; y++) {
-        if (this.board.tilesArray[x][y].state === CONSTANTS.FLAG) {
-          flagStates[x][y] = true;
-          continue
-        }
-        if (typeof this.board.tilesArray[x][y].state === 'number') {
-          revealedStates[x][y] = true
-        }
-      }
-    }
+    const { revealedStates, flagStates } = this.getRevealedAndFlagStates();
 
     //store premiums of opening + chording each cell
     const premiums = new Array(width)
@@ -926,8 +907,6 @@ class ZiniExplore {
         );
       }
     }
-
-    console.log(premiums)
 
     let highestPremium = premiums
       .flat()
@@ -1003,7 +982,7 @@ class ZiniExplore {
 
   updateUiAndBoard() {
     this.removeInvalidChordsAndRegenerateTileStates();
-    this.board.populateTransparentNumbers();
+    this.board.populateHiddenNumbers(this.refs.analyseHiddenStyle.value);
     this.updateFlagCounter();
     this.updateZiniSumRefs();
     this.updateTileAnnotations();
@@ -1024,6 +1003,75 @@ class ZiniExplore {
         }
       }
     }
+  }
+
+  runAlgorithm() {
+    switch (this.refs.analyseAlgorithm.value) {
+      case '8 way':
+        this.run8way();
+        break;
+      case 'womzini':
+        this.classicPath = Algorithms.calcWomZiniAndHZini(
+          this.board.mines,
+          false
+        ).womZini.clicks;
+        break;
+      case 'womzinifix':
+        this.classicPath = Algorithms.calcWomZiniAndHZini(
+          this.board.mines,
+          true
+        ).womZini.clicks;
+        break;
+      case 'womhzini':
+        this.classicPath = Algorithms.calcWomZiniAndHZini(
+          this.board.mines,
+          false
+        ).womHzini.clicks;
+        break;
+      default:
+        alert('disallowed algorithm')
+        throw new Error('disallowed algorithm');
+    }
+
+    this.updateUiAndBoard();
+  }
+
+  run8way() {
+    if (this.refs.analyseAlgorithmScope.value === 'beginning') {
+      this.classicPath = Algorithms.calcEightWayZini(this.board.mines).clicks
+    } else {
+      const { revealedStates, flagStates } = this.getRevealedAndFlagStates();
+      const pathExtension = Algorithms.calcEightWayZini(this.board.mines, false, revealedStates, flagStates).clicks;
+      this.classicPath = this.classicPath.concat(pathExtension);
+    }
+  }
+
+  getRevealedAndFlagStates() {
+    //Assume that tilesArray states are correct
+    const width = this.board.mines.length;
+    const height = this.board.mines[0].length;
+
+    //Figure out which flags/revealed squares are based on board states
+    const flagStates = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(false));
+    const revealedStates = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(false));
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (this.board.tilesArray[x][y].state === CONSTANTS.FLAG) {
+          flagStates[x][y] = true;
+          continue
+        }
+        if (typeof this.board.tilesArray[x][y].state === 'number') {
+          revealedStates[x][y] = true
+        }
+      }
+    }
+
+    return { revealedStates, flagStates }
   }
 }
 
