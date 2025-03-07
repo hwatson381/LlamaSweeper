@@ -232,8 +232,6 @@ Trnasparent tiles cause lag - is it just because of transparency, or could it be
 Consider having small numbers in bottom right instead of doing transparency stuff?
 Show "zero" as a number for transparent
 
-Have Discord preview (opengraph)
-
 Continue to implement handleZiniExploreClick
 
 Allow exporting to ptta from board editor/zini explorer
