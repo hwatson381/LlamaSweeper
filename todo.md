@@ -150,15 +150,6 @@ Relies on greedy rule failing.
 Would there be any reason to deprioritise clicks saves that come from chain merge rather than normal?
 Possibly, but seems complicated and both categories of click save have possiblity of being "invalidated" later
 
-What else is needed for release? Just replay + click loss?
-Can I clean up menus?
-Should I include more zinis?
-Do I try find some bugs to fix?
-More zini explorer features?
-
-click-loss implementation?
-Should I have another array for analysis info (similar to clicks/moves)
-
 Replay system can abuse scroll into view to follow clicks?
 
 Allow having a different level of zoom for watching replays?
@@ -198,8 +189,6 @@ Would the replay be more accurate if it used the timeStamp property from events 
 
 Gadget idea - hotkey to show coords by mouse when hovering square?
 Better idea - show coords in all cells (in small font)
-
-zini replay could show where the mines are?
 
 coords on each cell that invert colours (so always readable?). Do excel style coords (alphabetical?)
 ctx.globalCompositeOperation = "difference", and then use white font?
@@ -247,9 +236,6 @@ Have Discord preview (opengraph)
 
 Continue to implement handleZiniExploreClick
 
-Can I do annotations for classic zini explorer mode?
-Dots for clicks? Or maybe outlines, like blue for chord, dark grey for click?
-
 Allow exporting to ptta from board editor/zini explorer
 
 When changing edit board on analyse mode, we could try preserve openings when opening-click is overwritten
@@ -265,9 +251,6 @@ For "edit" mode (on board editor and zini explorer), maybe we should allow face-
 
 Have button to return to previous mode (after clicking send-to button)
 
-Note - removing a chord on chain mode that splits up chains should look at each new chain
-and if a chain doesn't have a seed, it should use the seed point closest to the chord that was removed
-
 https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=2&m=0000000000u00ag04402500l805201100ag03o00000000000000
 Interesting pattern. Chain merge alone won't save us here.
 It needs some lookahead, as the chord before chain merge doesn't get done because it doesn't
@@ -275,8 +258,6 @@ understand that there is 2-step click gain
 
 https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=2&m=0000000000u00ag04402100k8052018g08802k00u00000000000
 Better pattern. Ptta fails this, whereas pure chain merge will spot it
-
-Does send to zini explorer work for mean openings?
 
 Make it possible to watch replay from zini explorer?
 

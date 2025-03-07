@@ -2849,9 +2849,20 @@ class Board {
     this.ziniExplore.clearCurrentPath();
     variant.value = "zini explorer";
 
-    const pathWithoutWasted = this.stats.clicks.filter(
+    let pathWithoutWasted = this.stats.clicks.filter(
       (click) => !click.type.includes("wasted")
     );
+
+    if (this.variant === "mean openings") {
+      //Remove flags which were place on mean mines
+      pathWithoutWasted = pathWithoutWasted.filter((c) => {
+        if (c.type === "right" && this.meanMineStates[c.x][c.y].isMine) {
+          return false;
+        } else {
+          return true;
+        }
+      });
+    }
 
     //If it was a loss, also remove the final dig/chord
     if (this.stats.isWin === false) {

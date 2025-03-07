@@ -1,7 +1,7 @@
 {
   "name": "llamasweeper",
   "version": "0.0.1",
-  "description": "my minesweeper website",
+  "description": "A collection of minesweeper variants and tools made by Llama",
   "productName": "llamasweeper",
   "author": "llama",
   "private": true,

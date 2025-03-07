@@ -18,11 +18,7 @@
       <ul>
         <li>Locally storing game history</li>
         <li>Improved zini algorithm (comparable to ptt zini?)</li>
-        <li>
-          More features in zini explorer (e.g. allowing zini to be ran from a
-          starting point and solutions to be edited, maybe some analytics stuff
-          such as annotating premiums on the board)
-        </li>
+        <li>More features in zini explorer</li>
         <li>Improved mobile support</li>
         <li>Various bug fixes (better performance on large boards)</li>
         <li>
