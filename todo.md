@@ -264,3 +264,17 @@ Should dimmed exclude tile border? Probably
 
 Do we show closed mines or open mines with the "Mines" upk option
 (doesn't matter)
+
+Change opengraph image to the recommended size of 1200x630px
+Consider improving preview image as well (can I do better than just logo?)
+
+quickpaint in board editor doesn't clear on reset
+(or am I just dumb?)
+
+removing flags on zini explorer chain mode shouldn't break the whole chain
+
+button to toggle between edit/analyse in zini explorer is too far down page
+
+run button on zini explorer should show loading icon on eff% indicator
+
+My variants page should have descriptions moved elsewhere (maybe hidden under help button?)

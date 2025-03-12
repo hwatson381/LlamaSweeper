@@ -1,23 +1,15 @@
-//Data structure to make it easier to find best premiums. Uses binary search
-//Read here for context https://stackoverflow.com/questions/1344500/efficient-way-to-insert-a-number-into-a-sorted-array-of-numbers
-//Rough idea is to convert x,y coord into the order they would be iterated over, and store this in ordered arrays keyed to the premium
-class OrganisedPremiums {
+//Class similar to Organised Premiums.
+//This allows priorities to be set for every square. Which is used to decide tiebreaks with premiums.
+
+class PriorityPremiums {
   constructor(
-    xReverse,
-    yReverse,
-    xySwap,
-    width,
-    height,
+    priorityGrid,
     excludeNegativePremiums
   ) {
     this.premiumsMap = new Map();
     //Map of numbers to arrays, where the key is the premium and the value is an array containing all squares of that premium
 
-    this.xReverse = xReverse;
-    this.yReverse = yReverse;
-    this.xySwap = xySwap;
-    this.width = width;
-    this.height = height;
+    this.priorityGrid = priorityGrid;
     this.excludeNegativePremiums = excludeNegativePremiums;
   }
 
@@ -26,18 +18,18 @@ class OrganisedPremiums {
       return;
     }
 
-    let order = this.xyToOrder(x, y);
+    let priority = this.xyToPriority(x, y);
 
     let premiumArray = this.premiumsMap.get(newPremium);
 
     if (!Array.isArray(premiumArray)) {
       //We do not already have anything with this premium
-      this.premiumsMap.set(newPremium, [order]);
+      this.premiumsMap.set(newPremium, [{ x, y, priority }]);
     } else {
       //Find index to insert this
-      let idx = this.sortedIndex(premiumArray, order);
+      let idx = this.sortedIndex(premiumArray, priority);
 
-      premiumArray.splice(idx, 0, order);
+      premiumArray.splice(idx, 0, { x, y, priority });
     }
   }
 
@@ -48,22 +40,22 @@ class OrganisedPremiums {
       return;
     }
 
-    let order = this.xyToOrder(x, y);
+    let priority = this.xyToPriority(x, y);
 
     let premiumArray = this.premiumsMap.get(newPremium);
 
     if (!Array.isArray(premiumArray)) {
       //We do not already have anything with this premium
-      this.premiumsMap.set(newPremium, [order]);
+      this.premiumsMap.set(newPremium, [{ x, y, priority }]);
     } else {
       //Append to array as we will be sorting later
-      premiumArray.push(order);
+      premiumArray.push({ x, y, priority });
     }
   }
 
   sortAfterLazyAdd() {
     for (let premiumArray of this.premiumsMap.values()) {
-      premiumArray.sort((a, b) => a - b);
+      premiumArray.sort((a, b) => a.priority - b.priority);
     }
   }
 
@@ -72,13 +64,13 @@ class OrganisedPremiums {
       return;
     }
 
-    let order = this.xyToOrder(x, y);
+    let priority = this.xyToPriority(x, y);
     let premiumArray = this.premiumsMap.get(oldPremium);
 
-    let idx = this.sortedIndex(premiumArray, order);
+    let idx = this.sortedIndex(premiumArray, priority);
 
-    if (premiumArray[idx] !== order) {
-      throw new Error("Order not found in premiums array?");
+    if (premiumArray[idx].priority !== priority) {
+      throw new Error("Priority not found in premiums array?");
     }
 
     premiumArray.splice(idx, 1);
@@ -108,8 +100,8 @@ class OrganisedPremiums {
 
     const highestPremium = Math.max.apply(null, [...this.premiumsMap.keys()]);
 
-    let order = this.premiumsMap.get(highestPremium)[0];
-    let { x, y } = this.orderToXy(order);
+    let premiumObj = this.premiumsMap.get(highestPremium)[0];
+    let { x, y } = premiumObj; //destructure out coords from the premium obj (format {x, y, priority})
 
     return {
       x,
@@ -118,17 +110,11 @@ class OrganisedPremiums {
     };
   }
 
-  xyToOrder(x, y) {
-    let possiblyFlippedX = this.xReverse ? this.width - 1 - x : x;
-    let possiblyFlippedY = this.yReverse ? this.height - 1 - y : y;
-
-    if (this.xySwap) {
-      return possiblyFlippedY + this.height * possiblyFlippedX;
-    } else {
-      return possiblyFlippedX + this.width * possiblyFlippedY;
-    }
+  xyToPriority(x, y) {
+    return this.priorityGrid[x][y];
   }
 
+  /* DELETE ME
   orderToXy(order) {
     let possiblyFlippedX;
     let possiblyFlippedY;
@@ -150,6 +136,7 @@ class OrganisedPremiums {
 
     return { x, y };
   }
+  */
 
   sortedIndex(array, value) {
     var low = 0,
@@ -157,11 +144,11 @@ class OrganisedPremiums {
 
     while (low < high) {
       var mid = (low + high) >>> 1;
-      if (array[mid] < value) low = mid + 1;
+      if (array[mid].priority < value) low = mid + 1;
       else high = mid;
     }
     return low;
   }
 }
 
-export default OrganisedPremiums;
+export default PriorityPremiums

@@ -1,4 +1,5 @@
 import Algorithms from "./Algorithms";
+import ChainZini from "./ChainZini";
 
 class BoardStats {
   constructor(minesArray, refs) {
@@ -136,6 +137,13 @@ class BoardStats {
     this.eightZini = eightZiniResult.total;
     this.eightZiniPath = eightZiniResult.clicks;
 
+    let chainZiniResult = ChainZini.calcChainZini({
+      mines: this.mines,
+      includeClickPath: true
+    })
+    this.chainZini = chainZiniResult.total;
+    this.chainZiniPath = chainZiniResult.clicks;
+
     //Also do wom zini
     if (includeWomZini) {
       //wom zini without correction
@@ -236,6 +244,7 @@ class BoardStats {
 
     this.calcZinis(bbbv < 500);
     const eightZini = this.eightZini;
+    const chainZini = this.chainZini;
     const womZini = this.womZini;
     const womHzini = this.womHzini;
     const cWomZini = this.cWomZini;
@@ -280,6 +289,7 @@ class BoardStats {
       this.refs.statsObject.value.maxEff = maxEff.toFixed(0);
       this.refs.statsObject.value.clicks = clicksObject;
       this.refs.statsObject.value.eightZini = eightZini;
+      this.refs.statsObject.value.chainZini = chainZini;
       this.refs.statsObject.value.womZini = womZini;
       this.refs.statsObject.value.womHzini = womHzini;
       this.refs.statsObject.value.cWomZini = cWomZini;
@@ -296,6 +306,7 @@ class BoardStats {
       this.refs.statsObject.value.maxEff = maxEff.toFixed(0);
       this.refs.statsObject.value.clicks = clicksObject;
       this.refs.statsObject.value.eightZini = eightZini;
+      this.refs.statsObject.value.chainZini = chainZini;
       this.refs.statsObject.value.womZini = womZini;
       this.refs.statsObject.value.womHzini = womHzini;
       this.refs.statsObject.value.cWomZini = cWomZini;

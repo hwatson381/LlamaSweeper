@@ -84,7 +84,7 @@ class CompareReplay {
     */
 
     const BETWEEN_MOVE_TIME = 0.15;
-    const MAIN_MOVE_TIME = 0.9;
+    const MAIN_MOVE_TIME = 0.7;
 
     let timeOfMove = 0;
 

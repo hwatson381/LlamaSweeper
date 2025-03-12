@@ -69,7 +69,7 @@ class Algorithms {
       }
     }
 
-    //Work out how many squares need to be revealed for it to be solved (will typically be width * height - mines, but we may add the option to calc zini from current board state in future)
+    //Work out how many squares need to be revealed for it to be solved (will typically be width * height - mines, but could be different if calculating zini from current board state)
     let revealedSquaresToSolve = 0;
     for (let x = 0; x < width; x++) {
       for (let y = 0; y < height; y++) {
@@ -107,9 +107,8 @@ class Algorithms {
         this.fast2dArrayCopy(revealedStates);
       const thisEnumerationPremiums = this.fast2dArrayCopy(premiums);
       let squaresSolvedThisRun = 0;
-      let thisEnumerationOrganisedPremiums = false;
 
-      thisEnumerationOrganisedPremiums = new OrganisedPremiums(
+      const thisEnumerationOrganisedPremiums = new OrganisedPremiums(
         enumeration[0],
         enumeration[1],
         enumeration[2],
@@ -284,7 +283,8 @@ class Algorithms {
             revealedStates[zero.x][zero.y] = true;
             squaresRevealedDuringStep++;
           }
-          squaresThatNeedPremiumUpdated.push({ x: zero.x, y: zero.y });
+          //below commented out as zero tiles always have a premium of -1
+          //squaresThatNeedPremiumUpdated.push({ x: zero.x, y: zero.y });
         }
         for (let edge of opening.edges) {
           if (!revealedStates[edge.x][edge.y]) {
@@ -343,7 +343,8 @@ class Algorithms {
             revealedStates[zero.x][zero.y] = true;
             squaresRevealedDuringStep++;
           }
-          squaresThatNeedPremiumUpdated.push({ x: zero.x, y: zero.y });
+          //below commented out as zero tiles always have a premium of -1
+          //squaresThatNeedPremiumUpdated.push({ x: zero.x, y: zero.y });
         }
         for (let edge of opening.edges) {
           if (!revealedStates[edge.x][edge.y]) {
@@ -576,6 +577,12 @@ class Algorithms {
     const thisSquare = squareInfo[x][y];
     if (thisSquare.isMine) {
       //Exit early if this square is a mine as it makes no sense to do premiums for this
+      return;
+    }
+    if (thisSquare.number === 0) {
+      //Never makes sense to chord zeros, this will always waste a click
+      //Note - we don't update this in organisedPremiums since the premium will always be -1
+      premiums[x][y] = -1;
       return;
     }
 

@@ -428,6 +428,7 @@
               </q-icon>
             </div>
             <div>ZiNi (8-way): {{ statsObject.eightZini }}</div>
+            <div>ZiNi (chain): {{ statsObject.chainZini }}</div>
             <div>
               ZiNi (WoM):
               <template v-if="statsObject.womZini !== null">
@@ -545,6 +546,16 @@
                 >
                   <q-item-section>
                     <q-item-label>WoM HZiNi</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-item
+                  clickable
+                  v-close-popup
+                  @click="game.board.initReplay('chainzini')"
+                >
+                  <q-item-section>
+                    <q-item-label>1-way Chain Zini</q-item-label>
                   </q-item-section>
                 </q-item>
 
@@ -1656,6 +1667,7 @@ import SkinManager from "src/classes/SkinManager";
 import Tile from "src/classes/Tile";
 import Utils from "src/classes/Utils";
 import ZiniExplore from "src/classes/ZiniExplore";
+import ChainZini from "src/classes/ChainZini";
 
 import ReplayBar from "src/components/ReplayBar.vue";
 
@@ -1761,6 +1773,7 @@ let statsObject = ref({
     rightWasted: null,
   },
   eightZini: null,
+  chainZini: null,
   womZini: null,
   womHzini: null,
   pttaLink: null,
@@ -6018,6 +6031,14 @@ class Board {
           forceSteppy: true,
         };
         isReorderableZini = false;
+        break;
+      case "chainzini":
+        replayParams = {
+          clicks: this.stats.chainZiniPath,
+          board: this,
+          forceSteppy: true,
+        };
+        isReorderableZini = true;
         break;
       case "compare":
         let compareReplay = CompareReplay.generate(
