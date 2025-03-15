@@ -57,3 +57,46 @@ Need way to convert solution to clicks array
 
 Huge problem -
 Very slow with openings, also unsure if we recompute premiums for the right squares after chain merge
+
+Need to come up with faster way to do things
+How about - for each square, have "expansionChainsIds" which are based on what squares a chain touches
+and if a square gains/loses this, then its premium will update. Really need an object for each square -
+{
+floatingChainIdNeighbours: new Set(), //2, 3, 7 etc
+fixedChainIdNeighbours: new Set(), //1, 5
+smotheredChainIdNeighbours: new Set(), //8, 7 etc
+}
+
+Arrays can be faster than sets for small data sizes
+
+Currently -
+chording any op edge (even if it is already revealed) always causes whole op edge premiums to be recomputed
+and this uses extremely inefficient n^2 alg
+
+Maybe we need a map neighbours data structure as well
+Since we can use the 2d array with the sets to figure out stuff
+But then when merging chains, we don't know where neighbours are, so need to use that
+
+When merging chains, try keep the largest chain as the base?
+
+Is computing chainNeighbours (property of chainSquareInfo) slow?
+Probably...
+
+chainNeighbourhoodGrid (name for new property)
+
+Once you have a fixed neighbour, you always have a fixed neighbour...
+
+Does using array.filter unnecessarily slow us down? Replace with for loop where relevant?
+In particular in updatingPremiums function
+
+Beware of what chainNeighbourhoodGrid values are for squares that have been chorded
+
+How often do chain merges happen?
+
+Can we make some of the chainNeighbour stuff into a function
+
+For fixed seed chain merging, we have the problem of deciding which chain is the base
+One way to do this could be to track entire size of each chain
+But a simpler way would be to tiebreak on path length (number of chords)
+
+Benchmark everything

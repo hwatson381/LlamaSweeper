@@ -1,5 +1,9 @@
 import Algorithms from "./Algorithms";
 import PriorityPremiums from "./PriorityPremiums";
+import Utils from "./Utils";
+import Benchmark from "./Benchmark";
+
+//const benchmark = new Benchmark();
 
 class ChainZini {
   constructor() {
@@ -13,10 +17,12 @@ class ChainZini {
     initialFlagStates = false,
     initialChainIds = false,
     initialChainMap = false,
+    initialChainNeighbourhoodGrid = false,
     priorityGrids = false,
     returnAllZinis = false,
     includeClickPath = false
   }) {
+    //benchmark.startTime('setup');
     if (!preprocessedData) {
       preprocessedData =
         Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
@@ -71,6 +77,22 @@ class ChainZini {
       nextChainId = 0;
     }
 
+    //tracks for each square which chains neighbour it
+    let chainNeighbourhoodGrid;
+    if (initialChainNeighbourhoodGrid) {
+      chainNeighbourhoodGrid = initialChainNeighbourhoodGrid;
+    } else {
+      chainNeighbourhoodGrid = new Array(width)
+        .fill(0)
+        .map(() => new Array(height).fill(0).map(() => {
+          return {
+            //Note - arrays used instead of sets as they are more performant when small (even if duplicates)
+            floating: [], //floating can floating seeded chains and also be smotherable unchordedDig neighbours
+            fixed: [] //fixed can be fixed seeded chains or the current square if it is a fixed unchordedDig
+          }
+        }));
+    }
+
     //array of saved info for square about what the neighbours are etc
     const chainSquareInfo = this.computeChainSquareInfo(mines, numbersArray, openingLabels, preprocessedOpenings);
 
@@ -93,7 +115,8 @@ class ChainZini {
           chainPremiums,
           preprocessedOpenings,
           chainIds,
-          chainMap
+          chainMap,
+          chainNeighbourhoodGrid
         );
       }
     }
@@ -117,11 +140,15 @@ class ChainZini {
     let currentSolution = null; //Set to the best zini solution we've found so far. This will be an object with data of the solution.
     let allZinis = [];
 
+    //benchmark.stopTime('setup');
+
     for (let i = 0; i < priorityGrids.length; i++) {
+      //benchmark.startTime('copying');
       let priorityGrid = priorityGrids[i];
       //Take copies of variables that track board state as they need to be re-initialised for each priority grid
       const thisEnumerationChainIds = Algorithms.fast2dArrayCopy(chainIds);
       const thisEnumerationChainMap = this.cloneChainMap(chainMap);
+      const thisEnumerationChainNeighbourhoodGrid = this.cloneChainNeighbourhoodGrid(chainNeighbourhoodGrid);
       const thisEnumerationFlagStates = Algorithms.fast2dArrayCopy(flagStates);
       const thisEnumerationRevealedStates =
         Algorithms.fast2dArrayCopy(revealedStates);
@@ -146,6 +173,10 @@ class ChainZini {
       }
       thisEnumerationPriorityPremiums.sortAfterLazyAdd();
 
+      //benchmark.stopTime('copying');
+
+      //benchmark.startTime('core-loop');
+
       let needToDoNFClicks = false;
       while (squaresSolvedThisRun !== revealedSquaresToSolve) {
         let chainZiniStepResult = this.doChainZiniStep(
@@ -156,6 +187,7 @@ class ChainZini {
           preprocessedOpenings,
           thisEnumerationChainIds,
           thisEnumerationChainMap,
+          thisEnumerationChainNeighbourhoodGrid,
           thisEnumerationPriorityPremiums,
           nextChainRef
         );
@@ -167,6 +199,9 @@ class ChainZini {
           break;
         }
       }
+      //benchmark.stopTime('core-loop');
+      //benchmark.report();
+      //benchmark.clearAll();
 
       if (needToDoNFClicks) {
         this.nfClickEverythingForChainZini(
@@ -336,6 +371,7 @@ class ChainZini {
     preprocessedOpenings,
     chainIds,
     chainMap,
+    chainNeighbourhoodGrid,
     priorityPremiums = false
   ) {
     //Based on Algorithms.updatePremiumForCoord
@@ -418,7 +454,14 @@ class ChainZini {
     }
 
     //Look at chain merge possiblities
+    const chainNeighbourhood = chainNeighbourhoodGrid[x][y];
+    const adjustmentForChainsMerged = Math.max(
+      0,
+      chainNeighbourhood.floating.length +
+      Math.min(1, chainNeighbourhood.fixed.length) - 1
+    );
 
+    /*
     //Check chain neighbours to see if any of them are merge-able
     let neighbourChainIds = new Set();
     for (let chainNeighbour of thisSquare.chainNeighbours) {
@@ -457,15 +500,22 @@ class ChainZini {
       }
     }
 
-    let adjustmentForChainsMerged = 0;
+    let adjustmentForChainsMerged2 = 0;
     let mergeable = totalFloatingSeededNeighbourChains + Math.min(totalFixedSeededNeighbourChains, 1);
     if (mergeable >= 2) {
-      adjustmentForChainsMerged += mergeable - 1;
+      adjustmentForChainsMerged2 += mergeable - 1;
     }
     if (checkForSelfSmothering && totalFloatingSeededNeighbourChains > 1 && totalFixedSeededNeighbourChains === 0) {
-      adjustmentForChainsMerged += 1
+      adjustmentForChainsMerged2 += 1
     }
-    adjustmentForChainsMerged += totalSmotherableDigs;
+    adjustmentForChainsMerged2 += totalSmotherableDigs;
+    */
+
+    /*
+    if (adjustmentForChainsMerged !== adjustmentForChainsMerged2) {
+      throw new Error('Adjustment mismatch');
+    }
+    */
 
     const clicksSaved =
       bbbvOpenedWithChord - unflaggedAdjacentMines - 1 - penaltyForFirstClick + adjustmentForChainsMerged;
@@ -485,6 +535,7 @@ class ChainZini {
     preprocessedOpenings,
     chainIds,
     chainMap,
+    chainNeighbourhoodGrid,
     priorityPremiums,
     nextChainRef
   ) {
@@ -511,6 +562,255 @@ class ChainZini {
     ///////////////////////////
     const thisSquare = chainSquareInfo[chordClick.x][chordClick.y];
 
+    const thisSquareChainNeighbours = chainNeighbourhoodGrid[chordClick.x][chordClick.y];
+    const thisSquareFloatingNeighbourIds = thisSquareChainNeighbours.floating;
+    const thisSquareFixedNeighbourIds = thisSquareChainNeighbours.fixed;
+
+    let baseChainId = null;
+    if (thisSquareFixedNeighbourIds.length !== 0) {
+      //If fixed neighbour (could be self, use that as starting point)
+      baseChainId = thisSquareFixedNeighbourIds[0];
+    } else if (thisSquareFloatingNeighbourIds.length !== 0) {
+      //Use a floating chain as base
+      //Consider instead finding the biggest chain to use as base?
+      baseChainId = thisSquareFloatingNeighbourIds[0];
+    } else {
+      //Do nothing, we will need to make a new chain later
+    }
+
+    if (baseChainId !== null) {
+      //combine chains
+      let baseChain = chainMap.get(baseChainId);
+
+      //look at floating neighbouring chains
+      for (let floatingChainId of thisSquareFloatingNeighbourIds) {
+        if (baseChainId === floatingChainId) {
+          //Base chain is untouched (note - if statement gets hit more than needed, but still fast in practise)
+          continue;
+        }
+
+        let floatingChain = chainMap.get(floatingChainId);
+        if (floatingChain.isUnchordedDig) {
+          //Floating left click that gets smothered
+          //remove this "single-left-click" chain and push neighbours
+          const smotheredCoord = floatingChain.path[0];
+          chainIds[smotheredCoord.x][smotheredCoord.y] = null;
+          chainMap.delete(floatingChainId);
+          for (let n of chainSquareInfo[smotheredCoord.x][smotheredCoord.y].chainNeighbours) {
+            Utils.deleteValueFromArray(chainNeighbourhoodGrid[n.x][n.y].floating, floatingChainId);
+            squaresThatNeedPremiumUpdated.push({ x: n.x, y: n.y });
+          }
+        } else {
+          //Most common merge case - merge in a floating chain
+          baseChain.mergeWithPath(floatingChain.path);
+          baseChain.mergeWithOpeningsTouched(floatingChain.openingsTouched);
+          for (let chord of floatingChain.path) {
+            //Change this square to belong to base chain
+            chainIds[chord.x][chord.y] = baseChainId;
+
+            //Also update chainNeighbourhoodGrid so that the squares neighbouring this chain are aware that they do neighbour it
+            let pathSquare = chainSquareInfo[chord.x][chord.y];
+            for (let safeNeighbour of pathSquare.safeNeighbours) {
+              //Note - a bit inefficient as safeNeighbours will get hit more than once
+              //Probably ok as large chain merges aren't super common
+              //We look at squares that are chainNeighbours through openings separately later
+              let safeNeighbourhood = chainNeighbourhoodGrid[safeNeighbour.x][safeNeighbour.y];
+              const oldAdjustment = Math.max(
+                0,
+                safeNeighbourhood.floating.length +
+                Math.min(1, safeNeighbourhood.fixed.length) - 1
+              );
+              if (baseChain.isFloatingSeed) {
+                //base floating => both floating
+                Utils.deleteValueFromArray(safeNeighbourhood.floating, floatingChainId);
+                safeNeighbourhood.floating.includes(baseChainId) || safeNeighbourhood.floating.push(baseChainId);
+              } else {
+                //base is fixed, so this also becomes fixed
+                Utils.deleteValueFromArray(safeNeighbourhood.floating, floatingChainId);
+                safeNeighbourhood.fixed.includes(baseChainId) || safeNeighbourhood.fixed.push(baseChainId);
+              }
+              const newAdjustment = Math.max(
+                0,
+                safeNeighbourhood.floating.length +
+                Math.min(1, safeNeighbourhood.fixed.length) - 1
+              );
+              if (oldAdjustment !== newAdjustment) {
+                squaresThatNeedPremiumUpdated.push({ x: safeNeighbour.x, y: safeNeighbour.y });
+              }
+            }
+          }
+
+          //Update chainNeighbourhood for openings that belong to the chain we merged in
+          for (let openingTouched of floatingChain.openingsTouched) {
+            let thisOpening = preprocessedOpenings.get(openingTouched);
+            for (let edge of thisOpening.edges) {
+              let edgeNeighbourhood = chainNeighbourhoodGrid[edge.x][edge.y];
+              const oldAdjustment = Math.max(
+                0,
+                edgeNeighbourhood.floating.length +
+                Math.min(1, edgeNeighbourhood.fixed.length) - 1
+              );
+              if (baseChain.isFloatingSeed) {
+                //base floating => both floating
+                Utils.deleteValueFromArray(edgeNeighbourhood.floating, floatingChainId);
+                edgeNeighbourhood.floating.includes(baseChainId) || edgeNeighbourhood.floating.push(baseChainId);
+              } else {
+                //base is fixed, so this also becomes fixed
+                Utils.deleteValueFromArray(edgeNeighbourhood.floating, floatingChainId);
+                edgeNeighbourhood.fixed.includes(baseChainId) || edgeNeighbourhood.fixed.push(baseChainId);
+              }
+              const newAdjustment = Math.max(
+                0,
+                edgeNeighbourhood.floating.length +
+                Math.min(1, edgeNeighbourhood.fixed.length) - 1
+              );
+              if (oldAdjustment !== newAdjustment) {
+                squaresThatNeedPremiumUpdated.push({ x: edge.x, y: edge.y });
+              }
+            }
+          }
+
+          //Lastly remove the chain we merged in from the chain map
+          chainMap.delete(floatingChainId);
+        }
+      }
+
+      //look at how to add the newly chorded cell to the base chain
+      if (baseChain.isUnchordedDig) {
+        //This is the special case where we started on a single-left click
+        //So we change the chain to be a standard chorded chain.
+        baseChain.isUnchordedDig = false;
+        if (baseChain.isFloatingSeed) {
+          //Floating seed, keep neighbourhoodGrid as is since premium adjustment is still the same despite being chorded now
+          //Do nothing
+        } else {
+          //Fixed seed, neighbourhoodGrid needs updating, as it's now chorded, so can be used to merge chains which affects premium
+          //Note that baseChain being unchordedDig implies it's on the same square we chorded
+          Utils.deleteValueFromArray(thisSquareFixedNeighbourIds, baseChainId);
+
+          //Also update neighbours of centre chord as they now neighbour a fixed chain
+          for (let chordNeighbour of thisSquare.chainNeighbours) {
+            let cnNeighbourhood = chainNeighbourhoodGrid[chordNeighbour.x][chordNeighbour.y];
+            const oldAdjustment = Math.max(
+              0,
+              cnNeighbourhood.floating.length +
+              Math.min(1, cnNeighbourhood.fixed.length) - 1
+            );
+            cnNeighbourhood.fixed.includes(baseChainId) || cnNeighbourhood.fixed.push(baseChainId);
+            const newAdjustment = Math.max(
+              0,
+              cnNeighbourhood.floating.length +
+              Math.min(1, cnNeighbourhood.fixed.length) - 1
+            );
+            if (oldAdjustment !== newAdjustment) {
+              squaresThatNeedPremiumUpdated.push({ x: chordNeighbour.x, y: chordNeighbour.y });
+            }
+          }
+        }
+      } else {
+        //The starting square would only be included if it was a single left click
+        //This isn't the case in this else statement, so add it
+        baseChain.addToPath(chordClick.x, chordClick.y);
+        chainIds[chordClick.x][chordClick.y] = baseChainId;
+
+        //Inform neighbours of the square we chorded that they are now adjacent to our chain
+        for (let safeNeighbour of thisSquare.safeNeighbours) {
+          let safeNeighbourhood = chainNeighbourhoodGrid[safeNeighbour.x][safeNeighbour.y];
+          const oldAdjustment = Math.max(
+            0,
+            safeNeighbourhood.floating.length +
+            Math.min(1, safeNeighbourhood.fixed.length) - 1
+          );
+          if (baseChain.isFloatingSeed) {
+            safeNeighbourhood.floating.includes(baseChainId) || safeNeighbourhood.floating.push(baseChainId);
+          } else {
+            safeNeighbourhood.fixed.includes(baseChainId) || safeNeighbourhood.fixed.push(baseChainId);
+          }
+          const newAdjustment = Math.max(
+            0,
+            safeNeighbourhood.floating.length +
+            Math.min(1, safeNeighbourhood.fixed.length) - 1
+          );
+          if (oldAdjustment !== newAdjustment) {
+            squaresThatNeedPremiumUpdated.push({ x: safeNeighbour.x, y: safeNeighbour.y });
+          }
+        }
+
+        //Also process openings, but only if they aren't already part of the chord chain
+        for (let openingTouched of thisSquare.openingsTouched) {
+          if (baseChain.openingsTouched.includes(openingTouched)) {
+            continue;
+          }
+
+          let thisOpening = preprocessedOpenings.get(openingTouched)
+          for (let edgeNeighbours of thisOpening.edges) {
+            let edgeNeighbourhood = chainNeighbourhoodGrid[edgeNeighbours.x][edgeNeighbours.y];
+            const oldAdjustment = Math.max(
+              0,
+              edgeNeighbourhood.floating.length +
+              Math.min(1, edgeNeighbourhood.fixed.length) - 1
+            );
+            if (baseChain.isFloatingSeed) {
+              edgeNeighbourhood.floating.includes(baseChainId) || edgeNeighbourhood.floating.push(baseChainId);
+            } else {
+              edgeNeighbourhood.fixed.includes(baseChainId) || edgeNeighbourhood.fixed.push(baseChainId);
+            }
+            const newAdjustment = Math.max(
+              0,
+              edgeNeighbourhood.floating.length +
+              Math.min(1, edgeNeighbourhood.fixed.length) - 1
+            );
+            if (oldAdjustment !== newAdjustment) {
+              squaresThatNeedPremiumUpdated.push({ x: edgeNeighbours.x, y: edgeNeighbours.y });
+            }
+          }
+        }
+      }
+
+      //Save the info that any openings that are now touched due to the chord we did are also touched by the baseChain
+      for (let openingTouched of thisSquare.openingsTouched) {
+        baseChain.addOpeningTouched(openingTouched);
+      }
+    } else {
+      //Make new chain
+      chainIds[chordClick.x][chordClick.y] = nextChainRef.id;
+      let newChain = new Chain();
+      newChain.addToPath(chordClick.x, chordClick.y)
+      chainMap.set(nextChainRef.id, newChain);
+
+      //Do chainNeighbourGrid stuff
+      for (let chordNeighbour of thisSquare.chainNeighbours) {
+        let cnNeighbourhood = chainNeighbourhoodGrid[chordNeighbour.x][chordNeighbour.y];
+        const oldAdjustment = Math.max(
+          0,
+          cnNeighbourhood.floating.length +
+          Math.min(1, cnNeighbourhood.fixed.length) - 1
+        );
+        cnNeighbourhood.floating.includes(nextChainRef.id) || cnNeighbourhood.floating.push(nextChainRef.id);
+        const newAdjustment = Math.max(
+          0,
+          cnNeighbourhood.floating.length +
+          Math.min(1, cnNeighbourhood.fixed.length) - 1
+        );
+        if (oldAdjustment !== newAdjustment) {
+          squaresThatNeedPremiumUpdated.push({ x: chordNeighbour.x, y: chordNeighbour.y });
+        }
+      }
+
+      //Save the info that any openings that are now touched due to the chord we did are also touched by the newChain
+      for (let openingTouched of thisSquare.openingsTouched) {
+        newChain.addOpeningTouched(openingTouched);
+      }
+
+      nextChainRef.id += 1;
+    }
+
+    /*
+      TODO - see which of below can be removed or needs adjusting
+      There could be duplication of pushing to neighbourhoodGrid?
+    */
+
+    /* OK TO DELETE
     //Do logic for handling/merging chains
     let neighbourChainIds = new Set();
     for (let chainNeighbour of thisSquare.chainNeighbours) {
@@ -553,7 +853,7 @@ class ChainZini {
     //Remove any smothered digs
     for (let smotheredChainId of digsToSmotherIds) {
       let smotheredChain = chainMap.get(smotheredChainId);
-      chainIds[smotheredChain.x][smotheredChain.y] = null;
+      chainIds[smotheredChain.path[0].x][smotheredChain.path[0].y] = null;
       chainMap.delete(smotheredChainId);
     }
 
@@ -597,6 +897,7 @@ class ChainZini {
       chainMap.set(nextChainRef.id, newChain);
       nextChainRef.id += 1;
     }
+    */
 
     const unflaggedAdjacentMines = thisSquare.mineNeighbours.filter(
       (neighbour) => !flagStates[neighbour.x][neighbour.y]
@@ -679,6 +980,7 @@ class ChainZini {
         )
     );
 
+    //benchmark.startTime('core-premium-updates');
     //Update premiums
     for (let square of squaresThatNeedPremiumUpdated) {
       this.updateChainPremiumForCoord(
@@ -691,9 +993,11 @@ class ChainZini {
         preprocessedOpenings,
         chainIds,
         chainMap,
+        chainNeighbourhoodGrid,
         priorityPremiums
       );
     }
+    //benchmark.stopTime('core-premium-updates');
 
     return { newlyRevealed: squaresRevealedDuringStep, flagsPlaced: flagsPlacedDuringStep, onlyNFRemaining: false };
   }
@@ -828,6 +1132,15 @@ class ChainZini {
 
     return replicaMap;
   }
+
+  static cloneChainNeighbourhoodGrid(chainNeighbourhoodGrid) {
+    return chainNeighbourhoodGrid.map(col => col.map(cell => {
+      return {
+        floating: cell.floating.slice(),
+        fixed: cell.fixed.slice()
+      }
+    }));
+  }
 }
 
 //Chain class represents a path of chords
@@ -840,14 +1153,26 @@ class Chain {
     this.seedLocationsIfFixed = []; //Array of {x: ..., y: ...} coords of seeds if the locations are fixed
 
     this.isUnchordedDig = false; //If this is a single left click
+
+    this.openingsTouched = []; //track which openings this chord chain touches as these don't need to be reprocessed when expanded
   }
 
   addToPath(x, y) {
     this.path.push({ x, y })
   }
 
+  addOpeningTouched(openingId) {
+    this.openingsTouched.includes(openingId) || this.openingsTouched.push(openingId);
+  }
+
   mergeWithPath(arr) {
     this.path = this.path.concat(arr);
+  }
+
+  mergeWithOpeningsTouched(arr) {
+    for (let openingId of arr) {
+      this.openingsTouched.includes(openingId) || this.openingsTouched.push(openingId);
+    }
   }
 
   getClickCount() {
@@ -868,7 +1193,8 @@ class Chain {
     replicaChain.path = this.path.map(el => { return { x: el.x, y: el.y } });
     replicaChain.isFloatingSeed = this.isFloatingSeed;
     replicaChain.seedLocationsIfFixed = this.seedLocationsIfFixed.map(el => { return { x: el.x, y: el.y } });
-    replicaChain.isUnchordedDig = this.isUnchordedDig
+    replicaChain.isUnchordedDig = this.isUnchordedDig;
+    replicaChain.openingsTouched = this.openingsTouched.slice();
     return replicaChain;
   }
 }
