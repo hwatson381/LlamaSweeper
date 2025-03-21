@@ -78,6 +78,7 @@ Since we can use the 2d array with the sets to figure out stuff
 But then when merging chains, we don't know where neighbours are, so need to use that
 
 When merging chains, try keep the largest chain as the base?
+Or as rough heuristic - compare length of "openingsTouched" for each chain
 
 Is computing chainNeighbours (property of chainSquareInfo) slow?
 Probably...
@@ -98,5 +99,28 @@ Can we make some of the chainNeighbour stuff into a function
 For fixed seed chain merging, we have the problem of deciding which chain is the base
 One way to do this could be to track entire size of each chain
 But a simpler way would be to tiebreak on path length (number of chords)
+Also simple - compare length of "openingsTouched" for each chain
 
 Benchmark everything
+
+Do we avoid calculating chainNeighbours at start due to slowness on large low density boards?
+Or just don't do stat then?
+
+How do we handle converting to click path when we have an unchordedDig on an opening?
+
+Be VERY clear on what we do for path/seed of unchordedDigs
+
+Including both path and seeds for unchordedDig seems VERY wrong.
+Neither seems good though, since fixed/floating behave differently
+
+Show chainPremiums in the "show premiums" dropdown on zini explorer
+Make use of 100Chain in click-loss-replay
+
+There is a lookahead problem -
+We can merge chains, but this doesn't happen often because the gain from merging is often locked behind a loss from getting close enough to merge.
+Inclusion-exclusion zini would solve this slightly, but would end up being skewed by trying to work around merging rather than with it. Potentially we could do a chain-zini with single-lookahead.
+This would be more costly and very complicated, but may be effective
+
+Count how often chain merges happen?
+
+Easier for bad chords to mess things up, so it probably is quite important to have squares we permanently forbid with inclusion-exclusion zini

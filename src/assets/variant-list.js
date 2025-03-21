@@ -437,7 +437,7 @@ let variantList = [
     "tags": [
       "tool"
     ],
-    "rating": 3.8,
+    "rating": 4,
     "popularity": 3
   },
   {
@@ -482,6 +482,29 @@ let variantList = [
       "game"
     ],
     "rating": 3.7,
+    "popularity": 2
+  },
+  {
+    "name": "youtube playables minesweeper",
+    "url": "https://www.youtube.com/playables/UgkxhpR_EFQxif6EFOQZKOss5-BadJj6TIvQ",
+    "desc": "A mobile-web optimised minesweeper game with unusual rules. When you reveal a square it will also reveal the adjacent squares. This means that it is possible to win on higher densities than usual, and the decision making behind guessing is very different. I've included this variant as it may be of interest to mobile no-flag players who like high density + guessing and have a high tolerance for frustration. There are several things wrong with this clone, notably that you have to long-press to flag (even on desktop) and that you have to sit through an animation whenever you lose.",
+    "image": "/img/variants/yt-playables.png",
+    "tags": [
+      "mobile",
+      "game"
+    ],
+    "rating": 1.7,
+    "popularity": 1
+  },
+  {
+    "name": "Dragonsweeper",
+    "url": "https://danielben.itch.io/dragonsweeper",
+    "desc": "A minesweeper rpg game that will appeal to people who like strategy games and maths. Instead of mines, there are monsters which have a level that contribute to the numbers shown. And then goal is to explore the board whilst leveling up enough to be able to kill the dragon. Make sure to read through the rules before playing. The first thing to be aware of is that the hearts can (and should) go down to zero - you should not try to conserve hearts, but rather think of these as an \"exploration budget\" for how much information you can get. The second thing to be aware of is that the monsters have particular patterns to how they are arranged, you should observe these as it can help in future runs.",
+    "image": "/img/variants/dragonsweeper.png",
+    "tags": [
+      "game"
+    ],
+    "rating": 3.6,
     "popularity": 2
   }
 ]

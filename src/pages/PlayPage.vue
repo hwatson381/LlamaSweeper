@@ -38,6 +38,7 @@
         <button @click="bulkrun3">Bulk run</button>
         Iterations: <input v-model.number="bulkIterations" type="text" />
         <button @click="dialogTest">QDialog</button>
+        <button @click="seedRandomTest">Seed Random</button>
       </div>
       <br />
       <div
@@ -355,11 +356,11 @@
                 'zini-match':
                   variant === 'eff boards' &&
                   statsObject.isWonGame &&
-                  statsObject.clicks.total === statsObject.eightZini,
+                  statsObject.clicks.total === statsObject.chainZini,
                 'sub-zini':
                   variant === 'eff boards' &&
                   statsObject.isWonGame &&
-                  statsObject.clicks.total < statsObject.eightZini,
+                  statsObject.clicks.total < statsObject.chainZini,
                 'excellent-eff':
                   variant === 'eff boards' &&
                   statsObject.isWonGame &&
@@ -428,7 +429,7 @@
               </q-icon>
             </div>
             <div>ZiNi (8-way): {{ statsObject.eightZini }}</div>
-            <div>ZiNi (chain): {{ statsObject.chainZini }}</div>
+            <div>ZiNi (100chain): {{ statsObject.chainZini }}</div>
             <div>
               ZiNi (WoM):
               <template v-if="statsObject.womZini !== null">
@@ -555,7 +556,7 @@
                   @click="game.board.initReplay('chainzini')"
                 >
                   <q-item-section>
-                    <q-item-label>1-way Chain Zini</q-item-label>
+                    <q-item-label>100Chain Zini</q-item-label>
                   </q-item-section>
                 </q-item>
 
@@ -690,6 +691,8 @@
                 },
                 { label: 'Numbers', value: 'numbers' },
                 { label: 'Numbers >= 0', value: 'numbers positive' },
+                { label: 'Chain Numbers', value: 'chain' },
+                { label: 'Chain Numbers >= 0', value: 'chain positive' },
                 { label: 'Highlight Best', value: 'highlight' },
               ]"
               emit-value
@@ -719,6 +722,7 @@
                 { label: 'WoM ZiNi', value: 'womzini' },
                 { label: 'WoM ZiNi Improved', value: 'womzinifix' },
                 { label: 'WoM HZiNi', value: 'womhzini' },
+                { label: 'Chain ZiNi', value: 'chainzini' },
               ]"
               emit-value
               map-options
@@ -748,6 +752,30 @@
               stack-label
               label="Scope"
             />
+            <div class="row justify-center">
+              <q-input
+                v-if="analyseAlgorithm === 'chainzini'"
+                class="q-mb-sm"
+                debounce="100"
+                v-model.number="analyseIterations"
+                label="Iterations"
+                type="number"
+                dense
+                min="1"
+                max="1000000"
+                style="width: 110px"
+              />
+            </div>
+            <div class="row justify-center">
+              <q-checkbox
+                v-if="
+                  analyseAlgorithm === 'chainzini' &&
+                  analyseAlgorithmScope === 'current'
+                "
+                v-model="analyseHistoryRewrite"
+                label="Allow history rewrite"
+              />
+            </div>
             <div class="row justify-center">
               <q-btn
                 @click="game.board.ziniExplore.runAlgorithm()"
@@ -1673,6 +1701,8 @@ import ReplayBar from "src/components/ReplayBar.vue";
 
 import CONSTANTS from "src/includes/Constants";
 
+import seedrandom from "seedrandom";
+
 import { useQuasar } from "quasar";
 const $q = useQuasar();
 
@@ -2060,6 +2090,8 @@ let replayShowHidden = ref("transparent3");
 let analyseDisplayMode = ref("classic");
 let analyseAlgorithm = ref("8 way");
 let analyseAlgorithmScope = ref("current");
+let analyseIterations = ref(100);
+let analyseHistoryRewrite = ref(true);
 let classicPathBreakdown = ref({
   lefts: 0,
   rights: 0,
@@ -2072,7 +2104,7 @@ let analyseEff = ref(0);
 let analyseShowPremiums = ref("none");
 let analyseHiddenStyle = ref("transparent3");
 let analyseAlgorithmScopeOptions = computed(() => {
-  const eightWayOpts = [
+  const withCurrentOpts = [
     {
       label: "From beginning",
       value: "beginning",
@@ -2085,14 +2117,20 @@ let analyseAlgorithmScopeOptions = computed(() => {
       value: "beginning",
     },
   ];
-  if (analyseAlgorithm.value === "8 way") {
-    return eightWayOpts;
+  if (
+    analyseAlgorithm.value === "8 way" ||
+    analyseAlgorithm.value === "chainzini"
+  ) {
+    return withCurrentOpts;
   } else {
     return basicOpts;
   }
 });
 watchEffect(() => {
-  if (analyseAlgorithm.value === "8 way") {
+  if (
+    analyseAlgorithm.value === "8 way" ||
+    analyseAlgorithm.value === "chainzini"
+  ) {
     //Do nothing
   } else {
     //Change scope to beginning if it's a disallowed value
@@ -2394,6 +2432,15 @@ function dialogTest() {
     });
 }
 
+function seedRandomTest() {
+  var myrng = seedrandom(1);
+  console.log(myrng());
+  console.log(myrng());
+  console.log(myrng());
+
+  console.log(Math.random.toString());
+}
+
 class Game {
   constructor() {}
 
@@ -2538,6 +2585,8 @@ class Board {
       analyseDisplayMode,
       analyseAlgorithm,
       analyseAlgorithmScope,
+      analyseIterations,
+      analyseHistoryRewrite,
       analyseHiddenStyle,
       classicPathBreakdown,
       analyseZiniTotal,

@@ -278,3 +278,36 @@ button to toggle between edit/analyse in zini explorer is too far down page
 run button on zini explorer should show loading icon on eff% indicator
 
 My variants page should have descriptions moved elsewhere (maybe hidden under help button?)
+
+We are testing out NWay ChainZini
+Remove window.iterations
+
+Different idea related to inc-ex zini:
+Maybe once we have a candidate chord, we check all options around it before playing it
+That is - all options where we exclude that chord and force a neighbour
+
+For end of game stats, calc 100chain in worker to reduce endgame lag?
+
+mini-tasks:
+Show chainPremiums in the "show premiums" dropdown on zini explorer
+Make use of 100Chain in click-loss-replay
+
+Idea for opening unchordedDigs -
+Maybe have property on chain like labelIfUnchordedDigZero
+Then we can properly smother these and update chainNeighbourhoodGrid
+
+positionIfUnchordedDig
+
+Gotta be careful with followup chords...
+
+Try Chrome performance tab profiler
+
+Test stuff by making heavy duty function that checks every premium/rebuilds chainIds/chainMap/chainNeighbourhoodGrid every move?
+
+Possible bug - scroll input doesn't get blocked when scrolling on number input?
+
+Zini Explorer should make it more obvious when algorithm is running
+
+Zini Explorer "Iterations" doesn't cap to 1 million
+
+Pregenerating priority grids for n-way chain can cause out-of-memory error

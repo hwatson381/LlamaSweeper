@@ -586,28 +586,34 @@ class Algorithms {
       return;
     }
 
-    const adjacentUnrevealedNonOpening3bv =
-      thisSquare.nonOpening3bvNeighbours.filter(
-        (neighbour) => !revealedStates[neighbour.x][neighbour.y]
-      ).length;
-
-    const adjacentUnrevealedOpenings = [...thisSquare.openingsTouched].filter(
-      (openingLabel) => {
-        //Find a zero tile in the opening and check whether this is revealed or not
-        const zeroBelongingToOpening =
-          preprocessedOpenings.get(openingLabel).zeros[0];
-        return !revealedStates[zeroBelongingToOpening.x][
-          zeroBelongingToOpening.y
-        ];
+    let adjacentUnrevealedNonOpening3bv = 0;
+    for (let neighbour of thisSquare.nonOpening3bvNeighbours) {
+      if (!revealedStates[neighbour.x][neighbour.y]) {
+        adjacentUnrevealedNonOpening3bv++;
       }
-    ).length;
+    }
+
+    let adjacentUnrevealedOpenings = 0;
+    for (let op of thisSquare.openingsTouched) {
+      const zeroBelongingToOpening =
+        preprocessedOpenings.get(op).zeros[0];
+
+      if (
+        !revealedStates[zeroBelongingToOpening.x][zeroBelongingToOpening.y]
+      ) {
+        adjacentUnrevealedOpenings++;
+      }
+    }
+
+    let unflaggedAdjacentMines = 0;
+    for (let neighbour of thisSquare.mineNeighbours) {
+      if (!flagStates[neighbour.x][neighbour.y]) {
+        unflaggedAdjacentMines++;
+      }
+    }
 
     const bbbvOpenedWithChord =
       adjacentUnrevealedNonOpening3bv + adjacentUnrevealedOpenings;
-
-    const unflaggedAdjacentMines = thisSquare.mineNeighbours.filter(
-      (neighbour) => !flagStates[neighbour.x][neighbour.y]
-    ).length;
 
     //Note - the original forum post for zini has premium = [adjacent 3bv] - [adjacent unflagged mines] - 1_[if cell is closed] - 1
     //I believe this is either wrong or misleading. Since we have a term "- 1_[if cell is closed]". Since we are still tied for clicks saved if the cell needs to be revealed first, with the only exception being if the cell we are click on is not 3bv.
@@ -900,13 +906,17 @@ class Algorithms {
     return toBeCopied.map((arr) => arr.slice());
   }
 
-  static fisherYatesArrayShuffle(arr) {
+  static fisherYatesArrayShuffle(arr, rng = false) {
     //https://stackoverflow.com/questions/59810241/how-to-fisher-yates-shuffle-a-javascript-array
+    if (!rng) {
+      rng = Math.random;
+    }
+
     var i = arr.length,
       j,
       temp;
     while (--i > 0) {
-      j = Math.floor(Math.random() * (i + 1));
+      j = Math.floor(rng() * (i + 1));
       temp = arr[j];
       arr[j] = arr[i];
       arr[i] = temp;

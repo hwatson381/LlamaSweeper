@@ -1,6 +1,7 @@
 import CONSTANTS from "src/includes/Constants";
 import Algorithms from "./Algorithms";
 import { Dialog } from 'quasar'
+import ChainZini from "./ChainZini";
 
 class ZiniExplore {
   constructor(board, refs) {
@@ -1028,6 +1029,9 @@ class ZiniExplore {
           false
         ).womHzini.clicks;
         break;
+      case 'chainzini':
+        this.runChainZini();
+        break;
       default:
         alert('disallowed algorithm')
         throw new Error('disallowed algorithm');
@@ -1043,6 +1047,53 @@ class ZiniExplore {
       const { revealedStates, flagStates } = this.getRevealedAndFlagStates();
       const pathExtension = Algorithms.calcEightWayZini(this.board.mines, false, revealedStates, flagStates).clicks;
       this.classicPath = this.classicPath.concat(pathExtension);
+    }
+  }
+
+  runChainZini() {
+    let iterations = this.refs.analyseIterations.value;
+    if (
+      !Number.isFinite(iterations) ||
+      !Number.isInteger(iterations) ||
+      iterations < 1
+    ) {
+      this.refs.analyseIterations.value = 100;
+      iterations = 100;
+    }
+
+    if (iterations > 1000000) {
+      this.refs.analyseIterations.value = 1000000;
+      iterations = 1000000;
+    }
+
+    if (this.refs.analyseAlgorithmScope.value === 'beginning') {
+      this.classicPath = ChainZini.calcNWayChainZini({
+        mines: this.board.mines,
+        numberOfIterations: iterations,
+        includeClickPath: true
+      }).clicks
+    } else {
+      const {
+        initialRevealedStates,
+        initialFlagStates,
+        initialChainIds,
+        initialChainMap,
+        initialChainNeighbourhoodGrid
+      } = ChainZini.convertClickPathToChainInput(
+        this.classicPath,
+        this.board.mines,
+        this.refs.analyseHistoryRewrite.value
+      );
+      this.classicPath = ChainZini.calcNWayChainZini({
+        mines: this.board.mines,
+        initialRevealedStates,
+        initialFlagStates,
+        initialChainIds,
+        initialChainMap,
+        initialChainNeighbourhoodGrid,
+        numberOfIterations: iterations,
+        includeClickPath: true
+      }).clicks
     }
   }
 

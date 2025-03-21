@@ -2,8 +2,11 @@ import Algorithms from "./Algorithms";
 import PriorityPremiums from "./PriorityPremiums";
 import Utils from "./Utils";
 import Benchmark from "./Benchmark";
+import CompareReplay from "./CompareReplay";
 
-//const benchmark = new Benchmark();
+import seedrandom from "seedrandom";
+
+const benchmark = new Benchmark();
 
 class ChainZini {
   constructor() {
@@ -22,7 +25,8 @@ class ChainZini {
     returnAllZinis = false,
     includeClickPath = false
   }) {
-    //benchmark.startTime('setup');
+    window.loopCount = 0;//debug-line
+    benchmark.startTime('setup');
     if (!preprocessedData) {
       preprocessedData =
         Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
@@ -71,7 +75,7 @@ class ChainZini {
     let nextChainId;
     if (initialChainMap) {
       chainMap = initialChainMap
-      nextChainId = Math.max(0, Math.max(0, ...myMap.keys())) + 1;
+      nextChainId = Math.max(0, Math.max(0, ...initialChainMap.keys())) + 1;
     } else {
       chainMap = new Map();
       nextChainId = 0;
@@ -140,10 +144,10 @@ class ChainZini {
     let currentSolution = null; //Set to the best zini solution we've found so far. This will be an object with data of the solution.
     let allZinis = [];
 
-    //benchmark.stopTime('setup');
+    benchmark.stopTime('setup');
 
     for (let i = 0; i < priorityGrids.length; i++) {
-      //benchmark.startTime('copying');
+      benchmark.startTime('copying');
       let priorityGrid = priorityGrids[i];
       //Take copies of variables that track board state as they need to be re-initialised for each priority grid
       const thisEnumerationChainIds = Algorithms.fast2dArrayCopy(chainIds);
@@ -173,9 +177,9 @@ class ChainZini {
       }
       thisEnumerationPriorityPremiums.sortAfterLazyAdd();
 
-      //benchmark.stopTime('copying');
+      benchmark.stopTime('copying');
 
-      //benchmark.startTime('core-loop');
+      benchmark.startTime('core-loop');
 
       let needToDoNFClicks = false;
       while (squaresSolvedThisRun !== revealedSquaresToSolve) {
@@ -199,9 +203,7 @@ class ChainZini {
           break;
         }
       }
-      //benchmark.stopTime('core-loop');
-      //benchmark.report();
-      //benchmark.clearAll();
+      benchmark.stopTime('core-loop');
 
       if (needToDoNFClicks) {
         this.nfClickEverythingForChainZini(
@@ -250,9 +252,12 @@ class ChainZini {
         chainIds: currentSolution.chainIds,
         chainMap: currentSolution.chainMap,
         mines: mines,
-        chainSquareInfo: chainSquareInfo
+        chainSquareInfo: chainSquareInfo,
+        preprocessedOpenings: preprocessedOpenings
       });
     }
+
+    console.log(window.loopCount);//debug-line
 
     return returnObj;
   }
@@ -423,28 +428,34 @@ class ChainZini {
       return
     }
 
-    const adjacentUnrevealedNonOpening3bv =
-      thisSquare.nonOpening3bvNeighbours.filter(
-        (neighbour) => !revealedStates[neighbour.x][neighbour.y]
-      ).length;
-
-    const adjacentUnrevealedOpenings = [...thisSquare.openingsTouched].filter(
-      (openingLabel) => {
-        //Find a zero tile in the opening and check whether this is revealed or not
-        const zeroBelongingToOpening =
-          preprocessedOpenings.get(openingLabel).zeros[0];
-        return !revealedStates[zeroBelongingToOpening.x][
-          zeroBelongingToOpening.y
-        ];
+    let adjacentUnrevealedNonOpening3bv = 0;
+    for (let neighbour of thisSquare.nonOpening3bvNeighbours) {
+      if (!revealedStates[neighbour.x][neighbour.y]) {
+        adjacentUnrevealedNonOpening3bv++;
       }
-    ).length;
+    }
+
+    let adjacentUnrevealedOpenings = 0;
+    for (let op of thisSquare.openingsTouched) {
+      const zeroBelongingToOpening =
+        preprocessedOpenings.get(op).zeros[0];
+
+      if (
+        !revealedStates[zeroBelongingToOpening.x][zeroBelongingToOpening.y]
+      ) {
+        adjacentUnrevealedOpenings++;
+      }
+    }
+
+    let unflaggedAdjacentMines = 0;
+    for (let neighbour of thisSquare.mineNeighbours) {
+      if (!flagStates[neighbour.x][neighbour.y]) {
+        unflaggedAdjacentMines++;
+      }
+    }
 
     const bbbvOpenedWithChord =
       adjacentUnrevealedNonOpening3bv + adjacentUnrevealedOpenings;
-
-    const unflaggedAdjacentMines = thisSquare.mineNeighbours.filter(
-      (neighbour) => !flagStates[neighbour.x][neighbour.y]
-    ).length;
 
     //Note - the original forum post for zini has premium = [adjacent 3bv] - [adjacent unflagged mines] - 1_[if cell is closed] - 1
     //I believe this is either wrong or misleading. Since we have a term "- 1_[if cell is closed]". Since we are still tied for clicks saved if the cell needs to be revealed first, with the only exception being if the cell we are click on is not 3bv.
@@ -563,8 +574,9 @@ class ChainZini {
     const thisSquare = chainSquareInfo[chordClick.x][chordClick.y];
 
     const thisSquareChainNeighbours = chainNeighbourhoodGrid[chordClick.x][chordClick.y];
-    const thisSquareFloatingNeighbourIds = thisSquareChainNeighbours.floating;
-    const thisSquareFixedNeighbourIds = thisSquareChainNeighbours.fixed;
+    const thisSquareFloatingNeighbourIds = thisSquareChainNeighbours.floating.slice();
+    const thisSquareFixedNeighbourIds = thisSquareChainNeighbours.fixed.slice();
+    //Note - we take copies, since otherwise it causes issues when looping over if we delete from the original array
 
     let baseChainId = null;
     if (thisSquareFixedNeighbourIds.length !== 0) {
@@ -572,8 +584,34 @@ class ChainZini {
       baseChainId = thisSquareFixedNeighbourIds[0];
     } else if (thisSquareFloatingNeighbourIds.length !== 0) {
       //Use a floating chain as base
-      //Consider instead finding the biggest chain to use as base?
-      baseChainId = thisSquareFloatingNeighbourIds[0];
+      //Consider instead use heuristic to find the largest floating chain to use as base?
+      //Pick first floating that isn't a single unchordedDig
+      let floatingBaseMostOpeningsTouchedSoFar = -1;
+      for (const floatingId of thisSquareFloatingNeighbourIds) {
+        const floatingBaseCandidate = chainMap.get(floatingId);
+        if (!floatingBaseCandidate.isUnchordedDig) {
+          //Chorded floating chains can always be used as base
+          if (floatingBaseCandidate.openingsTouched.length > floatingBaseMostOpeningsTouchedSoFar) {
+            floatingBaseMostOpeningsTouchedSoFar = floatingBaseCandidate.openingsTouched.length;
+            baseChainId = floatingId;
+          }
+          continue;
+        } else {
+          //floating unchorded digs can only be used as baseChain if they are an exact match
+          //The below matches only for when the chord is ontop of a single-cell dig.
+          //It would technically also match if on the starting square of an opening dig, but we never chord these.
+          if (floatingId === chainIds[chordClick.x][chordClick.y]) {
+            if (floatingBaseCandidate.openingsTouched.length > floatingBaseMostOpeningsTouchedSoFar) {
+              floatingBaseMostOpeningsTouchedSoFar = floatingBaseCandidate.openingsTouched.length;
+              baseChainId = floatingId;
+            }
+            continue;
+          }
+        }
+
+        // Note - openings or mismatched unchordedDigs get excluded from being baseChain
+        // This is they can be handled by smothering instead.
+      }
     } else {
       //Do nothing, we will need to make a new chain later
     }
@@ -593,12 +631,27 @@ class ChainZini {
         if (floatingChain.isUnchordedDig) {
           //Floating left click that gets smothered
           //remove this "single-left-click" chain and push neighbours
-          const smotheredCoord = floatingChain.path[0];
+          if (!floatingChain.positionIfUnchordedDig) {
+            throw new Error('Unchorded dig with missing position');
+          }
+          const smotheredCoord = floatingChain.positionIfUnchordedDig;
           chainIds[smotheredCoord.x][smotheredCoord.y] = null;
+          //Also delete smothered coord from neighbouring self (just in case)
+          Utils.deleteValueFromArray(chainNeighbourhoodGrid[smotheredCoord.x][smotheredCoord.y].floating, floatingChainId);
           chainMap.delete(floatingChainId);
-          for (let n of chainSquareInfo[smotheredCoord.x][smotheredCoord.y].chainNeighbours) {
-            Utils.deleteValueFromArray(chainNeighbourhoodGrid[n.x][n.y].floating, floatingChainId);
-            squaresThatNeedPremiumUpdated.push({ x: n.x, y: n.y });
+          const smotheredChainInfo = chainSquareInfo[smotheredCoord.x][smotheredCoord.y];
+          if (smotheredChainInfo.number === 0) {
+            const openingLabel = smotheredChainInfo.labelIfOpening;
+            const thisOpening = preprocessedOpenings.get(openingLabel);
+            for (let edge of thisOpening.edges) {
+              Utils.deleteValueFromArray(chainNeighbourhoodGrid[edge.x][edge.y].floating, floatingChainId);
+              squaresThatNeedPremiumUpdated.push({ x: edge.x, y: edge.y });
+            }
+          } else {
+            for (let n of smotheredChainInfo.chainNeighbours) {
+              Utils.deleteValueFromArray(chainNeighbourhoodGrid[n.x][n.y].floating, floatingChainId);
+              squaresThatNeedPremiumUpdated.push({ x: n.x, y: n.y });
+            }
           }
         } else {
           //Most common merge case - merge in a floating chain
@@ -680,11 +733,22 @@ class ChainZini {
         //This is the special case where we started on a single-left click
         //So we change the chain to be a standard chorded chain.
         baseChain.isUnchordedDig = false;
+        baseChain.addToPath(chordClick.x, chordClick.y);
+
         if (baseChain.isFloatingSeed) {
           //Floating seed, keep neighbourhoodGrid as is since premium adjustment is still the same despite being chorded now
           //Do nothing
+          baseChain.positionIfUnchordedDig = false;
+
+          //Note - don't have to worry about baseChain being floating-seeded-unchordedDig-opening
+          //This is because we exclude these from being baseChain and just let them get smothered instead
         } else {
           //Fixed seed, neighbourhoodGrid needs updating, as it's now chorded, so can be used to merge chains which affects premium
+
+          //Add seed
+          baseChain.seedLocationsIfFixed = [{ x: baseChain.positionIfUnchordedDig.x, y: baseChain.positionIfUnchordedDig.y }];
+          baseChain.positionIfUnchordedDig = false;
+
           //Note that baseChain being unchordedDig implies it's on the same square we chorded
           Utils.deleteValueFromArray(thisSquareFixedNeighbourIds, baseChainId);
 
@@ -980,9 +1044,10 @@ class ChainZini {
         )
     );
 
-    //benchmark.startTime('core-premium-updates');
+    benchmark.startTime('core-premium-updates');
     //Update premiums
     for (let square of squaresThatNeedPremiumUpdated) {
+      window.loopCount++;
       this.updateChainPremiumForCoord(
         square.x,
         square.y,
@@ -997,7 +1062,7 @@ class ChainZini {
         priorityPremiums
       );
     }
-    //benchmark.stopTime('core-premium-updates');
+    benchmark.stopTime('core-premium-updates');
 
     return { newlyRevealed: squaresRevealedDuringStep, flagsPlaced: flagsPlacedDuringStep, onlyNFRemaining: false };
   }
@@ -1010,6 +1075,9 @@ class ChainZini {
     chainMap,
     nextChainRef
   ) {
+    //Note - this is always the last step, so doesn't need to keep all the chain
+    // tracking variables (in particular chainNeighbourhoodGrid) up to date
+
     const width = revealedStates.length;
     const height = revealedStates[0].length;
 
@@ -1029,8 +1097,9 @@ class ChainZini {
         revealedStates[x][y] = true;
         chainIds[x][y] = nextChainRef.id;
         let newSingleDigChain = new Chain();
-        newSingleDigChain.addToPath(x, y);
         newSingleDigChain.isUnchordedDig = true;
+        //newSingleDigChain.addToPath(x, y); //Commented out as we use positionIfUnchorded instead
+        newSingleDigChain.positionIfUnchordedDig = { x, y };
         chainMap.set(nextChainRef.id, newSingleDigChain);
         nextChainRef.id += 1;
 
@@ -1043,17 +1112,76 @@ class ChainZini {
           }
           for (let edge of opening.edges) {
             revealedStates[edge.x][edge.y] = true;
+            //We may still end up smothering stuff
+            const edgeChainIdPossiblyNull = chainIds[edge.x][edge.y]
+            if (edgeChainIdPossiblyNull !== null) {
+              //Check for smotherable chain
+              const edgeChain = chainMap.get(edgeChainIdPossiblyNull);
+              if (edgeChain.isFloatingSeed && edgeChain.isUnchordedDig) {
+                //Smother this chain
+                if (!edgeChain.positionIfUnchordedDig) {
+                  throw new Error('Unchorded dig with missing position');
+                }
+                const smotheredCoord = edgeChain.positionIfUnchordedDig;
+                chainIds[smotheredCoord.x][smotheredCoord.y] = null;
+                chainMap.delete(floatingChainId);
+                //Don't need to update chainNeighbourGrid or premiums etc here as nfClicking is the final step
+              }
+            }
           }
         }
       }
     }
   }
 
+  static calcNWayChainZini({
+    mines,
+    preprocessedData = false,
+    initialRevealedStates = false,
+    initialFlagStates = false,
+    initialChainIds = false,
+    initialChainMap = false,
+    initialChainNeighbourhoodGrid = false,
+    returnAllZinis = false,
+    includeClickPath = false,
+    numberOfIterations
+  }) {
+    console.time();
+
+    const width = mines.length;
+    const height = mines[0].length;
+
+    benchmark.startTime('make-priority-grids');
+    let priorityGrids = PriorityGridCreator.createBulkRandom(width, height, numberOfIterations, true)
+    benchmark.stopTime('make-priority-grids');
+
+    let retVal = this.calcChainZini({
+      mines,
+      preprocessedData,
+      initialRevealedStates,
+      initialFlagStates,
+      initialChainIds,
+      initialChainMap,
+      initialChainNeighbourhoodGrid,
+      priorityGrids,
+      returnAllZinis,
+      includeClickPath
+    });
+
+    console.timeEnd();
+
+    benchmark.report();
+    benchmark.clearAll();
+
+    return retVal;
+  }
+
   static convertSolutionToClickPath({
     chainIds,
     chainMap,
     mines,
-    chainSquareInfo
+    chainSquareInfo,
+    preprocessedOpenings
   }) {
     let clickPath = [];
 
@@ -1072,18 +1200,36 @@ class ChainZini {
     for (let chain of chainMap.values()) {
       //Add seed(s)
       if (chain.isFloatingSeed) {
-        clickPath.push({ type: 'left', x: chain.path[0].x, y: chain.path[0].y })
-        chordableSquares[chain.path[0].x][chain.path[0].y] = true;
+        if (chain.isUnchordedDig) {
+          if (!chain.positionIfUnchordedDig) {
+            throw new Error('Unchorded dig with missing position');
+          }
+          clickPath.push({ type: 'left', x: chain.positionIfUnchordedDig.x, y: chain.positionIfUnchordedDig.y });
+          //Next line is commented out - this is ok because we know that due to this move being an unchorded dig, it must not get chorded later
+          //chordableSquares[chain.positionIfUnchordedDig.x][chain.positionIfUnchordedDig.y] = true;
+        } else {
+          clickPath.push({ type: 'left', x: chain.path[0].x, y: chain.path[0].y });
+          chordableSquares[chain.path[0].x][chain.path[0].y] = true;
+        }
       } else {
         for (let fixedSeed of chain.seedLocationsIfFixed) {
           clickPath.push({ type: 'left', x: fixedSeed.x, y: fixedSeed.y });
           chordableSquares[fixedSeed.x][fixedSeed.y] = true;
+
+          //If seed is on zero, then also mark opening edges as chordable
+          const seedChainInfo = chainSquareInfo[fixedSeed.x][fixedSeed.y]
+          if (seedChainInfo.number === 0) {
+            const thisOpening = preprocessedOpenings.get(seedChainInfo.labelIfOpening);
+            for (let edge of thisOpening.edges) {
+              chordableSquares[edge.x][edge.y] = true;
+            }
+          }
         }
       }
 
       if (chain.isUnchordedDig) {
         //Not chorded, so no more clicks to do
-        return;
+        continue;
       }
 
       let chordsToDo = [...chain.path];
@@ -1092,11 +1238,16 @@ class ChainZini {
         //Find chords that can be played
         let playableChords = chordsToDo.filter((ch) => chordableSquares[ch.x][ch.y]);
 
+        if (playableChords.length === 0) {
+          console.log(chain);
+          throw new Error('Bad chain - no playable chords');
+        }
+
         //Play the chord and mark all consequential squares as playable
         for (let pc of playableChords) {
           //Check for surrounding flags
-          for (let x = pc.x - 1; x < pc.x + 1; x++) {
-            for (let y = pc.y - 1; y < pc.y + 1; y++) {
+          for (let x = pc.x - 1; x <= pc.x + 1; x++) {
+            for (let y = pc.y - 1; y <= pc.y + 1; y++) {
               if (x === pc.x && y === pc.y) {
                 continue;
               }
@@ -1122,6 +1273,419 @@ class ChainZini {
     }
 
     return clickPath;
+  }
+
+  static convertClickPathToChainInput(clickPath, mines, isFloating) {
+    //Takes a click path and converts to all the initial data required for chainZini
+
+    const width = mines.length;
+    const height = mines[0].length;
+
+    //Strip wasted clicks
+    clickPath = clickPath.filter(click => !click.type.includes('wasted'));
+
+    const { numbersArray, openingLabels, preprocessedOpenings } =
+      Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
+        mines
+      );
+
+    const chainSquareInfo = this.computeChainSquareInfo(mines, numbersArray, openingLabels, preprocessedOpenings);
+
+    let initialRevealedStates = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(false));
+
+    let initialFlagStates = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(false));
+
+    let initialChainIds = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(null));
+
+    let initialChainMap = new Map();
+
+    let initialChainNeighbourhoodGrid = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(0).map(() => {
+        return {
+          floating: [],
+          fixed: []
+        }
+      }));
+
+    ////// flag states ///////
+    clickPath.forEach(click => {
+      if (click.type === 'right') {
+        initialFlagStates[click.x][click.y] = true;
+      }
+    });
+
+    ////// build chains //////
+    /*
+      Idea: Choose a random left click, and recurse it, update everything as we go
+    */
+
+    let leftClickPool = new Set(clickPath.filter(click => click.type === 'left'));
+    let chordPool = new Set(clickPath.filter(click => click.type === 'chord'));
+
+    let moveGrid = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(0).map(() => { return { left: null, chord: null } }));
+    for (let lc of leftClickPool) {
+      moveGrid[lc.x][lc.y].left = lc;
+    };
+    for (let c of chordPool) {
+      moveGrid[c.x][c.y].chord = c;
+    };
+
+    let unchordedDigNonZerosToProcess = [];
+    let unchordedDigZerosToProcess = [];
+
+    let currentChainId = 0;
+    while (leftClickPool.size !== 0) {
+      let leftClick = leftClickPool.values().next().value;
+      let thisSquare = chainSquareInfo[leftClick.x][leftClick.y]
+      leftClickPool.delete(leftClick);
+
+      //Figure out if it is chorded
+      let firstChord = null;
+      if (thisSquare.number === 0) {
+        let openingLabel = openingLabels[leftClick.x][leftClick.y];
+        let thisOpening = preprocessedOpenings.get(openingLabel);
+        for (let edge of thisOpening.edges) {
+          if (
+            moveGrid[edge.x][edge.y].chord &&
+            chordPool.has(moveGrid[edge.x][edge.y].chord)
+          ) {
+            firstChord = moveGrid[edge.x][edge.y].chord;
+            break;
+          }
+        }
+      } else {
+        if (
+          moveGrid[leftClick.x][leftClick.y].chord &&
+          chordPool.has(moveGrid[leftClick.x][leftClick.y].chord)
+        ) {
+          firstChord = moveGrid[leftClick.x][leftClick.y].chord;
+        }
+      }
+
+      if (!firstChord) {
+        //UnchordedDig, so process later
+        if (thisSquare.number === 0) {
+          unchordedDigZerosToProcess.push(leftClick);
+        } else {
+          unchordedDigNonZerosToProcess.push(leftClick);
+        }
+        continue;
+      }
+
+      //Since we have confirmed it isn't an unchordedDig (which are processed later), we can reveal the square for the initial left click here
+      initialRevealedStates[leftClick.x][leftClick.y] = true;
+
+      let newChain = new Chain();
+      if (isFloating) {
+        newChain.isFloatingSeed = true;
+      } else {
+        newChain.isFloatingSeed = false;
+      }
+
+      let seedsIfFixed = [];
+      if (!isFloating) {
+        if (!seedsIfFixed.some(s => s.x === leftClick.x && s.y === leftClick.y)) {
+          seedsIfFixed.push({
+            x: leftClick.x,
+            y: leftClick.y
+          })
+        }
+      }
+
+      let chordsToDo = [firstChord];
+
+      while (chordsToDo.length !== 0) {
+        let thisChord = chordsToDo.shift();
+        let thisChordInfo = chainSquareInfo[thisChord.x][thisChord.y]
+
+        chordPool.delete(thisChord);
+        newChain.addToPath(thisChord.x, thisChord.y);
+
+        initialChainIds[thisChord.x][thisChord.y] = currentChainId;
+
+        let nonZerosToProcess = [];
+
+        for (let openingLabel of thisChordInfo.openingsTouched) {
+          if (newChain.openingsTouched.includes(openingLabel)) {
+            continue;
+          }
+          newChain.addOpeningTouched(openingLabel);
+          const thisOpening = preprocessedOpenings.get(openingLabel);
+          for (let zero of thisOpening.zeros) {
+            initialRevealedStates[zero.x][zero.y] = true;
+
+            let left = moveGrid[zero.x][zero.y].left;
+            if (isFloating) {
+              if (left) {
+                //Smothered/multi-seed, remove this
+                //Note this could also be the seed that started this chain. Though harmless to try remove twice
+                leftClickPool.delete(left);
+              }
+            } else {
+              //If fixed, we just need to track seeds
+              if (left) {
+                leftClickPool.delete(left); //Possibly already deleted if seed that started chain
+                if (!seedsIfFixed.some(s => s.x === left.x && s.y === left.y)) {
+                  seedsIfFixed.push({
+                    x: left.x,
+                    y: left.y
+                  });
+                }
+              }
+            }
+          }
+          for (let edge of thisOpening.edges) {
+            nonZerosToProcess.push(edge);
+            /* OK TO DELETE
+            initialRevealedStates[edge.x][edge.y] = true;
+
+            let cng = initialChainNeighbourhoodGrid[edge.x][edge.y];
+            if (isFloating) {
+              cng.floating.includes(currentChainId) || cng.floating.push(currentChainId);
+            } else {
+              cng.fixed.includes(currentChainId) || cng.fixed.push(currentChainId);
+            }
+
+            let left = moveGrid[edge.x][edge.y].left;
+            let chord = moveGrid[edge.x][edge.y].chord;
+
+            if (isFloating) {
+              if (left) {
+                //smothered or multi-seeded chain remove
+                leftClickPool.delete(left);
+              }
+              if (chord) {
+                if (chordPool.has(chord)) {
+                  //New chord found, so push it to be added later
+                  chordsToDo.push(chord);
+                  chordPool.delete(chord);
+                }
+              }
+            } else {
+              //Fixed chain. If smothered, then leave it, if multi-seed, then track it
+              if (chord && !left) {
+                if (chordPool.has(chord)) {
+                  //New chord found, so push it to be added later
+                  chordsToDo.push(chord);
+                  chordPool.delete(chord);
+                }
+              }
+
+              if (chord && left) {
+                //Add seed if not already added
+                leftClickPool.delete(left); //Possibly already deleted, but it's ok
+                if (!seedsIfFixed.some(s => s.x === left.x && s.y === left.y)) {
+                  seedsIfFixed.push({
+                    x: left.x,
+                    y: left.y
+                  });
+                }
+
+                //Also add new chord
+                if (chordPool.has(chord)) {
+                  //New chord found, so push it to be added later
+                  chordsToDo.push(chord);
+                  chordPool.delete(chord);
+                }
+              }
+
+              if (!chord && left) {
+                //Smothered click
+                //Just delete and leave it to be processed later through unchordedDigs
+                if (leftClickPool.has(left)) {
+                  unchordedDigNonZerosToProcess.push(left);
+                  leftClickPool.delete(left);
+                }
+              }
+            }
+            */
+          }
+        }
+
+        //Add surrounding 8 squares to be processed
+        for (let neighbour of thisChordInfo.safeNeighbours) {
+          if (numbersArray[neighbour.x][neighbour.y] !== 0) {
+            nonZerosToProcess.push(neighbour);
+          }
+        }
+
+        for (let nonZero of nonZerosToProcess) {
+          initialRevealedStates[nonZero.x][nonZero.y] = true;
+
+          let cng = initialChainNeighbourhoodGrid[nonZero.x][nonZero.y];
+          if (isFloating) {
+            cng.floating.includes(currentChainId) || cng.floating.push(currentChainId);
+          } else {
+            cng.fixed.includes(currentChainId) || cng.fixed.push(currentChainId);
+          }
+
+          let left = moveGrid[nonZero.x][nonZero.y].left;
+          let chord = moveGrid[nonZero.x][nonZero.y].chord;
+
+          if (isFloating) {
+            if (left) {
+              //smothered or multi-seeded chain remove
+              leftClickPool.delete(left);
+            }
+            if (chord) {
+              if (chordPool.has(chord)) {
+                //New chord found, so push it to be added later
+                chordsToDo.push(chord);
+                chordPool.delete(chord);
+              }
+            }
+          } else {
+            //Fixed chain. If smothered, then leave it, if multi-seed, then track it
+            if (chord && !left) {
+              if (chordPool.has(chord)) {
+                //New chord found, so push it to be added later
+                chordsToDo.push(chord);
+                chordPool.delete(chord);
+              }
+            }
+
+            if (chord && left) {
+              //Add seed if not already added
+              leftClickPool.delete(left); //Possibly already deleted, but it's ok
+              if (!seedsIfFixed.some(s => s.x === left.x && s.y === left.y)) {
+                seedsIfFixed.push({
+                  x: left.x,
+                  y: left.y
+                });
+              }
+
+              //Also add new chord
+              if (chordPool.has(chord)) {
+                //New chord found, so push it to be added later
+                chordsToDo.push(chord);
+                chordPool.delete(chord);
+              }
+            }
+
+            if (!chord && left) {
+              //Smothered click
+              //Just delete and leave it to be processed later through unchordedDigs
+              if (leftClickPool.has(left)) {
+                unchordedDigNonZerosToProcess.push(left);
+                leftClickPool.delete(left);
+              }
+            }
+          }
+        }
+      }
+
+      if (!isFloating) {
+        newChain.seedLocationsIfFixed = seedsIfFixed;
+      }
+
+      initialChainMap.set(currentChainId, newChain);
+      currentChainId++;
+    }
+
+    //Deal with unchordedDigs (if floating, some may need to be removed)
+    //Go through zeros first incase these smother any single square digs
+    let unchordedDigsToProcess = [...unchordedDigZerosToProcess, ...unchordedDigNonZerosToProcess];
+    for (let unchordedDig of unchordedDigsToProcess) {
+      if (isFloating && initialRevealedStates[unchordedDig.x][unchordedDig.y]) {
+        //Smothered floating click, so leave it out
+        continue;
+      }
+
+      initialRevealedStates[unchordedDig.x][unchordedDig.y] = true;
+      if (numbersArray[unchordedDig.x][unchordedDig.y] === 0) {
+        //unchordedDig is an opening. Open it.
+        let openingLabel = openingLabels[unchordedDig.x][unchordedDig.y]
+        let thisOpening = preprocessedOpenings.get(openingLabel);
+        for (let zero of thisOpening.zeros) {
+          initialRevealedStates[zero.x][zero.y] = true;
+        }
+        for (let edge of thisOpening.edges) {
+          initialRevealedStates[edge.x][edge.y] = true;
+        }
+      }
+
+      initialChainIds[unchordedDig.x][unchordedDig.y] = currentChainId;
+
+      let newChain = new Chain();
+      if (isFloating) {
+        newChain.isFloatingSeed = true;
+      } else {
+        newChain.isFloatingSeed = false;
+      }
+
+      newChain.isUnchordedDig = true;
+      //newChain.addToPath(unchordedDig.x, unchordedDig.y); //Commented out as we use positionIfUnchorded instead
+      newChain.positionIfUnchordedDig = { x: unchordedDig.x, y: unchordedDig.y };
+
+      if (!isFloating) {
+        newChain.seedLocationsIfFixed = [{ x: unchordedDig.x, y: unchordedDig.y }];
+      }
+      initialChainMap.set(currentChainId, newChain);
+
+      /////// update chainNeighbourhoodGrid
+      //If floating, then include for neighbours, as it's smotherable
+      //Note that we assume floating it's mergable, since it would've been smothered before
+      //If fixed, then include for self, since if chorded it may be mergable
+
+      if (isFloating) {
+        const unchordedChainInfo = chainSquareInfo[unchordedDig.x][unchordedDig.y];
+        for (let openingTouched of unchordedChainInfo.openingsTouched) {
+          let thisOpening = preprocessedOpenings.get(openingTouched);
+          for (let edge of thisOpening.edges) {
+            const cng = initialChainNeighbourhoodGrid[edge.x][edge.y];
+            cng.floating.includes(currentChainId) || cng.floating.push(currentChainId);
+          }
+        }
+        for (let safeNeighbour of unchordedChainInfo.safeNeighbours) {
+          if (numbersArray[safeNeighbour.x][safeNeighbour.y] !== 0) {
+            const cng = initialChainNeighbourhoodGrid[safeNeighbour.x][safeNeighbour.y];
+            cng.floating.includes(currentChainId) || cng.floating.push(currentChainId);
+          }
+        }
+
+        //special case - unchordedDig is opening. Edges can smother it
+        if (numbersArray[unchordedDig.x][unchordedDig.y] === 0) {
+          let openingLabel = openingLabels[unchordedDig.x][unchordedDig.y]
+          let thisOpening = preprocessedOpenings.get(openingLabel);
+          for (let edge of thisOpening.zeros) {
+            const cng = initialChainNeighbourhoodGrid[edge.x][edge.y];
+            cng.floating.includes(currentChainId) || cng.floating.push(currentChainId);
+          }
+        }
+
+        //Also neighbours itself (as long as not zero)
+        if (numbersArray[unchordedDig.x][unchordedDig.y] !== 0) {
+          const ncng = initialChainNeighbourhoodGrid[unchordedDig.x][unchordedDig.y];
+          ncng.floating.includes(currentChainId) || ncng.floating.push(currentChainId);
+        }
+      } else {
+        //Fixed unchordedDig only neighbours itself (since new chain can start on-top of it)
+        if (numbersArray[unchordedDig.x][unchordedDig.y] !== 0) {
+          const cng = initialChainNeighbourhoodGrid[unchordedDig.x][unchordedDig.y];
+          cng.fixed.includes(currentChainId) || cng.fixed.push(currentChainId);
+        }
+      }
+      //End update chainNeighbourhoodGrid
+
+      currentChainId++;
+    }
+
+    return {
+      initialRevealedStates,
+      initialFlagStates,
+      initialChainIds,
+      initialChainMap,
+      initialChainNeighbourhoodGrid
+    }
   }
 
   static cloneChainMap(chainMap) {
@@ -1153,6 +1717,7 @@ class Chain {
     this.seedLocationsIfFixed = []; //Array of {x: ..., y: ...} coords of seeds if the locations are fixed
 
     this.isUnchordedDig = false; //If this is a single left click
+    this.positionIfUnchordedDig = false; // {x: ..., y: ...} coords if it is a single left click
 
     this.openingsTouched = []; //track which openings this chord chain touches as these don't need to be reprocessed when expanded
   }
@@ -1194,6 +1759,7 @@ class Chain {
     replicaChain.isFloatingSeed = this.isFloatingSeed;
     replicaChain.seedLocationsIfFixed = this.seedLocationsIfFixed.map(el => { return { x: el.x, y: el.y } });
     replicaChain.isUnchordedDig = this.isUnchordedDig;
+    replicaChain.positionIfUnchordedDig = this.positionIfUnchordedDig;
     replicaChain.openingsTouched = this.openingsTouched.slice();
     return replicaChain;
   }
@@ -1220,11 +1786,12 @@ class PriorityGridCreator {
     return priorityGrid;
   }
 
-  static createRandom(width, height, seed) {
+  static createRandom(width, height, rng = false) {
+    //rng is either the funciton we use for seeded rng, or false to use Math.random()
     let flatPriorities = new Array(width * height).fill(0).map((v, i) => i + 1);
 
     //Shuffle it
-    Algorithms.fisherYatesArrayShuffle(flatPriorities);
+    Algorithms.fisherYatesArrayShuffle(flatPriorities, rng);
 
     //Generate width x height 2D array
     const priorityGrid = new Array(width)
@@ -1240,6 +1807,21 @@ class PriorityGridCreator {
     }
 
     return priorityGrid;
+  }
+
+  static createBulkRandom(width, height, numberOfGrids, useSeededRng) {
+    let rng = false;
+    if (useSeededRng) {
+      //Seed with number of grids, since that makes it easier to test things with different grids
+      rng = seedrandom(numberOfGrids);
+    }
+
+    let priorityGrids = [];
+    for (let i = 0; i < numberOfGrids; i++) {
+      priorityGrids[i] = PriorityGridCreator.createRandom(width, height, rng);
+    }
+
+    return priorityGrids;
   }
 }
 

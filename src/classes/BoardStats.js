@@ -137,10 +137,17 @@ class BoardStats {
     this.eightZini = eightZiniResult.total;
     this.eightZiniPath = eightZiniResult.clicks;
 
+    /*
     let chainZiniResult = ChainZini.calcChainZini({
       mines: this.mines,
       includeClickPath: true
     })
+    */
+    let chainZiniResult = ChainZini.calcNWayChainZini({
+      mines: this.mines,
+      numberOfIterations: 100,
+      includeClickPath: true
+    });
     this.chainZini = chainZiniResult.total;
     this.chainZiniPath = chainZiniResult.clicks;
 
@@ -250,7 +257,7 @@ class BoardStats {
     const cWomZini = this.cWomZini;
     const cWomHzini = this.cWomHzini;
 
-    const bestZini = eightZini; //Change when I do a better zini
+    const bestZini = chainZini; //Change when I do a better zini
 
     const totalClicks = this.clicks.length;
 
