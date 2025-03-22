@@ -1,4 +1,5 @@
 import Algorithms from "./Algorithms";
+import ChainZini from "./ChainZini";
 
 class CompareReplay {
   constructor() {
@@ -14,13 +15,38 @@ class CompareReplay {
     let projectedZinis = []; //Array of what zinis would be assuming the game was continued
 
     //calculate projected zinis
-    const ziniAtStart = Algorithms.calcEightWayZini(mines).total //Special case as not covered by for loop
+    //these are the zinis at each point of the game if we were to play the rest of the board using 100chain zini
+
+    //Projected zinis with 100chain
+    let ziniAtStart = ChainZini.calcNWayChainZini({
+      mines: mines,
+      numberOfIterations: 100
+    }).total;
 
     for (let i = 0; i < clicks.length; i++) {
-      let initialRevealedStates = this.getRevealedStates(i, clicks, mines);
-      let initialFlagStates = this.getFlagStates(i, clicks, mines);
+      let reducedClicks = clicks.slice(0, i + 1); //click path upto index i
 
-      let projectedZini = i + 1 + Algorithms.calcEightWayZini(mines, false, initialRevealedStates, initialFlagStates).total
+      const {
+        initialRevealedStates,
+        initialFlagStates,
+        initialChainIds,
+        initialChainMap,
+        initialChainNeighbourhoodGrid
+      } = ChainZini.convertClickPathToChainInput(
+        reducedClicks,
+        mines,
+        false //false as we want the past click path to be fixed seeds
+      );
+
+      let projectedZini = ChainZini.calcNWayChainZini({
+        mines: mines,
+        initialRevealedStates,
+        initialFlagStates,
+        initialChainIds,
+        initialChainMap,
+        initialChainNeighbourhoodGrid,
+        numberOfIterations: 100
+      }).total;
 
       projectedZinis[i] = projectedZini;
     }

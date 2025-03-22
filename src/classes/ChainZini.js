@@ -51,9 +51,17 @@ class ChainZini {
     }
 
     //false for unflagged, true for flagged
+    let flagsPlacedBefore = 0;
     let flagStates;
     if (initialFlagStates) {
       flagStates = initialFlagStates
+      for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+          if (initialFlagStates[x][y]) {
+            flagsPlacedBefore++;
+          }
+        }
+      }
     } else {
       flagStates = new Array(width)
         .fill(0)
@@ -158,7 +166,7 @@ class ChainZini {
         Algorithms.fast2dArrayCopy(revealedStates);
       const thisEnumerationChainPremiums = Algorithms.fast2dArrayCopy(chainPremiums);
       let squaresSolvedThisRun = 0;
-      let flagsPlacedThisRun = 0;
+      let flagsPlacedSoFar = flagsPlacedBefore;
       const nextChainRef = { id: nextChainId };
 
       const thisEnumerationPriorityPremiums = new PriorityPremiums(
@@ -196,7 +204,7 @@ class ChainZini {
           nextChainRef
         );
         squaresSolvedThisRun += chainZiniStepResult.newlyRevealed;
-        flagsPlacedThisRun += chainZiniStepResult.flagsPlaced;
+        flagsPlacedSoFar += chainZiniStepResult.flagsPlaced;
 
         if (chainZiniStepResult.onlyNFRemaining) {
           needToDoNFClicks = true;
@@ -216,10 +224,8 @@ class ChainZini {
         );
       }
 
-      let clicksForThisEnumeration = flagsPlacedThisRun;
+      let clicksForThisEnumeration = flagsPlacedSoFar;
       for (let chain of thisEnumerationChainMap.values()) {
-        //This is scuffed as chains may include previous chains
-        //Whereas flags includes new flags
         clicksForThisEnumeration += chain.getClickCount();
       }
 
@@ -597,10 +603,13 @@ class ChainZini {
           }
           continue;
         } else {
-          //floating unchorded digs can only be used as baseChain if they are an exact match
-          //The below matches only for when the chord is ontop of a single-cell dig.
-          //It would technically also match if on the starting square of an opening dig, but we never chord these.
-          if (floatingId === chainIds[chordClick.x][chordClick.y]) {
+          //floating unchorded digs can only be used as baseChain if they are an exact match or
+          //if they are on the edge of an opening
+          const candidatePos = floatingBaseCandidate.positionIfUnchordedDig;
+          if (
+            floatingId === chainIds[chordClick.x][chordClick.y] ||
+            chainSquareInfo[candidatePos.x][candidatePos.y].number === 0
+          ) {
             if (floatingBaseCandidate.openingsTouched.length > floatingBaseMostOpeningsTouchedSoFar) {
               floatingBaseMostOpeningsTouchedSoFar = floatingBaseCandidate.openingsTouched.length;
               baseChainId = floatingId;
@@ -609,8 +618,8 @@ class ChainZini {
           }
         }
 
-        // Note - openings or mismatched unchordedDigs get excluded from being baseChain
-        // This is they can be handled by smothering instead.
+        // Mismatched unchordedDigs get excluded from being baseChain
+        // they can be handled by smothering instead later on.
       }
     } else {
       //Do nothing, we will need to make a new chain later
@@ -836,6 +845,36 @@ class ChainZini {
         baseChain.addOpeningTouched(openingTouched);
       }
     } else {
+      //This else statement is for when there is no base chain
+
+      //Still need to check for smothering squares.
+      for (let floatingChainId of thisSquareFloatingNeighbourIds) {
+        let floatingChain = chainMap.get(floatingChainId);
+        if (floatingChain.isUnchordedDig) {
+          //Floating left click that gets smothered
+          //remove this "single-left-click" chain and push neighbours
+          if (!floatingChain.positionIfUnchordedDig) {
+            throw new Error('Unchorded dig with missing position');
+          }
+          const smotheredCoord = floatingChain.positionIfUnchordedDig;
+          chainIds[smotheredCoord.x][smotheredCoord.y] = null;
+          //Also delete smothered coord from neighbouring self (just in case)
+          Utils.deleteValueFromArray(chainNeighbourhoodGrid[smotheredCoord.x][smotheredCoord.y].floating, floatingChainId);
+          chainMap.delete(floatingChainId);
+          const smotheredChainInfo = chainSquareInfo[smotheredCoord.x][smotheredCoord.y];
+          if (smotheredChainInfo.number !== 0) {
+            for (let n of smotheredChainInfo.chainNeighbours) {
+              Utils.deleteValueFromArray(chainNeighbourhoodGrid[n.x][n.y].floating, floatingChainId);
+              squaresThatNeedPremiumUpdated.push({ x: n.x, y: n.y });
+            }
+          } else {
+            throw new Error("We don't have a baseChain, yet neighbour an unchordedDig with opening. This is impossible.");
+          }
+        } else {
+          throw new Error("We don't have a baseChain, yet neighbour a chorded chain. This is impossible.")
+        }
+      }
+
       //Make new chain
       chainIds[chordClick.x][chordClick.y] = nextChainRef.id;
       let newChain = new Chain();
@@ -1656,7 +1695,7 @@ class ChainZini {
         if (numbersArray[unchordedDig.x][unchordedDig.y] === 0) {
           let openingLabel = openingLabels[unchordedDig.x][unchordedDig.y]
           let thisOpening = preprocessedOpenings.get(openingLabel);
-          for (let edge of thisOpening.zeros) {
+          for (let edge of thisOpening.edges) {
             const cng = initialChainNeighbourhoodGrid[edge.x][edge.y];
             cng.floating.includes(currentChainId) || cng.floating.push(currentChainId);
           }
@@ -1668,10 +1707,18 @@ class ChainZini {
           ncng.floating.includes(currentChainId) || ncng.floating.push(currentChainId);
         }
       } else {
-        //Fixed unchordedDig only neighbours itself (since new chain can start on-top of it)
         if (numbersArray[unchordedDig.x][unchordedDig.y] !== 0) {
+          //Fixed unchordedDig neighbours itself (since new chain can start on-top of it)
           const cng = initialChainNeighbourhoodGrid[unchordedDig.x][unchordedDig.y];
           cng.fixed.includes(currentChainId) || cng.fixed.push(currentChainId);
+        } else {
+          //If it's an opening then it neighbours edges as the chain can continue there
+          let openingLabel = openingLabels[unchordedDig.x][unchordedDig.y]
+          let thisOpening = preprocessedOpenings.get(openingLabel);
+          for (let edge of thisOpening.edges) {
+            const cng = initialChainNeighbourhoodGrid[edge.x][edge.y];
+            cng.fixed.includes(currentChainId) || cng.fixed.push(currentChainId);
+          }
         }
       }
       //End update chainNeighbourhoodGrid

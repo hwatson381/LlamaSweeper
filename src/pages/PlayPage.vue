@@ -2144,7 +2144,6 @@ const vFocus = {
   mounted: (el) => el.focus(),
 };
 
-let showZiniCompareWarning = ref(true);
 let devMode = localStorage.getItem("devMode") === "1" ? true : false;
 
 let bulkIterations = ref(1000);
@@ -6101,11 +6100,6 @@ class Board {
           });
           return;
         }
-        showZiniCompareWarning.value &&
-          window.alert(
-            "This shows where clicks were lost/gained by 8-way zini. I intend to upgrade this to use a better zini algorithm."
-          );
-        showZiniCompareWarning.value = false;
         replayParams = {
           clicks: compareReplay.clicks,
           board: this,

@@ -279,9 +279,6 @@ run button on zini explorer should show loading icon on eff% indicator
 
 My variants page should have descriptions moved elsewhere (maybe hidden under help button?)
 
-We are testing out NWay ChainZini
-Remove window.iterations
-
 Different idea related to inc-ex zini:
 Maybe once we have a candidate chord, we check all options around it before playing it
 That is - all options where we exclude that chord and force a neighbour
@@ -290,15 +287,7 @@ For end of game stats, calc 100chain in worker to reduce endgame lag?
 
 mini-tasks:
 Show chainPremiums in the "show premiums" dropdown on zini explorer
-Make use of 100Chain in click-loss-replay
-
-Idea for opening unchordedDigs -
-Maybe have property on chain like labelIfUnchordedDigZero
-Then we can properly smother these and update chainNeighbourhoodGrid
-
-positionIfUnchordedDig
-
-Gotta be careful with followup chords...
+(done) Make use of 100Chain in click-loss-replay
 
 Try Chrome performance tab profiler
 
@@ -308,6 +297,15 @@ Possible bug - scroll input doesn't get blocked when scrolling on number input?
 
 Zini Explorer should make it more obvious when algorithm is running
 
-Zini Explorer "Iterations" doesn't cap to 1 million
-
 Pregenerating priority grids for n-way chain can cause out-of-memory error
+
+New bug:
+[fixed] Floating smothering doesn't work when there isn't a base chain?
+[fixed] Do we allow floating opening edge unchordedDig to be base chain?
+
+validate against code that checks premium for every single square?
+Also validate by looking for chainNeighbourGrids that don't exist in chainIds (and vice-versa)
+
+See if we can find 196% on this game? https://minesweeper.online/game/4415263702
+
+(probably won't do) Click loss replay - deep red if a move loses 2 clicks? Similarly also have deep green for gaining 2?
