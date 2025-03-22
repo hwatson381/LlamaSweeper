@@ -214,11 +214,47 @@
               label="ptt import"
             />
           </div>
-          <div>
+          <div class="flex" style="gap: 15px">
             <q-btn
               @click="game.board.applyEditBoardWidthHeight()"
               color="positive"
               label="new board"
+            />
+            <q-btn-toggle
+              v-if="variant === 'board editor'"
+              v-model="isCurrentlyEditModeDisplay"
+              push
+              glossy
+              toggle-color="primary"
+              :options="[
+                { label: 'Edit', value: true },
+                { label: 'Play', value: false },
+              ]"
+              @update:model-value="
+                (val) => {
+                  val
+                    ? game.board.switchToEditMode()
+                    : game.board.switchToPlayMode();
+                }
+              "
+            />
+            <q-btn-toggle
+              v-if="variant === 'zini explorer'"
+              v-model="isCurrentlyEditModeDisplay"
+              push
+              glossy
+              toggle-color="primary"
+              :options="[
+                { label: 'Edit', value: true },
+                { label: 'Analyse', value: false },
+              ]"
+              @update:model-value="
+                (val) => {
+                  val
+                    ? game.board.switchToEditMode()
+                    : game.board.switchToAnalyseMode();
+                }
+              "
             />
           </div>
         </q-card-section>
@@ -694,6 +730,7 @@
                 { label: 'Chain Numbers', value: 'chain' },
                 { label: 'Chain Numbers >= 0', value: 'chain positive' },
                 { label: 'Highlight Best', value: 'highlight' },
+                { label: 'Highlight Chain Best', value: 'chain highlight' },
               ]"
               emit-value
               map-options
@@ -786,45 +823,12 @@
           </q-card-section>
         </q-card>
       </div>
-      <div class="flex q-ma-md" style="gap: 10px">
-        <q-btn-toggle
-          v-if="variant === 'board editor'"
-          v-model="isCurrentlyEditModeDisplay"
-          push
-          glossy
-          toggle-color="primary"
-          :options="[
-            { label: 'Edit', value: true },
-            { label: 'Play', value: false },
-          ]"
-          @update:model-value="
-            (val) => {
-              val
-                ? game.board.switchToEditMode()
-                : game.board.switchToPlayMode();
-            }
-          "
-        />
-        <q-btn-toggle
-          v-if="variant === 'zini explorer'"
-          v-model="isCurrentlyEditModeDisplay"
-          push
-          glossy
-          toggle-color="primary"
-          :options="[
-            { label: 'Edit', value: true },
-            { label: 'Analyse', value: false },
-          ]"
-          @update:model-value="
-            (val) => {
-              val
-                ? game.board.switchToEditMode()
-                : game.board.switchToAnalyseMode();
-            }
-          "
-        />
+      <div
+        class="flex q-ma-md"
+        style="gap: 10px"
+        v-if="variant !== 'zini explorer'"
+      >
         <q-btn
-          v-if="variant !== 'zini explorer'"
           @click="game.board.toggleQuickPaint()"
           color="secondary"
           label="QuickPaint (Q)"
@@ -2605,7 +2609,7 @@ class Board {
     ) {
       //Edit mode cannot be reset
       window.alert(
-        "Cannot reset during edit mode. If you want to clear the board, click the new board button. If you want to change to a different mode, use the toggle buttons below"
+        "Cannot reset during edit mode. If you want to clear the board, click the new board button. If you want to change to a different mode, use the toggle buttons above"
       );
       return;
     }

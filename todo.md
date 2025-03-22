@@ -273,8 +273,6 @@ quickpaint in board editor doesn't clear on reset
 
 removing flags on zini explorer chain mode shouldn't break the whole chain
 
-button to toggle between edit/analyse in zini explorer is too far down page
-
 run button on zini explorer should show loading icon on eff% indicator
 
 My variants page should have descriptions moved elsewhere (maybe hidden under help button?)
@@ -309,3 +307,8 @@ Also validate by looking for chainNeighbourGrids that don't exist in chainIds (a
 See if we can find 196% on this game? https://minesweeper.online/game/4415263702
 
 (probably won't do) Click loss replay - deep red if a move loses 2 clicks? Similarly also have deep green for gaining 2?
+
+Have checkboxes for which stats to show (in particular for zini)
+
+Change showPremiums to only use chain premiums on chain mode?
+Or will this be too laggy?

@@ -9,7 +9,6 @@ class ZiniExplore {
     this.refs = refs
 
     this.classicPath = []; //Array of clicks {type:'left', x: 1, y: 2} etc for classic display mode
-    this.chains = []; //Array of chord chains, for chain display mode
 
     this.preprocessedData = {
       numbersArray: false,
@@ -873,6 +872,7 @@ class ZiniExplore {
     }
   }
 
+  /* OK TO DELETE
   updatePremiums() {
     const width = this.board.mines.length;
     const height = this.board.mines[0].length;
@@ -966,10 +966,187 @@ class ZiniExplore {
       }
     }
   }
+  */
+
+  calculateNormalPremiums() {
+    const width = this.board.mines.length;
+    const height = this.board.mines[0].length;
+
+    //array of saved info for square about what the neighbours are
+    const squareInfo = Algorithms.computeSquareInfo(
+      this.board.mines,
+      this.preprocessedData.numbersArray,
+      this.preprocessedData.openingLabels
+    );
+
+    //Figure out which flags/revealed squares are based on board states
+    const { revealedStates, flagStates } = this.getRevealedAndFlagStates();
+
+    //store premiums of opening + chording each cell
+    const premiums = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(null));
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (this.board.mines[x][y]) {
+          continue;
+        }
+        Algorithms.updatePremiumForCoord(
+          x,
+          y,
+          squareInfo,
+          flagStates,
+          revealedStates,
+          premiums,
+          this.preprocessedData.preprocessedOpenings
+        );
+      }
+    }
+
+    return premiums;
+  }
+
+  calculateChainPremiums() {
+    /*
+      Note - there could be some performance improvements here.
+      We could pass preprocessedData to "convertClickpathToChainInput" function
+      and also return chainSquareInfo from "convertClickpathToChainInput" function
+      so we don't have to calculate chainSquareInfo twice.
+    */
+
+    const width = this.board.mines.length;
+    const height = this.board.mines[0].length;
+
+    const {
+      initialRevealedStates,
+      initialFlagStates,
+      initialChainIds,
+      initialChainMap,
+      initialChainNeighbourhoodGrid
+    } = ChainZini.convertClickPathToChainInput(
+      this.classicPath,
+      this.board.mines,
+      true //Allow rewriting (floating chains etc)
+    );
+
+    //array of saved info for square about what the neighbours are etc
+    const chainSquareInfo = ChainZini.computeChainSquareInfo(
+      this.board.mines,
+      this.preprocessedData.numbersArray,
+      this.preprocessedData.openingLabels,
+      this.preprocessedData.preprocessedOpenings
+    );
+
+    //store chainPremiums of opening + chording each cell
+    const chainPremiums = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(null));
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (this.board.mines[x][y]) {
+          continue;
+        }
+        ChainZini.updateChainPremiumForCoord(
+          x,
+          y,
+          chainSquareInfo,
+          initialFlagStates,
+          initialRevealedStates,
+          chainPremiums,
+          this.preprocessedData.preprocessedOpenings,
+          initialChainIds,
+          initialChainMap,
+          initialChainNeighbourhoodGrid
+        );
+      }
+    }
+
+    return chainPremiums;
+  }
+
+  displayPremiums(premiums) {
+    const width = this.board.mines.length;
+    const height = this.board.mines[0].length;
+
+    const showPremiumsValue = this.refs.analyseShowPremiums.value; //Shorter to type :)
+
+    let highestPremium = premiums
+      .flat()
+      .filter(s => s !== null)
+      .reduce(function (p, v) {
+        return (p > v ? p : v);
+      }, -1);
+
+    if (
+      ['numbers positive', 'chain positive', 'highlight', 'chain highlight'].includes(showPremiumsValue) &&
+      highestPremium === -1
+    ) {
+      //exit early on highlight/positive if no non-negative premiums
+      return;
+    }
+
+    //Add premium info to tiles
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        //Only add premiums when a cell has potential to be chorded
+        if (this.board.mines[x][y]) {
+          //Mines can't be chorded!
+          continue;
+        }
+        if (this.preprocessedData.numbersArray[x][y] === 0) {
+          //Zeros can't be chorded
+          continue;
+        }
+        //Check if there is an unopened safe neighbour cell
+        let hasUnopenedSafeNeighbour = false
+        for (let i = x - 1; i <= x + 1; i++) {
+          for (let j = y - 1; j <= y + 1; j++) {
+            if (i < 0 || j < 0 || i >= width || j >= height) {
+              continue;
+            }
+            if (this.board.tilesArray[i][j].state === CONSTANTS.UNREVEALED && !this.board.mines[i][j]) {
+              hasUnopenedSafeNeighbour = true;
+            }
+          }
+        }
+        if (!hasUnopenedSafeNeighbour) {
+          if (['numbers', 'numbers positive', 'highlight'].includes(showPremiumsValue)) {
+            //Never chordable on normal
+            continue;
+          } else if (['chain', 'chain positive', 'chain highlight'].includes(showPremiumsValue)) {
+            //On chain, we check if this move has positive premium (note that this is very unlikely)
+            if (premiums[x][y] <= 0) {
+              continue;
+            }
+          } else {
+            throw new Error('unexpected premium type');
+          }
+        }
+        if (
+          showPremiumsValue === 'numbers' ||
+          showPremiumsValue === 'chain' ||
+          (
+            (showPremiumsValue === 'numbers positive' || showPremiumsValue === 'chain positive') &&
+            premiums[x][y] >= 0
+          )
+        ) {
+          //On numbers mode, we show the number of the premium in the cell
+          this.board.tilesArray[x][y].addPremium(premiums[x][y]);
+        }
+        if (
+          (showPremiumsValue === 'highlight' || showPremiumsValue === 'chain highlight') &&
+          premiums[x][y] === highestPremium) {
+          //On highlight mode, we just highlight the top cells 
+          this.board.tilesArray[x][y].addHighlight();
+        }
+      }
+    }
+  }
 
   clearCurrentPath() {
     this.classicPath = [];
-    this.chains = [];
   }
 
   refreshForEditedBoard() {
@@ -988,7 +1165,17 @@ class ZiniExplore {
     this.updateZiniSumRefs();
     this.updateTileAnnotations();
     if (this.refs.analyseShowPremiums.value !== 'none') {
-      this.updatePremiums();
+      //this.updatePremiums(); OK TO DELETE
+
+      let premiumsArray;
+      if (['numbers', 'numbers positive', 'highlight'].includes(this.refs.analyseShowPremiums.value)) {
+        premiumsArray = this.calculateNormalPremiums();
+      }
+      if (['chain', 'chain positive', 'chain highlight'].includes(this.refs.analyseShowPremiums.value)) {
+        premiumsArray = this.calculateChainPremiums();
+      }
+
+      this.displayPremiums(premiumsArray);
     }
     this.board.draw();
   }
