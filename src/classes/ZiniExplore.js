@@ -1071,6 +1071,7 @@ class ZiniExplore {
     const height = this.board.mines[0].length;
 
     const showPremiumsValue = this.refs.analyseShowPremiums.value; //Shorter to type :)
+    const displayInputMode = this.refs.analyseDisplayMode.value;
 
     let highestPremium = premiums
       .flat()
@@ -1080,7 +1081,7 @@ class ZiniExplore {
       }, -1);
 
     if (
-      ['numbers positive', 'chain positive', 'highlight', 'chain highlight'].includes(showPremiumsValue) &&
+      ['numbers positive', 'highlight'].includes(showPremiumsValue) &&
       highestPremium === -1
     ) {
       //exit early on highlight/positive if no non-negative premiums
@@ -1112,10 +1113,10 @@ class ZiniExplore {
           }
         }
         if (!hasUnopenedSafeNeighbour) {
-          if (['numbers', 'numbers positive', 'highlight'].includes(showPremiumsValue)) {
+          if (displayInputMode === 'classic') {
             //Never chordable on normal
             continue;
-          } else if (['chain', 'chain positive', 'chain highlight'].includes(showPremiumsValue)) {
+          } else if (displayInputMode === 'chain') {
             //On chain, we check if this move has positive premium (note that this is very unlikely)
             if (premiums[x][y] <= 0) {
               continue;
@@ -1126,9 +1127,8 @@ class ZiniExplore {
         }
         if (
           showPremiumsValue === 'numbers' ||
-          showPremiumsValue === 'chain' ||
           (
-            (showPremiumsValue === 'numbers positive' || showPremiumsValue === 'chain positive') &&
+            showPremiumsValue === 'numbers positive' &&
             premiums[x][y] >= 0
           )
         ) {
@@ -1136,7 +1136,7 @@ class ZiniExplore {
           this.board.tilesArray[x][y].addPremium(premiums[x][y]);
         }
         if (
-          (showPremiumsValue === 'highlight' || showPremiumsValue === 'chain highlight') &&
+          showPremiumsValue === 'highlight' &&
           premiums[x][y] === highestPremium) {
           //On highlight mode, we just highlight the top cells 
           this.board.tilesArray[x][y].addHighlight();
@@ -1165,13 +1165,11 @@ class ZiniExplore {
     this.updateZiniSumRefs();
     this.updateTileAnnotations();
     if (this.refs.analyseShowPremiums.value !== 'none') {
-      //this.updatePremiums(); OK TO DELETE
-
       let premiumsArray;
-      if (['numbers', 'numbers positive', 'highlight'].includes(this.refs.analyseShowPremiums.value)) {
+      if (this.refs.analyseDisplayMode.value === 'classic') {
         premiumsArray = this.calculateNormalPremiums();
       }
-      if (['chain', 'chain positive', 'chain highlight'].includes(this.refs.analyseShowPremiums.value)) {
+      if (this.refs.analyseDisplayMode.value === 'chain') {
         premiumsArray = this.calculateChainPremiums();
       }
 

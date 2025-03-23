@@ -284,7 +284,7 @@ That is - all options where we exclude that chord and force a neighbour
 For end of game stats, calc 100chain in worker to reduce endgame lag?
 
 mini-tasks:
-Show chainPremiums in the "show premiums" dropdown on zini explorer
+(done) Show chainPremiums in the "show premiums" dropdown on zini explorer
 (done) Make use of 100Chain in click-loss-replay
 
 Try Chrome performance tab profiler
@@ -308,7 +308,6 @@ See if we can find 196% on this game? https://minesweeper.online/game/4415263702
 
 (probably won't do) Click loss replay - deep red if a move loses 2 clicks? Similarly also have deep green for gaining 2?
 
-Have checkboxes for which stats to show (in particular for zini)
+Do chainNeighbour optimisation
 
-Change showPremiums to only use chain premiums on chain mode?
-Or will this be too laggy?
+Bug - 100x100/600 hits error with exceeding call stack size

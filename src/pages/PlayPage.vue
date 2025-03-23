@@ -392,11 +392,15 @@
                 'zini-match':
                   variant === 'eff boards' &&
                   statsObject.isWonGame &&
-                  statsObject.clicks.total === statsObject.chainZini,
+                  statsObject.clicks.total === statsObject.chainZini &&
+                  statsShowChain &&
+                  statsObject.chainZini !== null,
                 'sub-zini':
                   variant === 'eff boards' &&
                   statsObject.isWonGame &&
-                  statsObject.clicks.total < statsObject.chainZini,
+                  statsObject.clicks.total < statsObject.chainZini &&
+                  statsShowChain &&
+                  statsObject.chainZini !== null,
                 'excellent-eff':
                   variant === 'eff boards' &&
                   statsObject.isWonGame &&
@@ -405,7 +409,9 @@
             >
               Eff: {{ statsObject.eff }}%
             </div>
-            <div>Max Eff: {{ statsObject.maxEff }}%</div>
+            <div v-if="statsShowChain && statsObject.maxEff !== null">
+              Max Eff: {{ statsObject.maxEff }}%
+            </div>
             <div>
               Clicks: {{ statsObject.clicks.effective }} +
               {{ statsObject.clicks.wasted }}
@@ -464,9 +470,13 @@
                 </q-menu>
               </q-icon>
             </div>
-            <div>ZiNi (8-way): {{ statsObject.eightZini }}</div>
-            <div>ZiNi (100chain): {{ statsObject.chainZini }}</div>
-            <div>
+            <div v-if="statsShow8Way && statsObject.eightZini !== null">
+              ZiNi (8-way): {{ statsObject.eightZini }}
+            </div>
+            <div v-if="statsShowChain && statsObject.chainZini !== null">
+              ZiNi (100chain): {{ statsObject.chainZini }}
+            </div>
+            <div v-if="statsShowWomZini">
               ZiNi (WoM):
               <template v-if="statsObject.womZini !== null">
                 {{ statsObject.womZini }} | improved: {{ statsObject.cWomZini }}
@@ -475,11 +485,11 @@
                 v-else
                 class="text-info"
                 style="text-decoration: underline; cursor: pointer"
-                @click="game.board.stats.lateCalcWomZiniStats()"
+                @click="game.board.stats.lateCalcForceZinis()"
                 >run</span
               >
             </div>
-            <div>
+            <div v-if="statsShowWomZini">
               H.ZiNi (WoM):
               <template v-if="statsObject.womHzini !== null">
                 {{ statsObject.womHzini }}
@@ -488,7 +498,7 @@
                 v-else
                 class="text-info"
                 style="text-decoration: underline; cursor: pointer"
-                @click="game.board.stats.lateCalcWomZiniStats()"
+                @click="game.board.stats.lateCalcForceZinis()"
                 >run</span
               >
             </div>
@@ -676,14 +686,8 @@
               map-options
               stack-label
               label="Input Mode"
+              @update:model-value="game?.board?.ziniExplore?.updateUiAndBoard()"
             />
-            <!--DELETE ME<q-checkbox
-                v-model="analyseShowPremiums"
-                label="Show premiums"
-                @update:model-value="
-                  game?.board?.ziniExplore?.updateUiAndBoard()
-                "
-              />-->
             <q-select
               class="q-mx-md q-mb-md"
               outlined
@@ -727,10 +731,7 @@
                 },
                 { label: 'Numbers', value: 'numbers' },
                 { label: 'Numbers >= 0', value: 'numbers positive' },
-                { label: 'Chain Numbers', value: 'chain' },
-                { label: 'Chain Numbers >= 0', value: 'chain positive' },
                 { label: 'Highlight Best', value: 'highlight' },
-                { label: 'Highlight Chain Best', value: 'chain highlight' },
               ]"
               emit-value
               map-options
@@ -1070,6 +1071,47 @@
                   stack-label
                   label="Face Hitbox"
                 ></q-select>
+                <q-checkbox v-model="statsShow8Way" label="Show 8-way ZiNi" />
+                <br />
+                <q-checkbox
+                  v-model="statsShowChain"
+                  label="Show 100chain ZiNi (and max eff)"
+                />
+                <br />
+                <q-checkbox
+                  v-model="statsShowWomZini"
+                  label="Show WoM ZiNi and HZiNi"
+                />
+                <div class="flex" style="gap: 15px">
+                  <q-input
+                    dense
+                    rounded
+                    outlined
+                    style="width: 120px"
+                    @keydown.prevent="
+                      (event) => (keyboardClickDigKey = event.key)
+                    "
+                    v-model="keyboardClickDigKey"
+                    label="Keyboard Dig Key"
+                    input-style="text-align: center"
+                  />
+                  <q-input
+                    dense
+                    rounded
+                    outlined
+                    style="width: 120px"
+                    @keydown.prevent="
+                      (event) => (keyboardClickFlagKey = event.key)
+                    "
+                    v-model="keyboardClickFlagKey"
+                    label="Keyboard Flag Key"
+                    input-style="text-align: center"
+                  />
+                </div>
+                <q-checkbox
+                  v-model="keyboardClickOpenOnKeyDown"
+                  label="Keyboard Click Reveal On Key Down"
+                />
               </q-card-section>
             </q-card>
           </q-expansion-item>
@@ -1707,7 +1749,7 @@ import CONSTANTS from "src/includes/Constants";
 
 import seedrandom from "seedrandom";
 
-import { useQuasar } from "quasar";
+import { event, useQuasar } from "quasar";
 const $q = useQuasar();
 
 defineOptions({
@@ -1716,6 +1758,7 @@ defineOptions({
 
 onMounted(() => {
   document.body.addEventListener("keydown", handleKeyDown, true);
+  document.body.addEventListener("keyup", handleKeyUp, true);
   document.body.addEventListener("scroll", handlePageScroll);
   skinManager.addCallbackWhenAllLoaded(() => {
     game.initialise();
@@ -1724,6 +1767,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.body.removeEventListener("keydown", handleKeyDown, true);
+  document.body.removeEventListener("keyup", handleKeyUp, true);
   window.removeEventListener("scroll", handlePageScroll);
   game.unmount();
   effShuffleManager.killAllWorkers();
@@ -1731,48 +1775,90 @@ onUnmounted(() => {
 });
 
 function handleKeyDown(event) {
-  if (event.key === " " || event.key === "F2") {
-    if (
-      document.activeElement?.nodeName === "INPUT" &&
-      document.activeElement?.classList?.contains("q-field__native")
-    ) {
-      //We are on an input element, so let the space input go to that instead
-      return; //Exit early, without resetting the board or cancelling the event
-    }
-
-    if (
-      document.activeElement?.nodeName === "INPUT" &&
-      document.activeElement?.classList?.contains("q-select__focus-target") &&
-      document.activeElement?.getAttribute("aria-expanded") === "true"
-    ) {
-      //We are on an open select element. So let that handle the space input instead
+  if (event.key === keyboardClickDigKey.value) {
+    if (!checkFocusForKeyPress(event)) {
       return;
     }
-
-    //There were some issues with quasar components stealing the spacebar input.
-    //Hence we defocus all elements except some input elements
-    document.activeElement?.blur();
-    event.preventDefault();
-    event.stopPropagation();
-
+    game.board.sendKeyboardClick(true, false, true, event.timeStamp);
+    return;
+  }
+  if (event.key === keyboardClickFlagKey.value) {
+    if (!checkFocusForKeyPress(event)) {
+      return;
+    }
+    game.board.sendKeyboardClick(false, true, true, event.timeStamp);
+    return;
+  }
+  if (event.key === " " || event.key === "F2") {
+    if (!checkFocusForKeyPress(event)) {
+      return;
+    }
     game.reset();
   }
   if (event.key === "q") {
+    if (!checkFocusForKeyPress(event)) {
+      return;
+    }
     game.board.toggleQuickPaint();
     //event.preventDefault();
   }
   if (event.key === "w") {
+    if (!checkFocusForKeyPress(event)) {
+      return;
+    }
     game.board.handleCycleQuickPaintModeKeypress();
     //event.preventDefault();
   }
   if (event.key === "ArrowLeft") {
+    if (!checkFocusForKeyPress(event)) {
+      return;
+    }
     game.board.replay && game.board.replay.jumpToPreviousClick();
     //event.preventDefault();
   }
   if (event.key === "ArrowRight") {
+    if (!checkFocusForKeyPress(event)) {
+      return;
+    }
     game.board.replay && game.board.replay.jumpToNextClick();
     //event.preventDefault();
   }
+}
+
+function handleKeyUp(event) {
+  if (event.key === keyboardClickDigKey.value) {
+    game.board.sendKeyboardClick(true, false, false, event.timeStamp);
+  }
+  if (event.key === keyboardClickFlagKey.value) {
+    game.board.sendKeyboardClick(false, true, false, event.timeStamp);
+  }
+}
+
+function checkFocusForKeyPress(event) {
+  if (
+    document.activeElement?.nodeName === "INPUT" &&
+    document.activeElement?.classList?.contains("q-field__native")
+  ) {
+    //We are on an input element, so let the space input go to that instead
+    return false; //Exit early, without resetting the board or cancelling the event
+  }
+
+  if (
+    document.activeElement?.nodeName === "INPUT" &&
+    document.activeElement?.classList?.contains("q-select__focus-target") &&
+    document.activeElement?.getAttribute("aria-expanded") === "true"
+  ) {
+    //We are on an open select element. So let that handle the space input instead
+    return false;
+  }
+
+  //There were some issues with quasar components stealing the spacebar input.
+  //Hence we defocus all elements except some input elements
+  document.activeElement?.blur();
+  event.preventDefault();
+  event.stopPropagation();
+
+  return true;
 }
 
 function handlePageScroll(event) {
@@ -1813,6 +1899,9 @@ let statsObject = ref({
   pttaLink: null,
 });
 let showStatsClicksTable = ref(false);
+let statsShow8Way = ref(true);
+let statsShowChain = ref(true);
+let statsShowWomZini = ref(true);
 
 let settingsModal = ref(false);
 let tileSizeSlider = ref(25);
@@ -2143,6 +2232,10 @@ watchEffect(() => {
     }
   }
 });
+
+let keyboardClickOpenOnKeyDown = ref(false);
+let keyboardClickDigKey = ref("z");
+let keyboardClickFlagKey = ref("x");
 
 const vFocus = {
   mounted: (el) => el.focus(),
@@ -2573,6 +2666,10 @@ class Board {
 
     this.touchDepressedSquaresMap = new Map(); //Map from touch identifiers to depressed squares (for depressing squares on mobile)
     this.ongoingTouches = new Map(); //Track info about touches such as start location, time started etc.
+
+    this.lastClientCoords = { clientX: 0, clientY: 0 }; //Coords used by keyboard clicks
+    this.keyboardClickIsDigDown = false; //Used to help ignore repeating keys
+    this.keyboardClickIsFlagDown = false; //Used to help ignore repeating keys
 
     //Boards used for "edit board" variant and "zini board" variant. These persist across resets.
     this.boardEditorMines = new Array(9)
@@ -3018,6 +3115,10 @@ class Board {
       return;
     }
 
+    //Update coords as would be used by keyboard clicks
+    this.lastClientCoords.clientX = event.clientX;
+    this.lastClientCoords.clientY = event.clientY;
+
     if (this.gameStage !== "pregame" && this.gameStage !== "running") {
       return; //only track mouse when game is running or just before
     }
@@ -3033,7 +3134,10 @@ class Board {
 
     let unflooredCoords = this.eventToUnflooredTileCoords(event);
 
-    const isLeftDown = Boolean(event.buttons & 1); //checks if left mouse button down
+    //checks if left mouse button down
+    const isLeftDown =
+      Boolean(event.buttons & 1) ||
+      (this.keyboardClickIsDigDown && !keyboardClickOpenOnKeyDown.value);
 
     const requiresRedraw = this.mouseMove(
       unflooredCoords.tileX,
@@ -3484,6 +3588,86 @@ class Board {
     }
   }
 
+  sendKeyboardClick(isDigInput, isFlagInput, isDown, timeStamp) {
+    //Sends a keyboard click base on the last location of mouseMove
+    //Very hacky
+
+    if (mobileModeEnabled.value) {
+      //Just in case - tbh it might be possible to allow this, but simpler to not.
+      return;
+    }
+
+    if (isDigInput) {
+      //defend against repeating keys
+      if (isDown && this.keyboardClickIsDigDown) {
+        return;
+      }
+      if (isDown) {
+        this.keyboardClickIsDigDown = true;
+      }
+      if (!isDown) {
+        this.keyboardClickIsDigDown = false;
+      }
+    }
+
+    if (isFlagInput) {
+      //defend against repeating keys
+      if (isDown && this.keyboardClickIsFlagDown) {
+        return;
+      }
+      if (isDown) {
+        this.keyboardClickIsFlagDown = true;
+      }
+      if (!isDown) {
+        this.keyboardClickIsFlagDown = false;
+      }
+    }
+
+    //If they have the setting for it, we do digs on key down instead of up
+    //We do this by faking a key up input, and blocking the real key up
+    //This is very hacky
+    if (isDigInput && !isDown && keyboardClickOpenOnKeyDown.value) {
+      //Block key up from doing anything
+      return;
+    }
+    if (isDigInput && isDown && keyboardClickOpenOnKeyDown.value) {
+      //Convert key down into key up
+      isDown = false;
+    }
+
+    let fakeEvent = {
+      clientX: this.lastClientCoords.clientX,
+      clientY: this.lastClientCoords.clientY,
+      timeStamp: timeStamp,
+    };
+
+    const canvasCoords = this.eventToCanvasCoord(fakeEvent);
+    const flooredCoords = this.eventToFlooredTileCoords(fakeEvent);
+    const unflooredCoords = this.eventToUnflooredTileCoords(fakeEvent);
+
+    const coordsData = {
+      canvasCoords,
+      flooredCoords,
+      unflooredCoords,
+    };
+
+    const isMiddleClick = false;
+    const isTouchInput = false;
+
+    this.handlePointerInput(
+      isDigInput,
+      isFlagInput,
+      isMiddleClick,
+      isTouchInput,
+      isDown,
+      coordsData,
+      fakeEvent,
+      "mouse"
+    );
+
+    return;
+  }
+
   handlePageScroll(event) {
     //On mobile, if the page starts scrolling, we should cancel all active touches.
     //Try keep this function fast as page scroll gets called a lot
@@ -3798,7 +3982,12 @@ class Board {
     //Refresh tiles
     this.resetTiles();
 
-    this.stats = new BoardStats(this.mines, { statsObject });
+    this.stats = new BoardStats(this.mines, {
+      statsObject,
+      statsShow8Way,
+      statsShowChain,
+      statsShowWomZini,
+    });
     this.boardStartTime = performance.now();
     this.clearTimerTimeout(); //defensive as it should already be disabled since we reset board.
     this.updateTimerSetTimeoutHandle = setTimeout(
@@ -6044,6 +6233,9 @@ class Board {
         isReorderableZini = false;
         break;
       case "8-way":
+        if (this.stats.eightZini === null) {
+          this.stats.lateCalcForceZinis();
+        }
         replayParams = {
           clicks: this.stats.eightZiniPath,
           board: this,
@@ -6052,8 +6244,8 @@ class Board {
         isReorderableZini = true;
         break;
       case "womzini":
-        if (this.stats.womZini !== null) {
-          this.stats.lateCalcWomZiniStats();
+        if (this.stats.womZini === null) {
+          this.stats.lateCalcForceZinis();
         }
         replayParams = {
           clicks: this.stats.womZiniPath,
@@ -6063,8 +6255,8 @@ class Board {
         isReorderableZini = true;
         break;
       case "womzinifix":
-        if (this.stats.womZini !== null) {
-          this.stats.lateCalcWomZiniStats();
+        if (this.stats.womZini === null) {
+          this.stats.lateCalcForceZinis();
         }
         replayParams = {
           clicks: this.stats.cWomZiniPath,
@@ -6074,8 +6266,8 @@ class Board {
         isReorderableZini = true;
         break;
       case "womhzini":
-        if (this.stats.womHzini !== null) {
-          this.stats.lateCalcWomZiniStats();
+        if (this.stats.womHzini === null) {
+          this.stats.lateCalcForceZinis();
         }
         replayParams = {
           clicks: this.stats.womHziniPath,
@@ -6085,6 +6277,9 @@ class Board {
         isReorderableZini = false;
         break;
       case "chainzini":
+        if (this.stats.chainZini === null) {
+          this.stats.lateCalcForceZinis();
+        }
         replayParams = {
           clicks: this.stats.chainZiniPath,
           board: this,

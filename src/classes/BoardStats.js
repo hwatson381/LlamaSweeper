@@ -131,28 +131,32 @@ class BoardStats {
     this.solved3bv = solved3bv;
   }
 
-  calcZinis(includeWomZini) {
-    let eightZiniResult = Algorithms.calcEightWayZini(this.mines);
+  calcZinis(includeWomZiniIfShown, forceAllZinis = false) {
+    if (this.refs.statsShow8Way.value || forceAllZinis) {
+      let eightZiniResult = Algorithms.calcEightWayZini(this.mines);
 
-    this.eightZini = eightZiniResult.total;
-    this.eightZiniPath = eightZiniResult.clicks;
+      this.eightZini = eightZiniResult.total;
+      this.eightZiniPath = eightZiniResult.clicks;
+    } else {
+      this.eightZini = null;
+      this.eightZiniPath = null;
+    }
 
-    /*
-    let chainZiniResult = ChainZini.calcChainZini({
-      mines: this.mines,
-      includeClickPath: true
-    })
-    */
-    let chainZiniResult = ChainZini.calcNWayChainZini({
-      mines: this.mines,
-      numberOfIterations: 100,
-      includeClickPath: true
-    });
-    this.chainZini = chainZiniResult.total;
-    this.chainZiniPath = chainZiniResult.clicks;
+    if (this.refs.statsShowChain.value || forceAllZinis) {
+      let chainZiniResult = ChainZini.calcNWayChainZini({
+        mines: this.mines,
+        numberOfIterations: 100,
+        includeClickPath: true
+      });
+      this.chainZini = chainZiniResult.total;
+      this.chainZiniPath = chainZiniResult.clicks;
+    } else {
+      this.chainZini = null;
+      this.chainZiniPath = null;
+    }
 
     //Also do wom zini
-    if (includeWomZini) {
+    if ((this.refs.statsShowWomZini.value && includeWomZiniIfShown) || forceAllZinis) {
       //wom zini without correction
       let { womZini, womHzini } = Algorithms.calcWomZiniAndHZini(
         this.mines,
@@ -281,7 +285,13 @@ class BoardStats {
     };
 
     const eff = (100 * solved3bv) / totalClicks;
-    const maxEff = (100 * bbbv) / bestZini;
+
+    let maxEff;
+    if (bestZini !== null) {
+      maxEff = ((100 * bbbv) / bestZini).toFixed(0);
+    } else {
+      maxEff = null;
+    }
 
     const pttaLink = this.getPttaLink();
 
@@ -293,7 +303,7 @@ class BoardStats {
       this.refs.statsObject.value.total3bv = bbbv;
       this.refs.statsObject.value.bbbvs = bbbvs.toFixed(3);
       this.refs.statsObject.value.eff = Math.round(eff);
-      this.refs.statsObject.value.maxEff = maxEff.toFixed(0);
+      this.refs.statsObject.value.maxEff = maxEff;
       this.refs.statsObject.value.clicks = clicksObject;
       this.refs.statsObject.value.eightZini = eightZini;
       this.refs.statsObject.value.chainZini = chainZini;
@@ -310,7 +320,7 @@ class BoardStats {
       this.refs.statsObject.value.total3bv = bbbv;
       this.refs.statsObject.value.bbbvs = bbbvs.toFixed(3);
       this.refs.statsObject.value.eff = Math.round(eff);
-      this.refs.statsObject.value.maxEff = maxEff.toFixed(0);
+      this.refs.statsObject.value.maxEff = maxEff;
       this.refs.statsObject.value.clicks = clicksObject;
       this.refs.statsObject.value.eightZini = eightZini;
       this.refs.statsObject.value.chainZini = chainZini;
@@ -322,8 +332,8 @@ class BoardStats {
     }
   }
 
-  lateCalcWomZiniStats() {
-    this.calcZinis(true);
+  lateCalcForceZinis() {
+    this.calcZinis(true, true);
     const womZini = this.womZini;
     const womHzini = this.womHzini;
     const cWomZini = this.cWomZini;
@@ -333,6 +343,14 @@ class BoardStats {
     this.refs.statsObject.value.womHzini = womHzini;
     this.refs.statsObject.value.cWomZini = cWomZini;
     this.refs.statsObject.value.cWomHzini = cWomHzini;
+
+    const eightZini = this.eightZini;
+    const chainZini = this.chainZini;
+
+    this.refs.statsObject.value.eightZini = eightZini;
+    this.refs.statsObject.value.chainZini = chainZini;
+
+    //Note - we don't recalculate max eff, since that requires knowing 3bv, which isn't worth doing
   }
 
   addEndTime(time, isWin) {
