@@ -311,3 +311,9 @@ See if we can find 196% on this game? https://minesweeper.online/game/4415263702
 Do chainNeighbour optimisation
 
 Bug - 100x100/600 hits error with exceeding call stack size
+
+Games with sub 2 ptt
+https://minesweeper.online/game/4420379197
+https://minesweeper.online/game/4420447902
+https://minesweeper.online/game/2871936290
+https://minesweeper.online/game/4311671757
