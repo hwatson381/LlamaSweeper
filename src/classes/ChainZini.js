@@ -2,7 +2,6 @@ import Algorithms from "./Algorithms";
 import PriorityPremiums from "./PriorityPremiums";
 import Utils from "./Utils";
 import Benchmark from "./Benchmark";
-import CompareReplay from "./CompareReplay";
 
 import seedrandom from "seedrandom";
 
@@ -344,28 +343,6 @@ class ChainZini {
             }
           }
         }
-
-        //Figure out chain neighbours
-        if (numbersArray[x][y] === 0) {
-          //For zeros, just leave empty as these can't be chorded (it's complicated)
-        } else {
-          //For number squares, include the edges that would come from the openings it reveals
-          //As well as the normal surrounding squares
-          thisSquare.chainNeighbours = thisSquare.safeNeighbours.map(s => { return { x: s.x, y: s.y } })
-          for (let openingLabel of thisSquare.openingsTouched) {
-            const thisOpening = preprocessedOpenings.get(openingLabel);
-            for (let edge of thisOpening.edges) {
-              if (edge.x === x && edge.y === y) {
-                continue;
-              } else if (thisSquare.chainNeighbours.some(n => n.x === edge.x && n.y === edge.y)) {
-                //Don't add neighbours multiple times
-                continue;
-              } else {
-                thisSquare.chainNeighbours.push({ x: edge.x, y: edge.y })
-              }
-            }
-          }
-        }
       }
     }
 
@@ -657,9 +634,23 @@ class ChainZini {
               squaresThatNeedPremiumUpdated.push({ x: edge.x, y: edge.y });
             }
           } else {
-            for (let n of smotheredChainInfo.chainNeighbours) {
+            //Note - this is slightly overkill with pushing more squares for premium updates than is needed.
+            //This is ok because it is rare to smother digs.
+            for (let n of smotheredChainInfo.safeNeighbours) {
               Utils.deleteValueFromArray(chainNeighbourhoodGrid[n.x][n.y].floating, floatingChainId);
               squaresThatNeedPremiumUpdated.push({ x: n.x, y: n.y });
+            }
+            for (let openingLabel of smotheredChainInfo.openingsTouched) {
+              const thisOpening = preprocessedOpenings.get(openingLabel);
+              for (let edge of thisOpening.edges) {
+                if (edge.x === smotheredCoord.x && edge.y === smotheredCoord.y) {
+                  //The square itself was removed from various arrays earlier
+                  continue;
+                } else {
+                  Utils.deleteValueFromArray(chainNeighbourhoodGrid[edge.x][edge.y].floating, floatingChainId);
+                  squaresThatNeedPremiumUpdated.push({ x: edge.x, y: edge.y });
+                }
+              }
             }
           }
         } else {
@@ -762,7 +753,7 @@ class ChainZini {
           Utils.deleteValueFromArray(thisSquareFixedNeighbourIds, baseChainId);
 
           //Also update neighbours of centre chord as they now neighbour a fixed chain
-          for (let chordNeighbour of thisSquare.chainNeighbours) {
+          for (let chordNeighbour of thisSquare.safeNeighbours) {
             let cnNeighbourhood = chainNeighbourhoodGrid[chordNeighbour.x][chordNeighbour.y];
             const oldAdjustment = Math.max(
               0,
@@ -777,6 +768,30 @@ class ChainZini {
             );
             if (oldAdjustment !== newAdjustment) {
               squaresThatNeedPremiumUpdated.push({ x: chordNeighbour.x, y: chordNeighbour.y });
+            }
+          }
+          for (let openingLabel of thisSquare.openingsTouched) {
+            const thisOpening = preprocessedOpenings.get(openingLabel);
+            for (let edge of thisOpening.edges) {
+              if (edge.x === chordClick.x && edge.y === chordClick.y) {
+                continue;
+              } else {
+                let cnNeighbourhood = chainNeighbourhoodGrid[edge.x][edge.y];
+                const oldAdjustment = Math.max(
+                  0,
+                  cnNeighbourhood.floating.length +
+                  Math.min(1, cnNeighbourhood.fixed.length) - 1
+                );
+                cnNeighbourhood.fixed.includes(baseChainId) || cnNeighbourhood.fixed.push(baseChainId);
+                const newAdjustment = Math.max(
+                  0,
+                  cnNeighbourhood.floating.length +
+                  Math.min(1, cnNeighbourhood.fixed.length) - 1
+                );
+                if (oldAdjustment !== newAdjustment) {
+                  squaresThatNeedPremiumUpdated.push({ x: edge.x, y: edge.y });
+                }
+              }
             }
           }
         }
@@ -863,9 +878,22 @@ class ChainZini {
           chainMap.delete(floatingChainId);
           const smotheredChainInfo = chainSquareInfo[smotheredCoord.x][smotheredCoord.y];
           if (smotheredChainInfo.number !== 0) {
-            for (let n of smotheredChainInfo.chainNeighbours) {
+            //A bit inefficient as it can consider the same square multiple times, but ok as it's rare to smother digs
+            for (let n of smotheredChainInfo.safeNeighbours) {
               Utils.deleteValueFromArray(chainNeighbourhoodGrid[n.x][n.y].floating, floatingChainId);
               squaresThatNeedPremiumUpdated.push({ x: n.x, y: n.y });
+            }
+            for (let openingLabel of smotheredChainInfo.openingsTouched) {
+              const thisOpening = preprocessedOpenings.get(openingLabel);
+              for (let edge of thisOpening.edges) {
+                if (edge.x === smotheredCoord.x && edge.y === smotheredCoord.y) {
+                  //The square itself was removed from various arrays earlier
+                  continue;
+                } else {
+                  Utils.deleteValueFromArray(chainNeighbourhoodGrid[edge.x][edge.y].floating, floatingChainId);
+                  squaresThatNeedPremiumUpdated.push({ x: edge.x, y: edge.y });
+                }
+              }
             }
           } else {
             throw new Error("We don't have a baseChain, yet neighbour an unchordedDig with opening. This is impossible.");
@@ -882,7 +910,7 @@ class ChainZini {
       chainMap.set(nextChainRef.id, newChain);
 
       //Do chainNeighbourGrid stuff
-      for (let chordNeighbour of thisSquare.chainNeighbours) {
+      for (let chordNeighbour of thisSquare.safeNeighbours) {
         let cnNeighbourhood = chainNeighbourhoodGrid[chordNeighbour.x][chordNeighbour.y];
         const oldAdjustment = Math.max(
           0,
@@ -897,6 +925,30 @@ class ChainZini {
         );
         if (oldAdjustment !== newAdjustment) {
           squaresThatNeedPremiumUpdated.push({ x: chordNeighbour.x, y: chordNeighbour.y });
+        }
+      }
+      for (let openingLabel of thisSquare.openingsTouched) {
+        const thisOpening = preprocessedOpenings.get(openingLabel);
+        for (let edge of thisOpening.edges) {
+          if (edge.x === chordClick.x && edge.y === chordClick.y) {
+            continue;
+          } else {
+            let cnNeighbourhood = chainNeighbourhoodGrid[edge.x][edge.y];
+            const oldAdjustment = Math.max(
+              0,
+              cnNeighbourhood.floating.length +
+              Math.min(1, cnNeighbourhood.fixed.length) - 1
+            );
+            cnNeighbourhood.floating.includes(nextChainRef.id) || cnNeighbourhood.floating.push(nextChainRef.id);
+            const newAdjustment = Math.max(
+              0,
+              cnNeighbourhood.floating.length +
+              Math.min(1, cnNeighbourhood.fixed.length) - 1
+            );
+            if (oldAdjustment !== newAdjustment) {
+              squaresThatNeedPremiumUpdated.push({ x: edge.x, y: edge.y });
+            }
+          }
         }
       }
 
@@ -1301,8 +1353,18 @@ class ChainZini {
           }
 
           clickPath.push({ type: 'chord', x: pc.x, y: pc.y });
-          for (let cn of chainSquareInfo[pc.x][pc.y].chainNeighbours) {
+          for (let cn of chainSquareInfo[pc.x][pc.y].safeNeighbours) {
             chordableSquares[cn.x][cn.y] = true;
+          }
+          for (let openingLabel of chainSquareInfo[pc.x][pc.y].openingsTouched) {
+            const thisOpening = preprocessedOpenings.get(openingLabel);
+            for (let edge of thisOpening.edges) {
+              if (edge.x === pc.x && edge.y === pc.y) {
+                continue;
+              } else {
+                chordableSquares[edge.x][edge.y] = true;
+              }
+            }
           }
         }
 
