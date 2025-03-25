@@ -35,7 +35,7 @@
         "
       >
         <span>Random dev stuff box</span><br />
-        <button @click="bulkrun3">Bulk run</button>
+        <button @click="bulkrun4">Bulk run</button>
         Iterations: <input v-model.number="bulkIterations" type="text" />
         <button @click="dialogTest">QDialog</button>
         <button @click="seedRandomTest">Seed Random</button>
@@ -2500,6 +2500,26 @@ function bulkrun3() {
 
   console.log(`## NewCheck Summary ###.
   triggered: ${newTriggeredTimes}, missed: ${newMissed}, success: ${newSuccess}`);
+
+  benchmark.report();
+  benchmark.clearAll();
+}
+
+function bulkrun4() {
+  for (let i = 0; i < bulkIterations.value; i++) {
+    let mines = BoardGenerator.basicShuffle(
+      boardWidth.value,
+      boardHeight.value,
+      boardMines.value
+    );
+
+    benchmark.startTime("100zini");
+    ChainZini.calcNWayChainZini({
+      mines: mines,
+      numberOfIterations: 100,
+    });
+    benchmark.stopTime("100zini");
+  }
 
   benchmark.report();
   benchmark.clearAll();

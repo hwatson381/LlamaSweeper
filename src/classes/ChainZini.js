@@ -5,7 +5,7 @@ import Benchmark from "./Benchmark";
 
 import seedrandom from "seedrandom";
 
-const benchmark = new Benchmark();
+//const benchmark = new Benchmark();
 
 class ChainZini {
   constructor() {
@@ -24,8 +24,7 @@ class ChainZini {
     returnAllZinis = false,
     includeClickPath = false
   }) {
-    window.loopCount = 0;//debug-line
-    benchmark.startTime('setup');
+    //benchmark.startTime('setup');
     if (!preprocessedData) {
       preprocessedData =
         Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
@@ -151,10 +150,10 @@ class ChainZini {
     let currentSolution = null; //Set to the best zini solution we've found so far. This will be an object with data of the solution.
     let allZinis = [];
 
-    benchmark.stopTime('setup');
+    //benchmark.stopTime('setup');
 
     for (let i = 0; i < priorityGrids.length; i++) {
-      benchmark.startTime('copying');
+      //benchmark.startTime('copying');
       let priorityGrid = priorityGrids[i];
       //Take copies of variables that track board state as they need to be re-initialised for each priority grid
       const thisEnumerationChainIds = Algorithms.fast2dArrayCopy(chainIds);
@@ -184,9 +183,9 @@ class ChainZini {
       }
       thisEnumerationPriorityPremiums.sortAfterLazyAdd();
 
-      benchmark.stopTime('copying');
+      //benchmark.stopTime('copying');
 
-      benchmark.startTime('core-loop');
+      //benchmark.startTime('core-loop');
 
       let needToDoNFClicks = false;
       while (squaresSolvedThisRun !== revealedSquaresToSolve) {
@@ -210,7 +209,7 @@ class ChainZini {
           break;
         }
       }
-      benchmark.stopTime('core-loop');
+      //benchmark.stopTime('core-loop');
 
       if (needToDoNFClicks) {
         this.nfClickEverythingForChainZini(
@@ -261,8 +260,6 @@ class ChainZini {
         preprocessedOpenings: preprocessedOpenings
       });
     }
-
-    console.log(window.loopCount);//debug-line
 
     return returnObj;
   }
@@ -1135,10 +1132,9 @@ class ChainZini {
         )
     );
 
-    benchmark.startTime('core-premium-updates');
+    //benchmark.startTime('core-premium-updates');
     //Update premiums
     for (let square of squaresThatNeedPremiumUpdated) {
-      window.loopCount++;
       this.updateChainPremiumForCoord(
         square.x,
         square.y,
@@ -1153,7 +1149,7 @@ class ChainZini {
         priorityPremiums
       );
     }
-    benchmark.stopTime('core-premium-updates');
+    //benchmark.stopTime('core-premium-updates');
 
     return { newlyRevealed: squaresRevealedDuringStep, flagsPlaced: flagsPlacedDuringStep, onlyNFRemaining: false };
   }
@@ -1237,14 +1233,12 @@ class ChainZini {
     includeClickPath = false,
     numberOfIterations
   }) {
-    console.time();
-
     const width = mines.length;
     const height = mines[0].length;
 
-    benchmark.startTime('make-priority-grids');
+    //benchmark.startTime('make-priority-grids');
     let priorityGrids = PriorityGridCreator.createBulkRandom(width, height, numberOfIterations, true)
-    benchmark.stopTime('make-priority-grids');
+    //benchmark.stopTime('make-priority-grids');
 
     let retVal = this.calcChainZini({
       mines,
@@ -1259,10 +1253,8 @@ class ChainZini {
       includeClickPath
     });
 
-    console.timeEnd();
-
-    benchmark.report();
-    benchmark.clearAll();
+    //benchmark.report();
+    //benchmark.clearAll();
 
     return retVal;
   }
