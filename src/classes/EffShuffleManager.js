@@ -1,4 +1,5 @@
 import Algorithms from "./Algorithms";
+import { Dialog } from 'quasar';
 
 class EffShuffleManager {
   constructor(refs, consts) {
@@ -78,7 +79,10 @@ class EffShuffleManager {
     );
 
     if (!minesArray) {
-      alert("Failed to generate board");
+      Dialog.create({
+        title: "Alert",
+        message: "Failed to generate board. Consider enabling the background generation setting.",
+      });
       return false;
     } else {
       if (this.refs.effFirstClickType.value === "random") {

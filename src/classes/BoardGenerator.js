@@ -1,4 +1,5 @@
 import Algorithms from "./Algorithms";
+import { Dialog } from 'quasar';
 
 //Class for doing different board gen. E.g. generating boards with fisher yates or maybe selecting boards with certain properties
 class BoardGenerator {
@@ -43,17 +44,39 @@ class BoardGenerator {
     let s = "";
 
     if (pttaUrl === "") {
-      window.alert("PTTA NOT SET");
+      Dialog.create({
+        title: "Alert",
+        message: "Please provide a PTT Url",
+      });
       throw new Error("PTTA NOT SET");
     }
 
-    if (pttaUrl.startsWith("https")) {
-      const pttaAsURL = new URL(pttaUrl);
-      b = pttaAsURL.searchParams.get("b");
-      s = pttaAsURL.searchParams.get("m");
-    } else {
-      window.alert("PTTA NOT URL");
+    if (!pttaUrl.startsWith("https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/")) {
+      Dialog.create({
+        title: "Alert",
+        message: "Please enter a URL of the form https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=...&m=... in the PTT Url field",
+      });
       throw new Error("PTTA NOT URL");
+    }
+
+    const pttaAsURL = new URL(pttaUrl);
+    b = pttaAsURL.searchParams.get("b");
+    s = pttaAsURL.searchParams.get("m");
+
+    if (b === null || s === null) {
+      Dialog.create({
+        title: "Alert",
+        message: "Please make sure the PTT Url ends with ?b=...&m=... where ... is the board data. If you don't see this info, try clicking the calculate button on the PTT calculator",
+      });
+      throw new Error("PTTA MISSING PARAMS");
+    }
+
+    if (!/^\d+$/.test(b) || !/^[a-zA-Z0-9]+$/.test(s)) {
+      Dialog.create({
+        title: "Alert",
+        message: "The ?b=...&m=... part of the URL is in the wrong format",
+      });
+      throw new Error("PTTA BAD PARAMS");
     }
 
     let width;
@@ -86,7 +109,10 @@ class BoardGenerator {
       height < 1 ||
       width > 100
     ) {
-      window.alert("Bad value for PTT url");
+      Dialog.create({
+        title: "Alert",
+        message: "Bad value for PTT Url",
+      });
       throw new Error("Bad width height from ptt url");
     }
 

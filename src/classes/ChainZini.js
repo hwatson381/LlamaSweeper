@@ -208,6 +208,17 @@ class ChainZini {
           needToDoNFClicks = true;
           break;
         }
+        window.validate && this.checkChainStuffConsistent(
+          chainSquareInfo,
+          thisEnumerationFlagStates,
+          thisEnumerationRevealedStates,
+          thisEnumerationChainPremiums,
+          preprocessedOpenings,
+          thisEnumerationChainIds,
+          thisEnumerationChainMap,
+          thisEnumerationChainNeighbourhoodGrid,
+          thisEnumerationPriorityPremiums
+        );
       }
       //benchmark.stopTime('core-loop');
 
@@ -634,6 +645,9 @@ class ChainZini {
             //Note - this is slightly overkill with pushing more squares for premium updates than is needed.
             //This is ok because it is rare to smother digs.
             for (let n of smotheredChainInfo.safeNeighbours) {
+              if (chainSquareInfo[n.x][n.y].number === 0) {
+                continue;
+              }
               Utils.deleteValueFromArray(chainNeighbourhoodGrid[n.x][n.y].floating, floatingChainId);
               squaresThatNeedPremiumUpdated.push({ x: n.x, y: n.y });
             }
@@ -664,6 +678,9 @@ class ChainZini {
               //Note - a bit inefficient as safeNeighbours will get hit more than once
               //Probably ok as large chain merges aren't super common
               //We look at squares that are chainNeighbours through openings separately later
+              if (chainSquareInfo[safeNeighbour.x][safeNeighbour.y].number === 0) {
+                continue;
+              }
               let safeNeighbourhood = chainNeighbourhoodGrid[safeNeighbour.x][safeNeighbour.y];
               const oldAdjustment = Math.max(
                 0,
@@ -720,6 +737,17 @@ class ChainZini {
             }
           }
 
+          //Special case (not strictly needed, but makes bugs less likely)
+          //If the chain being merged into base is a single chord, then 
+          //also update chainNeighbourhoodGrid for that single chorded square
+          //Note that this is not required in cases where the chain is multiple chords
+          //As in that case all chords neighbour eachother, so this gets picked up anyway
+          if (floatingChain.path.length === 1) {
+            const singleChord = floatingChain.path[0];
+            const singleNeighbourhood = chainNeighbourhoodGrid[singleChord.x][singleChord.y];
+            Utils.deleteValueFromArray(singleNeighbourhood.floating, floatingChainId);
+          }
+
           //Lastly remove the chain we merged in from the chain map
           chainMap.delete(floatingChainId);
         }
@@ -751,6 +779,9 @@ class ChainZini {
 
           //Also update neighbours of centre chord as they now neighbour a fixed chain
           for (let chordNeighbour of thisSquare.safeNeighbours) {
+            if (chainSquareInfo[chordNeighbour.x][chordNeighbour.y].number === 0) {
+              continue;
+            }
             let cnNeighbourhood = chainNeighbourhoodGrid[chordNeighbour.x][chordNeighbour.y];
             const oldAdjustment = Math.max(
               0,
@@ -800,6 +831,9 @@ class ChainZini {
 
         //Inform neighbours of the square we chorded that they are now adjacent to our chain
         for (let safeNeighbour of thisSquare.safeNeighbours) {
+          if (chainSquareInfo[safeNeighbour.x][safeNeighbour.y].number === 0) {
+            continue;
+          }
           let safeNeighbourhood = chainNeighbourhoodGrid[safeNeighbour.x][safeNeighbour.y];
           const oldAdjustment = Math.max(
             0,
@@ -877,6 +911,9 @@ class ChainZini {
           if (smotheredChainInfo.number !== 0) {
             //A bit inefficient as it can consider the same square multiple times, but ok as it's rare to smother digs
             for (let n of smotheredChainInfo.safeNeighbours) {
+              if (chainSquareInfo[n.x][n.y].number === 0) {
+                continue;
+              }
               Utils.deleteValueFromArray(chainNeighbourhoodGrid[n.x][n.y].floating, floatingChainId);
               squaresThatNeedPremiumUpdated.push({ x: n.x, y: n.y });
             }
@@ -908,6 +945,9 @@ class ChainZini {
 
       //Do chainNeighbourGrid stuff
       for (let chordNeighbour of thisSquare.safeNeighbours) {
+        if (chainSquareInfo[chordNeighbour.x][chordNeighbour.y].number === 0) {
+          continue;
+        }
         let cnNeighbourhood = chainNeighbourhoodGrid[chordNeighbour.x][chordNeighbour.y];
         const oldAdjustment = Math.max(
           0,
@@ -1182,7 +1222,9 @@ class ChainZini {
         }
         //Square is an unrevealed 3bv, so do an nf click on it
         revealedStates[x][y] = true;
-        chainIds[x][y] = nextChainRef.id;
+        if (thisSquare.number !== 0) {
+          chainIds[x][y] = nextChainRef.id;
+        }
         let newSingleDigChain = new Chain();
         newSingleDigChain.isUnchordedDig = true;
         //newSingleDigChain.addToPath(x, y); //Commented out as we use positionIfUnchorded instead
@@ -1211,7 +1253,7 @@ class ChainZini {
                 }
                 const smotheredCoord = edgeChain.positionIfUnchordedDig;
                 chainIds[smotheredCoord.x][smotheredCoord.y] = null;
-                chainMap.delete(floatingChainId);
+                chainMap.delete(edgeChainIdPossiblyNull);
                 //Don't need to update chainNeighbourGrid or premiums etc here as nfClicking is the final step
               }
             }
@@ -1706,7 +1748,11 @@ class ChainZini {
         }
       }
 
-      initialChainIds[unchordedDig.x][unchordedDig.y] = currentChainId;
+      if (numbersArray[unchordedDig.x][unchordedDig.y] !== 0) {
+        //Exclude zero clicks from ended up in chainIds.
+        // This is because it's easy to end up with orphaned chainIds this way
+        initialChainIds[unchordedDig.x][unchordedDig.y] = currentChainId;
+      }
 
       let newChain = new Chain();
       if (isFloating) {
@@ -1805,6 +1851,84 @@ class ChainZini {
         fixed: cell.fixed.slice()
       }
     }));
+  }
+
+  static checkChainStuffConsistent(
+    chainSquareInfo,
+    flagStates,
+    revealedStates,
+    chainPremiums,
+    preprocessedOpenings,
+    chainIds,
+    chainMap,
+    chainNeighbourhoodGrid,
+    priorityPremiums
+  ) {
+    //Validate properties of chainzini. Terrible performance, so not needed when live
+    /*
+      Check that no "zero" tiles have chainNeighbourhoodGrid entry
+      Check that all chainIds (on array) or chainNeighbourhoodGrid entrys also exist in chainMap
+      Validate that all premiums are correct
+      (probably too much effort) Validate that chainNeighbourhoodGrid exactly matches the neighbourhoods of chains
+    */
+    const width = revealedStates.length;
+    const height = revealedStates[0].length;
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (chainSquareInfo[x][y].isMine) {
+          continue;
+        }
+
+        //Check that no "zero" tiles have chainNeighbourhoodGrid entry
+        if (chainSquareInfo[x][y].number === 0) {
+          if (
+            chainNeighbourhoodGrid[x][y].floating.length !== 0 ||
+            chainNeighbourhoodGrid[x][y].fixed.length !== 0
+          ) {
+            throw new Error('chainNeighbourHoodGrid entry of zero tile');
+          }
+        }
+
+        //Check that all chainIds (on array) or chainNeighbourhoodGrid entrys also exist in chainMap
+        if (chainIds[x][y] !== null) {
+          if (!chainMap.has(chainIds[x][y])) {
+            throw new Error('chainId without map entry');
+          }
+        }
+        for (let floatId of chainNeighbourhoodGrid[x][y].floating) {
+          if (!chainMap.has(floatId)) {
+            throw new Error('chainNeighbourhoodGrid floating id without map entry');
+          }
+        }
+        for (let fixedId of chainNeighbourhoodGrid[x][y].fixed) {
+          if (!chainMap.has(fixedId)) {
+            throw new Error('chainNeighbourhoodGrid floating id without map entry');
+          }
+        }
+
+        //Validate that all premiums are correct
+        const oldPremium = chainPremiums[x][y];
+        this.updateChainPremiumForCoord(
+          x,
+          y,
+          chainSquareInfo,
+          flagStates,
+          revealedStates,
+          chainPremiums,
+          preprocessedOpenings,
+          chainIds,
+          chainMap,
+          chainNeighbourhoodGrid,
+          priorityPremiums
+        );
+        const newPremium = chainPremiums[x][y];
+        if (oldPremium !== newPremium) {
+          throw new Error('Premium that didnt get updated');
+        }
+
+      }
+    }
   }
 }
 

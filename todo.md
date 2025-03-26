@@ -303,12 +303,13 @@ New bug:
 
 validate against code that checks premium for every single square?
 Also validate by looking for chainNeighbourGrids that don't exist in chainIds (and vice-versa)
+Beware of chainID and chainNeighbourHood grid stuff being set on zero tiles
 
 See if we can find 196% on this game? https://minesweeper.online/game/4415263702
 
 (probably won't do) Click loss replay - deep red if a move loses 2 clicks? Similarly also have deep green for gaining 2?
 
-Do chainNeighbour optimisation
+[done] Do chainNeighbour optimisation
 
 Bug - 100x100/600 hits error with exceeding call stack size
 
@@ -317,3 +318,9 @@ https://minesweeper.online/game/4420379197
 https://minesweeper.online/game/4420447902
 https://minesweeper.online/game/2871936290
 https://minesweeper.online/game/4311671757
+
+Probably not worth doing - have equivalent to safeNeighbours property which also excludes zeros
+
+Show density next custom size picker?
+
+Save settings to localStorage

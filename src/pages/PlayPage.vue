@@ -1533,7 +1533,7 @@
   <q-dialog v-model="pttaImportModal">
     <q-card style="min-width: 350px">
       <q-card-section>
-        <div class="text-h6">PTTA Import</div>
+        <div class="text-h6">PTT Import</div>
       </q-card-section>
 
       <q-card-section class="q-pt-none">
@@ -6310,7 +6310,8 @@ class Board {
       case "compare":
         let compareReplay = CompareReplay.generate(
           this.mines,
-          this.stats.clicks
+          this.stats.clicks,
+          this.stats.isWin
         );
         if (compareReplay.ziniDeltas.size === 0) {
           $q.dialog({
