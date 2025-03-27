@@ -541,14 +541,8 @@ class ChainZini {
     priorityPremiums,
     nextChainRef
   ) {
-    const width = revealedStates.length;
-    const height = revealedStates[0].length;
-    let squaresRevealedDuringStep = 0;
-    let flagsPlacedDuringStep = 0;
-
     //Use priority premiums to quickly find the best premium
     const { x: chordX, y: chordY, premium: highestPremium } = priorityPremiums.getHighestPremium();
-    const chordClick = { x: chordX, y: chordY };
 
     //If the candidate chord saves clicks then do it, otherwise NF click all remaining squares
     if (highestPremium <= -1) {
@@ -556,12 +550,48 @@ class ChainZini {
       return { newlyRevealed: 0, flagsPlaced: 0, onlyNFRemaining: true };
     }
 
+    //Do the chord
+    const returnVal = this.doChainChord(
+      chordX,
+      chordY,
+      chainSquareInfo,
+      flagStates,
+      revealedStates,
+      chainPremiums,
+      preprocessedOpenings,
+      chainIds,
+      chainMap,
+      chainNeighbourhoodGrid,
+      priorityPremiums,
+      nextChainRef
+    )
+
+    return returnVal;
+  }
+
+  //Perform a chain chord and update all the relevant premiums and data structures.
+  static doChainChord(
+    chordX,
+    chordY,
+    chainSquareInfo,
+    flagStates,
+    revealedStates,
+    chainPremiums,
+    preprocessedOpenings,
+    chainIds,
+    chainMap,
+    chainNeighbourhoodGrid,
+    priorityPremiums,
+    nextChainRef
+  ) {
+    let squaresRevealedDuringStep = 0;
+    let flagsPlacedDuringStep = 0;
+
+    const chordClick = { x: chordX, y: chordY };
+
     //Track squares that will need premium updated after doing the chord
     let squaresThatNeedPremiumUpdated = [];
 
-    ///////////////////////////
-    //DOING A CHORD
-    ///////////////////////////
     const thisSquare = chainSquareInfo[chordClick.x][chordClick.y];
 
     const thisSquareChainNeighbours = chainNeighbourhoodGrid[chordClick.x][chordClick.y];
@@ -996,100 +1026,6 @@ class ChainZini {
 
       nextChainRef.id += 1;
     }
-
-    /*
-      TODO - see which of below can be removed or needs adjusting
-      There could be duplication of pushing to neighbourhoodGrid?
-    */
-
-    /* OK TO DELETE
-    //Do logic for handling/merging chains
-    let neighbourChainIds = new Set();
-    for (let chainNeighbour of thisSquare.chainNeighbours) {
-      let neighbourChainId = chainIds[chainNeighbour.x][chainNeighbour.y];
-      if (neighbourChainId !== null) {
-        neighbourChainIds.add(neighbourChainId);
-      }
-    }
-
-    //Check which neighbour chains we might merge with, or whether we can smother anything
-    let floatingSeededNeighbourChainsIds = [];
-    let firstFixedSeedChainId = null;
-    let digsToSmotherIds = [];
-
-    //Check to see if we are on a fixed seed single-left-click.
-    //In this case, we may use this as a starting point for merging
-    //Elsewhere I refer to this as self-smothering
-    if (chainIds[chordClick.x][chordClick.y] !== null && chainMap.get(chainIds[chordClick.x][chordClick.y]).isUnchordedDig && !chainMap.get(chainIds[chordClick.x][chordClick.y]).isFloatingSeed) {
-      firstFixedSeedChainId = chainIds[chordClick.x][chordClick.y];
-    }
-
-    for (let chainId of neighbourChainIds) {
-      const neighbourChain = chainMap.get(chainId)
-      if (!neighbourChain.isUnchordedDig && neighbourChain.isFloatingSeed) {
-        //Floating seed chains are always candidates for merging
-        floatingSeededNeighbourChainsIds.push(chainId);
-      } else if (!neighbourChain.isUnchordedDig && !neighbourChain.isFloatingSeed) {
-        //At most one fixed seed can be merged
-        if (firstFixedSeedChainId === null) {
-          firstFixedSeedChainId = chainId;
-        }
-      } else if (neighbourChain.isUnchordedDig && neighbourChain.isFloatingSeed) {
-        digsToSmotherIds.push(chainId)
-      } else if (neighbourChain.isUnchordedDig && !neighbourChain.isFloatingSeed) {
-        //Smothered, but not floating means that we can't remove it, so can't do anything about this
-        //Do nothing
-      }
-    }
-
-    //Remove any smothered digs
-    for (let smotheredChainId of digsToSmotherIds) {
-      let smotheredChain = chainMap.get(smotheredChainId);
-      chainIds[smotheredChain.path[0].x][smotheredChain.path[0].y] = null;
-      chainMap.delete(smotheredChainId);
-    }
-
-    //Combine chains
-    if (firstFixedSeedChainId !== null || floatingSeededNeighbourChainsIds.length !== 0) {
-      //merge with other chains
-      let baseChainId;
-      if (firstFixedSeedChainId !== null) {
-        baseChainId = firstFixedSeedChainId;
-      } else {
-        //Note that shifting also removes it from the array so we don't process twice
-        baseChainId = floatingSeededNeighbourChainsIds.shift();
-      }
-
-      let baseChain = chainMap.get(baseChainId);
-
-      for (let chainToMergeId of floatingSeededNeighbourChainsIds) {
-        let chainToMerge = chainMap.get(chainToMergeId);
-        baseChain.mergeWithPath(chainToMerge.path);
-        for (let chord of chainToMerge.path) {
-          chainIds[chord.x][chord.y] = baseChainId;
-        }
-        chainMap.delete(chainToMergeId);
-      }
-
-      if (baseChain.isUnchordedDig) {
-        //This is the special case where we started on a single-left click
-        //So we change the chain to be a standard chorded chain.
-        baseChain.isUnchordedDig = false;
-      } else {
-        //The starting square would only be included if it was a single left click
-        //So add it
-        baseChain.addToPath(chordClick.x, chordClick.y);
-        chainIds[chordClick.x][chordClick.y] = baseChainId;
-      }
-    } else {
-      //start new chain
-      chainIds[chordClick.x][chordClick.y] = nextChainRef.id;
-      let newChain = new Chain();
-      newChain.addToPath(chordClick.x, chordClick.y)
-      chainMap.set(nextChainRef.id, newChain);
-      nextChainRef.id += 1;
-    }
-    */
 
     const unflaggedAdjacentMines = thisSquare.mineNeighbours.filter(
       (neighbour) => !flagStates[neighbour.x][neighbour.y]

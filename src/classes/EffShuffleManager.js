@@ -81,7 +81,7 @@ class EffShuffleManager {
     if (!minesArray) {
       Dialog.create({
         title: "Alert",
-        message: "Failed to generate board. Consider enabling the background generation setting.",
+        message: "Failed to generate board. Consider enabling the background generation setting. If it is already enabled, try increasing the number of workers.",
       });
       return false;
     } else {

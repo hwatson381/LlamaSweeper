@@ -43,3 +43,6 @@ This would be more costly and very complicated, but may be effective
 Count how often chain merges happen?
 
 Easier for bad chords to mess things up, so it probably is quite important to have squares we permanently forbid with inclusion-exclusion zini
+
+Inclusion-exclusion quick mode?
+Have cutoff based on deepPremiums. For example, we could do all moves with deepPremium >= 2. But before playing each move, we quickly double check it incase the other mvoes have brought it's value below 2.
