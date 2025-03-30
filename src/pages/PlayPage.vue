@@ -256,6 +256,11 @@
                 }
               "
             />
+            <q-btn
+              @click="game.board.ziniExplore.runDefaultAlgorithm()"
+              color="positive"
+              label="Run DeepChain ZiNi"
+            />
           </div>
         </q-card-section>
       </q-card>
@@ -761,6 +766,7 @@
                 { label: 'WoM ZiNi Improved', value: 'womzinifix' },
                 { label: 'WoM HZiNi', value: 'womhzini' },
                 { label: 'Chain ZiNi', value: 'chainzini' },
+                { label: 'DeepChain ZiNi (best but slow)', value: 'incexzini' },
               ]"
               emit-value
               map-options
@@ -807,7 +813,8 @@
             <div class="row justify-center">
               <q-checkbox
                 v-if="
-                  analyseAlgorithm === 'chainzini' &&
+                  (analyseAlgorithm === 'chainzini' ||
+                    analyseAlgorithm === 'incexzini') &&
                   analyseAlgorithmScope === 'current'
                 "
                 v-model="analyseHistoryRewrite"
@@ -2212,7 +2219,8 @@ let analyseAlgorithmScopeOptions = computed(() => {
   ];
   if (
     analyseAlgorithm.value === "8 way" ||
-    analyseAlgorithm.value === "chainzini"
+    analyseAlgorithm.value === "chainzini" ||
+    analyseAlgorithm.value === "incexzini"
   ) {
     return withCurrentOpts;
   } else {
@@ -2222,7 +2230,8 @@ let analyseAlgorithmScopeOptions = computed(() => {
 watchEffect(() => {
   if (
     analyseAlgorithm.value === "8 way" ||
-    analyseAlgorithm.value === "chainzini"
+    analyseAlgorithm.value === "chainzini" ||
+    analyseAlgorithm.value === "incexzini"
   ) {
     //Do nothing
   } else {

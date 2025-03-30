@@ -46,3 +46,13 @@ Easier for bad chords to mess things up, so it probably is quite important to ha
 
 Inclusion-exclusion quick mode?
 Have cutoff based on deepPremiums. For example, we could do all moves with deepPremium >= 2. But before playing each move, we quickly double check it incase the other mvoes have brought it's value below 2.
+
+///////////////////
+
+Inc-ex zini.
+
+Start off with - calculate all various properties
+Also need to have a way to forbid a chord
+
+Possible optimisation:
+Check if chord is already "naturally" excluded if it doesn't show in any of the baseline grids

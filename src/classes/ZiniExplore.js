@@ -1217,11 +1217,19 @@ class ZiniExplore {
       case 'chainzini':
         this.runChainZini();
         break;
+      case 'incexzini':
+        this.runInclusionExclusionZini(true);
+        break;
       default:
         alert('disallowed algorithm')
         throw new Error('disallowed algorithm');
     }
 
+    this.updateUiAndBoard();
+  }
+
+  runDefaultAlgorithm() {
+    this.runInclusionExclusionZini(false); //false to ignore refs, and instead use default parameters
     this.updateUiAndBoard();
   }
 
@@ -1279,6 +1287,42 @@ class ZiniExplore {
         numberOfIterations: iterations,
         includeClickPath: true
       }).clicks
+    }
+  }
+
+  runInclusionExclusionZini(useRefs = true) {
+    let scope = 'beginning';
+    let rewrite = true;
+
+    if (useRefs) {
+      scope = this.refs.analyseAlgorithmScope.value;
+      rewrite = this.refs.analyseHistoryRewrite.value;
+    }
+
+    if (scope === 'beginning') {
+      this.classicPath = ChainZini.calcInclusionExclusionZini({
+        mines: this.board.mines,
+      }).clicks;
+    } else {
+      const {
+        initialRevealedStates,
+        initialFlagStates,
+        initialChainIds,
+        initialChainMap,
+        initialChainNeighbourhoodGrid
+      } = ChainZini.convertClickPathToChainInput(
+        this.classicPath,
+        this.board.mines,
+        rewrite
+      );
+      this.classicPath = ChainZini.calcInclusionExclusionZini({
+        mines: this.board.mines,
+        initialRevealedStates,
+        initialFlagStates,
+        initialChainIds,
+        initialChainMap,
+        initialChainNeighbourhoodGrid
+      }).clicks;
     }
   }
 

@@ -314,13 +314,30 @@ See if we can find 196% on this game? https://minesweeper.online/game/4415263702
 Bug - 100x100/600 hits error with exceeding call stack size
 
 Games with sub 2 ptt
-https://minesweeper.online/game/4420379197
-https://minesweeper.online/game/4420447902
-https://minesweeper.online/game/2871936290
-https://minesweeper.online/game/4311671757
+https://minesweeper.online/game/4420379197 (passed)
+https://minesweeper.online/game/4420447902 (passed)
+https://minesweeper.online/game/2871936290 (passed)
+https://minesweeper.online/game/4311671757 (passed)
 
 Probably not worth doing - have equivalent to safeNeighbours property which also excludes zeros
 
 Show density next custom size picker?
 
 Save settings to localStorage
+
+Add click sounds
+
+Try incEx zini with average instead of minimum
+
+Should ChainZini.convertClickPathToChainInput also give other output such as chainSquareInfo
+
+Have setting for doing "timing" run first, before running deepPremium
+
+Minimum and average both need tiebreaks
+
+Have warning for chainIterations > 100000 (use deepPremium instead)
+
+It doesn't find 200% :(
+Maybe average will have better luck?
+Average is reallllly bad...
+Maybe because average forbids too many moves?

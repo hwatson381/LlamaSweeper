@@ -20,116 +20,60 @@ class ChainZini {
     initialChainIds = false,
     initialChainMap = false,
     initialChainNeighbourhoodGrid = false,
+    chainSquareInfo = false,
+    initialChainPremiums = false,
     priorityGrids = false,
     returnAllZinis = false,
-    includeClickPath = false
+    includeClickPath = false,
+    forbiddenGrid = false
   }) {
-    //benchmark.startTime('setup');
-    if (!preprocessedData) {
-      preprocessedData =
-        Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
-          mines
-        );
-    }
-
-    const { numbersArray, openingLabels, preprocessedOpenings } =
-      preprocessedData;
-
     const width = mines.length;
     const height = mines[0].length;
 
+    //benchmark.startTime('setup');
+    preprocessedData = this.getPreprocessedDataIfFalse(preprocessedData, mines);
+
+    const { numbersArray, openingLabels, preprocessedOpenings } = preprocessedData;
+
     //false for unrevealed, true for revealed
-    let revealedStates;
-    if (initialRevealedStates) {
-      revealedStates = initialRevealedStates;
-    } else {
-      revealedStates = new Array(width)
-        .fill(0)
-        .map(() => new Array(height).fill(false));
-    }
+    let revealedStates = this.getBlankRevealedStatesIfFalse(initialRevealedStates, width, height);
 
     //false for unflagged, true for flagged
-    let flagsPlacedBefore = 0;
-    let flagStates;
-    if (initialFlagStates) {
-      flagStates = initialFlagStates
-      for (let x = 0; x < width; x++) {
-        for (let y = 0; y < height; y++) {
-          if (initialFlagStates[x][y]) {
-            flagsPlacedBefore++;
-          }
-        }
-      }
-    } else {
-      flagStates = new Array(width)
-        .fill(0)
-        .map(() => new Array(height).fill(false));
-    }
+    let { flagStates, flagsPlacedBefore } = this.getBlankFlagStatesIfFalse(initialFlagStates, width, height);
 
     //2d array telling you which (if any) chain a square belongs to
-    let chainIds;
-    if (initialChainIds) {
-      chainIds = initialChainIds
-    } else {
-      chainIds = new Array(width)
-        .fill(0)
-        .map(() => new Array(height).fill(null));
-    }
+    let chainIds = this.getBlankChainIdsIfFalse(initialChainIds, width, height);
 
     //map of chains
-    let chainMap;
-    let nextChainId;
-    if (initialChainMap) {
-      chainMap = initialChainMap
-      nextChainId = Math.max(0, Math.max(0, ...initialChainMap.keys())) + 1;
-    } else {
-      chainMap = new Map();
-      nextChainId = 0;
-    }
+    let { chainMap, nextChainId } = this.getBlankChainMapIfFalse(initialChainMap);
 
     //tracks for each square which chains neighbour it
-    let chainNeighbourhoodGrid;
-    if (initialChainNeighbourhoodGrid) {
-      chainNeighbourhoodGrid = initialChainNeighbourhoodGrid;
-    } else {
-      chainNeighbourhoodGrid = new Array(width)
-        .fill(0)
-        .map(() => new Array(height).fill(0).map(() => {
-          return {
-            //Note - arrays used instead of sets as they are more performant when small (even if duplicates)
-            floating: [], //floating can floating seeded chains and also be smotherable unchordedDig neighbours
-            fixed: [] //fixed can be fixed seeded chains or the current square if it is a fixed unchordedDig
-          }
-        }));
-    }
+    let chainNeighbourhoodGrid = this.getBlankChainNeighbourhoodGridIfFalse(initialChainNeighbourhoodGrid, width, height);
 
     //array of saved info for square about what the neighbours are etc
-    const chainSquareInfo = this.computeChainSquareInfo(mines, numbersArray, openingLabels, preprocessedOpenings);
+    chainSquareInfo = this.computeChainSquareInfoIfFalse(
+      chainSquareInfo,
+      mines,
+      numbersArray,
+      openingLabels,
+      preprocessedOpenings
+    );
 
-    //store chainPremiums of opening + chording each cell
-    const chainPremiums = new Array(width)
-      .fill(0)
-      .map(() => new Array(height).fill(null));
-
-    for (let x = 0; x < width; x++) {
-      for (let y = 0; y < height; y++) {
-        if (mines[x][y]) {
-          continue;
-        }
-        this.updateChainPremiumForCoord(
-          x,
-          y,
-          chainSquareInfo,
-          flagStates,
-          revealedStates,
-          chainPremiums,
-          preprocessedOpenings,
-          chainIds,
-          chainMap,
-          chainNeighbourhoodGrid
-        );
-      }
-    }
+    //store chainPremiums of digging (if needed) + chording each cell
+    let chainPremiums = this.getChainPremiumsIfFalse(
+      initialChainPremiums,
+      mines,
+      chainSquareInfo,
+      flagStates,
+      revealedStates,
+      preprocessedOpenings,
+      chainIds,
+      chainMap,
+      chainNeighbourhoodGrid,
+      width,
+      height,
+      forbiddenGrid
+    );
 
     //Work out how many squares need to be revealed for it to be solved (will typically be width * height - mines, but could be different if calculating zini from current board state)
     let revealedSquaresToSolve = 0;
@@ -199,7 +143,8 @@ class ChainZini {
           thisEnumerationChainMap,
           thisEnumerationChainNeighbourhoodGrid,
           thisEnumerationPriorityPremiums,
-          nextChainRef
+          nextChainRef,
+          forbiddenGrid
         );
         squaresSolvedThisRun += chainZiniStepResult.newlyRevealed;
         flagsPlacedSoFar += chainZiniStepResult.flagsPlaced;
@@ -368,7 +313,8 @@ class ChainZini {
     chainIds,
     chainMap,
     chainNeighbourhoodGrid,
-    priorityPremiums = false
+    priorityPremiums = false,
+    forbiddenGrid = false
   ) {
     //Based on Algorithms.updatePremiumForCoord
     //Chain premiums are different to regular premiums
@@ -408,6 +354,11 @@ class ChainZini {
       //Never makes sense to chord zeros, this will always waste a click
       //Note - we don't update this in priorityPremiums since the premium will always be -1
       chainPremiums[x][y] = -1;
+      return;
+    }
+    if (forbiddenGrid && forbiddenGrid[x][y]) {
+      //If we have a forbiddenGrid, then allow for the possibility of some moves been forbidden.
+      chainPremiums[x][y] = -100;
       return;
     }
     if (chainIds[x][y] !== null && !chainMap.get(chainIds[x][y]).isUnchordedDig) {
@@ -539,7 +490,8 @@ class ChainZini {
     chainMap,
     chainNeighbourhoodGrid,
     priorityPremiums,
-    nextChainRef
+    nextChainRef,
+    forbiddenGrid = false
   ) {
     //Use priority premiums to quickly find the best premium
     const { x: chordX, y: chordY, premium: highestPremium } = priorityPremiums.getHighestPremium();
@@ -563,7 +515,8 @@ class ChainZini {
       chainMap,
       chainNeighbourhoodGrid,
       priorityPremiums,
-      nextChainRef
+      nextChainRef,
+      forbiddenGrid
     )
 
     return returnVal;
@@ -582,7 +535,8 @@ class ChainZini {
     chainMap,
     chainNeighbourhoodGrid,
     priorityPremiums,
-    nextChainRef
+    nextChainRef,
+    forbiddenGrid = false
   ) {
     let squaresRevealedDuringStep = 0;
     let flagsPlacedDuringStep = 0;
@@ -1122,7 +1076,8 @@ class ChainZini {
         chainIds,
         chainMap,
         chainNeighbourhoodGrid,
-        priorityPremiums
+        priorityPremiums,
+        forbiddenGrid
       );
     }
     //benchmark.stopTime('core-premium-updates');
@@ -1771,6 +1726,460 @@ class ChainZini {
     }
   }
 
+  static calcInclusionExclusionZini(
+    {
+      mines,
+      preprocessedData = false,
+      initialRevealedStates = false,
+      initialFlagStates = false,
+      initialChainIds = false,
+      initialChainMap = false,
+      initialChainNeighbourhoodGrid = false,
+      initialChainPremiums = false,
+      chainSquareInfo = false,
+      doTimingRun = false,
+      useMinimumAnalysis = false
+    }
+  ) {
+    const width = mines.length;
+    const height = mines[0].length;
+
+    //benchmark.startTime('setup');
+    preprocessedData = this.getPreprocessedDataIfFalse(preprocessedData, mines);
+
+    const { numbersArray, openingLabels, preprocessedOpenings } = preprocessedData;
+
+    //false for unrevealed, true for revealed
+    let revealedStates = this.getBlankRevealedStatesIfFalse(initialRevealedStates, width, height);
+
+    //false for unflagged, true for flagged
+    let { flagStates, flagsPlacedBefore } = this.getBlankFlagStatesIfFalse(initialFlagStates, width, height);
+
+    //2d array telling you which (if any) chain a square belongs to
+    let chainIds = this.getBlankChainIdsIfFalse(initialChainIds, width, height);
+
+    //map of chains
+    let { chainMap, nextChainId } = this.getBlankChainMapIfFalse(initialChainMap);
+    const nextChainRef = { id: nextChainId };
+
+    //tracks for each square which chains neighbour it
+    let chainNeighbourhoodGrid = this.getBlankChainNeighbourhoodGridIfFalse(initialChainNeighbourhoodGrid, width, height);
+
+    //array of saved info for square about what the neighbours are etc
+    chainSquareInfo = this.computeChainSquareInfoIfFalse(
+      chainSquareInfo,
+      mines,
+      numbersArray,
+      openingLabels,
+      preprocessedOpenings
+    );
+
+    //store chainPremiums of digging (if needed) + chording each cell
+    let chainPremiums = this.getChainPremiumsIfFalse(
+      initialChainPremiums,
+      mines,
+      chainSquareInfo,
+      flagStates,
+      revealedStates,
+      preprocessedOpenings,
+      chainIds,
+      chainMap,
+      chainNeighbourhoodGrid,
+      width,
+      height,
+      false
+    );
+
+    //Work out how many squares need to be revealed for it to be solved (will typically be width * height - mines, but could be different if calculating zini from current board state)
+    let revealedSquaresToSolve = 0;
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (!mines[x][y] && !revealedStates[x][y]) {
+          revealedSquaresToSolve++;
+        }
+      }
+    }
+
+    const numberOfGridsPerMove = doTimingRun ? 1 : 50; //TimingRun only does single chainPremium per move analysed
+    let priorityGrids = PriorityGridCreator.createBulkRandom(width, height, numberOfGridsPerMove, true);
+
+    //Do deep analysis
+
+    //true if a move is forbidden
+    let forbiddenGrid = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(false));
+
+    while (true) {
+      /*
+        Basic loop:
+        Calculate baseline
+
+        Then for each "Considerable chord":
+
+        Try force chord it
+        and also force forbid it
+
+        Gather results
+
+        Play move
+
+        Repeat until all chords are negative vs forbidding
+      */
+
+      //Gather baseline from doing normal n-way zini
+
+      let baselineResult = this.calcChainZini({
+        mines: mines,
+        preprocessedData: preprocessedData,
+        initialRevealedStates: revealedStates,
+        initialFlagStates: flagStates,
+        initialChainIds: chainIds,
+        initialChainMap: chainMap,
+        initialChainNeighbourhoodGrid: chainNeighbourhoodGrid,
+        chainSquareInfo: chainSquareInfo,
+        initialChainPremiums: chainPremiums,
+        priorityGrids: priorityGrids,
+        returnAllZinis: true,
+        forbiddenGrid: forbiddenGrid
+      });
+      let baselineZinis = baselineResult.allZinis
+
+      let considerableChords = this.getConsiderableChords(
+        {
+          mines: mines,
+          initialRevealedStates: revealedStates,
+          chainSquareInfo: chainSquareInfo,
+          initialChainPremiums: chainPremiums,
+          forbiddenGrid: forbiddenGrid
+        }
+      );
+
+      let resultsList = []; //Elements {x: .., y: .., zinisForced: [], zinisExcluded: []}
+
+      for (let considerableChord of considerableChords) {
+        //We will consider each chord by either forcing it, or not forcing it
+        const thisResult = { x: considerableChord.x, y: considerableChord.y }
+
+        //Force chord
+        const forcingChainIds = Algorithms.fast2dArrayCopy(chainIds);
+        const forcingChainMap = this.cloneChainMap(chainMap);
+        const forcingChainNeighbourhoodGrid = this.cloneChainNeighbourhoodGrid(chainNeighbourhoodGrid);
+        const forcingFlagStates = Algorithms.fast2dArrayCopy(flagStates);
+        const forcingRevealedStates = Algorithms.fast2dArrayCopy(revealedStates);
+        const forcingChainPremiums = Algorithms.fast2dArrayCopy(chainPremiums);
+        const forcedNextChainRef = { id: nextChainRef.id }; //Clone current nextChainRef value
+
+        //Play the forced chord
+        this.doChainChord(
+          considerableChord.x,
+          considerableChord.y,
+          chainSquareInfo,
+          forcingFlagStates,
+          forcingRevealedStates,
+          forcingChainPremiums,
+          preprocessedOpenings,
+          forcingChainIds,
+          forcingChainMap,
+          forcingChainNeighbourhoodGrid,
+          false, //priorityPremiums - false as we don't have a specific PriorityGrid to use here
+          forcedNextChainRef,
+          forbiddenGrid
+        );
+
+        //Get n-way followup from after forcedChord has been played
+        let forcedResult = this.calcChainZini({
+          mines: mines,
+          preprocessedData: preprocessedData,
+          initialRevealedStates: forcingRevealedStates,
+          initialFlagStates: forcingFlagStates,
+          initialChainIds: forcingChainIds,
+          initialChainMap: forcingChainMap,
+          initialChainNeighbourhoodGrid: forcingChainNeighbourhoodGrid,
+          chainSquareInfo: chainSquareInfo,
+          initialChainPremiums: forcingChainPremiums,
+          priorityGrids: priorityGrids,
+          returnAllZinis: true,
+          forbiddenGrid: forbiddenGrid
+        });
+
+        //Save forced result
+        thisResult.zinisForced = forcedResult.allZinis;
+
+        //Exclude chord
+        const exclusionForbiddenGrid = Algorithms.fast2dArrayCopy(forbiddenGrid);
+        const exclusionChainPremiums = Algorithms.fast2dArrayCopy(chainPremiums);
+
+        //Make chord forbidden to do
+        exclusionForbiddenGrid[considerableChord.x][considerableChord.y] = true;
+        exclusionChainPremiums[considerableChord.x][considerableChord.y] = -100;
+
+        //Get n-way followup after chord has been excluded
+        let excludedResult = this.calcChainZini({
+          mines: mines,
+          preprocessedData: preprocessedData,
+          initialRevealedStates: revealedStates,
+          initialFlagStates: flagStates,
+          initialChainIds: chainIds,
+          initialChainMap: chainMap,
+          initialChainNeighbourhoodGrid: chainNeighbourhoodGrid,
+          chainSquareInfo: chainSquareInfo,
+          initialChainPremiums: exclusionChainPremiums,
+          priorityGrids: priorityGrids,
+          returnAllZinis: true,
+          forbiddenGrid: exclusionForbiddenGrid
+        });
+
+        //Save excluded result
+        thisResult.zinisExcluded = excludedResult.allZinis;
+
+        resultsList.push(thisResult);
+        //Possible optimisation - if a chord is never normally used, then use baseline values here instead
+      }
+
+      let analysisResults;
+      if (doTimingRun) {
+        analysisResults = this.analyseResultsTimingRun(
+          baselineZinis,
+          resultsList
+        );
+      } else if (useMinimumAnalysis) {
+        //Find forced chord with minimum zini found
+        analysisResults = this.analyseResultsMinimum(
+          baselineZinis,
+          resultsList
+        );
+      } else {
+        //Find forced chord with lowest average zini found
+        analysisResults = this.analyseResultsAverage(
+          baselineZinis,
+          resultsList
+        );
+      }
+
+      //Forbid any chords based on the results
+      for (let forbidChord of analysisResults.toForbid) {
+        forbiddenGrid[forbidChord.x][forbidChord.y] = true;
+        chainPremiums[forbidChord.x][forbidChord.y] = -100;
+      }
+
+      //Play the chords that we need to play
+      for (let chordToDo of analysisResults.toDo) {
+        this.doChainChord(
+          chordToDo.x,
+          chordToDo.y,
+          chainSquareInfo,
+          flagStates,
+          revealedStates,
+          chainPremiums,
+          preprocessedOpenings,
+          chainIds,
+          chainMap,
+          chainNeighbourhoodGrid,
+          false, //priorityPremiums - false as we don't have a specific PriorityGrid to use here
+          nextChainRef,
+          forbiddenGrid
+        );
+      }
+
+      //Exit if we didn't have anything to do
+      if (analysisResults.toForbid.length === 0 && analysisResults.toDo.length === 0) {
+        break;
+      }
+    }
+
+    //Finish off with 100 way chain zini
+    let finalResult = this.calcChainZini({
+      mines: mines,
+      preprocessedData: preprocessedData,
+      initialRevealedStates: revealedStates,
+      initialFlagStates: flagStates,
+      initialChainIds: chainIds,
+      initialChainMap: chainMap,
+      initialChainNeighbourhoodGrid: chainNeighbourhoodGrid,
+      chainSquareInfo: chainSquareInfo,
+      initialChainPremiums: chainPremiums,
+      priorityGrids: priorityGrids,
+      returnAllZinis: true,
+      includeClickPath: true,
+      forbiddenGrid: forbiddenGrid
+    });
+
+    return finalResult;
+  }
+
+  static getConsiderableChords(
+    {
+      mines: mines,
+      initialRevealedStates: revealedStates,
+      chainSquareInfo: chainSquareInfo,
+      initialChainPremiums: chainPremiums,
+      forbiddenGrid: forbiddenGrid,
+    }
+  ) {
+    //Return all chords that are worth considering with inclusion-exclusion zini
+    //Notably, we exclude zero tiles, forbidden tiles, and cells that are surrounded by numbers,
+    // but without having a positive premium (i.e. don't merge chains)
+
+    //We may decide to add more criteria here in the future
+    //We may also want to consider re-allowing chords that have previously been forbidden
+
+    const width = mines.length;
+    const height = mines[0].length;
+
+    let considerableChords = [];
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (mines[x][y]) {
+          continue;
+        }
+
+        const thisSquare = chainSquareInfo[x][y];
+        if (thisSquare.number === 0) {
+          continue;
+        }
+        if (forbiddenGrid[x][y]) {
+          continue;
+        }
+
+        //Check if there is an unopened safe neighbour cell
+        let hasUnopenedSafeNeighbour = false;
+        for (let neighbour of thisSquare.safeNeighbours) {
+          if (!revealedStates[neighbour.x][neighbour.y]) {
+            hasUnopenedSafeNeighbour = true;
+          }
+        }
+        if (!hasUnopenedSafeNeighbour) {
+          //Check if move has non-negative premium (from merging chains)
+          //If we has neutral (0) premium, then we may still want to consider it
+          //Even though it's very unlikely to make a difference
+          //This is because we might want to allow possiblity of forbidding this chord if it is bad
+          if (chainPremiums[x][y] < 0) {
+            continue;
+          }
+        }
+
+        considerableChords.push({ x, y })
+      }
+    }
+
+    return considerableChords;
+  }
+
+  static analyseResultsMinimum(baselineZinis, resultsList) {
+    //For now just pick lowest value for results list
+    let baselineBest = baselineZinis.reduce((acc, curr) => Math.min(acc, curr), Infinity);
+
+    let bestChord = null;
+    let bestSoFar = Infinity;
+
+    for (let results of resultsList) {
+      let thisResultsBest = results.zinisForced.reduce((acc, curr) => Math.min(acc, curr), Infinity);
+
+      if (thisResultsBest < bestSoFar) {
+        bestSoFar = thisResultsBest;
+        bestChord = { x: results.x, y: results.y };
+      }
+    }
+
+    if (baselineBest < bestSoFar || bestChord === null) {
+      return {
+        toDo: [],
+        toForbid: []
+      };
+    } else {
+      return {
+        toDo: [bestChord],
+        toForbid: []
+      };
+    }
+  }
+
+  static analyseResultsAverage(baselineZinis, resultsList) {
+    const negativeBenefitRequiredToForbid = -2;
+
+    //For now just pick lowest value for results list
+    let baselineAverage = baselineZinis.reduce((acc, curr) => acc + curr) / baselineZinis.length;
+
+    let bestChord = null;
+    let bestSoFarBenefit = -Infinity;
+    let bestSoFarAverage = Infinity;
+
+    let toForbid = [];
+
+    for (let results of resultsList) {
+      let thisResultsForcedAverage = results.zinisForced.reduce((acc, curr) => acc + curr) / results.zinisForced.length;
+      let thisResultsExcludedAverage = results.zinisExcluded.reduce((acc, curr) => acc + curr) / results.zinisExcluded.length;
+
+      let benefitOfForced = thisResultsExcludedAverage - thisResultsForcedAverage;
+
+      if (benefitOfForced > bestSoFarBenefit) {
+        bestSoFarBenefit = benefitOfForced;
+        bestSoFarAverage = thisResultsForcedAverage;
+        bestChord = { x: results.x, y: results.y };
+      }
+
+      if (benefitOfForced < negativeBenefitRequiredToForbid) {
+        toForbid.push({ x: results.x, y: results.y })
+      }
+    }
+
+    if (baselineAverage < bestSoFarAverage || bestChord === null) {
+      return {
+        toDo: [],
+        toForbid: toForbid
+      };
+    } else {
+      return {
+        toDo: [bestChord],
+        toForbid: toForbid
+      };
+    }
+  }
+
+  static analyseResultsTimingRun(baselineZinis, resultsList) {
+    //Same as minimum run, but used for doing a faster "timing" run.
+    //So it instead returns the 5 best moves
+    //For now just pick lowest value for results list
+    let baselineBest = baselineZinis.reduce((acc, curr) => Math.min(acc, curr), Infinity);
+
+    let bestChord = null;
+    let bestSoFar = Infinity;
+
+    let allMinimumsBetterThanOrEqualBaseline = [];
+
+    for (let results of resultsList) {
+      let thisResultsBest = results.zinisForced.reduce((acc, curr) => Math.min(acc, curr), Infinity);
+
+      if (thisResultsBest <= baselineBest) {
+        allMinimumsBetterThanOrEqualBaseline.push({ x: results.x, y: results.y, result: thisResultsBest });
+      }
+    }
+
+    if (allMinimumsBetterThanOrEqualBaseline.length === 0) {
+      return {
+        toDo: [],
+        toForbid: []
+      };
+    } else {
+      //Find top 5 moves
+      allMinimumsBetterThanOrEqualBaseline.sort((a, b) => a.result - b.result)
+
+      if (allMinimumsBetterThanOrEqualBaseline.length > 5) {
+        //Truncate to max 5 moves
+        allMinimumsBetterThanOrEqualBaseline.length = 5;
+      }
+
+      let todo = allMinimumsBetterThanOrEqualBaseline.map(r => { return { x: r.x, y: r.y }; })
+
+      return {
+        toDo: todo,
+        toForbid: []
+      };
+    }
+  }
+
   static cloneChainMap(chainMap) {
     let replicaMap = new Map();
     for (const [key, value] of chainMap) {
@@ -1865,6 +2274,154 @@ class ChainZini {
 
       }
     }
+  }
+
+  static getPreprocessedDataIfFalse(preprocessedData, mines) {
+    if (!preprocessedData) {
+      return Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
+        mines
+      );
+    } else {
+      return preprocessedData;
+    }
+  }
+
+  static getBlankRevealedStatesIfFalse(initialRevealedStates, width, height) {
+    if (initialRevealedStates) {
+      return initialRevealedStates;
+    } else {
+      return new Array(width)
+        .fill(0)
+        .map(() => new Array(height).fill(false));
+    }
+  }
+
+  static getBlankFlagStatesIfFalse(initialFlagStates, width, height) {
+    let flagsPlacedBefore = 0;
+    let flagStates;
+    if (initialFlagStates) {
+      flagStates = initialFlagStates
+      for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+          if (initialFlagStates[x][y]) {
+            flagsPlacedBefore++;
+          }
+        }
+      }
+    } else {
+      flagStates = new Array(width)
+        .fill(0)
+        .map(() => new Array(height).fill(false));
+    }
+
+    return {
+      flagStates,
+      flagsPlacedBefore
+    }
+  }
+
+  static getBlankChainIdsIfFalse(initialChainIds, width, height) {
+    if (initialChainIds) {
+      return initialChainIds;
+    } else {
+      return new Array(width)
+        .fill(0)
+        .map(() => new Array(height).fill(null));
+    }
+  }
+
+  static getBlankChainMapIfFalse(initialChainMap) {
+    let chainMap;
+    let nextChainId;
+    if (initialChainMap) {
+      chainMap = initialChainMap
+      nextChainId = Math.max(0, Math.max(0, ...initialChainMap.keys())) + 1;
+    } else {
+      chainMap = new Map();
+      nextChainId = 0;
+    }
+
+    return {
+      chainMap,
+      nextChainId
+    }
+  }
+
+  static getBlankChainNeighbourhoodGridIfFalse(initialChainNeighbourhoodGrid, width, height) {
+    if (initialChainNeighbourhoodGrid) {
+      return initialChainNeighbourhoodGrid;
+    } else {
+      return new Array(width)
+        .fill(0)
+        .map(() => new Array(height).fill(0).map(() => {
+          return {
+            //Note - arrays used instead of sets as they are more performant when small (even if duplicates)
+            floating: [], //floating can floating seeded chains and also be smotherable unchordedDig neighbours
+            fixed: [] //fixed can be fixed seeded chains or the current square if it is a fixed unchordedDig
+          }
+        }));
+    }
+  }
+
+  static computeChainSquareInfoIfFalse(
+    chainSquareInfo,
+    mines,
+    numbersArray,
+    openingLabels,
+    preprocessedOpenings
+  ) {
+    if (chainSquareInfo) {
+      return chainSquareInfo;
+    } else {
+      return this.computeChainSquareInfo(mines, numbersArray, openingLabels, preprocessedOpenings);
+    }
+  }
+
+  static getChainPremiumsIfFalse(
+    initialChainPremiums,
+    mines,
+    chainSquareInfo,
+    flagStates,
+    revealedStates,
+    preprocessedOpenings,
+    chainIds,
+    chainMap,
+    chainNeighbourhoodGrid,
+    width,
+    height,
+    forbiddenGrid = false
+  ) {
+    if (initialChainPremiums) {
+      return initialChainPremiums;
+    }
+
+    const chainPremiums = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(null));
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (mines[x][y]) {
+          continue;
+        }
+        this.updateChainPremiumForCoord(
+          x,
+          y,
+          chainSquareInfo,
+          flagStates,
+          revealedStates,
+          chainPremiums,
+          preprocessedOpenings,
+          chainIds,
+          chainMap,
+          chainNeighbourhoodGrid,
+          false,
+          forbiddenGrid
+        );
+      }
+    }
+
+    return chainPremiums;
   }
 }
 
