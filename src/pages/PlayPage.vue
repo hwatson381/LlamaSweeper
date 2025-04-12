@@ -35,9 +35,10 @@
         "
       >
         <span>Random dev stuff box</span><br />
-        <button @click="bulkrun4">Bulk run</button>
+        <button @click="bulkrun5">Bulk run</button>
         Iterations: <input v-model.number="bulkIterations" type="text" />
         <button @click="dialogTest">QDialog</button>
+        <button @click="playSound('dig')">Play sound</button>
         <button @click="seedRandomTest">Seed Random</button>
       </div>
       <br />
@@ -257,9 +258,13 @@
               "
             />
             <q-btn
-              @click="game.board.ziniExplore.runDefaultAlgorithm()"
-              color="positive"
-              label="Run DeepChain ZiNi"
+              v-if="variant === 'zini explorer'"
+              @click="
+                game.board.switchToAnalyseMode();
+                game.board.ziniExplore.runDefaultAlgorithm();
+              "
+              color="primary"
+              label="DeepChain ZiNi"
             />
           </div>
         </q-card-section>
@@ -633,7 +638,11 @@
 
         <q-card
           square
-          v-if="variant === 'zini explorer' && !isCurrentlyEditModeDisplay"
+          v-if="
+            variant === 'zini explorer' &&
+            !isCurrentlyEditModeDisplay &&
+            !ziniRunnerActive
+          "
           style="float: left; margin-bottom: 10px"
         >
           <q-card-section>
@@ -744,90 +753,30 @@
               label="Show Premiums"
               @update:model-value="game?.board?.ziniExplore?.updateUiAndBoard()"
             />
-          </q-card-section>
-          <q-separator />
-          <q-card-section>
-            <p class="text-center text-h6 q-mb-sm">Algorithms</p>
-            <q-select
-              class="q-mx-md q-mb-md"
-              outlined
-              options-dense
-              dense
-              transition-duration="100"
-              input-debounce="0"
-              v-model="analyseAlgorithm"
-              style="width: 175px; flex-shrink: 0"
-              :options="[
-                {
-                  label: '8 Way ZiNi',
-                  value: '8 way',
-                },
-                { label: 'WoM ZiNi', value: 'womzini' },
-                { label: 'WoM ZiNi Improved', value: 'womzinifix' },
-                { label: 'WoM HZiNi', value: 'womhzini' },
-                { label: 'Chain ZiNi', value: 'chainzini' },
-                { label: 'DeepChain ZiNi (best but slow)', value: 'incexzini' },
-              ]"
-              emit-value
-              map-options
-              stack-label
-              label="Choose Algorithm"
-            />
-            <q-select
-              class="q-mx-md q-mb-md"
-              outlined
-              options-dense
-              dense
-              transition-duration="100"
-              input-debounce="0"
-              v-model="analyseAlgorithmScope"
-              style="width: 175px; flex-shrink: 0"
-              :options="
-                analyseAlgorithmScopeOptions /*[
-                {
-                  label: 'From beginning',
-                  value: 'beginning',
-                },
-                { label: 'From current', value: 'current' },
-              ]*/
-              "
-              emit-value
-              map-options
-              stack-label
-              label="Scope"
-            />
-            <div class="row justify-center">
-              <q-input
-                v-if="analyseAlgorithm === 'chainzini'"
-                class="q-mb-sm"
-                debounce="100"
-                v-model.number="analyseIterations"
-                label="Iterations"
-                type="number"
-                dense
-                min="1"
-                max="1000000"
-                style="width: 110px"
-              />
-            </div>
-            <div class="row justify-center">
-              <q-checkbox
-                v-if="
-                  (analyseAlgorithm === 'chainzini' ||
-                    analyseAlgorithm === 'incexzini') &&
-                  analyseAlgorithmScope === 'current'
-                "
-                v-model="analyseHistoryRewrite"
-                label="Allow history rewrite"
-              />
-            </div>
             <div class="row justify-center">
               <q-btn
-                @click="game.board.ziniExplore.runAlgorithm()"
+                @click="runZiniAlgorithmModal = true"
                 color="positive"
-                label="run"
+                label="Run ZiNi Algorithm"
               />
             </div>
+          </q-card-section>
+        </q-card>
+
+        <q-card
+          square
+          v-if="variant === 'zini explorer' && ziniRunnerActive"
+          style="float: left; margin-bottom: 10px"
+        >
+          <q-card-section>
+            <span class="text-h6">Running DeepChain ZiNi</span><br />
+            Expected Duration: {{ ziniRunnerExpectedDuration }}<br />
+            Expected Finish Time: {{ ziniRunnerExpectedFinishTime }}<br />
+            <q-btn
+              @click="game.board.ziniExplore.killInclusionExclusionZiniRunner()"
+              color="negative"
+              label="Cancel"
+            ></q-btn>
           </q-card-section>
         </q-card>
       </div>
@@ -1130,6 +1079,17 @@
           >
             <q-card>
               <q-card-section>
+                <div class="flex q-mb-sm" style="align-items: center">
+                  <q-checkbox
+                    v-model="soundEffectsEnabled"
+                    class="q-mr-md"
+                    style="flex-shrink: 0"
+                    label="Sound Effects"
+                  />
+                  <div class="text-info" style="flex: 1 1 200px">
+                    Dig/chord/flag sounds provided by Minesweeper Go
+                  </div>
+                </div>
                 <q-checkbox
                   v-model="mobileModeEnabled"
                   label="Use Mobile Mode"
@@ -1566,7 +1526,169 @@
     </q-card>
   </q-dialog>
 
-  <button
+  <q-dialog v-model="runZiniAlgorithmModal">
+    <q-card style="min-width: 350px">
+      <q-card-section>
+        <div class="text-h6">ZiNi Algorithms</div>
+      </q-card-section>
+
+      <q-card-section class="q-pt-none">
+        <p>
+          ZiNi algorithms are procedures that try to find the lowest number of
+          clicks that a board can be solved in.
+        </p>
+
+        <div class="flex justify-around">
+          <q-select
+            class="q-mx-md q-mb-md"
+            outlined
+            options-dense
+            dense
+            transition-duration="100"
+            input-debounce="0"
+            v-model="analyseAlgorithm"
+            style="width: 200px; flex-shrink: 0"
+            :options="[
+              {
+                label: '8 Way ZiNi',
+                value: '8 way',
+              },
+              { label: 'WoM ZiNi', value: 'womzini' },
+              { label: 'WoM ZiNi Improved', value: 'womzinifix' },
+              { label: 'WoM HZiNi', value: 'womhzini' },
+              { label: 'Chain ZiNi', value: 'chainzini' },
+              {
+                label: 'DeepChain ZiNi (best but slow)',
+                value: 'incexzini',
+              },
+            ]"
+            emit-value
+            map-options
+            stack-label
+            label="Choose Algorithm"
+          />
+          <q-select
+            class="q-mx-md q-mb-md"
+            outlined
+            options-dense
+            dense
+            transition-duration="100"
+            input-debounce="0"
+            v-model="analyseAlgorithmScope"
+            style="width: 200px; flex-shrink: 0"
+            :options="analyseAlgorithmScopeOptions"
+            emit-value
+            map-options
+            stack-label
+            label="Scope"
+          />
+        </div>
+      </q-card-section>
+      <template
+        v-if="
+          analyseAlgorithm === 'chainzini' || analyseAlgorithm === 'incexzini'
+        "
+      >
+        <q-separator />
+        <q-card-section>
+          <div class="flex justify-around">
+            <q-input
+              v-if="analyseAlgorithm === 'chainzini'"
+              class="q-mb-sm"
+              debounce="100"
+              v-model.number="analyseIterations"
+              label="Iterations"
+              type="number"
+              dense
+              min="1"
+              max="1000000"
+              style="width: 110px"
+            />
+            <q-checkbox
+              v-if="
+                (analyseAlgorithm === 'chainzini' ||
+                  analyseAlgorithm === 'incexzini') &&
+                analyseAlgorithmScope === 'current'
+              "
+              v-model="analyseHistoryRewrite"
+              label="Allow history rewrite"
+            />
+            <q-select
+              v-if="analyseAlgorithm === 'incexzini'"
+              class="q-mx-md q-mb-md"
+              outlined
+              options-dense
+              dense
+              transition-duration="100"
+              input-debounce="0"
+              v-model="analyseDeepType"
+              style="width: 175px; flex-shrink: 0"
+              :options="[
+                {
+                  label: 'Minimum',
+                  value: 'minimum',
+                },
+                {
+                  label: 'Average',
+                  value: 'average',
+                },
+                {
+                  label: 'Average then Minimum',
+                  value: 'average then minimum',
+                },
+                {
+                  label: 'Separate',
+                  value: 'separate',
+                },
+              ]"
+              emit-value
+              map-options
+              stack-label
+              label="Deep analysis type"
+            />
+            <q-input
+              v-if="analyseAlgorithm === 'incexzini'"
+              class="q-mb-sm"
+              debounce="50"
+              v-model.number="analyseDeepIterations"
+              label="Deep iterations"
+              type="number"
+              dense
+              min="1"
+              max="1000"
+              style="width: 110px"
+            />
+            <q-checkbox
+              v-if="analyseAlgorithm === 'incexzini'"
+              v-model="analyseVisualise"
+              label="Visualise"
+            />
+            <q-checkbox
+              v-if="analyseAlgorithm === 'incexzini'"
+              v-model="analyseForbid"
+              label="Forbid moves"
+            />
+          </div>
+        </q-card-section>
+      </template>
+
+      <q-card-actions align="between" class="text-primary">
+        <q-btn label="Cancel" color="negative" v-close-popup />
+        <q-btn
+          @click="
+            Utils.setTimeoutWrapper(() => {
+              game.board.ziniExplore.runAlgorithm();
+            }, 500)
+          "
+          color="positive"
+          v-close-popup
+          label="Run"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
+  <div
     v-if="mobileModeEnabled && !replayIsShown"
     :class="[
       {
@@ -1576,10 +1698,10 @@
       flagToggleLocationClass,
       flagToggleSizeClass,
     ]"
-    @touchstart.prevent="flagToggleActive = !flagToggleActive"
+    @click.prevent="flagToggleActive = !flagToggleActive"
   >
     <q-icon name="flag" :class="[flagToggleSizeClass, 'flag-toggle-icon']" />
-  </button>
+  </div>
   <ReplayBar
     v-show="replayIsShown"
     :replay-is-playing="replayIsPlaying"
@@ -1753,6 +1875,7 @@ import ChainZini from "src/classes/ChainZini";
 import ReplayBar from "src/components/ReplayBar.vue";
 
 import CONSTANTS from "src/includes/Constants";
+import playSound from "src/includes/Sounds";
 
 import seedrandom from "seedrandom";
 
@@ -2011,7 +2134,7 @@ let begEffCustom = ref(235);
 const begEffSlowGenPoint = 210;
 let intEffPreset = ref(160);
 let intEffOptions = Object.freeze([160, 170, 180, "custom"]);
-let intEffCustom = ref(189);
+let intEffCustom = ref(190);
 const intEffSlowGenPoint = 180;
 let expEffPreset = ref(150);
 let expEffOptions = Object.freeze([150, 160, 170, "custom"]);
@@ -2153,7 +2276,7 @@ let flagToggleActive = ref(false); //Whether to swap left and right mouse button
 let flagToggleLocationClass = ref("toggle-bot-right");
 let flagToggleSizeClass = ref("toggle-normal");
 let mobileModeEnabled = ref(Utils.isMobile()); //Flag toggle starts enabled on mobile, disabled on desktop
-let mobileScrollSetting = ref("enclosed flag"); //Affects whether touches can trigger scroll
+let mobileScrollSetting = ref("enable"); //Affects whether touches can trigger scroll
 let mobileEnclosedScrollLetThrough = ref(true); //Whether clicks can still affect the board on enclosed setting (typically placing flags)
 let scrollLetThroughActive = computed(
   () =>
@@ -2168,6 +2291,7 @@ let touchLongPressDisabled = ref(false);
 let touchMaxTime = ref(1000); //When do long touches get cancelled (maybe these become scrolls?)
 let touchScrollDistance = ref(3); //When do touches that move a lot unlock the scroll
 let faceHitbox = ref("adaptive"); //Hitbox for when the face is click to trigger a reset
+let soundEffectsEnabled = ref(Utils.isMobile());
 
 let meanOpeningMineDensity = ref(0.3); //mean opening settings
 let meanOpeningFlagDensity = ref(1);
@@ -2189,9 +2313,13 @@ let replayShowHidden = ref("transparent3");
 
 let analyseDisplayMode = ref("classic");
 let analyseAlgorithm = ref("8 way");
-let analyseAlgorithmScope = ref("current");
+let analyseAlgorithmScope = ref("beginning");
 let analyseIterations = ref(100);
 let analyseHistoryRewrite = ref(true);
+let analyseDeepType = ref("minimum");
+let analyseDeepIterations = ref(50);
+let analyseVisualise = ref(true);
+let analyseForbid = ref(false);
 let classicPathBreakdown = ref({
   lefts: 0,
   rights: 0,
@@ -2241,6 +2369,10 @@ watchEffect(() => {
     }
   }
 });
+let runZiniAlgorithmModal = ref(false);
+let ziniRunnerActive = ref(false);
+let ziniRunnerExpectedDuration = ref("calculating...");
+let ziniRunnerExpectedFinishTime = ref("calculating...");
 
 let keyboardClickOpenOnKeyDown = ref(false);
 let keyboardClickDigKey = ref("z");
@@ -2529,9 +2661,43 @@ function bulkrun4() {
     });
     benchmark.stopTime("100zini");
   }
+}
 
-  benchmark.report();
-  benchmark.clearAll();
+function bulkrun5() {
+  console.time();
+  for (let i = 0; i < bulkIterations.value; i++) {
+    let mines = BoardGenerator.basicShuffle(
+      boardWidth.value,
+      boardHeight.value,
+      boardMines.value
+    );
+
+    let preprocessedData =
+      Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
+
+    let bbbv = Algorithms.calc3bv(mines, false, preprocessedData).bbbv;
+
+    if (bbbv !== 39) {
+      continue;
+    }
+
+    let eightZini = Algorithms.calcBasicZini(
+      mines,
+      true,
+      preprocessedData
+    ).total;
+
+    if (eightZini >= 26) {
+      console.log("Found candidate");
+      console.log(`EightZini: ${eightZini}`);
+
+      let boardStats = new BoardStats(mines, {});
+      let link = boardStats.getPttaLink();
+      console.log(`Link:
+      ${link}`);
+    }
+  }
+  console.timeEnd();
 }
 
 function dialogTest() {
@@ -2717,11 +2883,18 @@ class Board {
       analyseIterations,
       analyseHistoryRewrite,
       analyseHiddenStyle,
+      analyseDeepType,
+      analyseDeepIterations,
+      analyseVisualise,
+      analyseForbid,
       classicPathBreakdown,
       analyseZiniTotal,
       analyse3bv,
       analyseEff,
       analyseShowPremiums,
+      ziniRunnerActive,
+      ziniRunnerExpectedDuration,
+      ziniRunnerExpectedFinishTime,
     });
 
     this.resetBoard();
@@ -3839,7 +4012,12 @@ class Board {
       isFlagInput &&
       !isTouchInput
     ) {
-      this.attemptFlag(unflooredCoords.tileX, unflooredCoords.tileY, true);
+      this.attemptFlag(
+        unflooredCoords.tileX,
+        unflooredCoords.tileY,
+        true,
+        true
+      );
       isDrawRequired = true;
     }
 
@@ -4104,7 +4282,12 @@ class Board {
     return { tileX: Math.floor(tileX), tileY: Math.floor(tileY) };
   }
 
-  attemptFlag(unflooredTileX, unflooredTileY, includeInStats = false) {
+  attemptFlag(
+    unflooredTileX,
+    unflooredTileY,
+    includeInStats = false,
+    hasSoundEffect = false
+  ) {
     let time = this.getTime();
 
     let { tileX, tileY } = this.unflooredToFlooredTileCoords(
@@ -4119,6 +4302,7 @@ class Board {
 
     if (this.tilesArray[tileX][tileY].state === CONSTANTS.UNREVEALED) {
       //Flag the square
+      hasSoundEffect && soundEffectsEnabled.value && playSound("flag");
       this.tilesArray[tileX][tileY].state = CONSTANTS.FLAG;
       this.unflagged--;
       if (
@@ -4148,6 +4332,7 @@ class Board {
       }
     } else if (this.tilesArray[tileX][tileY].state === CONSTANTS.FLAG) {
       //Unflag a square
+      hasSoundEffect && soundEffectsEnabled.value && playSound("flag");
       this.tilesArray[tileX][tileY].state = CONSTANTS.UNREVEALED;
       this.unflagged++;
       includeInStats &&
@@ -4193,7 +4378,15 @@ class Board {
 
     if (typeof this.tilesArray[tileX][tileY].state === "number") {
       //Attempt chord tile
-      this.chord(tileX, tileY, true, time, unflooredTileX, unflooredTileY);
+      this.chord(
+        tileX,
+        tileY,
+        true,
+        time,
+        unflooredTileX,
+        unflooredTileY,
+        true
+      );
     } else if (this.tilesArray[tileX][tileY].state === CONSTANTS.UNREVEALED) {
       //Attempt to dig tile, although this behaviour may be changed on mean openings mode
       let doDig = true;
@@ -4257,7 +4450,7 @@ class Board {
       }
 
       if (doDig) {
-        this.openTile(tileX, tileY);
+        this.openTile(tileX, tileY, true);
         this.stats.addLeft(tileX, tileY, unflooredTileX, unflooredTileY, time);
       }
     } else {
@@ -4290,11 +4483,19 @@ class Board {
 
     if (typeof this.tilesArray[tileX][tileY].state === "number") {
       //Attempt chord tile
-      this.chord(tileX, tileY, true, time, unflooredTileX, unflooredTileY);
+      this.chord(
+        tileX,
+        tileY,
+        true,
+        time,
+        unflooredTileX,
+        unflooredTileY,
+        true
+      );
     } else {
       //Try to flag the square
       //Code is slightly scuffed since this repeats some checks (such as square inbounds), but I'm too lazy to fix
-      this.attemptFlag(unflooredTileX, unflooredTileY, true);
+      this.attemptFlag(unflooredTileX, unflooredTileY, true, true);
     }
   }
 
@@ -4334,7 +4535,7 @@ class Board {
     return requiresRedraw;
   }
 
-  openTile(x, y) {
+  openTile(x, y, hasSoundEffect = false) {
     if (!this.checkCoordsInBounds(x, y)) {
       return; //ignore squares outside board
     }
@@ -4354,6 +4555,7 @@ class Board {
       this.tilesArray[x][y].state = CONSTANTS.MINERED;
       this.blasted = true;
     } else {
+      hasSoundEffect && soundEffectsEnabled.value && playSound("dig");
       const number = this.getNumberSurroundingMines(x, y);
       this.tilesArray[x][y].state = number;
       this.openedTiles++;
@@ -4592,7 +4794,8 @@ class Board {
     includeInStats = false,
     time = 0,
     unflooredX = undefined,
-    unflooredY = undefined
+    unflooredY = undefined,
+    hasSoundEffect = false
   ) {
     if (!this.checkCoordsInBounds(x, y)) {
       return; //ignore squares outside board
@@ -4603,6 +4806,10 @@ class Board {
     }
 
     const isChordedTileZero = this.tilesArray[x][y].state === 0;
+
+    if (!isChordedTileZero) {
+      hasSoundEffect && soundEffectsEnabled.value && playSound("chord");
+    }
 
     if (
       this.tilesArray[x][y].state === this.getNumberSurroundingFlags(x, y) ||
@@ -4657,9 +4864,10 @@ class Board {
   }
 
   doLose() {
+    const finalTime = this.getTime();
+    soundEffectsEnabled.value && playSound("lose");
     this.blast();
     this.gameStage = "lost";
-    const finalTime = this.getTime();
     this.stats.addEndTime(finalTime, false);
     this.stats.makeRepeatFlagsWasted();
     if (this.gameStage === "mean openings") {
@@ -4692,9 +4900,10 @@ class Board {
   }
 
   doWin() {
+    const finalTime = this.getTime();
+    soundEffectsEnabled.value && playSound("win");
     this.markRemainingFlags();
     this.gameStage = "won";
-    const finalTime = this.getTime();
     this.stats.addEndTime(finalTime, true);
     this.stats.makeRepeatFlagsWasted();
     if (this.gameStage === "mean openings") {

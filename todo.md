@@ -341,3 +341,70 @@ It doesn't find 200% :(
 Maybe average will have better luck?
 Average is reallllly bad...
 Maybe because average forbids too many moves?
+Try without any forbids
+
+We could also try comparing "average" to baselineAverage instead of average with exclusion?
+Or can we do something better with minimums?
+Like could there be some way to look at minimum for a run whilst comparing it against minimums of other runs? (Vague idea - not sure how put into words)
+
+Having algorithms in separate tab is bad because we can't see the result?
+
+Idea - count up how many zini-priorities a particular move is maximum for?
+
+Consider using pure average instead of average benefit?
+
+Can we re-introduce forbids?
+
+Alternate UI idea for zini explore -
+Maybe just have a "run" button. And then it shows a dialogue box where all settings can be configured
+
+Need to collect games to benchmark against
+
+Need to have dialogue for params (batch size (currently 50) and number of zini iterations to finish with)
+
+Does there need to be a setting for click volume? Probably not.
+
+Consider using different tap sounds?
+Maybe mp3 is laggy and better to use wav?
+Or try to find something EXTREMELY short to avoid overlap issue.
+Or edit current sound to be shorter (only if dead space at end)
+Or have a noise for "cancelled touch"
+
+Try 0.5 gain to stop sound overlaps from clipping?
+
+Are sounds robust to changing tba and changing make (since this kills and re-runs the vue component)
+Do a pool of AudioBufferSourceNodes?
+Use wavs?
+Do I need to worry about sounds being suspended?
+"If you want near-zero latency (e.g. per-frame sounds), consider using OscillatorNodes or even AudioWorklet (advanced)." (Chatgpt suggestion)
+
+Grace period where recently revealed squares can't scroll
+Option to lock scroll to horizontal or vertical
+
+Improvement for reordering zini:
+Use shortest path alg for showing clicks in an order that makes more sense
+Rather than jumping about a lot.
+
+https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=1&m=00000000010000g80
+Simple case that chain zini doesn't spot (from PTT's doc about his alg)
+
+Do timing run stuff
+Have more parameters for deep chain zini
+Also have web worker
+
+Harmless bug -
+When doing the first click on eff boards, if you accidentally double click. Then it won't show the warning modal when it fails to generate. Likely because the second click dismisses the modal. Fix would be to remove backdrop click dismiss, but this is realllly minor.
+
+Change minimum to use average tiebreak
+and average to use minimum tiebreak (or instead switch to minimum after threshold?)
+
+Cancelling deepChain zini should revert to previous click path
+
+Todo:
+test different analysis types (min/average/minThenAverage)
+Also implement analysis that does single priority grid inclusion exclusion, but then repeats for different priority grids
+
+Benchmark stuff by generating 20x20/72 boards with eff > 185%?
+
+Change default scroll setting to enabled.
+Consider whether to make max eff be based on all zini stats.

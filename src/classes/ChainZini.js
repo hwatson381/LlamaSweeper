@@ -153,7 +153,8 @@ class ChainZini {
           needToDoNFClicks = true;
           break;
         }
-        window.validate && this.checkChainStuffConsistent(
+        //window may be undefined if running from web worker
+        typeof window !== 'undefined' && window.validate && this.checkChainStuffConsistent(
           chainSquareInfo,
           thisEnumerationFlagStates,
           thisEnumerationRevealedStates,
@@ -1738,11 +1739,20 @@ class ChainZini {
       initialChainPremiums = false,
       chainSquareInfo = false,
       doTimingRun = false,
-      useMinimumAnalysis = false
+      analysisType = 'average',
+      deepIterations = 50,
+      forbidMoves = false,
+      progressUpdateFunction = false,
+      priorityGrids = false
     }
   ) {
     const width = mines.length;
     const height = mines[0].length;
+
+    let startTime;
+    if (doTimingRun) {
+      startTime = performance.now();
+    }
 
     //benchmark.startTime('setup');
     preprocessedData = this.getPreprocessedDataIfFalse(preprocessedData, mines);
@@ -1800,8 +1810,10 @@ class ChainZini {
       }
     }
 
-    const numberOfGridsPerMove = doTimingRun ? 1 : 50; //TimingRun only does single chainPremium per move analysed
-    let priorityGrids = PriorityGridCreator.createBulkRandom(width, height, numberOfGridsPerMove, true);
+    const numberOfGridsPerMove = doTimingRun ? 1 : deepIterations; //TimingRun only does single chainPremium per move analysed
+    if (!priorityGrids) {
+      priorityGrids = PriorityGridCreator.createBulkRandom(width, height, numberOfGridsPerMove, true);
+    }
 
     //Do deep analysis
 
@@ -1943,18 +1955,26 @@ class ChainZini {
           baselineZinis,
           resultsList
         );
-      } else if (useMinimumAnalysis) {
+      } else if (analysisType === 'minimum') {
         //Find forced chord with minimum zini found
         analysisResults = this.analyseResultsMinimum(
           baselineZinis,
           resultsList
         );
-      } else {
+      } else if (analysisType === 'average') {
         //Find forced chord with lowest average zini found
         analysisResults = this.analyseResultsAverage(
           baselineZinis,
           resultsList
         );
+      } else if (analysisType === 'average then minimum') {
+        //Find forced chord with lowest average or minimum (depending) zini found
+        analysisResults = this.analyseResultsAverageThenMinimum(
+          baselineZinis,
+          resultsList
+        );
+      } else {
+        throw new Error('Unrecognised analysis type')
       }
 
       //Forbid any chords based on the results
@@ -1982,6 +2002,20 @@ class ChainZini {
         );
       }
 
+      if (progressUpdateFunction) {
+        //Report back progress - useful if running in a webworker and we want live updates
+
+        const clicksAtThisStage = this.convertSolutionToClickPath({
+          chainIds: chainIds,
+          chainMap: chainMap,
+          mines: mines,
+          chainSquareInfo: chainSquareInfo,
+          preprocessedOpenings: preprocessedOpenings
+        });
+
+        progressUpdateFunction(clicksAtThisStage);
+      }
+
       //Exit if we didn't have anything to do
       if (analysisResults.toForbid.length === 0 && analysisResults.toDo.length === 0) {
         break;
@@ -2004,6 +2038,15 @@ class ChainZini {
       includeClickPath: true,
       forbiddenGrid: forbiddenGrid
     });
+
+    if (doTimingRun) {
+      const timingRunSeconds = (performance.now() - startTime) / 1000
+
+      // Real run takes deepIterations longer for checking each move.
+      // It also takes 5x longer, since the timing run does 5 moves per turn.
+      const expectedTimeForRealRun = timingRunSeconds * deepIterations * 5;
+      finalResult.expectedTimeForRealRun = expectedTimeForRealRun;
+    }
 
     return finalResult;
   }
@@ -2073,12 +2116,24 @@ class ChainZini {
 
     let bestChord = null;
     let bestSoFar = Infinity;
+    let bestSoFarAverage = Infinity;
 
     for (let results of resultsList) {
       let thisResultsBest = results.zinisForced.reduce((acc, curr) => Math.min(acc, curr), Infinity);
+      let thisResultsAverage = results.zinisForced.reduce((acc, curr) => acc + curr) / results.zinisForced.length;
+
+      if (thisResultsBest === bestSoFar && thisResultsAverage < bestSoFarAverage) {
+        //If minimum is same, but average is better, then update best
+        bestSoFar = thisResultsBest;
+        bestSoFarAverage = thisResultsAverage;
+        bestChord = { x: results.x, y: results.y };
+        continue;
+      }
 
       if (thisResultsBest < bestSoFar) {
+        //If minimum is better, then update best
         bestSoFar = thisResultsBest;
+        bestSoFarAverage = thisResultsAverage;
         bestChord = { x: results.x, y: results.y };
       }
     }
@@ -2096,10 +2151,10 @@ class ChainZini {
     }
   }
 
-  static analyseResultsAverage(baselineZinis, resultsList) {
+  static analyseResultsAverageOld2(baselineZinis, resultsList) {
     const negativeBenefitRequiredToForbid = -2;
 
-    //For now just pick lowest value for results list
+    //Find average value for results list
     let baselineAverage = baselineZinis.reduce((acc, curr) => acc + curr) / baselineZinis.length;
 
     let bestChord = null;
@@ -2110,6 +2165,7 @@ class ChainZini {
 
     for (let results of resultsList) {
       let thisResultsForcedAverage = results.zinisForced.reduce((acc, curr) => acc + curr) / results.zinisForced.length;
+
       let thisResultsExcludedAverage = results.zinisExcluded.reduce((acc, curr) => acc + curr) / results.zinisExcluded.length;
 
       let benefitOfForced = thisResultsExcludedAverage - thisResultsForcedAverage;
@@ -2120,9 +2176,11 @@ class ChainZini {
         bestChord = { x: results.x, y: results.y };
       }
 
-      if (benefitOfForced < negativeBenefitRequiredToForbid) {
-        toForbid.push({ x: results.x, y: results.y })
-      }
+      /*
+        if (benefitOfForced < negativeBenefitRequiredToForbid) {
+          toForbid.push({ x: results.x, y: results.y })
+        }
+      */
     }
 
     if (baselineAverage < bestSoFarAverage || bestChord === null) {
@@ -2138,14 +2196,246 @@ class ChainZini {
     }
   }
 
+  static analyseResultsAverageOld(baselineZinis, resultsList) {
+    //Find average value for baseline
+    let baselineAverage = baselineZinis.reduce((acc, curr) => acc + curr) / baselineZinis.length;
+
+    let bestChord = null;
+    let bestSoFarAverage = Infinity;
+
+    for (let results of resultsList) {
+      let thisResultsForcedAverage = results.zinisForced.reduce((acc, curr) => acc + curr) / results.zinisForced.length;
+
+      if (thisResultsForcedAverage < bestSoFarAverage) {
+        bestSoFarAverage = thisResultsForcedAverage;
+        bestChord = { x: results.x, y: results.y };
+      }
+    }
+
+    if (baselineAverage < bestSoFarAverage || bestChord === null) {
+      return {
+        toDo: [],
+        toForbid: []
+      };
+    } else {
+      return {
+        toDo: [bestChord],
+        toForbid: []
+      };
+    }
+  }
+
+  static analyseResultsAverage(baselineZinis, resultsList) {
+    //Choose value with best average, but tie break on minimum if within 0.1 difference
+    let baselineAverage = baselineZinis.reduce((acc, curr) => acc + curr) / baselineZinis.length;
+    let baselineMinimum = baselineZinis.reduce((acc, curr) => Math.min(acc, curr), Infinity);
+
+    let resultsStats = [];
+
+    for (let i = 0; i < resultsList.length; i++) {
+      const resultsStatEntry = {
+        index: i,
+        minimum: resultsList[i].zinisForced.reduce((acc, curr) => Math.min(acc, curr), Infinity),
+        average: resultsList[i].zinisForced.reduce((acc, curr) => acc + curr) / resultsList[i].zinisForced.length
+      };
+
+      resultsStats.push(resultsStatEntry)
+    }
+
+    //Find lowest average, and candidates within it.
+    let bestAverage = resultsStats.reduce((acc, curr) => Math.min(acc, curr.average), Infinity);
+    let resultsNearBestAverage = resultsStats.filter(r => r.average < bestAverage + 0.1);
+
+    //Sort low -> high average
+    resultsNearBestAverage = resultsNearBestAverage.sort((a, b) => a.average - b.average);
+
+    let indexOfBestMove = resultsNearBestAverage[0].index;
+    let minimumOfBestMove = resultsNearBestAverage[0].minimum;
+
+    for (let nearResult of resultsNearBestAverage) {
+      if (nearResult.minimum < minimumOfBestMove) {
+        indexOfBestMove = nearResult.index;
+        minimumOfBestMove = nearResult.minimum;
+      }
+    }
+
+    let bestResult = resultsList[indexOfBestMove]
+
+    if (baselineMinimum < minimumOfBestMove) {
+      return {
+        toDo: [],
+        toForbid: []
+      };
+    } else {
+      return {
+        toDo: [{ x: bestResult.x, y: bestResult.y }],
+        toForbid: []
+      };
+    }
+  }
+
+  static analyseResultsAverageThenMinimum(baselineZinis, resultsList) {
+    //Find best average if improvement is more than threshold over baseline, otherwise use best minimum
+    const thresholdToUseAverage = 0.5;
+
+    let baselineAverage = baselineZinis.reduce((acc, curr) => acc + curr) / baselineZinis.length;
+    let baselineMinimum = baselineZinis.reduce((acc, curr) => Math.min(acc, curr), Infinity);
+
+    let bestChord = null;
+    let hasAverageCandidate = false;
+    let bestSoFarAverage = Infinity;
+    let bestSoFarMinimum = Infinity;
+
+    for (let results of resultsList) {
+      let thisResultsForcedAverage = results.zinisForced.reduce((acc, curr) => acc + curr) / results.zinisForced.length;
+      let thisResultsForcedMinimum = results.zinisForced.reduce((acc, curr) => Math.min(acc, curr), Infinity);
+
+      if (thisResultsForcedAverage < baselineAverage - thresholdToUseAverage) {
+        hasAverageCandidate = true;
+
+        if (thisResultsForcedAverage < bestSoFarAverage) {
+          bestSoFarAverage = thisResultsForcedAverage;
+          bestChord = { x: results.x, y: results.y };
+          bestSoFarMinimum = thisResultsForcedMinimum; //Still track minimum as we want to be wary about this going backwards
+        }
+      } else if (!hasAverageCandidate) {
+        //Try find candidate using minimum if no sign of good candidates with average
+        if (thisResultsForcedMinimum < bestSoFarMinimum) {
+          bestSoFarMinimum = thisResultsForcedMinimum;
+          bestChord = { x: results.x, y: results.y };
+        }
+      }
+    }
+
+    if (bestChord === null || (!hasAverageCandidate && baselineMinimum < bestSoFarMinimum)) {
+      return {
+        toDo: [],
+        toForbid: []
+      };
+    } else {
+      return {
+        toDo: [bestChord],
+        toForbid: []
+      };
+    }
+  }
+
+  static calcNWayInclusionExclusionZini({
+    mines,
+    preprocessedData = false,
+    initialRevealedStates = false,
+    initialFlagStates = false,
+    initialChainIds = false,
+    initialChainMap = false,
+    initialChainNeighbourhoodGrid = false,
+    initialChainPremiums = false,
+    chainSquareInfo = false,
+    deepIterations = 50,
+    forbidMoves = false,
+  }) {
+    //Algorithm that runs inclusion-exclusion zini n times, and returns the best result.
+    //This is really a meta-heuristic like the heuristics that use minimum/average analysis
+    //Slight inefficient since it goes through boilerplate at start of incEx zini multiple times, but
+    //This is only a tiny chunk of overall runtime
+    const width = mines.length;
+    const height = mines[0].length;
+
+    let priorityGrids = PriorityGridCreator.createBulkRandom(width, height, deepIterations, true);
+
+    //precompute fixed board info (preprocessedData)
+    preprocessedData = this.getPreprocessedDataIfFalse(preprocessedData, mines);
+    const { numbersArray, openingLabels, preprocessedOpenings } = preprocessedData;
+
+    //Precompute more fixed board info (chainSquareInfo)
+    chainSquareInfo = this.computeChainSquareInfoIfFalse(
+      chainSquareInfo,
+      mines,
+      numbersArray,
+      openingLabels,
+      preprocessedOpenings
+    );
+
+    //false for unrevealed, true for revealed
+    let revealedStates = this.getBlankRevealedStatesIfFalse(initialRevealedStates, width, height);
+
+    //false for unflagged, true for flagged
+    let { flagStates, flagsPlacedBefore } = this.getBlankFlagStatesIfFalse(initialFlagStates, width, height);
+
+    //2d array telling you which (if any) chain a square belongs to
+    let chainIds = this.getBlankChainIdsIfFalse(initialChainIds, width, height);
+
+    //map of chains
+    let { chainMap, nextChainId } = this.getBlankChainMapIfFalse(initialChainMap);
+
+    //tracks for each square which chains neighbour it
+    let chainNeighbourhoodGrid = this.getBlankChainNeighbourhoodGridIfFalse(initialChainNeighbourhoodGrid, width, height);
+
+    //store chainPremiums of digging (if needed) + chording each cell
+    let chainPremiums = this.getChainPremiumsIfFalse(
+      initialChainPremiums,
+      mines,
+      chainSquareInfo,
+      flagStates,
+      revealedStates,
+      preprocessedOpenings,
+      chainIds,
+      chainMap,
+      chainNeighbourhoodGrid,
+      width,
+      height,
+      false
+    );
+
+    //Track best solution found so far
+    let lowestZiniSoFar = Infinity;
+    let solutionSoFar = null;
+
+    //Core loop where we run through incEx zini each time, and select the best run
+    for (let i = 0; i < deepIterations; i++) {
+      let priorityGridForThisRun = [priorityGrids[i]];
+
+      //Clone some state objects so that we don't gets with data being altered due to pass by reference
+      const clonedChainIds = Algorithms.fast2dArrayCopy(chainIds);
+      const clonedChainMap = this.cloneChainMap(chainMap);
+      const clonedChainNeighbourhoodGrid = this.cloneChainNeighbourhoodGrid(chainNeighbourhoodGrid);
+      const clonedFlagStates = Algorithms.fast2dArrayCopy(flagStates);
+      const clonedRevealedStates = Algorithms.fast2dArrayCopy(revealedStates);
+      const clonedChainPremiums = Algorithms.fast2dArrayCopy(chainPremiums);
+
+      let result = this.calcInclusionExclusionZini(
+        {
+          mines,
+          preprocessedData,
+          initialRevealedStates: clonedRevealedStates,
+          initialFlagStates: clonedFlagStates,
+          initialChainIds: clonedChainIds,
+          initialChainMap: clonedChainMap,
+          initialChainNeighbourhoodGrid: clonedChainNeighbourhoodGrid,
+          initialChainPremiums: clonedChainPremiums,
+          chainSquareInfo,
+          doTimingRun: false,
+          analysisType: 'minimum',
+          deepIterations: 1, //This is 1 since we instead run the algorithm n number of times using a different priority grid
+          forbidMoves,
+          progressUpdateFunction: false,
+          priorityGrids: priorityGridForThisRun
+        }
+      );
+
+      if (result.total < lowestZiniSoFar) {
+        lowestZiniSoFar = result.total;
+        solutionSoFar = result;
+      }
+    }
+
+    return solutionSoFar;
+  }
+
   static analyseResultsTimingRun(baselineZinis, resultsList) {
     //Same as minimum run, but used for doing a faster "timing" run.
     //So it instead returns the 5 best moves
     //For now just pick lowest value for results list
     let baselineBest = baselineZinis.reduce((acc, curr) => Math.min(acc, curr), Infinity);
-
-    let bestChord = null;
-    let bestSoFar = Infinity;
 
     let allMinimumsBetterThanOrEqualBaseline = [];
 

@@ -40,13 +40,15 @@ class Replay {
   }
 
   //Jump to a "steppy" time - e.g. replay stepper
-  jumpToSpecificClickLerped(newClickIndexLerped) {
+  jumpToSpecificClickLerped(newClickIndexLerped, hasSoundEffectIfCrossingIndex = false) {
     //Restrict based on the range of clicks that can actually happen
     newClickIndexLerped = Utils.clamp(
       newClickIndexLerped,
       -1,
       this.clicks.length - 1
     );
+
+    let needToPlaySound = hasSoundEffectIfCrossingIndex;
 
     this.currentClickIndexLerped = newClickIndexLerped; //Possible no-op, but needed if the value has changed
 
@@ -88,6 +90,8 @@ class Replay {
       if (this.board.variant === "mean openings") {
         this.board.resetMeanMinesActiveness();
       }
+
+      needToPlaySound = false;
     }
 
     for (
@@ -104,23 +108,23 @@ class Replay {
 
       switch (clickToDo.type) {
         case "left":
-          this.board.openTile(clickToDo.x, clickToDo.y);
+          this.board.openTile(clickToDo.x, clickToDo.y, needToPlaySound);
           break;
         case "wasted_left":
           //Do nothing
           break;
         case "chord":
-          this.board.chord(clickToDo.x, clickToDo.y, false);
+          this.board.chord(clickToDo.x, clickToDo.y, false, 0, undefined, undefined, needToPlaySound);
           break;
         case "wasted_chord":
           //Do nothing
           break;
         case "right":
-          this.board.attemptFlag(clickToDo.x, clickToDo.y, false);
+          this.board.attemptFlag(clickToDo.x, clickToDo.y, false, needToPlaySound);
           break;
         case "wasted_right":
           //Do something as it may be an unflag
-          this.board.attemptFlag(clickToDo.x, clickToDo.y, false);
+          this.board.attemptFlag(clickToDo.x, clickToDo.y, false, needToPlaySound);
           break;
         default:
           throw new Error("Disallowed click type seen in replay");
@@ -422,7 +426,7 @@ class Replay {
 
       this.currentClickIndexLerped += clickIndexDelta;
 
-      this.jumpToSpecificClickLerped(this.currentClickIndexLerped);
+      this.jumpToSpecificClickLerped(this.currentClickIndexLerped, true);
     } else {
       //accurate or rounded replay types
 
@@ -433,7 +437,7 @@ class Replay {
       this.currentClickIndexLerped =
         this.forwardSearchForClickIndexlerped(newRawTime);
 
-      this.jumpToSpecificClickLerped(this.currentClickIndexLerped);
+      this.jumpToSpecificClickLerped(this.currentClickIndexLerped, true);
     }
 
     this.updateReplayBarValue();
