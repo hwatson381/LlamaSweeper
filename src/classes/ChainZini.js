@@ -2013,7 +2013,7 @@ class ChainZini {
           preprocessedOpenings: preprocessedOpenings
         });
 
-        progressUpdateFunction(clicksAtThisStage);
+        progressUpdateFunction('board-progress', clicksAtThisStage);
       }
 
       //Exit if we didn't have anything to do
@@ -2332,6 +2332,7 @@ class ChainZini {
     chainSquareInfo = false,
     deepIterations = 50,
     forbidMoves = false,
+    progressUpdateFunction = false,
   }) {
     //Algorithm that runs inclusion-exclusion zini n times, and returns the best result.
     //This is really a meta-heuristic like the heuristics that use minimum/average analysis
@@ -2386,6 +2387,10 @@ class ChainZini {
       false
     );
 
+    if (progressUpdateFunction) {
+      progressUpdateFunction('iteration-update', `0/${deepIterations}`);
+    }
+
     //Track best solution found so far
     let lowestZiniSoFar = Infinity;
     let solutionSoFar = null;
@@ -2417,10 +2422,26 @@ class ChainZini {
           analysisType: 'minimum',
           deepIterations: 1, //This is 1 since we instead run the algorithm n number of times using a different priority grid
           forbidMoves,
-          progressUpdateFunction: false,
+          progressUpdateFunction: progressUpdateFunction,
           priorityGrids: priorityGridForThisRun
         }
       );
+
+      if (progressUpdateFunction) {
+        //Report back progress - useful if running in a webworker and we want live updates
+
+        const clicksAtThisStage = this.convertSolutionToClickPath({
+          chainIds: clonedChainIds,
+          chainMap: clonedChainMap,
+          mines: mines,
+          chainSquareInfo: chainSquareInfo,
+          preprocessedOpenings: preprocessedOpenings
+        });
+
+        progressUpdateFunction('board-progress', clicksAtThisStage);
+        progressUpdateFunction('iteration-update', `${i + 1}/${deepIterations}`);
+        progressUpdateFunction('log-update', `${i + 1}: ${result.total}`);
+      }
 
       if (result.total < lowestZiniSoFar) {
         lowestZiniSoFar = result.total;

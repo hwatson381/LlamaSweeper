@@ -1327,6 +1327,8 @@ class ZiniExplore {
       deepIterations = 1000;
     }
 
+    this.classicPathBeforeRun = structuredClone(this.classicPath);
+
     if (scope === 'beginning') {
       this.ziniRunner = new InclusionExclusionZiniRunner(
         this.refs,
@@ -1389,6 +1391,8 @@ class ZiniExplore {
     if (this.ziniRunner) {
       this.ziniRunner.killWorker();
     }
+    this.classicPath = structuredClone(this.classicPathBeforeRun);
+    this.updateUiAndBoard();
   }
 
   getRevealedAndFlagStates() {
@@ -1436,6 +1440,7 @@ class InclusionExclusionZiniRunner {
     this.refs.ziniRunnerActive.value = true;
     this.refs.ziniRunnerExpectedDuration.value = 'calculating...';
     this.refs.ziniRunnerExpectedFinishTime.value = 'calculating...';
+    this.refs.ziniRunnerIterationsDisplay.value = '';
 
     this.worker = new Worker(
       new URL("../workers/deepchain-worker.js", import.meta.url),
@@ -1469,6 +1474,12 @@ class InclusionExclusionZiniRunner {
       case 'board-progress':
         this.updateBoardProgress(message.clicks);
         break;
+      case 'iteration-update':
+        this.updateIterationDisplay(message.iterations);
+        break;
+      case 'log-update':
+        this.addLogEntry(message.logEntry);
+        break;
       case 'run-complete':
         this.completeRun(message.result);
         break;
@@ -1486,6 +1497,14 @@ class InclusionExclusionZiniRunner {
   updateBoardProgress(clicks) {
     this.ziniExplore.classicPath = clicks;
     this.ziniExplore.updateUiAndBoard();
+  }
+
+  updateIterationDisplay(iterations) {
+    this.refs.ziniRunnerIterationsDisplay.value = iterations;
+  }
+
+  addLogEntry(logEntry) {
+    console.log(logEntry);
   }
 
   completeRun(result) {

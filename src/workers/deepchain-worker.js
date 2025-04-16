@@ -36,6 +36,7 @@ function beginNWayRun(parameters, visualise) {
   //Do n-way incEx zini. Keep parameters the same, although this object will have extra stuff that is not used
   let realRunParameters = {
     ...parameters,
+    progressUpdateFunction: visualise ? sendProgressUpdate : false
   };
   let realRunResult = ChainZini.calcNWayInclusionExclusionZini(realRunParameters);
 
@@ -49,11 +50,29 @@ function sendTimingRunDone(timingRun) {
   });
 }
 
-function sendProgressUpdate(clicksAtThisStage) {
-  postMessage({
-    type: 'board-progress',
-    clicks: clicksAtThisStage,
-  });
+function sendProgressUpdate(updateType, data) {
+  switch (updateType) {
+    case 'board-progress':
+      postMessage({
+        type: 'board-progress',
+        clicks: data,
+      });
+      break;
+    case 'iteration-update':
+      postMessage({
+        type: 'iteration-update',
+        iterations: data,
+      });
+      break;
+    case 'log-update':
+      postMessage({
+        type: 'log-update',
+        logEntry: data,
+      });
+      break;
+    default:
+      throw new Error('Unrecognised update type: ' + updateType);
+  }
 }
 
 function sendRunCompletion(result) {

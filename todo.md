@@ -408,3 +408,15 @@ Benchmark stuff by generating 20x20/72 boards with eff > 185%?
 
 Change default scroll setting to enabled.
 Consider whether to make max eff be based on all zini stats.
+
+bug:
+cloneChainMap throws error when running deepChainZini on "current" scope.
+This is because transferring chains to worker loses classes
+
+need to do stuff for bulk testing
+Maybe collect boards where zini is improvement on 8-way?
+Or normalise for speed?
+
+How often is 10 iteration separate deep chain better than 5 iteration?
+
+Add jswole website

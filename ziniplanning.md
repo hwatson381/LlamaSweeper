@@ -126,9 +126,14 @@ min: 91 (better than ptta)
 avg: 91
 avgthenmin: 91
 
-Test against this board
+Test against this board. Note - seems to be tricky to get 136. Separate doesn't find it on low iterations
 https://minesweeper.online/game/4490265784
 Initial results:
 ptt - 138
 min (1 iteration) - 137
-separate - 136
+separate (50 iterations) - 136
+min (50 iterations) - 137
+avg (50 iterations) - 137
+avgthenmin (50 iterations) - 137
+
+tiebreak separate on priority? - Probably good idea.

@@ -35,7 +35,7 @@
         "
       >
         <span>Random dev stuff box</span><br />
-        <button @click="bulkrun5">Bulk run</button>
+        <button @click="bulkrun7">Bulk run</button>
         Iterations: <input v-model.number="bulkIterations" type="text" />
         <button @click="dialogTest">QDialog</button>
         <button @click="playSound('dig')">Play sound</button>
@@ -772,6 +772,8 @@
             <span class="text-h6">Running DeepChain ZiNi</span><br />
             Expected Duration: {{ ziniRunnerExpectedDuration }}<br />
             Expected Finish Time: {{ ziniRunnerExpectedFinishTime }}<br />
+            {{ ziniRunnerIterationsDisplay }}<br />
+            <br />
             <q-btn
               @click="game.board.ziniExplore.killInclusionExclusionZiniRunner()"
               color="negative"
@@ -1879,6 +1881,8 @@ import playSound from "src/includes/Sounds";
 
 import seedrandom from "seedrandom";
 
+import testGames from "src/assets/janitor-test-data";
+
 import { event, useQuasar } from "quasar";
 const $q = useQuasar();
 
@@ -2373,6 +2377,7 @@ let runZiniAlgorithmModal = ref(false);
 let ziniRunnerActive = ref(false);
 let ziniRunnerExpectedDuration = ref("calculating...");
 let ziniRunnerExpectedFinishTime = ref("calculating...");
+let ziniRunnerIterationsDisplay = ref("");
 
 let keyboardClickOpenOnKeyDown = ref(false);
 let keyboardClickDigKey = ref("z");
@@ -2700,6 +2705,175 @@ function bulkrun5() {
   console.timeEnd();
 }
 
+function bulkrun6() {
+  let results = {
+    eightWay: {
+      sum: 0,
+      bests: 0,
+    },
+    nChain: {
+      sum: 0,
+      bests: 0,
+    },
+    minDeep: {
+      sum: 0,
+      bests: 0,
+    },
+    avgDeep: {
+      sum: 0,
+      bests: 0,
+    },
+    avgMinDeep: {
+      sum: 0,
+      bests: 0,
+    },
+    separateDeep: {
+      sum: 0,
+      bests: 0,
+    },
+  };
+
+  for (let i = 0; i < bulkIterations.value; i++) {
+    console.log(`Iteration ${i}`);
+
+    //Find board with best eff out of 1000, and use that for benchmarking with
+    let bestEffThisIteration = 0;
+    let mines;
+    for (let j = 0; j < 1000; j++) {
+      let minesCandidate = BoardGenerator.basicShuffle(
+        boardWidth.value,
+        boardHeight.value,
+        boardMines.value
+      );
+      let preprocessedData =
+        Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
+          minesCandidate
+        );
+      let bbbv = Algorithms.calc3bv(
+        minesCandidate,
+        false,
+        preprocessedData
+      ).bbbv;
+      let eightZini = Algorithms.calcBasicZini(
+        minesCandidate,
+        true,
+        preprocessedData
+      ).total;
+      let eff = bbbv / eightZini;
+      if (eff > bestEffThisIteration) {
+        bestEffThisIteration = eff;
+        mines = minesCandidate;
+      }
+    }
+
+    //Compute diff zinis for this mines
+    let eightZini = Algorithms.calcBasicZini(mines, true).total;
+
+    benchmark.startTime("10000chain zini");
+    let chainZini = ChainZini.calcNWayChainZini({
+      mines: mines,
+      numberOfIterations: 10000,
+    }).total;
+    benchmark.stopTime("10000chain zini");
+
+    benchmark.startTime("min deep chain zini");
+    let minDeepChainZini = ChainZini.calcInclusionExclusionZini({
+      mines: mines,
+      numberOfIterations: 10,
+      analysisType: "minimum",
+    }).total;
+    benchmark.stopTime("min deep chain zini");
+
+    benchmark.startTime("average deep chain zini");
+    let averageDeepChainZini = ChainZini.calcInclusionExclusionZini({
+      mines: mines,
+      numberOfIterations: 10,
+      analysisType: "average",
+    }).total;
+    benchmark.stopTime("average deep chain zini");
+
+    benchmark.startTime("avgmin deep chain zini");
+    let avgMinDeepChainZini = ChainZini.calcInclusionExclusionZini({
+      mines: mines,
+      numberOfIterations: 10,
+      analysisType: "average then minimum",
+    }).total;
+    benchmark.stopTime("avgmin deep chain zini");
+
+    benchmark.startTime("separate deep chain zini");
+    let separateDeepChainZini = ChainZini.calcNWayInclusionExclusionZini({
+      mines: mines,
+      numberOfIterations: 10,
+    }).total;
+    benchmark.stopTime("separate deep chain zini");
+
+    let best = Math.min(
+      eightZini,
+      chainZini,
+      minDeepChainZini,
+      averageDeepChainZini,
+      avgMinDeepChainZini,
+      separateDeepChainZini
+    );
+
+    eightZini === best && results.eightWay.bests++;
+    chainZini === best && results.nChain.bests++;
+    minDeepChainZini === best && results.minDeep.bests++;
+    averageDeepChainZini === best && results.avgDeep.bests++;
+    avgMinDeepChainZini === best && results.avgMinDeep.bests++;
+    separateDeepChainZini === best && results.separateDeep.bests++;
+
+    results.eightWay.sum += eightZini;
+    results.nChain.sum += chainZini;
+    results.minDeep.sum += minDeepChainZini;
+    results.avgDeep.sum += averageDeepChainZini;
+    results.avgMinDeep.sum += avgMinDeepChainZini;
+    results.separateDeep.sum += separateDeepChainZini;
+
+    console.log(
+      `8-way: ${eightZini}, chain: ${chainZini}, min: ${minDeepChainZini}, avg: ${averageDeepChainZini}, avg-min: ${avgMinDeepChainZini}, separate: ${separateDeepChainZini}`
+    );
+  }
+
+  benchmark.report();
+  benchmark.clearAll();
+
+  console.log("Results:");
+  console.log(results);
+}
+
+function bulkrun7() {
+  let ziniSum = 0;
+
+  let csv = "womurl, janitor, separate\n";
+  for (let i = 500; i < testGames.length; i++) {
+    let testGame = testGames[i];
+
+    let mines = BoardGenerator.readFromPtta(testGame.ptt);
+
+    let separateDeepChainZini = ChainZini.calcNWayInclusionExclusionZini({
+      mines: mines,
+      numberOfIterations: 5,
+    }).total;
+
+    console.log(`
+    Url: ${testGame.wom}
+    Janitor: ${testGame.zini}, Separate DeepChain: ${separateDeepChainZini}
+    `);
+
+    if (testGame.zini < separateDeepChainZini) {
+      throw new Error("DeepChain beaten!");
+    }
+
+    csv += `${testGame.wom}, ${testGame.zini}, ${separateDeepChainZini}` + "\n";
+
+    ziniSum += separateDeepChainZini;
+  }
+
+  console.log(csv);
+  console.log(`ziniSum: ${ziniSum}`);
+}
+
 function dialogTest() {
   $q.dialog({
     title: "Current click path",
@@ -2895,6 +3069,7 @@ class Board {
       ziniRunnerActive,
       ziniRunnerExpectedDuration,
       ziniRunnerExpectedFinishTime,
+      ziniRunnerIterationsDisplay,
     });
 
     this.resetBoard();
