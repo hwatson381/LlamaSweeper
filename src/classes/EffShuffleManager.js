@@ -128,6 +128,8 @@ class EffShuffleManager {
 
     console.log("starting initiation");
 
+    let hasReportedWorkerError = false;
+
     for (let i = 0; i < this.refs.effWebWorkerCount.value; i++) {
       console.log(`initing worker ${i}`);
 
@@ -139,6 +141,16 @@ class EffShuffleManager {
       );
 
       worker.onmessage = this.updateStoredBoard.bind(this);
+
+      worker.onerror = (error) => {
+        if (!hasReportedWorkerError) {
+          Dialog.create({
+            title: "Alert",
+            message: "Error occurred in web worker for eff board generation.",
+          });
+          hasReportedWorkerError = true;
+        }
+      }
 
       this.workerPool.push(worker);
     }

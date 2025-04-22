@@ -261,7 +261,7 @@
               v-if="variant === 'zini explorer'"
               @click="
                 game.board.switchToAnalyseMode();
-                game.board.ziniExplore.runDefaultAlgorithm();
+                game.board.ziniExplore.runDefaultAlgorithmOrPromptForInfo();
               "
               color="primary"
               label="DeepChain ZiNi"
@@ -402,15 +402,15 @@
                 'zini-match':
                   variant === 'eff boards' &&
                   statsObject.isWonGame &&
-                  statsObject.clicks.total === statsObject.chainZini &&
-                  statsShowChain &&
-                  statsObject.chainZini !== null,
+                  statsObject.clicks.total === statsObject.bestZini &&
+                  statsShowMaxEff &&
+                  statsObject.bestZini !== null,
                 'sub-zini':
                   variant === 'eff boards' &&
                   statsObject.isWonGame &&
-                  statsObject.clicks.total < statsObject.chainZini &&
-                  statsShowChain &&
-                  statsObject.chainZini !== null,
+                  statsObject.clicks.total < statsObject.bestZini &&
+                  statsShowMaxEff &&
+                  statsObject.bestZini !== null,
                 'excellent-eff':
                   variant === 'eff boards' &&
                   statsObject.isWonGame &&
@@ -419,7 +419,7 @@
             >
               Eff: {{ statsObject.eff }}%
             </div>
-            <div v-if="statsShowChain && statsObject.maxEff !== null">
+            <div v-if="statsShowMaxEff && statsObject.maxEff !== null">
               Max Eff: {{ statsObject.maxEff }}%
             </div>
             <div>
@@ -509,6 +509,19 @@
                 class="text-info"
                 style="text-decoration: underline; cursor: pointer"
                 @click="game.board.stats.lateCalcForceZinis()"
+                >run</span
+              >
+            </div>
+            <div>
+              ZiNi (DeepChain):
+              <template v-if="statsObject.deepZini !== null">
+                {{ statsObject.deepZini }}
+              </template>
+              <span
+                v-else
+                class="text-info"
+                style="text-decoration: underline; cursor: pointer"
+                @click="game.board.stats.lateCalcDeepChainZini()"
                 >run</span
               >
             </div>
@@ -619,6 +632,16 @@
                 <q-item
                   clickable
                   v-close-popup
+                  @click="game.board.initReplay('deepchain')"
+                >
+                  <q-item-section>
+                    <q-item-label>DeepChain Zini</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-item
+                  clickable
+                  v-close-popup
                   @click="game.board.initReplay('compare')"
                 >
                   <q-item-section>
@@ -641,7 +664,8 @@
           v-if="
             variant === 'zini explorer' &&
             !isCurrentlyEditModeDisplay &&
-            !ziniRunnerActive
+            !ziniRunnerActive &&
+            !replayIsShown
           "
           style="float: left; margin-bottom: 10px"
         >
@@ -677,6 +701,13 @@
               {{ analyse3bv }} 3bv / {{ analyseZiniTotal }} zini
             </p>
             <p class="text-center text-h5 q-mb-sm">{{ analyseEff }}% eff</p>
+            <div class="row justify-center">
+              <q-btn
+                @click="runZiniAlgorithmModal = true"
+                color="positive"
+                label="Run ZiNi Algorithm"
+              />
+            </div>
           </q-card-section>
           <q-separator />
           <q-card-section>
@@ -753,11 +784,40 @@
               label="Show Premiums"
               @update:model-value="game?.board?.ziniExplore?.updateUiAndBoard()"
             />
+            <br />
+            <div class="row justify-center q-mb-md">
+              <q-btn-dropdown color="primary" label="Send To">
+                <q-list>
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="game.board.sendToBoardEditor()"
+                  >
+                    <q-item-section>
+                      <q-item-label>Board Editor</q-item-label>
+                    </q-item-section>
+                  </q-item>
+
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="game.board.sendToPttCalculator()"
+                  >
+                    <q-item-section>
+                      <q-item-label>PTT ZiNi Calculator</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-btn-dropdown>
+            </div>
             <div class="row justify-center">
               <q-btn
-                @click="runZiniAlgorithmModal = true"
-                color="positive"
-                label="Run ZiNi Algorithm"
+                @click="
+                  game.board.ziniExplore.isReplayPossible() &&
+                    game.board.initReplay('zini-explore-replay')
+                "
+                color="primary"
+                label="Watch"
               />
             </div>
           </q-card-section>
@@ -1033,13 +1093,15 @@
                 <br />
                 <q-checkbox
                   v-model="statsShowChain"
-                  label="Show 100chain ZiNi (and max eff)"
+                  label="Show 100chain ZiNi"
                 />
                 <br />
                 <q-checkbox
                   v-model="statsShowWomZini"
                   label="Show WoM ZiNi and HZiNi"
                 />
+                <br />
+                <q-checkbox v-model="statsShowMaxEff" label="Show max eff" />
                 <div class="flex" style="gap: 15px">
                   <q-input
                     dense
@@ -1106,6 +1168,8 @@
                   v-model="mobileScrollSetting"
                   style="width: 175px; flex-shrink: 0"
                   :options="[
+                    { label: 'Enable scroll', value: 'enable' },
+                    { label: 'Disable scroll', value: 'disable' },
                     {
                       label: 'Scroll on zeros',
                       value: 'zero',
@@ -1118,8 +1182,6 @@
                       label: 'Scroll on interior (nf version)',
                       value: 'enclosed nf',
                     },
-                    { label: 'Disable scroll', value: 'disable' },
-                    { label: 'Enable scroll', value: 'enable' },
                   ]"
                   emit-value
                   map-options
@@ -1552,6 +1614,10 @@
             style="width: 200px; flex-shrink: 0"
             :options="[
               {
+                label: 'DeepChain ZiNi (best)',
+                value: 'incexzini',
+              },
+              {
                 label: '8 Way ZiNi',
                 value: '8 way',
               },
@@ -1559,10 +1625,6 @@
               { label: 'WoM ZiNi Improved', value: 'womzinifix' },
               { label: 'WoM HZiNi', value: 'womhzini' },
               { label: 'Chain ZiNi', value: 'chainzini' },
-              {
-                label: 'DeepChain ZiNi (best but slow)',
-                value: 'incexzini',
-              },
             ]"
             emit-value
             map-options
@@ -1627,6 +1689,10 @@
               style="width: 175px; flex-shrink: 0"
               :options="[
                 {
+                  label: 'Separate (best)',
+                  value: 'separate',
+                },
+                {
                   label: 'Minimum',
                   value: 'minimum',
                 },
@@ -1637,10 +1703,6 @@
                 {
                   label: 'Average then Minimum',
                   value: 'average then minimum',
-                },
-                {
-                  label: 'Separate',
-                  value: 'separate',
                 },
               ]"
               emit-value
@@ -1728,6 +1790,7 @@
         game.board?.replay?.refreshForReplayTypeChange();
       }
     "
+    @close-replay="game?.board?.closeReplay()"
   >
   </ReplayBar>
 </template>
@@ -1880,6 +1943,7 @@ import CONSTANTS from "src/includes/Constants";
 import playSound from "src/includes/Sounds";
 
 import seedrandom from "seedrandom";
+import { useLocalStorage } from "@vueuse/core";
 
 import testGames from "src/assets/janitor-test-data";
 
@@ -2030,20 +2094,23 @@ let statsObject = ref({
   chainZini: null,
   womZini: null,
   womHzini: null,
+  bestZini: null,
   pttaLink: null,
+  deepZini: null,
 });
 let showStatsClicksTable = ref(false);
-let statsShow8Way = ref(true);
-let statsShowChain = ref(true);
-let statsShowWomZini = ref(true);
+let statsShow8Way = useLocalStorage("ls_statsShow8Way", true);
+let statsShowChain = useLocalStorage("ls_statsShowChain", true);
+let statsShowWomZini = useLocalStorage("ls_statsShowWomZini", true);
+let statsShowMaxEff = useLocalStorage("ls_statsShowMaxEff", true);
 
 let settingsModal = ref(false);
-let tileSizeSlider = ref(25);
-let gameLeftPadding = ref(30);
-let showBorders = ref(true);
-let showTimer = ref(true);
-let showMineCount = ref(true);
-let showCoords = ref(false);
+let tileSizeSlider = useLocalStorage("ls_tileSizeSlider", 25);
+let gameLeftPadding = useLocalStorage("ls_gameLeftPadding", 30);
+let showBorders = useLocalStorage("ls_showBorders", true);
+let showTimer = useLocalStorage("ls_showTimer", true);
+let showMineCount = useLocalStorage("ls_showMineCount", true);
+let showCoords = useLocalStorage("ls_showCoords", false);
 
 //Dimensions for border
 let boardHorizontalPadding = computed(() => {
@@ -2069,9 +2136,9 @@ let topPanelHeight = computed(() => {
 
 let pttaUrl = ref("");
 let boardSizePreset = ref("beg"); //beg/int/exp. Mainly just used for showing correct thing in dropdown
-let customWidth = ref(8);
-let customHeight = ref(8);
-let customMines = ref(10);
+let customWidth = useLocalStorage("ls_customWidth", 8);
+let customHeight = useLocalStorage("ls_customHeight", 8);
+let customMines = useLocalStorage("ls_customMines", 10);
 let boardWidth = computed(() => {
   switch (boardSizePreset.value) {
     case "beg":
@@ -2130,21 +2197,21 @@ let customWarning = computed(() => {
 });
 
 let variant = ref("normal");
-let zeroStart = ref(true);
+let zeroStart = useLocalStorage("ls_zeroStart", true);
 
 let begEffPreset = ref(200);
 let begEffOptions = Object.freeze([200, 210, 225, "custom"]);
-let begEffCustom = ref(235);
+let begEffCustom = useLocalStorage("ls_begEffCustom", 235);
 const begEffSlowGenPoint = 210;
 let intEffPreset = ref(160);
 let intEffOptions = Object.freeze([160, 170, 180, "custom"]);
-let intEffCustom = ref(190);
+let intEffCustom = useLocalStorage("ls_intEffCustom", 190);
 const intEffSlowGenPoint = 180;
 let expEffPreset = ref(150);
 let expEffOptions = Object.freeze([150, 160, 170, "custom"]);
-let expEffCustom = ref(180);
+let expEffCustom = useLocalStorage("ls_expEffCustom", 180);
 const expEffSlowGenPoint = 170;
-let customEffCustom = ref(150);
+let customEffCustom = useLocalStorage("ls_customEffCustom", 150);
 let generateEffBoardsInBackground = ref(false);
 let effWebWorkerCount = ref(1);
 let browserSupportsWebWorkers = window.Worker ? true : false;
@@ -2266,9 +2333,15 @@ watch([boardWidth, boardHeight, boardMines, minimumEff], () => {
 let showQuickPaintOptions = ref(false);
 let quickPaintModeDisplay = ref("Guess");
 let quickPaintClearable = ref("guesses");
-let quickPaintInitialOnlyMines = ref(true);
-let quickPaintMinimalMode = ref(true);
-let quickPaintOnlyTrivialLogic = ref(false);
+let quickPaintInitialOnlyMines = useLocalStorage(
+  "ls_quickPaintInitialOnlyMines",
+  true
+);
+let quickPaintMinimalMode = useLocalStorage("ls_quickPaintMinimalMode", true);
+let quickPaintOnlyTrivialLogic = useLocalStorage(
+  "ls_quickPaintOnlyTrivialLogic",
+  false
+);
 let quickPaintHelpModal = ref(false);
 
 let editBoardUnappliedWidth = ref(9);
@@ -2277,25 +2350,43 @@ let pttaImportModal = ref(false);
 let isCurrentlyEditModeDisplay = ref(true); //Lines up with game.board.gameStage = 'edit' - consider making ...gameStage a ref instead.
 
 let flagToggleActive = ref(false); //Whether to swap left and right mouse buttons
-let flagToggleLocationClass = ref("toggle-bot-right");
-let flagToggleSizeClass = ref("toggle-normal");
-let mobileModeEnabled = ref(Utils.isMobile()); //Flag toggle starts enabled on mobile, disabled on desktop
-let mobileScrollSetting = ref("enable"); //Affects whether touches can trigger scroll
-let mobileEnclosedScrollLetThrough = ref(true); //Whether clicks can still affect the board on enclosed setting (typically placing flags)
+let flagToggleLocationClass = useLocalStorage(
+  "ls_flagToggleLocationClass",
+  "toggle-bot-right"
+);
+let flagToggleSizeClass = useLocalStorage(
+  "ls_flagToggleSizeClass",
+  "toggle-normal"
+);
+let mobileModeEnabled = useLocalStorage(
+  "ls_mobileModeEnabled",
+  Utils.isMobile()
+); //Flag toggle starts enabled on mobile, disabled on desktop
+let mobileScrollSetting = useLocalStorage("ls_mobileScrollSetting", "enable"); //Affects whether touches can trigger scroll
+let mobileEnclosedScrollLetThrough = useLocalStorage(
+  "ls_mobileEnclosedScrollLetThrough",
+  true
+); //Whether clicks can still affect the board on enclosed setting (typically placing flags)
 let scrollLetThroughActive = computed(
   () =>
     (mobileScrollSetting.value === "enclosed nf" ||
       mobileScrollSetting.value === "enclosed flag") &&
     mobileEnclosedScrollLetThrough.value
 );
-let touchRevealLocation = ref("start"); //Whether we use the location of the touch at the start of it or the end of it
-let touchRevealTiming = ref("end"); //Does it reveal the tile on finger up or finger down
-let touchLongPressTime = ref(250); //When does long press = flag (or dig) get triggered
-let touchLongPressDisabled = ref(false);
-let touchMaxTime = ref(1000); //When do long touches get cancelled (maybe these become scrolls?)
-let touchScrollDistance = ref(3); //When do touches that move a lot unlock the scroll
-let faceHitbox = ref("adaptive"); //Hitbox for when the face is click to trigger a reset
-let soundEffectsEnabled = ref(Utils.isMobile());
+let touchRevealLocation = useLocalStorage("ls_touchRevealLocation", "start"); //Whether we use the location of the touch at the start of it or the end of it
+let touchRevealTiming = useLocalStorage("ls_touchRevealTiming", "end"); //Does it reveal the tile on finger up or finger down
+let touchLongPressTime = useLocalStorage("ls_touchLongPressTime", 250); //When does long press = flag (or dig) get triggered
+let touchLongPressDisabled = useLocalStorage(
+  "ls_touchLongPressDisabled",
+  false
+);
+let touchMaxTime = useLocalStorage("ls_touchMaxTime", 1000); //When do long touches get cancelled (maybe these become scrolls?)
+let touchScrollDistance = useLocalStorage("ls_touchScrollDistance", 3); //When do touches that move a lot unlock the scroll
+let faceHitbox = useLocalStorage("ls_faceHitbox", "adaptive"); //Hitbox for when the face is click to trigger a reset
+let soundEffectsEnabled = useLocalStorage(
+  "ls_soundEffectsEnabled",
+  Utils.isMobile()
+);
 
 let meanOpeningMineDensity = ref(0.3); //mean opening settings
 let meanOpeningFlagDensity = ref(1);
@@ -2312,16 +2403,16 @@ let replayIsShown = ref(false);
 let replaySpeedMultiplier = ref(1);
 let replayIsPanning = ref(false);
 let replayIsInputting = ref(false);
-let reorderZini = ref(false);
-let replayShowHidden = ref("transparent3");
+let reorderZini = useLocalStorage("ls_reorderZini", false);
+let replayShowHidden = useLocalStorage("ls_replayShowHidden", "transparent3");
 
 let analyseDisplayMode = ref("classic");
-let analyseAlgorithm = ref("8 way");
+let analyseAlgorithm = ref("incexzini");
 let analyseAlgorithmScope = ref("beginning");
 let analyseIterations = ref(100);
 let analyseHistoryRewrite = ref(true);
-let analyseDeepType = ref("minimum");
-let analyseDeepIterations = ref(50);
+let analyseDeepType = ref("separate");
+let analyseDeepIterations = ref(5);
 let analyseVisualise = ref(true);
 let analyseForbid = ref(false);
 let classicPathBreakdown = ref({
@@ -2375,13 +2466,17 @@ watchEffect(() => {
 });
 let runZiniAlgorithmModal = ref(false);
 let ziniRunnerActive = ref(false);
+let synchronousZiniActive = ref(false);
 let ziniRunnerExpectedDuration = ref("calculating...");
 let ziniRunnerExpectedFinishTime = ref("calculating...");
 let ziniRunnerIterationsDisplay = ref("");
 
-let keyboardClickOpenOnKeyDown = ref(false);
-let keyboardClickDigKey = ref("z");
-let keyboardClickFlagKey = ref("x");
+let keyboardClickOpenOnKeyDown = useLocalStorage(
+  "ls_keyboardClickOpenOnKeyDown",
+  false
+);
+let keyboardClickDigKey = useLocalStorage("ls_keyboardClickDigKey", "z");
+let keyboardClickFlagKey = useLocalStorage("ls_keyboardClickFlagKey", "x");
 
 const vFocus = {
   mounted: (el) => el.focus(),
@@ -3067,9 +3162,11 @@ class Board {
       analyseEff,
       analyseShowPremiums,
       ziniRunnerActive,
+      synchronousZiniActive,
       ziniRunnerExpectedDuration,
       ziniRunnerExpectedFinishTime,
       ziniRunnerIterationsDisplay,
+      replayIsShown,
     });
 
     this.resetBoard();
@@ -3414,7 +3511,13 @@ class Board {
   }
 
   sendToPttCalculator() {
-    window.open(statsObject.value.pttaLink, "_blank").focus();
+    if (this.variant === "zini explorer") {
+      //Need to compute pttaLink. Kinda hacky for zini explorer...
+      let tempBoardStats = new BoardStats(this.mines, {});
+      window.open(tempBoardStats.getPttaLink(), "_blank").focus();
+    } else {
+      window.open(statsObject.value.pttaLink, "_blank").focus();
+    }
   }
 
   handleMouseDown(event) {
@@ -4369,6 +4472,7 @@ class Board {
       statsShow8Way,
       statsShowChain,
       statsShowWomZini,
+      statsShowMaxEff,
     });
     this.boardStartTime = performance.now();
     this.clearTimerTimeout(); //defensive as it should already be disabled since we reset board.
@@ -6700,6 +6804,17 @@ class Board {
         };
         isReorderableZini = true;
         break;
+      case "deepchain":
+        if (this.stats.deepZini === null) {
+          this.stats.lateCalcDeepChainZini();
+        }
+        replayParams = {
+          clicks: this.stats.deepZiniPath,
+          board: this,
+          forceSteppy: true,
+        };
+        isReorderableZini = true;
+        break;
       case "compare":
         let compareReplay = CompareReplay.generate(
           this.mines,
@@ -6724,6 +6839,15 @@ class Board {
         };
         isReorderableZini = false;
         break;
+      case "zini-explore-replay":
+        replayParams = {
+          clicks: this.ziniExplore.classicPath,
+          board: this,
+          forceSteppy: true,
+          isComplete: this.ziniExplore.getIsComplete(),
+        };
+        isReorderableZini = false;
+        break;
       default:
         window.alert("Replay type unavailable");
         throw new Error("Replay type unavailable");
@@ -6734,6 +6858,16 @@ class Board {
         replayParams.clicks,
         this.mines
       );
+    }
+
+    //Track info about state we need to return to if exiting replay
+    if (replayToInit !== "zini-explore-replay" && this.gameStage !== "replay") {
+      this.stateBeforeReplay = {
+        gameStage: this.gameState,
+        integerTimer: this.integerTimer,
+        unflagged: this.unflagged,
+        tilesArray: this.cloneTilesArray(),
+      };
     }
 
     this.gameStage = "replay";
@@ -6758,6 +6892,48 @@ class Board {
     };
 
     this.replay = new Replay(replayParams, refs);
+  }
+
+  closeReplay() {
+    //close the replay and return to the board as it looked before the replay was initialised
+
+    if (this.replay) {
+      this.replay.pause();
+      replayIsShown.value = false;
+    }
+    this.replay = null;
+
+    //Figure out which mode we should be in
+    switch (this.variant) {
+      case "normal":
+      case "eff boards":
+      case "mean openings":
+      case "board editor":
+        this.gameStage = this.stateBeforeReplay.gameStage;
+        this.integerTimer = this.stateBeforeReplay.integerTimer;
+        this.unflagged = this.stateBeforeReplay.unflagged;
+        this.tilesArray = this.stateBeforeReplay.tilesArray;
+        this.draw();
+        break;
+      case "zini explorer":
+        this.switchToAnalyseMode();
+        break;
+      default:
+        alert("Failed to exit replay. Unimplemented.");
+    }
+  }
+
+  cloneTilesArray() {
+    let tilesArrayClone = new Array(this.width)
+      .fill(0)
+      .map(() => new Array(this.height).fill(0));
+
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        tilesArrayClone[x][y] = this.tilesArray[x][y].clone();
+      }
+    }
+    return tilesArrayClone;
   }
 }
 

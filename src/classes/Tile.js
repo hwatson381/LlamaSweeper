@@ -489,6 +489,18 @@ class Tile {
   addHighlight() {
     this.explore.highlight = true;
   }
+
+  clone() {
+    const newTile = new Tile(this.state, this.refs, this.skinManager);
+    newTile.depressed = this.depressed;
+    newTile.paintColour = this.paintColour;
+    newTile.paintDots = this.paintDots;
+    newTile.unrevealedState = this.unrevealedState;
+    newTile.ziniDelta = { ...this.ziniDelta };
+    newTile.explore = { ...this.explore };
+
+    return newTile;
+  }
 }
 
 export default Tile;

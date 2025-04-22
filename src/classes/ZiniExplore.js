@@ -19,7 +19,7 @@ class ZiniExplore {
   }
 
   handleZiniExploreClick(tileX, tileY, isDigInput, isFlagInput) {
-    if (this.refs.ziniRunnerActive.value) {
+    if (this.refs.ziniRunnerActive.value || this.refs.synchronousZiniActive.value) {
       //Block click if we are in the middle of computing zini
       return;
     }
@@ -1200,28 +1200,38 @@ class ZiniExplore {
   runAlgorithm() {
     switch (this.refs.analyseAlgorithm.value) {
       case '8 way':
+        this.refs.synchronousZiniActive.value = true;
         this.run8way();
+        setTimeout(() => this.refs.synchronousZiniActive.value = false, 100);
         break;
       case 'womzini':
+        this.refs.synchronousZiniActive.value = true;
         this.classicPath = Algorithms.calcWomZiniAndHZini(
           this.board.mines,
           false
         ).womZini.clicks;
+        setTimeout(() => this.refs.synchronousZiniActive.value = false, 100);
         break;
       case 'womzinifix':
+        this.refs.synchronousZiniActive.value = true;
         this.classicPath = Algorithms.calcWomZiniAndHZini(
           this.board.mines,
           true
         ).womZini.clicks;
+        setTimeout(() => this.refs.synchronousZiniActive.value = false, 100);
         break;
       case 'womhzini':
+        this.refs.synchronousZiniActive.value = true;
         this.classicPath = Algorithms.calcWomZiniAndHZini(
           this.board.mines,
           false
         ).womHzini.clicks;
+        setTimeout(() => this.refs.synchronousZiniActive.value = false, 100);
         break;
       case 'chainzini':
+        this.refs.synchronousZiniActive.value = true;
         this.runChainZini();
+        setTimeout(() => this.refs.synchronousZiniActive.value = false, 100);
         break;
       case 'incexzini':
         this.runInclusionExclusionZini(true);
@@ -1234,8 +1244,45 @@ class ZiniExplore {
     this.updateUiAndBoard();
   }
 
-  runDefaultAlgorithm() {
-    this.runInclusionExclusionZini(false); //false to ignore refs, and instead use default parameters
+  runDefaultAlgorithmOrPromptForInfo() {
+    if (this.refs.replayIsShown.value) {
+      Dialog.create({
+        title: "Alert",
+        message: "Please close the replay first",
+      });
+      return;
+    }
+
+    if (this.classicPath.length === 0 || this.getIsComplete()) {
+      this.runDefaultAlgorithm(false); //Board is empty or complete - run zini from beginning.
+    } else {
+      //Prompt for whether to run from current or beginning
+      Dialog.create({
+        title: "Run from current path",
+        message: "Would you like to run DeepChain ZiNi from the current board path?",
+        ok: {
+          flat: true,
+          label: "From current",
+        },
+        cancel: {
+          flat: true,
+          label: "From beginning",
+        },
+        persistent: true,
+      })
+        .onOk(() => {
+          //Run zini from current path
+          this.runDefaultAlgorithm(true);
+        })
+        .onCancel(() => {
+          //Run zini from beginning
+          this.runDefaultAlgorithm(false);
+        })
+    }
+  }
+
+  runDefaultAlgorithm(runFromCurrent) {
+    this.runInclusionExclusionZini(false, runFromCurrent); //false to ignore refs, and instead use default parameters
     this.updateUiAndBoard();
   }
 
@@ -1296,11 +1343,11 @@ class ZiniExplore {
     }
   }
 
-  runInclusionExclusionZini(useRefs = true) {
-    let scope = 'beginning';
+  runInclusionExclusionZini(useRefs = true, runFromCurrentIfDefault = false) {
+    let scope = runFromCurrentIfDefault ? 'current' : 'beginning';
     let rewrite = true;
-    let deepType = 'average';
-    let deepIterations = 50;
+    let deepType = 'separate';
+    let deepIterations = 5;
     let deepVisualise = true;
     let forbidMoves = false;
 
@@ -1318,8 +1365,8 @@ class ZiniExplore {
       !Number.isInteger(deepIterations) ||
       deepIterations < 1
     ) {
-      this.refs.analyseDeepIterations.value = 50;
-      deepIterations = 100;
+      this.refs.analyseDeepIterations.value = 5;
+      deepIterations = 5;
     }
 
     if (deepIterations > 1000) {
@@ -1341,11 +1388,6 @@ class ZiniExplore {
         this,
         deepVisualise
       );
-      /*
-      this.classicPath = ChainZini.calcInclusionExclusionZini({
-        mines: this.board.mines,
-      }).clicks;
-      */
     } else {
       const {
         initialRevealedStates,
@@ -1374,16 +1416,6 @@ class ZiniExplore {
         this,
         deepVisualise
       )
-      /*
-      this.classicPath = ChainZini.calcInclusionExclusionZini({
-        mines: this.board.mines,
-        initialRevealedStates,
-        initialFlagStates,
-        initialChainIds,
-        initialChainMap,
-        initialChainNeighbourhoodGrid
-      }).clicks;
-      */
     }
   }
 
@@ -1422,6 +1454,40 @@ class ZiniExplore {
 
     return { revealedStates, flagStates }
   }
+
+  getIsComplete() {
+    //Needed for the "watch" replay. Checks whether the board is fully completed
+    const width = this.board.mines.length;
+    const height = this.board.mines[0].length;
+
+    let isComplete = true;
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (this.board.tilesArray[x][y].state === CONSTANTS.UNREVEALED &&
+          !this.board.mines[x][y]
+        ) {
+          isComplete = false;
+          //We don't break out of loops here, but ok as performance is not important here
+        }
+      }
+    }
+
+    return isComplete;
+  }
+
+  isReplayPossible() {
+    if (this.classicPath.length === 0) {
+      //No clicks done. Return false and warn user.
+      Dialog.create({
+        title: "Alert",
+        message: "Nothing to watch. Please either click on the board to create a manual path, or run a zini algorithm.",
+      });
+      return false;
+    } else {
+      return true;
+    }
+  }
 }
 
 //Class to manage running inclusion exclusion zini, and interfacing with web workers
@@ -1449,7 +1515,16 @@ class InclusionExclusionZiniRunner {
       }
     );
 
+    this.worker.onerror = (error) => {
+      Dialog.create({
+        title: "Alert",
+        message: "Error occurred in web worker for DeepChain ZiNi.",
+      });
+    }
+
     this.worker.onmessage = this.handleMessage.bind(this);
+
+    console.log(inclusionExclusionParameters);
 
     this.worker.postMessage({
       command: "begin",

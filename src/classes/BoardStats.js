@@ -132,7 +132,7 @@ class BoardStats {
   }
 
   calcZinis(includeWomZiniIfShown, forceAllZinis = false) {
-    if (this.refs.statsShow8Way.value || forceAllZinis) {
+    if (this.refs.statsShowMaxEff.value || this.refs.statsShow8Way.value || forceAllZinis) {
       let eightZiniResult = Algorithms.calcEightWayZini(this.mines);
 
       this.eightZini = eightZiniResult.total;
@@ -142,7 +142,7 @@ class BoardStats {
       this.eightZiniPath = null;
     }
 
-    if (this.refs.statsShowChain.value || forceAllZinis) {
+    if (this.refs.statsShowMaxEff.value || this.refs.statsShowChain.value || forceAllZinis) {
       let chainZiniResult = ChainZini.calcNWayChainZini({
         mines: this.mines,
         numberOfIterations: 100,
@@ -156,7 +156,7 @@ class BoardStats {
     }
 
     //Also do wom zini
-    if ((this.refs.statsShowWomZini.value && includeWomZiniIfShown) || forceAllZinis) {
+    if (((this.refs.statsShowMaxEff.value || this.refs.statsShowWomZini.value) && includeWomZiniIfShown) || forceAllZinis) {
       //wom zini without correction
       let { womZini, womHzini } = Algorithms.calcWomZiniAndHZini(
         this.mines,
@@ -185,6 +185,10 @@ class BoardStats {
       this.cWomHzini = null;
       this.cWomHziniPath = null;
     }
+
+    //Set to null just in case. These only get calculated by manually running.
+    this.deepZini = null;
+    this.deepZiniPath = null;
   }
 
   getPttaLink() {
@@ -261,7 +265,19 @@ class BoardStats {
     const cWomZini = this.cWomZini;
     const cWomHzini = this.cWomHzini;
 
-    const bestZini = chainZini; //Change when I do a better zini
+    let bestZini = chainZini; //Change when I do a better zini
+    if (eightZini !== null && eightZini < bestZini) {
+      bestZini = eightZini;
+    }
+    if (womZini !== null && womZini < bestZini) {
+      bestZini = womZini;
+    }
+    if (cWomZini !== null && cWomZini < bestZini) {
+      bestZini = cWomZini;
+    }
+    if (!this.refs.statsShowMaxEff.value) {
+      bestZini = null;
+    }
 
     const totalClicks = this.clicks.length;
 
@@ -311,7 +327,9 @@ class BoardStats {
       this.refs.statsObject.value.womHzini = womHzini;
       this.refs.statsObject.value.cWomZini = cWomZini;
       this.refs.statsObject.value.cWomHzini = cWomHzini;
+      this.refs.statsObject.value.bestZini = bestZini;
       this.refs.statsObject.value.pttaLink = pttaLink;
+      this.refs.statsObject.value.deepZini = null;
     } else {
       this.refs.statsObject.value.isWonGame = false;
       this.refs.statsObject.value.time = time.toFixed(3);
@@ -328,7 +346,9 @@ class BoardStats {
       this.refs.statsObject.value.womHzini = womHzini;
       this.refs.statsObject.value.cWomZini = cWomZini;
       this.refs.statsObject.value.cWomHzini = cWomHzini;
+      this.refs.statsObject.value.bestZini = bestZini;
       this.refs.statsObject.value.pttaLink = pttaLink;
+      this.refs.statsObject.value.deepZini = null;
     }
   }
 
@@ -351,6 +371,18 @@ class BoardStats {
     this.refs.statsObject.value.chainZini = chainZini;
 
     //Note - we don't recalculate max eff, since that requires knowing 3bv, which isn't worth doing
+  }
+
+  lateCalcDeepChainZini() {
+    if (this.refs.statsObject.value.deepZini === null) {
+      const deepZiniResult = ChainZini.calcNWayInclusionExclusionZini({
+        mines: this.mines,
+        numberOfIterations: 5,
+      });
+      this.refs.statsObject.value.deepZini = deepZiniResult.total;
+      this.deepZini = deepZiniResult.total;
+      this.deepZiniPath = deepZiniResult.clicks;
+    }
   }
 
   addEndTime(time, isWin) {

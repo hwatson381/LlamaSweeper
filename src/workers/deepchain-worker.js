@@ -2,8 +2,11 @@
 //Clogging up the main thread.
 
 import ChainZini from "src/classes/ChainZini";
+import Chain from "src/classes/Chain";
 
 onmessage = function (event) {
+  hydrateParameters(event.data.parameters);
+
   if (event.data.parameters.analysisType === 'separate') {
     beginNWayRun(event.data.parameters, event.data.deepVisualise);
   } else {
@@ -80,4 +83,15 @@ function sendRunCompletion(result) {
     type: 'run-complete',
     result: result,
   });
+}
+
+function hydrateParameters(parameters) {
+  //Re-add the prototype for any parameters that are missing it
+  //In particular, this should be done for initialChainMap
+
+  if (parameters.initialChainMap) {
+    for (let chain of parameters.initialChainMap.values()) {
+      Object.setPrototypeOf(chain, Chain.prototype);
+    }
+  }
 }

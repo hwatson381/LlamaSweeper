@@ -1,22 +1,5 @@
 <template>
-  <div
-    class="replay-bar row q-pa-sm"
-    style="
-      position: fixed;
-      background-color: lightgray;
-      bottom: 15px;
-      left: 0;
-      right: 0;
-      margin: auto;
-      width: calc(100vw - 40px);
-      max-width: 1000px;
-      border-radius: 10px;
-      box-shadow: 3px 4px 10px black;
-      gap: 6px;
-      align-items: center;
-      touch-action: none;
-    "
-  >
+  <div class="replay-bar row q-pa-sm">
     <q-btn dense color="white" text-color="black">
       <q-icon
         :name="replayIsPlaying ? 'pause' : 'play_arrow'"
@@ -72,7 +55,7 @@
     </q-chip>
     <div
       style="
-        width: 250px;
+        width: 290px;
         flex-grow: 1;
         display: flex;
         align-items: center;
@@ -109,6 +92,15 @@
           }
         "
       />
+      <q-btn
+        dense
+        color="white"
+        text-color="black"
+        style="max-width: 80px"
+        @click="$emit('close-replay')"
+      >
+        <q-icon name="sym_o_close"></q-icon>
+      </q-btn>
     </div>
     <!-- below is needed for to preload icon for steppy -->
     <q-icon
@@ -118,6 +110,28 @@
     <!--end of preload-->
   </div>
 </template>
+
+<style scoped>
+.replay-bar {
+  position: fixed;
+  background-color: lightgray;
+  bottom: 15px;
+  left: 0;
+  right: 0;
+  margin: auto;
+  width: calc(100vw - 40px);
+  max-width: 1000px;
+  border-radius: 10px;
+  box-shadow: 3px 4px 10px #000000cc;
+  gap: 6px;
+  align-items: center;
+  touch-action: none;
+}
+
+body.body--dark .replay-bar {
+  box-shadow: 3px 4px 10px black;
+}
+</style>
 
 <script setup>
 import { ref, computed, watchEffect } from "vue";

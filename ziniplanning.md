@@ -137,3 +137,8 @@ avg (50 iterations) - 137
 avgthenmin (50 iterations) - 137
 
 tiebreak separate on priority? - Probably good idea.
+
+Dominating chords/considerable chords:
+If two chords do the exact same thing, then one of them could be removed (equivalent chords)
+Be careful with chords that only reveal same square, or chords that reveal single square -
+these still may be useful later on if they can be used for merging and have different effects on chainNeighbourhoodGrid

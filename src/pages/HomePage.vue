@@ -17,7 +17,6 @@
       <p>Some planned features for my variants are listed below</p>
       <ul>
         <li>Locally storing game history</li>
-        <li>Improved zini algorithm (comparable to ptt zini?)</li>
         <li>More features in zini explorer</li>
         <li>Improved mobile support</li>
         <li>Various bug fixes (better performance on large boards)</li>

@@ -398,8 +398,6 @@ When doing the first click on eff boards, if you accidentally double click. Then
 Change minimum to use average tiebreak
 and average to use minimum tiebreak (or instead switch to minimum after threshold?)
 
-Cancelling deepChain zini should revert to previous click path
-
 Todo:
 test different analysis types (min/average/minThenAverage)
 Also implement analysis that does single priority grid inclusion exclusion, but then repeats for different priority grids
@@ -409,10 +407,6 @@ Benchmark stuff by generating 20x20/72 boards with eff > 185%?
 Change default scroll setting to enabled.
 Consider whether to make max eff be based on all zini stats.
 
-bug:
-cloneChainMap throws error when running deepChainZini on "current" scope.
-This is because transferring chains to worker loses classes
-
 need to do stuff for bulk testing
 Maybe collect boards where zini is improvement on 8-way?
 Or normalise for speed?
@@ -420,3 +414,20 @@ Or normalise for speed?
 How often is 10 iteration separate deep chain better than 5 iteration?
 
 Add jswole website
+
+How much should be saved in localStorage? E.g. specific settings for effBoards/mean openings?
+
+Should space be remapped to play/pause on replay?
+
+mini tasks:
+Figure out pattern that it can't spot?
+optimise algorithm speed. (prune chords that are "dominated" by other chords)
+
+Highlight squares on "watch" in zini explorer
+
+Make deepchain possible to run from board stats panel (could even run it in background?)
+Make it run in background...
+
+Implement lateCalcDeepChainZini and make sure statsObject.value.deepZini is correct
+
+Consider moving the zini-replays in the "watch" menu into a popup menu
