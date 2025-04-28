@@ -2166,14 +2166,33 @@ class ChainZini {
           }
         }
         if (!hasUnopenedSafeNeighbour) {
-          //Check if move has non-negative premium (from merging chains)
-          //If we has neutral (0) premium, then we may still want to consider it
-          //Even though it's very unlikely to make a difference
-          //This is because we might want to allow possiblity of forbidding this chord if it is bad
-          if (chainPremiums[x][y] < 0) {
+          //Check if move has positive premium (from merging chains)
+          //If we has neutral (0) premium, then in here we exclude it, since
+          //we don't care as much about forbidding these, so would rather just ignore it to get performance gain
+          if (chainPremiums[x][y] <= 0) {
             continue;
           }
         }
+
+        //Check if chord is equivalent to clicking an opening
+        if (thisSquare.nonOpening3bvNeighbours.length === 0 && thisSquare.openingsTouched.size === 1) {
+          //Check if all revealed squares border same opening
+          let singleOpeningTouchedId = thisSquare.openingsTouched.values().next().value;
+
+          let hasNeighbourNotOnOpening = false;
+          for (let neighbour of thisSquare.safeNeighbours) {
+            let neighbourChainInfo = chainSquareInfo[neighbour.x][neighbour.y];
+            if (!neighbourChainInfo.openingsTouched.has(singleOpeningTouchedId)) {
+              hasNeighbourNotOnOpening = true;
+              break;
+            }
+          }
+          if (!hasNeighbourNotOnOpening) {
+            continue;
+          }
+        }
+
+        throw new Error('TODO - Filter out chords that are equivalent to clicking an opening');
 
         considerableChords.push({ x, y })
       }

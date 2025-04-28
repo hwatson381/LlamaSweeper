@@ -142,3 +142,22 @@ Dominating chords/considerable chords:
 If two chords do the exact same thing, then one of them could be removed (equivalent chords)
 Be careful with chords that only reveal same square, or chords that reveal single square -
 these still may be useful later on if they can be used for merging and have different effects on chainNeighbourhoodGrid
+
+Also special case - when considering chords with overlap, treat having different chainIds as being better than extending another chain Id.
+
+Precise conditions for a chord to dominate another:
+Chord A dominates Chord B if:
+
+- Single squares revealed by A are superset of single squares revealed by B
+- Openings revealed by A are superset of openings revealed by B
+- Flags required to be placed by A is subset of flags required to be placed by B
+- The "central square" (i.e. square that is chorded in A) is open whenever the central square of B is open. Note - Is there a recursive element to this? Since maybe a chord could open just B, but be dominated by a chord that opens both? Possibly... This condition may need tighter requirements.
+- The expansion on chainNeighbourHood grid of A is at least as good as B. Lets assume B has "chainId" of C_b, then any cell that would newly neighbour C_b would also be a new neighbour under chord A. We also require that the "chainId" of A is at least as good as that of B - that is, it is either the same chainId, or a fresh chainId.
+- Chains merged by A are a superset of those merged by B
+- Could also look at whether flags are reusable (e.g. different flags, but more reusable = better. Possibly too complicated)
+- Somehow allow dominating chords by openings
+- We can ignore the chainNeighbourhoodGrid stuff if domination has (at least) 1 click save, though click save can't rely on flags since they could be reused.
+- Possibly consider the chain a move currently belongs to as "fixed", and then can use simple analysis from that
+- Lazy way and expensive way - play both chords and compare board states, to see if one is better than the other
+
+Alternate idea - performance improvement could come from recalculating "deep premium" less often for squares with very negative premium? Or maybe recalculate based on locatoin of recent changes? Or treat enclosed areas separately? Or figure out "never-chords" and "never-flags" and split up board based on that.

@@ -204,8 +204,15 @@
                 color="primary"
                 label="Exp"
                 @click="
-                  editBoardUnappliedWidth = 30;
-                  editBoardUnappliedHeight = 16;
+                  () => {
+                    if (verticalExpert) {
+                      editBoardUnappliedWidth = 16;
+                      editBoardUnappliedHeight = 30;
+                    } else {
+                      editBoardUnappliedWidth = 30;
+                      editBoardUnappliedHeight = 16;
+                    }
+                  }
                 "
               />
             </q-btn-group>
@@ -1062,6 +1069,7 @@
             expand-separator
             icon="tune"
             label="General settings"
+            group="settings"
           >
             <q-card>
               <q-card-section>
@@ -1140,6 +1148,7 @@
             expand-separator
             icon="smartphone"
             label="Mobile/Touch settings"
+            group="settings"
           >
             <q-card>
               <q-card-section>
@@ -1355,6 +1364,10 @@
                   stack-label
                   label="Mode toggle size"
                 />
+                <q-checkbox
+                  v-model="verticalExpert"
+                  label="Make expert boards portrait"
+                />
               </q-card-section>
             </q-card>
           </q-expansion-item>
@@ -1363,6 +1376,7 @@
             expand-separator
             icon="brush"
             label="QuickPaint settings"
+            group="settings"
           >
             <q-card>
               <q-card-section>
@@ -1386,6 +1400,7 @@
             expand-separator
             icon="play_circle_filled"
             label="Replay settings"
+            group="settings"
           >
             <q-card>
               <q-card-section>
@@ -2146,7 +2161,7 @@ let boardWidth = computed(() => {
     case "int":
       return 16;
     case "exp":
-      return 30;
+      return verticalExpert.value ? 16 : 30;
     case "custom":
       return Math.floor(Utils.clamp(customWidth.value, 1, 100));
     default:
@@ -2160,7 +2175,7 @@ let boardHeight = computed(() => {
     case "int":
       return 16;
     case "exp":
-      return 16;
+      return verticalExpert.value ? 30 : 16;
     case "custom":
       return Math.floor(Utils.clamp(customHeight.value, 1, 100));
     default:
@@ -2382,6 +2397,7 @@ let touchLongPressDisabled = useLocalStorage(
 );
 let touchMaxTime = useLocalStorage("ls_touchMaxTime", 1000); //When do long touches get cancelled (maybe these become scrolls?)
 let touchScrollDistance = useLocalStorage("ls_touchScrollDistance", 3); //When do touches that move a lot unlock the scroll
+let verticalExpert = useLocalStorage("ls_verticalExpert", false);
 let faceHitbox = useLocalStorage("ls_faceHitbox", "adaptive"); //Hitbox for when the face is click to trigger a reset
 let soundEffectsEnabled = useLocalStorage(
   "ls_soundEffectsEnabled",

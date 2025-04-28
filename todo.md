@@ -431,3 +431,26 @@ Make it run in background...
 Implement lateCalcDeepChainZini and make sure statsObject.value.deepZini is correct
 
 Consider moving the zini-replays in the "watch" menu into a popup menu
+
+Make progress on "getConsiderableChordsImproved"
+
+ChainSquareInfo (for reference)
+isMine: false
+number: null
+is3bv: null
+labelIfOpening: null
+mineNeighbours: [],
+safeNeighbours: [],
+nonOpening3bvNeighbours: [],
+openingsTouched: new Set(),
+chainNeighbours: []
+
+Should worker limit be changed to concurrency - 1?
+https://stackoverflow.com/questions/72679437/re-use-web-workers-vs-closing-spawning-new-once
+Relevant quote below
+"Actually, as a rule of thumb, you should even never start more Workers than navigator.hardwareConcurrency - 1. Failing to do so, your Workers's concurrency would be done through task-switching instead of true parallelism, ant that would incur a significant performance penalty.""
+
+What's needed for release?
+Make settings like accordion? So opening one closes the others?
+
+Add setting for vertical expert
