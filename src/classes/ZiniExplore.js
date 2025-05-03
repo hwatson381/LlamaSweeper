@@ -2,7 +2,7 @@ import CONSTANTS from "src/includes/Constants";
 import Algorithms from "./Algorithms";
 import { Dialog } from 'quasar'
 import ChainZini from "./ChainZini";
-import Utils from "./Utils";
+import DeepChainZiniRunner from "./DeepChainZiniRunner";
 
 class ZiniExplore {
   constructor(board, refs) {
@@ -1155,10 +1155,10 @@ class ZiniExplore {
     this.classicPath = [];
   }
 
-  refreshForEditedBoard() {
+  refreshForEditedBoard(skipAskForPathReset = false) {
     //This is ran when we switch to analyse mode
     this.preprocessedData = Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(this.board.mines);
-    if (this.removeInvalidDigsAndFlags()) {
+    if (this.removeInvalidDigsAndFlags() && !skipAskForPathReset) {
       this.promptForPathReset();
     }
     this.updateUiAndBoard();
@@ -1348,7 +1348,7 @@ class ZiniExplore {
     let rewrite = true;
     let deepType = 'separate';
     let deepIterations = 5;
-    let deepVisualise = true;
+    let deepReportProgress = true;
     let forbidMoves = false;
 
     if (useRefs) {
@@ -1356,7 +1356,7 @@ class ZiniExplore {
       rewrite = this.refs.analyseHistoryRewrite.value;
       deepType = this.refs.analyseDeepType.value;
       deepIterations = this.refs.analyseDeepIterations.value;
-      deepVisualise = this.refs.analyseVisualise.value;
+      deepReportProgress = this.refs.analyseVisualise.value;
       forbidMoves = this.refs.analyseForbid.value;
     }
 
@@ -1377,16 +1377,26 @@ class ZiniExplore {
     this.classicPathBeforeRun = structuredClone(this.classicPath);
 
     if (scope === 'beginning') {
-      this.ziniRunner = new InclusionExclusionZiniRunner(
+      this.ziniRunner = new DeepChainZiniRunner(
         this.refs,
         {
           mines: this.board.mines,
           analysisType: deepType,
           deepIterations: deepIterations,
-          forbidMoves: forbidMoves
+          forbidMoves: forbidMoves,
+          progressType: 'visual',
         },
-        this,
-        deepVisualise
+        {
+          onBoardProgress: (clicks) => {
+            this.classicPath = clicks;
+            this.updateUiAndBoard();
+          },
+          onCompleteRun: (result) => {
+            this.classicPath = result.clicks;
+            this.updateUiAndBoard();
+          }
+        },
+        deepReportProgress
       );
     } else {
       const {
@@ -1400,7 +1410,7 @@ class ZiniExplore {
         this.board.mines,
         rewrite
       );
-      this.ziniRunner = new InclusionExclusionZiniRunner(
+      this.ziniRunner = new DeepChainZiniRunner(
         this.refs,
         {
           mines: this.board.mines,
@@ -1411,15 +1421,25 @@ class ZiniExplore {
           initialChainNeighbourhoodGrid,
           analysisType: deepType,
           deepIterations: deepIterations,
-          forbidMoves: forbidMoves
+          forbidMoves: forbidMoves,
+          progressType: 'visual',
         },
-        this,
-        deepVisualise
+        {
+          onBoardProgress: (clicks) => {
+            this.classicPath = clicks;
+            this.updateUiAndBoard();
+          },
+          onCompleteRun: (result) => {
+            this.classicPath = result.clicks;
+            this.updateUiAndBoard();
+          }
+        },
+        deepReportProgress,
       )
     }
   }
 
-  killInclusionExclusionZiniRunner() {
+  killDeepChainZiniRunner() {
     if (this.ziniRunner) {
       this.ziniRunner.killWorker();
     }
@@ -1487,112 +1507,6 @@ class ZiniExplore {
     } else {
       return true;
     }
-  }
-}
-
-//Class to manage running inclusion exclusion zini, and interfacing with web workers
-class InclusionExclusionZiniRunner {
-  constructor(refs, inclusionExclusionParameters, ziniExplore, deepVisualise) {
-    this.refs = refs;
-    this.inclusionExclusionParameters = inclusionExclusionParameters;
-    this.ziniExplore = ziniExplore;
-    this.deepVisualise = deepVisualise;
-
-    if (!window.Worker) {
-      alert('Web workers not supported, please contact Llama if this happens.');
-      throw new Error('Web workers not support for inclusion exclusion zini.');
-    }
-
-    this.refs.ziniRunnerActive.value = true;
-    this.refs.ziniRunnerExpectedDuration.value = 'calculating...';
-    this.refs.ziniRunnerExpectedFinishTime.value = 'calculating...';
-    this.refs.ziniRunnerIterationsDisplay.value = '';
-
-    this.worker = new Worker(
-      new URL("../workers/deepchain-worker.js", import.meta.url),
-      {
-        type: "module",
-      }
-    );
-
-    this.worker.onerror = (error) => {
-      Dialog.create({
-        title: "Alert",
-        message: "Error occurred in web worker for DeepChain ZiNi.",
-      });
-    }
-
-    this.worker.onmessage = this.handleMessage.bind(this);
-
-    console.log(inclusionExclusionParameters);
-
-    this.worker.postMessage({
-      command: "begin",
-      parameters: inclusionExclusionParameters,
-      deepVisualise: deepVisualise
-    })
-  }
-
-  handleMessage(event) {
-    const message = event.data;
-
-    /*
-      Messages could be:
-      Timing run complete
-      Progress update (e.g. new board to display)
-      Run complete
-    */
-    switch (message.type) {
-      case 'timing-run-done':
-        this.timingRunDone(message.timingRun);
-        break;
-      case 'board-progress':
-        this.updateBoardProgress(message.clicks);
-        break;
-      case 'iteration-update':
-        this.updateIterationDisplay(message.iterations);
-        break;
-      case 'log-update':
-        this.addLogEntry(message.logEntry);
-        break;
-      case 'run-complete':
-        this.completeRun(message.result);
-        break;
-      default:
-        throw new Error('disallowed message type');
-    }
-  }
-
-  timingRunDone(timingRun) {
-    console.log(timingRun);
-    this.refs.ziniRunnerExpectedDuration.value = Utils.formatTime(timingRun);
-    this.refs.ziniRunnerExpectedFinishTime.value = Utils.timeInFuture(timingRun);
-  }
-
-  updateBoardProgress(clicks) {
-    this.ziniExplore.classicPath = clicks;
-    this.ziniExplore.updateUiAndBoard();
-  }
-
-  updateIterationDisplay(iterations) {
-    this.refs.ziniRunnerIterationsDisplay.value = iterations;
-  }
-
-  addLogEntry(logEntry) {
-    console.log(logEntry);
-  }
-
-  completeRun(result) {
-    console.log(result);
-    this.worker.terminate();
-    this.refs.ziniRunnerActive.value = false;
-    this.ziniExplore.classicPath = result.clicks;
-    this.ziniExplore.updateUiAndBoard();
-  }
-
-  killWorker() {
-    this.worker.terminate();
-    this.refs.ziniRunnerActive.value = false;
   }
 }
 

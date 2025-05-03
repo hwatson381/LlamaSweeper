@@ -451,6 +451,12 @@ Relevant quote below
 "Actually, as a rule of thumb, you should even never start more Workers than navigator.hardwareConcurrency - 1. Failing to do so, your Workers's concurrency would be done through task-switching instead of true parallelism, ant that would incur a significant performance penalty.""
 
 What's needed for release?
-Make settings like accordion? So opening one closes the others?
 
-Add setting for vertical expert
+Do we need to make it use multiple background workers?
+Note - "separate" could either allow "deepIterations" to run parallel, or split considerable chords amongst workers. 1 worker would always be needed for managing workload
+Need to make heavy use of async await
+Should a worker be the coordinator? Or use main thread?
+
+Clean up deepChain zini menu
+
+Bug - board asked to check click path

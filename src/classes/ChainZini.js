@@ -1744,6 +1744,8 @@ class ChainZini {
       deepIterations = 50,
       forbidMoves = false,
       progressUpdateFunction = false,
+      progressType = null,
+      percentageSegment = { start: 0, scale: 100 },
       priorityGrids = false
     }
   ) {
@@ -1811,6 +1813,8 @@ class ChainZini {
         }
       }
     }
+    const originalRevealedSquaresToSolve = revealedSquaresToSolve; //Used for figuring out percentage progress update
+    let lastPercentageProgressReported = null;
 
     const numberOfGridsPerMove = doTimingRun ? 1 : deepIterations; //TimingRun only does single chainPremium per move analysed
     if (!priorityGrids) {
@@ -2018,15 +2022,37 @@ class ChainZini {
       if (progressUpdateFunction) {
         //Report back progress - useful if running in a webworker and we want live updates
 
-        const clicksAtThisStage = this.convertSolutionToClickPath({
-          chainIds: chainIds,
-          chainMap: chainMap,
-          mines: mines,
-          chainSquareInfo: chainSquareInfo,
-          preprocessedOpenings: preprocessedOpenings
-        });
+        if (progressType === 'visual') {
+          const clicksAtThisStage = this.convertSolutionToClickPath({
+            chainIds: chainIds,
+            chainMap: chainMap,
+            mines: mines,
+            chainSquareInfo: chainSquareInfo,
+            preprocessedOpenings: preprocessedOpenings
+          });
 
-        progressUpdateFunction('board-progress', clicksAtThisStage);
+          progressUpdateFunction('board-progress', clicksAtThisStage);
+        } else if (progressType === 'text') {
+          // Report back progress as percent.
+          // For now we just use #squares solve,
+          // although it would probably be better to use 3bv.
+          let squaresLeft = 0;
+          for (let x = 0; x < width; x++) {
+            for (let y = 0; y < height; y++) {
+              if (!revealedStates[x][y] && !mines[x][y]) {
+                squaresLeft++;
+              }
+            }
+          }
+
+          const fractionDone = (originalRevealedSquaresToSolve - squaresLeft) / originalRevealedSquaresToSolve;
+
+          const percentageProgress = Math.floor(percentageSegment.start + fractionDone * percentageSegment.scale);
+          if (percentageProgress !== lastPercentageProgressReported) {
+            lastPercentageProgressReported = percentageProgress;
+            progressUpdateFunction('percentage-progress', percentageProgress);
+          }
+        }
       }
 
       //Exit if we didn't have anything to do
@@ -2424,6 +2450,7 @@ class ChainZini {
     deepIterations = 50,
     forbidMoves = false,
     progressUpdateFunction = false,
+    progressType = null,
   }) {
     //Algorithm that runs inclusion-exclusion zini n times, and returns the best result.
     //This is really a meta-heuristic like the heuristics that use minimum/average analysis
@@ -2515,6 +2542,8 @@ class ChainZini {
           deepIterations: 1, //This is 1 since we instead run the algorithm n number of times using a different priority grid
           forbidMoves,
           progressUpdateFunction: progressUpdateFunction,
+          progressType: progressType,
+          percentageSegment: { start: 100 * i / deepIterations, scale: 100 / deepIterations },
           priorityGrids: priorityGridForThisRun
         }
       );
@@ -2522,15 +2551,19 @@ class ChainZini {
       if (progressUpdateFunction) {
         //Report back progress - useful if running in a webworker and we want live updates
 
-        const clicksAtThisStage = this.convertSolutionToClickPath({
-          chainIds: clonedChainIds,
-          chainMap: clonedChainMap,
-          mines: mines,
-          chainSquareInfo: chainSquareInfo,
-          preprocessedOpenings: preprocessedOpenings
-        });
+        if (progressType === 'visual') {
+          const clicksAtThisStage = this.convertSolutionToClickPath({
+            chainIds: clonedChainIds,
+            chainMap: clonedChainMap,
+            mines: mines,
+            chainSquareInfo: chainSquareInfo,
+            preprocessedOpenings: preprocessedOpenings
+          });
+          progressUpdateFunction('board-progress', clicksAtThisStage);
+        } else if (progressType === 'text') {
+          progressUpdateFunction('percentage-progress', Math.floor((i + 1) / deepIterations * 100));
+        }
 
-        progressUpdateFunction('board-progress', clicksAtThisStage);
         progressUpdateFunction('iteration-update', `${i + 1}/${deepIterations}`);
         progressUpdateFunction('log-update', `${i + 1}: ${result.total}`);
       }

@@ -8,9 +8,9 @@ onmessage = function (event) {
   hydrateParameters(event.data.parameters);
 
   if (event.data.parameters.analysisType === 'separate') {
-    beginNWayRun(event.data.parameters, event.data.deepVisualise);
+    beginNWayRun(event.data.parameters, event.data.deepReportProgress);
   } else {
-    beginNormalRun(event.data.parameters, event.data.deepVisualise);
+    beginNormalRun(event.data.parameters, event.data.deepReportProgress);
   }
 }
 
@@ -59,6 +59,12 @@ function sendProgressUpdate(updateType, data) {
       postMessage({
         type: 'board-progress',
         clicks: data,
+      });
+      break;
+    case 'percentage-progress':
+      postMessage({
+        type: 'percentage-progress',
+        percentage: data,
       });
       break;
     case 'iteration-update':

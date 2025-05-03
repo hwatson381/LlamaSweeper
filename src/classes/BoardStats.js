@@ -1,5 +1,6 @@
 import Algorithms from "./Algorithms";
 import ChainZini from "./ChainZini";
+import DeepChainZiniRunner from "./DeepChainZiniRunner";
 
 class BoardStats {
   constructor(minesArray, refs) {
@@ -373,7 +374,8 @@ class BoardStats {
     //Note - we don't recalculate max eff, since that requires knowing 3bv, which isn't worth doing
   }
 
-  lateCalcDeepChainZini() {
+  //OK TO DELETE this function
+  lateCalcDeepChainZiniOld() {
     if (this.refs.statsObject.value.deepZini === null) {
       const deepZiniResult = ChainZini.calcNWayInclusionExclusionZini({
         mines: this.mines,
@@ -382,6 +384,40 @@ class BoardStats {
       this.refs.statsObject.value.deepZini = deepZiniResult.total;
       this.deepZini = deepZiniResult.total;
       this.deepZiniPath = deepZiniResult.clicks;
+    }
+  }
+
+  lateCalcDeepChainZini(completionCallback = false) {
+    alert('Remember to change for watch replay');
+    this.ziniRunner = new DeepChainZiniRunner(
+      this.refs,
+      {
+        mines: this.mines,
+        analysisType: 'separate',
+        deepIterations: 5,
+        progressType: 'text',
+      },
+      {
+        onPercentageProgress: (percent) => {
+          this.refs.ziniRunnerPercentageProgress.value = `${percent}%`;
+        },
+        onCompleteRun: (result) => {
+          this.refs.statsObject.value.deepZini = result.total;
+          this.deepZini = result.total;
+          this.deepZiniPath = result.clicks;
+
+          if (completionCallback) {
+            completionCallback();
+          }
+        }
+      },
+      true
+    );
+  }
+
+  killDeepChainZiniRunner() {
+    if (this.ziniRunner) {
+      this.ziniRunner.killWorker();
     }
   }
 

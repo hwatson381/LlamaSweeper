@@ -525,12 +525,27 @@
                 {{ statsObject.deepZini }}
               </template>
               <span
-                v-else
+                v-else-if="!ziniRunnerActive"
                 class="text-info"
                 style="text-decoration: underline; cursor: pointer"
                 @click="game.board.stats.lateCalcDeepChainZini()"
-                >run</span
               >
+                run
+              </span>
+              <span v-else> running </span>
+
+              <div v-if="ziniRunnerActive">
+                Progress: {{ ziniRunnerPercentageProgress }}<br />
+                Est. Duration: {{ ziniRunnerExpectedDuration }}<br />
+                Est. Finish: {{ ziniRunnerExpectedFinishTime }}<br />
+                <span
+                  @click="game.board.stats.killDeepChainZiniRunner()"
+                  class="text-info"
+                  style="text-decoration: underline; cursor: pointer"
+                >
+                  cancel
+                </span>
+              </div>
             </div>
             <br />
             <q-btn-dropdown color="primary" label="Send To">
@@ -639,7 +654,7 @@
                 <q-item
                   clickable
                   v-close-popup
-                  @click="game.board.initReplay('deepchain')"
+                  @click="game.board.initOrPrepareDeepChainReplay()"
                 >
                   <q-item-section>
                     <q-item-label>DeepChain Zini</q-item-label>
@@ -842,7 +857,7 @@
             {{ ziniRunnerIterationsDisplay }}<br />
             <br />
             <q-btn
-              @click="game.board.ziniExplore.killInclusionExclusionZiniRunner()"
+              @click="game.board.ziniExplore.killDeepChainZiniRunner()"
               color="negative"
               label="Cancel"
             ></q-btn>
@@ -1670,7 +1685,13 @@
       >
         <q-separator />
         <q-card-section>
-          <div class="flex justify-around">
+          <div
+            style="
+              display: grid;
+              justify-items: center;
+              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            "
+          >
             <q-input
               v-if="analyseAlgorithm === 'chainzini'"
               class="q-mb-sm"
@@ -1682,15 +1703,6 @@
               min="1"
               max="1000000"
               style="width: 110px"
-            />
-            <q-checkbox
-              v-if="
-                (analyseAlgorithm === 'chainzini' ||
-                  analyseAlgorithm === 'incexzini') &&
-                analyseAlgorithmScope === 'current'
-              "
-              v-model="analyseHistoryRewrite"
-              label="Allow history rewrite"
             />
             <q-select
               v-if="analyseAlgorithm === 'incexzini'"
@@ -1743,10 +1755,21 @@
               label="Visualise"
             />
             <q-checkbox
+              v-if="
+                (analyseAlgorithm === 'chainzini' ||
+                  analyseAlgorithm === 'incexzini') &&
+                analyseAlgorithmScope === 'current'
+              "
+              v-model="analyseHistoryRewrite"
+              label="Allow history rewrite"
+            />
+            <!--
+            <q-checkbox
               v-if="analyseAlgorithm === 'incexzini'"
               v-model="analyseForbid"
               label="Forbid moves"
             />
+            -->
           </div>
         </q-card-section>
       </template>
@@ -2486,6 +2509,7 @@ let synchronousZiniActive = ref(false);
 let ziniRunnerExpectedDuration = ref("calculating...");
 let ziniRunnerExpectedFinishTime = ref("calculating...");
 let ziniRunnerIterationsDisplay = ref("");
+let ziniRunnerPercentageProgress = ref("0%");
 
 let keyboardClickOpenOnKeyDown = useLocalStorage(
   "ls_keyboardClickOpenOnKeyDown",
@@ -3182,6 +3206,7 @@ class Board {
       ziniRunnerExpectedDuration,
       ziniRunnerExpectedFinishTime,
       ziniRunnerIterationsDisplay,
+      ziniRunnerPercentageProgress,
       replayIsShown,
     });
 
@@ -3263,6 +3288,9 @@ class Board {
 
     this.blasted = false;
     this.openedTiles = 0;
+    if (this.stats) {
+      this.stats.killDeepChainZiniRunner();
+    }
     this.stats = null;
     this.unflagged = this.mineCount;
     this.integerTimer = 0;
@@ -4489,6 +4517,11 @@ class Board {
       statsShowChain,
       statsShowWomZini,
       statsShowMaxEff,
+      ziniRunnerActive,
+      ziniRunnerExpectedDuration,
+      ziniRunnerExpectedFinishTime,
+      ziniRunnerIterationsDisplay,
+      ziniRunnerPercentageProgress,
     });
     this.boardStartTime = performance.now();
     this.clearTimerTimeout(); //defensive as it should already be disabled since we reset board.
@@ -6291,7 +6324,7 @@ class Board {
     this.draw();
   }
 
-  switchToAnalyseMode() {
+  switchToAnalyseMode(skipAskForPathReset = false) {
     if (this.variant === "board editor") {
       throw new Error("Analyse mode not available on board editor");
     } else if (this.variant === "zini explorer") {
@@ -6299,7 +6332,7 @@ class Board {
       this.gameStage = "analyse";
       isCurrentlyEditModeDisplay.value = false;
       //this.resetBoard(); //Is this needed?
-      this.ziniExplore.refreshForEditedBoard();
+      this.ziniExplore.refreshForEditedBoard(skipAskForPathReset);
     } else {
       //do nothing
     }
@@ -6822,7 +6855,7 @@ class Board {
         break;
       case "deepchain":
         if (this.stats.deepZini === null) {
-          this.stats.lateCalcDeepChainZini();
+          throw new Error("DeepChain should already be set");
         }
         replayParams = {
           clicks: this.stats.deepZiniPath,
@@ -6893,6 +6926,10 @@ class Board {
       this.replay.pause();
     }
 
+    if (ziniRunnerActive.value) {
+      this.stats.killDeepChainZiniRunner();
+    }
+
     let refs = {
       replayTypeForceSteppy,
       replayIsPanning,
@@ -6908,6 +6945,16 @@ class Board {
     };
 
     this.replay = new Replay(replayParams, refs);
+  }
+
+  initOrPrepareDeepChainReplay() {
+    if (this.stats.deepZini === null) {
+      this.stats.lateCalcDeepChainZini(() => {
+        this.initReplay("deepchain");
+      });
+    } else {
+      this.initReplay("deepchain");
+    }
   }
 
   closeReplay() {
