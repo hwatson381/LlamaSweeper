@@ -1473,69 +1473,6 @@ class ChainZini {
           }
           for (let edge of thisOpening.edges) {
             nonZerosToProcess.push(edge);
-            /* OK TO DELETE
-            initialRevealedStates[edge.x][edge.y] = true;
-
-            let cng = initialChainNeighbourhoodGrid[edge.x][edge.y];
-            if (isFloating) {
-              cng.floating.includes(currentChainId) || cng.floating.push(currentChainId);
-            } else {
-              cng.fixed.includes(currentChainId) || cng.fixed.push(currentChainId);
-            }
-
-            let left = moveGrid[edge.x][edge.y].left;
-            let chord = moveGrid[edge.x][edge.y].chord;
-
-            if (isFloating) {
-              if (left) {
-                //smothered or multi-seeded chain remove
-                leftClickPool.delete(left);
-              }
-              if (chord) {
-                if (chordPool.has(chord)) {
-                  //New chord found, so push it to be added later
-                  chordsToDo.push(chord);
-                  chordPool.delete(chord);
-                }
-              }
-            } else {
-              //Fixed chain. If smothered, then leave it, if multi-seed, then track it
-              if (chord && !left) {
-                if (chordPool.has(chord)) {
-                  //New chord found, so push it to be added later
-                  chordsToDo.push(chord);
-                  chordPool.delete(chord);
-                }
-              }
-
-              if (chord && left) {
-                //Add seed if not already added
-                leftClickPool.delete(left); //Possibly already deleted, but it's ok
-                if (!seedsIfFixed.some(s => s.x === left.x && s.y === left.y)) {
-                  seedsIfFixed.push({
-                    x: left.x,
-                    y: left.y
-                  });
-                }
-
-                //Also add new chord
-                if (chordPool.has(chord)) {
-                  //New chord found, so push it to be added later
-                  chordsToDo.push(chord);
-                  chordPool.delete(chord);
-                }
-              }
-
-              if (!chord && left) {
-                //Smothered click
-                //Just delete and leave it to be processed later through unchordedDigs
-                if (leftClickPool.has(left)) {
-                  unchordedDigNonZerosToProcess.push(left);
-                  leftClickPool.delete(left);
-                }
-              }
-            }
-            */
           }
         }
 

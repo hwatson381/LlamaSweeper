@@ -69,34 +69,6 @@ class CompareReplay {
         if (isWin === false) {
           continue;
         }
-
-        /* OK TO DELETE
-        //Special case - don't treat last click as wasted if it was a left on a mine
-        if (clicks[i].type === 'left' && mines[clicks[i].x][clicks[i].y]) {
-          continue;
-        }
-
-        //Also don't treated it as wasted if it is a wrong chord
-        let isBlastingChord = false;
-        if (clicks[i].type === 'chord') {
-          //Check that all surrounding mines are flagged
-          for (let x = clicks[i].x - 1; x <= clicks[i].x + 1; x++) {
-            for (let y = clicks[i].y - 1; y <= clicks[i].y + 1; y++) {
-              if (x < 0 || x >= width || y < 0 || y >= height) {
-                continue;
-              }
-              if (mines[x][y] && !clicks.some(c => c.type === 'flag' && c.x === x && c.y === y)) {
-                //Need to skip
-                isBlastingChord = true;
-                break;
-              }
-            }
-          }
-        }
-        if (isBlastingChord) {
-          continue;
-        }
-        */
       }
 
       if (projectedZinis[i] > projectedZinis[i - 1]) {
