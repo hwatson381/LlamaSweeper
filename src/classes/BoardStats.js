@@ -374,19 +374,6 @@ class BoardStats {
     //Note - we don't recalculate max eff, since that requires knowing 3bv, which isn't worth doing
   }
 
-  //OK TO DELETE this function
-  lateCalcDeepChainZiniOld() {
-    if (this.refs.statsObject.value.deepZini === null) {
-      const deepZiniResult = ChainZini.calcNWayInclusionExclusionZini({
-        mines: this.mines,
-        numberOfIterations: 5,
-      });
-      this.refs.statsObject.value.deepZini = deepZiniResult.total;
-      this.deepZini = deepZiniResult.total;
-      this.deepZiniPath = deepZiniResult.clicks;
-    }
-  }
-
   lateCalcDeepChainZini(completionCallback = false) {
     alert('Remember to change for watch replay');
     this.ziniRunner = new DeepChainZiniRunner(
