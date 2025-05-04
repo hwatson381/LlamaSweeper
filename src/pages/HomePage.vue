@@ -5,13 +5,13 @@
       <p>
         This is an early release of my minesweeper website. It has a lot of
         features that don't exist anywhere else. There is a fully featured
-        minesweeper clone, as well as variants/tools targetted at helping people
+        minesweeper clone, as well as variants/tools targeted at helping people
         improve in areas such as pattern recognition and efficiency. I've tried
         to make it perform well on mobile as well as desktop. More features will
         be added in the future.
       </p>
       <p>
-        There site also has a cutting-edge ZiNi calculator which outperforms all
+        The site also has a cutting-edge ZiNi calculator which outperforms all
         other tools at finding the minimum number of clicks needed to solve a
         board.
       </p>

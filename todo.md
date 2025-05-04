@@ -414,9 +414,4 @@ Any way to control this behaviour?
 
 Highlight squares on "watch" in zini explorer
 
-NEEDED FOR RELEASE LIST:
-Review text content (home page paragraph, variants page top parag/descs)
-
-Continue with wording. Especially on variants page
-
-Should explanatory table on variants page be hidable. Or moves into a help button?
+Should explanatory table on variants page be hidable. Or move it into a help button?
