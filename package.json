@@ -2,7 +2,7 @@
   "name": "llamasweeper",
   "version": "0.0.1",
   "description": "A collection of minesweeper variants and tools made by Llama",
-  "productName": "llamasweeper",
+  "productName": "LlamaSweeper",
   "author": "llama",
   "private": true,
   "scripts": {

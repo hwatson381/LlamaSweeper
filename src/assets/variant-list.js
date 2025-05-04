@@ -37,7 +37,7 @@ let variantList = [
   {
     "name": "Minesweeper Online",
     "url": "https://minesweeper.online/",
-    "desc": "The most popular minesweeper website which regularly has 2000+ people online at any time. Has rankings for lots of different categories (winstreak/time/3bvs/mastery/efficiency/difficulty...). Saves replays of every game. Has no guess mode. Has a global chat. Monthly rankings, monthly events, championships once per month. Previously called World of Minesweeper (WoM). There are plans to add player vs player mode.",
+    "desc": "The most popular minesweeper website which regularly has 2000+ people online at any time. Has rankings for lots of different categories (winstreak/time/3bvs/mastery/efficiency/difficulty...). Saves replays of every game. Has no guess mode. Has player vs player mode (multiplayer). Has a global chat. Monthly rankings, monthly events, championships once per month. Previously called World of Minesweeper (WoM). ",
     "image": "/img/variants/wom.png",
     "tags": [
       "community",

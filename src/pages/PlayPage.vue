@@ -1,29 +1,64 @@
 <template>
   <q-page>
     <div class="q-pa-md">
-      <h5>Llama's minesweeper variants</h5>
+      <p class="text-h4">Llama's minesweeper variants</p>
       <p>
-        This is just a bunch of minesweeper variants I made. Variants can be
-        changed with the dropdown immediately below. This is very much a work in
-        progress, so some of the variants will be very incomplete.
-        Feedback/suggestions are welcome, although I reserve the right to ignore
-        any suggestions that don't align with my plans.
+        This page has several minesweeper variants/tools I've made. Variants can
+        be changed with the dropdown below the table. This is a work in
+        progress, so there may be bugs. Feedback is very welcome, although I
+        can't promise that any suggestions will be added.
       </p>
-      <div>
-        <span class="text-h6">Descriptions</span><br />
-        <b>normal:</b> just regular minesweeper<br />
-        <b>eff boards:</b> this lets you play minesweeper boards that have a
-        high potential efficiency. Efficiency is a measure of how many clicks a
-        game took to solve relative to the number of clicks it would take to
-        solve with only using left clicks. <br />
-        <b>board editor:</b> this lets you create your own minesweeper
-        configuration and play it. <br />
-        <b>zini explorer:</b> this has tools for working out how to play a
-        minesweeper board using the minimum number of clicks.<br />
-        <b>mean openings:</b> this is similar to regular minesweeper, except
-        that openings will get randomly filled with mines when revealed
-        (openings are the regions that get expanded automatically).
-      </div>
+      <q-markup-table
+        class="q-mx-md q-mt-md q-mb-lg"
+        style="max-width: 700px"
+        dense
+        bordered
+      >
+        <thead>
+          <tr>
+            <th class="text-left">Variant</th>
+            <th class="text-left">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-left" style="vertical-align: top">Normal</td>
+            <td class="text-left" style="text-wrap: wrap">
+              Regular minesweeper
+            </td>
+          </tr>
+          <tr>
+            <td class="text-left" style="vertical-align: top">Eff boards</td>
+            <td class="text-left" style="text-wrap: wrap">
+              Play minesweeper boards that have a high potential efficiency.
+              Efficiency is a measure of how many clicks a game took to solve
+              relative to the number of clicks it would take to solve with only
+              using left clicks.
+            </td>
+          </tr>
+          <tr>
+            <td class="text-left" style="vertical-align: top">Board Editor</td>
+            <td class="text-left" style="text-wrap: wrap">
+              Create your own minesweeper configuration and play it
+            </td>
+          </tr>
+          <tr>
+            <td class="text-left" style="vertical-align: top">ZiNi Explorer</td>
+            <td class="text-left" style="text-wrap: wrap">
+              This is a tool for working out how to complete a minesweeper board
+              using the minimum number of clicks.
+            </td>
+          </tr>
+          <tr>
+            <td class="text-left" style="vertical-align: top">Mean Openings</td>
+            <td class="text-left" style="text-wrap: wrap">
+              Similar to regular minesweeper, except that openings will get
+              randomly filled with mines when revealed (openings are the regions
+              that get expanded automatically).
+            </td>
+          </tr>
+        </tbody>
+      </q-markup-table>
       <div
         v-if="devMode"
         style="
@@ -267,7 +302,7 @@
             <q-btn
               v-if="variant === 'zini explorer'"
               @click="
-                game.board.switchToAnalyseMode();
+                game.board.switchToAnalyseMode(true);
                 game.board.ziniExplore.runDefaultAlgorithmOrPromptForInfo();
               "
               color="primary"
@@ -873,6 +908,7 @@
           @click="game.board.toggleQuickPaint()"
           color="secondary"
           label="QuickPaint (Q)"
+          :disabled="variant === 'board editor' && isCurrentlyEditModeDisplay"
         >
         </q-btn>
         <template v-if="showQuickPaintOptions">
@@ -1804,6 +1840,9 @@
   >
     <q-icon name="flag" :class="[flagToggleSizeClass, 'flag-toggle-icon']" />
   </div>
+
+  <div style="height: 150px"></div>
+
   <ReplayBar
     v-show="replayIsShown"
     :replay-is-playing="replayIsPlaying"
@@ -1995,7 +2034,7 @@ defineOptions({
 onMounted(() => {
   document.body.addEventListener("keydown", handleKeyDown, true);
   document.body.addEventListener("keyup", handleKeyUp, true);
-  document.body.addEventListener("scroll", handlePageScroll);
+  window.addEventListener("scroll", handlePageScroll);
   skinManager.addCallbackWhenAllLoaded(() => {
     game.initialise();
   });
@@ -3014,9 +3053,11 @@ function dialogTest() {
     title: "Current click path",
     message: "Would you like to preserve the current click path?",
     ok: {
+      flat: true,
       label: "Preserve",
     },
     cancel: {
+      flat: true,
       label: "Reset",
     },
     persistent: true,
@@ -3220,9 +3261,7 @@ class Board {
       this.gameStage === "edit"
     ) {
       //Edit mode cannot be reset
-      window.alert(
-        "Cannot reset during edit mode. If you want to clear the board, click the new board button. If you want to change to a different mode, use the toggle buttons above"
-      );
+      this.promptForClearingEditBoard();
       return;
     }
 
@@ -3474,6 +3513,56 @@ class Board {
     this.switchToEditMode();
 
     this.draw();
+  }
+
+  promptForClearingEditBoard() {
+    //Prompt for clearing the edit board.
+
+    //Check if already empty
+    let isAlreadyEmpty = true;
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        if (this.mines[x][y]) {
+          isAlreadyEmpty = false;
+          break;
+        }
+      }
+    }
+    if (isAlreadyEmpty) {
+      //Already empty, do nothing
+      return;
+    }
+
+    $q.dialog({
+      title: "Clear Board?",
+      message: "Are you sure you want to clear the board?",
+      ok: {
+        flat: true,
+        label: "Clear",
+      },
+      cancel: {
+        flat: true,
+        label: "Cancel",
+      },
+      persistent: true,
+    }).onOk(() => {
+      const newBoardMines = new Array(this.width)
+        .fill(0)
+        .map(() => new Array(this.height).fill(false));
+
+      if (variant.value === "board editor") {
+        this.boardEditorMines = newBoardMines;
+        this.mines = this.boardEditorMines; //set mines as a reference to board editor mines
+      } else if (variant.value === "zini explorer") {
+        this.ziniExplorerMines = newBoardMines;
+        this.mines = this.ziniExplorerMines; //set mines as a reference to zini explorer mines
+        this.ziniExplore.clearCurrentPath();
+      }
+
+      this.switchToEditMode();
+
+      this.draw();
+    });
   }
 
   openBoardForEdit() {
@@ -3792,7 +3881,7 @@ class Board {
       );
 
       if (touchRevealTiming.value === "start") {
-        //Sicne we already processed the touch on the start, we deactivate so it doesn't get processed again
+        //Since we already processed the touch on the start, we deactivate so it doesn't get processed again
         this.ongoingTouches.get(touchIdentifier).active = false;
       }
     }
@@ -4069,7 +4158,7 @@ class Board {
         mobileScrollSetting.value === "enclosed flag") &&
       this.gameStage === "running"
     ) {
-      //If zero, we assume that the scroll gets prevented, but then stop if coniditons are met
+      //If zero, we assume that the scroll gets prevented, but then stop if conditions are met
       shouldPreventDefault = true;
     }
 
@@ -4196,17 +4285,29 @@ class Board {
     //On mobile, if the page starts scrolling, we should cancel all active touches.
     //Try keep this function fast as page scroll gets called a lot
 
-    console.log("scroll triggered");
-
     let redrawRequired = false;
 
     for (let touch of this.ongoingTouches.values()) {
-      if (touch.active) {
+      if (!touch.active) {
+        continue; //Touch already cancelled, so skip it
+      }
+
+      touch.active = false;
+
+      const isDown = false;
+      const touchIdentifier = touch.identifier;
+
+      let thisTouchNeededRedraw = this.updateDepressedSquares(
+        null,
+        null,
+        isDown,
+        touchIdentifier
+      );
+
+      if (thisTouchNeededRedraw) {
         redrawRequired = true;
       }
-      touch.active = false;
     }
-    this.touchDepressedSquaresMap.clear();
 
     if (redrawRequired) {
       this.draw();

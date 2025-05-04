@@ -375,7 +375,6 @@ class BoardStats {
   }
 
   lateCalcDeepChainZini(completionCallback = false) {
-    alert('Remember to change for watch replay');
     this.ziniRunner = new DeepChainZiniRunner(
       this.refs,
       {

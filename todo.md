@@ -4,7 +4,6 @@ Improve OthersPage to use masonary layout instead of grid
 Move project files over to WSL2 (this is needed for hot-reload to work?)
 
 stuff for play page:
-implement zini alg
 have board-history for exploring past replays (and replays of same game get grouped up)
 
 Use setters and getters for tilesArray (formerly called revealedNumbers). Like setTileState(x, y, newState) and setTileDepressed(x, y, true)
@@ -53,8 +52,6 @@ move code in paintObviousSquares into algorithms, so we have option of doing bas
 consider asking qqwref for minesweeper c++ library to speed up eff boards generation (wasm)
 Or find someone in the community discord willing to code a wasm zini?
 
-Make some settings persist (e.g. QuickPaint preferences)
-
 Do random zinis actually vary that much? They probably always do all the 1 chords first which are disjoint.
 
 During inclusion-exclusion zini, try profile how much each chord affects the global solution (e.g. Which squares need to be recomputed depending on it's inclusion?)
@@ -79,7 +76,7 @@ from two different solutions and then this produces a child where the genes are 
 one solution does better on and the other does worse at. In this case, the genes could be either a premium adjustment
 or a priority adjustment (see random priority grid idea).
 
-zini tiebreak idea: chose the chord that is closest to other stuff
+zini tiebreak idea: choose the chord that is closest to other stuff
 (the reason would be that choosing stuff in the middle may have disadvantages that only get discovered later).
 Note that random zini is bad at discovering global improvements that are very specific
 
@@ -116,8 +113,6 @@ Consider adding touchMove data to mobile replay (need to track multiple path seg
 Consider having a mobile mode that disables mouse listeners?
 Or have a global variable hittouchlistener that sets itself to true and then disables itself after the events have been processed. (We do the first, but could do the second instead. Or maybe look at pointer events instead of treating mouse/touch differently)
 
-Sound effects (wooshes like msgo?)
-
 Split todos into different large features with their own text files (e.g. mobile, zini, UI etc)
 
 Try killing all active touches on board scroll? (Done not tested)
@@ -147,7 +142,7 @@ Interesting sub ptta example
 https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=2&m=000000000000000000000000000000000000000000mmg80854k0
 Relies on greedy rule failing.
 
-Would there be any reason to deprioritise clicks saves that come from chain merge rather than normal?
+Would there be any reason to deprioritise click saves that come from chain merge rather than normal?
 Possibly, but seems complicated and both categories of click save have possiblity of being "invalidated" later
 
 Replay system can abuse scroll into view to follow clicks?
@@ -194,8 +189,6 @@ coords on each cell that invert colours (so always readable?). Do excel style co
 ctx.globalCompositeOperation = "difference", and then use white font?
 (I tried invert for premiums and it looked bad)
 
-Enable keyboard clicks?
-
 Make a "llamasweeper - best features" video
 
 dumb idea - train neural network to assign premiums for zini?
@@ -206,12 +199,6 @@ Replay bar is fiddly on mobile. Maybe make multiplier editable as a number (or h
 
 refactoring
 need to split out drawing stuff into "drawHandler"
-
-clean up for release
-click loss replay
-basic zini explorer stuff?
-save some settings to client (such as tileSize)
-implement chain merge zini, so that I can improve click-loss replay?
 
 Add quicker way to reset on mobile
 Mobile reset button that appears on blast?
@@ -228,13 +215,9 @@ Small bug - wasted flags that lose the game get removed from click-loss replay
 Have checkboxes for UPK, where we show transparent numbers during a game?
 Or maybe even have "layer 1" UPK, where we only show transparent numbers that neighbour stuff?
 
-Trnasparent tiles cause lag - is it just because of transparency, or could it be because they have large width/height?
+Transparent tiles cause lag - is it just because of transparency, or could it be because they have large width/height?
 Consider having small numbers in bottom right instead of doing transparency stuff?
 Show "zero" as a number for transparent
-
-Continue to implement handleZiniExploreClick
-
-Allow exporting to ptta from board editor/zini explorer
 
 When changing edit board on analyse mode, we could try preserve openings when opening-click is overwritten
 Though this is probably not worth the effort
@@ -256,14 +239,6 @@ understand that there is 2-step click gain
 
 https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=2&m=0000000000u00ag04402100k8052018g08802k00u00000000000
 Better pattern. Ptta fails this, whereas pure chain merge will spot it
-
-Make it possible to watch replay from zini explorer?
-
-Should dimmed exclude tile border? Probably
-(Tried this and it didn't look as good)
-
-Do we show closed mines or open mines with the "Mines" upk option
-(doesn't matter)
 
 Change opengraph image to the recommended size of 1200x630px
 Consider improving preview image as well (can I do better than just logo?)
@@ -321,17 +296,9 @@ https://minesweeper.online/game/4311671757 (passed)
 
 Probably not worth doing - have equivalent to safeNeighbours property which also excludes zeros
 
-Show density next custom size picker?
-
-Save settings to localStorage
-
-Add click sounds
-
-Try incEx zini with average instead of minimum
+Show mine density next to custom size picker?
 
 Should ChainZini.convertClickPathToChainInput also give other output such as chainSquareInfo
-
-Have setting for doing "timing" run first, before running deepPremium
 
 Minimum and average both need tiebreaks
 
@@ -358,8 +325,6 @@ Can we re-introduce forbids?
 Alternate UI idea for zini explore -
 Maybe just have a "run" button. And then it shows a dialogue box where all settings can be configured
 
-Need to collect games to benchmark against
-
 Need to have dialogue for params (batch size (currently 50) and number of zini iterations to finish with)
 
 Does there need to be a setting for click volume? Probably not.
@@ -372,7 +337,7 @@ Or have a noise for "cancelled touch"
 
 Try 0.5 gain to stop sound overlaps from clipping?
 
-Are sounds robust to changing tba and changing make (since this kills and re-runs the vue component)
+Are sounds robust to changing tba [tab?] and changing make [mode?] (since this kills and re-runs the vue component)
 Do a pool of AudioBufferSourceNodes?
 Use wavs?
 Do I need to worry about sounds being suspended?
@@ -404,9 +369,6 @@ Also implement analysis that does single priority grid inclusion exclusion, but 
 
 Benchmark stuff by generating 20x20/72 boards with eff > 185%?
 
-Change default scroll setting to enabled.
-Consider whether to make max eff be based on all zini stats.
-
 need to do stuff for bulk testing
 Maybe collect boards where zini is improvement on 8-way?
 Or normalise for speed?
@@ -425,25 +387,9 @@ optimise algorithm speed. (prune chords that are "dominated" by other chords)
 
 Highlight squares on "watch" in zini explorer
 
-Make deepchain possible to run from board stats panel (could even run it in background?)
-Make it run in background...
-
-Implement lateCalcDeepChainZini and make sure statsObject.value.deepZini is correct
-
 Consider moving the zini-replays in the "watch" menu into a popup menu
 
 Make progress on "getConsiderableChordsImproved"
-
-ChainSquareInfo (for reference)
-isMine: false
-number: null
-is3bv: null
-labelIfOpening: null
-mineNeighbours: [],
-safeNeighbours: [],
-nonOpening3bvNeighbours: [],
-openingsTouched: new Set(),
-chainNeighbours: []
 
 Should worker limit be changed to concurrency - 1?
 https://stackoverflow.com/questions/72679437/re-use-web-workers-vs-closing-spawning-new-once
@@ -457,6 +403,20 @@ Note - "separate" could either allow "deepIterations" to run parallel, or split 
 Need to make heavy use of async await
 Should a worker be the coordinator? Or use main thread?
 
-Clean up deepChain zini menu
+Investigate scroll options, e.g. scrolling to specific locations, or having scroll "snap" points
+Should there be a threshold for only cancelling clicks when it scrolled more than x amount?
+Also have options for restricting to vertical/horizontal zoom
+and option for "no pinch zoom"
 
-Bug - board asked to check click path
+Multitouch seems to be buggy and randomly discard touches
+Maybe these show up as cancelled touches?
+Any way to control this behaviour?
+
+Highlight squares on "watch" in zini explorer
+
+NEEDED FOR RELEASE LIST:
+Review text content (home page paragraph, variants page top parag/descs)
+
+Continue with wording. Especially on variants page
+
+Should explanatory table on variants page be hidable. Or moves into a help button?

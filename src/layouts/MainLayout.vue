@@ -6,7 +6,7 @@
           <q-avatar>
             <img src="/icons/logo.png" />
           </q-avatar>
-          LlamaSweeper (alpha)
+          LlamaSweeper (beta)
         </q-toolbar-title>
         <q-toggle
           v-model="isDark"
