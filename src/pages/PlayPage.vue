@@ -4,61 +4,11 @@
       <p class="text-h4">Llama's minesweeper variants</p>
       <p>
         This page has several minesweeper variants/tools I've made. Variants can
-        be changed with the dropdown below the table. This is a work in
+        be changed with the "variant" dropdown below. This is a work in
         progress, so there may be bugs. Feedback is very welcome, although I
-        can't promise that any suggestions will be added.
+        can't promise that any suggestions will be added. Use the "variants
+        info" button below to see what each variant does.
       </p>
-      <q-markup-table
-        class="q-mx-md q-mt-md q-mb-lg"
-        style="max-width: 700px"
-        dense
-        bordered
-      >
-        <thead>
-          <tr>
-            <th class="text-left">Variant</th>
-            <th class="text-left">Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td class="text-left" style="vertical-align: top">Normal</td>
-            <td class="text-left" style="text-wrap: wrap">
-              Regular minesweeper
-            </td>
-          </tr>
-          <tr>
-            <td class="text-left" style="vertical-align: top">Eff boards</td>
-            <td class="text-left" style="text-wrap: wrap">
-              Play minesweeper boards that have a high potential efficiency.
-              Efficiency is a measure of how many clicks a game took to solve
-              relative to the number of clicks it would take to solve with only
-              using left clicks.
-            </td>
-          </tr>
-          <tr>
-            <td class="text-left" style="vertical-align: top">Board Editor</td>
-            <td class="text-left" style="text-wrap: wrap">
-              Create your own minesweeper configuration and play it
-            </td>
-          </tr>
-          <tr>
-            <td class="text-left" style="vertical-align: top">ZiNi Explorer</td>
-            <td class="text-left" style="text-wrap: wrap">
-              This is a tool for working out how to complete a minesweeper board
-              using the minimum number of clicks.
-            </td>
-          </tr>
-          <tr>
-            <td class="text-left" style="vertical-align: top">Mean Openings</td>
-            <td class="text-left" style="text-wrap: wrap">
-              Similar to regular minesweeper, except that openings will get
-              randomly filled with mines when revealed (openings are the regions
-              that get expanded automatically).
-            </td>
-          </tr>
-        </tbody>
-      </q-markup-table>
       <div
         v-if="devMode"
         style="
@@ -78,16 +28,10 @@
       </div>
       <br />
       <div
-        class="flex"
-        style="
-          gap: 5px;
-          max-width: 600px;
-          justify-content: space-between;
-          padding: 5px;
-        "
+        class="flex q-mb-md"
+        style="gap: 15px; justify-content: start; padding: 5px"
       >
         <q-select
-          class="q-mx-md q-mb-md"
           outlined
           options-dense
           dense
@@ -108,6 +52,13 @@
           label="Variant"
           @update:model-value="game.reset(true)"
         ></q-select>
+        <div>
+          <q-btn
+            @click="variantsHelpModal = true"
+            color="secondary"
+            label="Variants info"
+          />
+        </div>
         <div>
           <q-btn
             @click="settingsModal = true"
@@ -1554,6 +1505,71 @@
     </q-card>
   </q-dialog>
 
+  <q-dialog v-model="variantsHelpModal">
+    <q-card style="min-width: 350px">
+      <q-card-section>
+        <div class="text-h6">Variants info</div>
+      </q-card-section>
+
+      <q-markup-table
+        v-if="variantsHelpModal"
+        class="q-mx-md q-mt-md q-mb-lg"
+        style="max-width: 700px"
+        dense
+        flat
+      >
+        <thead>
+          <tr>
+            <th class="text-left">Variant</th>
+            <th class="text-left">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-left" style="vertical-align: top">Normal</td>
+            <td class="text-left" style="text-wrap: wrap">
+              Regular minesweeper.
+            </td>
+          </tr>
+          <tr>
+            <td class="text-left" style="vertical-align: top">Eff boards</td>
+            <td class="text-left" style="text-wrap: wrap">
+              Play minesweeper boards that have a high potential efficiency.
+              Efficiency is a measure of how many clicks a game took to solve
+              relative to the number of clicks it would take to solve with only
+              using left clicks.
+            </td>
+          </tr>
+          <tr>
+            <td class="text-left" style="vertical-align: top">Board Editor</td>
+            <td class="text-left" style="text-wrap: wrap">
+              Create your own minesweeper configuration and play it.
+            </td>
+          </tr>
+          <tr>
+            <td class="text-left" style="vertical-align: top">ZiNi Explorer</td>
+            <td class="text-left" style="text-wrap: wrap">
+              This is a tool for working out how to complete a minesweeper board
+              using the minimum number of clicks.
+            </td>
+          </tr>
+          <tr>
+            <td class="text-left" style="vertical-align: top">Mean Openings</td>
+            <td class="text-left" style="text-wrap: wrap">
+              Similar to regular minesweeper, except that openings will get
+              randomly filled with mines when revealed (openings are the regions
+              that get expanded automatically).
+            </td>
+          </tr>
+        </tbody>
+      </q-markup-table>
+
+      <q-card-actions align="right" class="text-primary">
+        <q-btn flat label="Close" v-close-popup />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
   <q-dialog v-model="quickPaintHelpModal">
     <q-card style="min-width: 350px">
       <q-card-section>
@@ -1644,7 +1660,7 @@
           and then click load. This works because the bit at the end of the URL
           on the PTTACGfans calculator encodes board data.
         </p>
-        <q-input dense v-model="pttaUrl" label="Ptt Url" v-focus /><br />
+        <q-input dense v-model="pttaUrl" label="PTT Url" v-focus /><br />
         <q-btn @click="game.board.importPttaBoard()" color="primary"
           >Load</q-btn
         >
@@ -2182,6 +2198,7 @@ let statsShowWomZini = useLocalStorage("ls_statsShowWomZini", true);
 let statsShowMaxEff = useLocalStorage("ls_statsShowMaxEff", true);
 
 let settingsModal = ref(false);
+let variantsHelpModal = ref(false);
 let tileSizeSlider = useLocalStorage("ls_tileSizeSlider", 25);
 let gameLeftPadding = useLocalStorage("ls_gameLeftPadding", 30);
 let showBorders = useLocalStorage("ls_showBorders", true);

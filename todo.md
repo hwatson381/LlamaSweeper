@@ -414,4 +414,4 @@ Any way to control this behaviour?
 
 Highlight squares on "watch" in zini explorer
 
-Should explanatory table on variants page be hidable. Or move it into a help button?
+Do I need more help documentation?
