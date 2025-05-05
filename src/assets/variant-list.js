@@ -506,6 +506,29 @@ let variantList = [
     ],
     "rating": 3.6,
     "popularity": 2
+  },
+  {
+    "name": "MineMasters",
+    "url": "https://minemasters.pro/",
+    "desc": "A modern community focused website with custom rankings and statistics for Minesweeper Online and the Chord Cup (this is a tournament ran on mnsw.pro). There is also a classic minesweeper implementation with a button for solving basic logic. It was made by JSwole who is a top minesweeper player and streamer.",
+    "image": "/img/variants/mine_masters.png",
+    "tags": [
+      "informational",
+      "game"
+    ],
+    "rating": 4.0,
+    "popularity": 1
+  },
+  {
+    "name": "Minesweeper fandom wiki",
+    "url": "https://minesweeper.fandom.com/",
+    "desc": "A community wiki with information about players, clones, past competitions, strategy and more. It is a bit incomplete.",
+    "image": "/img/variants/minesweeper-wiki.png",
+    "tags": [
+      "informational"
+    ],
+    "rating": 3.3,
+    "popularity": 2
   }
 ]
 

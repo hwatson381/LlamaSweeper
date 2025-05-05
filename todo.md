@@ -375,8 +375,6 @@ Or normalise for speed?
 
 How often is 10 iteration separate deep chain better than 5 iteration?
 
-Add jswole website
-
 How much should be saved in localStorage? E.g. specific settings for effBoards/mean openings?
 
 Should space be remapped to play/pause on replay?
@@ -415,3 +413,5 @@ Any way to control this behaviour?
 Highlight squares on "watch" in zini explorer
 
 Do I need more help documentation?
+
+Check for semantic html. Run lighthouse report.
