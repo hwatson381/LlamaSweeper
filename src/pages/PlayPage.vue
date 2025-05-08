@@ -68,7 +68,7 @@
         </div>
       </div>
       <div
-        class="flex"
+        class="flex q-gutter-sm"
         style="margin: 5px"
         v-if="variant !== 'board editor' && variant !== 'zini explorer'"
       >
