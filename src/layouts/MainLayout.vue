@@ -18,8 +18,8 @@
 
       <q-tabs align="left">
         <q-route-tab to="/" label="Home" />
-        <q-route-tab to="/play" label="My Variants" />
-        <q-route-tab to="/others" label="Other Variants and Resources" />
+        <q-route-tab to="/play" label="Variants" />
+        <q-route-tab to="/others" label="External Resources" />
         <q-route-tab to="/about" label="About" />
       </q-tabs>
     </q-header>
@@ -32,12 +32,12 @@
 
 <script setup>
 import { useQuasar } from "quasar";
-import { watch } from "vue";
+import { useLocalStorage } from "@vueuse/core";
 import { ref } from "vue";
 
 const $q = useQuasar();
 
-var isDark = ref(true);
+var isDark = useLocalStorage("ls_darkMode", true);
 $q.dark.set(isDark.value);
 
 function toggleDarkMode(value) {

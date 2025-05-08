@@ -1248,6 +1248,8 @@ class ZiniExplore {
   }
 
   runInclusionExclusionZini(useRefs = true, runFromCurrentIfDefault = false) {
+    this.killDeepChainZiniRunner(); //just in case it is already running
+
     let scope = runFromCurrentIfDefault ? 'current' : 'beginning';
     let rewrite = true;
     let deepType = 'separate';
@@ -1346,9 +1348,11 @@ class ZiniExplore {
   killDeepChainZiniRunner() {
     if (this.ziniRunner) {
       this.ziniRunner.killWorker();
+      this.classicPath = structuredClone(this.classicPathBeforeRun);
+      this.updateUiAndBoard();
+      this.ziniRunner = null;
+      this.classicPathBeforeRun = null;
     }
-    this.classicPath = structuredClone(this.classicPathBeforeRun);
-    this.updateUiAndBoard();
   }
 
   getRevealedAndFlagStates() {

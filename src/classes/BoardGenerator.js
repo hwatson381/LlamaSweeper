@@ -46,7 +46,7 @@ class BoardGenerator {
     if (pttaUrl === "") {
       Dialog.create({
         title: "Alert",
-        message: "Please provide a PTT Url",
+        message: "Please provide a PTT URL",
       });
       throw new Error("PTTA NOT SET");
     }
@@ -54,7 +54,7 @@ class BoardGenerator {
     if (!pttaUrl.startsWith("https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/")) {
       Dialog.create({
         title: "Alert",
-        message: "Please enter a URL of the form https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=...&m=... in the PTT Url field",
+        message: "Please enter a URL of the form https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=...&m=... in the PTT URL field",
       });
       throw new Error("PTTA NOT URL");
     }
@@ -66,7 +66,7 @@ class BoardGenerator {
     if (b === null || s === null) {
       Dialog.create({
         title: "Alert",
-        message: "Please make sure the PTT Url ends with ?b=...&m=... where ... is the board data. If you don't see this info, try clicking the calculate button on the PTT calculator",
+        message: "Please make sure the PTT URL ends with ?b=...&m=... where ... is the board data. If you don't see this info, try clicking the calculate button on the PTT calculator",
       });
       throw new Error("PTTA MISSING PARAMS");
     }
@@ -111,9 +111,9 @@ class BoardGenerator {
     ) {
       Dialog.create({
         title: "Alert",
-        message: "Bad value for PTT Url",
+        message: "Bad value for PTT URL",
       });
-      throw new Error("Bad width height from ptt url");
+      throw new Error("Bad width height from PTT URL");
     }
 
     const minesArray = new Array(width)

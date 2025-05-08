@@ -6,18 +6,22 @@
   display: table;
 }
 
-.q-page a:link {
+.q-page a:link,
+.q-dialog a:link {
   color: #1976d2;
 }
 
-.q-page a:visited {
+.q-page a:visited,
+.q-dialog a:visited {
   color: #c019d2;
 }
 
-body.body--dark .q-page a:link {
+body.body--dark .q-page a:link,
+body.body--dark .q-dialog a:link {
   color: #52a8ff;
 }
-body.body--dark .q-page a:visited {
+body.body--dark .q-page a:visited,
+body.body--dark .q-dialog a:visited {
   color: #e788f1;
 }
 

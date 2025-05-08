@@ -1,7 +1,7 @@
 <template>
   <q-page class="flex justify-center">
     <div class="q-pa-md" style="max-width: 1100px">
-      <p class="text-h4">Other Minesweeper Variants/Resources</p>
+      <p class="text-h4">External Minesweeper Variants/Resources</p>
       <p>
         Below is a collection of various minesweeper variants and resources that
         I've come across. I've tried to keep this list diverse, so I've excluded

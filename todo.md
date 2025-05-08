@@ -250,8 +250,6 @@ removing flags on zini explorer chain mode shouldn't break the whole chain
 
 run button on zini explorer should show loading icon on eff% indicator
 
-My variants page should have descriptions moved elsewhere (maybe hidden under help button?)
-
 Different idea related to inc-ex zini:
 Maybe once we have a candidate chord, we check all options around it before playing it
 That is - all options where we exclude that chord and force a neighbour
@@ -415,3 +413,10 @@ Highlight squares on "watch" in zini explorer
 Do I need more help documentation?
 
 Check for semantic html. Run lighthouse report.
+
+Look at making it so that zini explorer/board editor alter the URL
+
+There is a slight problem with images taking a while to load.
+Maybe show a message if board is invisible?
+Or maybe try preload important images first?
+Or signal that they should cached?

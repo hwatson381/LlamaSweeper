@@ -39,15 +39,15 @@
           input-debounce="0"
           v-model="variant"
           style="width: 175px"
-          :options="
-            Object.freeze([
-              'normal',
-              'eff boards',
-              'board editor',
-              'zini explorer',
-              'mean openings',
-            ])
-          "
+          :options="[
+            { label: 'Normal', value: 'normal' },
+            { label: 'Eff Boards', value: 'eff boards' },
+            { label: 'Board Editor', value: 'board editor' },
+            { label: 'ZiNi Explorer', value: 'zini explorer' },
+            { label: 'Mean Openings', value: 'mean openings' },
+          ]"
+          emit-value
+          map-options
           stack-label
           label="Variant"
           @update:model-value="game.reset(true)"
@@ -68,7 +68,7 @@
         </div>
       </div>
       <div
-        class="flex q-gutter-sm"
+        class="flex"
         style="margin: 5px"
         v-if="variant !== 'board editor' && variant !== 'zini explorer'"
       >
@@ -1660,7 +1660,7 @@
           and then click load. This works because the bit at the end of the URL
           on the PTTACGfans calculator encodes board data.
         </p>
-        <q-input dense v-model="pttaUrl" label="PTT Url" v-focus /><br />
+        <q-input dense v-model="pttaUrl" label="PTT URL" v-focus /><br />
         <q-btn @click="game.board.importPttaBoard()" color="primary"
           >Load</q-btn
         >
@@ -3522,6 +3522,7 @@ class Board {
       this.boardEditorMines = newBoardMines;
       this.mines = this.boardEditorMines; //set mines as a reference to board editor mines
     } else if (variant.value === "zini explorer") {
+      this.ziniExplore.killDeepChainZiniRunner(); //Just in case
       this.ziniExplorerMines = newBoardMines;
       this.mines = this.ziniExplorerMines; //set mines as a reference to zini explorer mines
       this.ziniExplore.clearCurrentPath();
@@ -6397,6 +6398,7 @@ class Board {
     if (this.variant === "board editor") {
       this.boardEditorMines = pttMines;
     } else if (this.variant === "zini explorer") {
+      this.ziniExplore.killDeepChainZiniRunner(); //just in case
       this.ziniExplorerMines = pttMines;
       this.ziniExplore.clearCurrentPath();
     }
@@ -6416,6 +6418,7 @@ class Board {
       //isCurrentlyEditModeDisplay.value = true; //commented out as gets set from resetBoard
       this.resetBoard(true); //force a harder reset as if we were switching variants
     } else if (this.variant === "zini explorer") {
+      this.ziniExplore.killDeepChainZiniRunner(); //just in case
       this.editingZiniBoard = true;
       //this.gameStage = "edit"; //commented out as gets set from resetBoard
       //isCurrentlyEditModeDisplay.value = true; //commented out as gets set from resetBoard
@@ -6446,6 +6449,7 @@ class Board {
     if (this.variant === "board editor") {
       throw new Error("Analyse mode not available on board editor");
     } else if (this.variant === "zini explorer") {
+      this.ziniExplore.killDeepChainZiniRunner(); //just in case
       this.editingZiniBoard = false;
       this.gameStage = "analyse";
       isCurrentlyEditModeDisplay.value = false;

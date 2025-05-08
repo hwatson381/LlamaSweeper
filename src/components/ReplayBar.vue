@@ -102,9 +102,13 @@
         <q-icon name="sym_o_close"></q-icon>
       </q-btn>
     </div>
-    <!-- below is needed for to preload icon for steppy -->
+    <!-- below is needed for to preload icon for steppy and close icon -->
     <q-icon
       name="sym_o_steppers"
+      style="visibility: hidden; position: absolute"
+    ></q-icon>
+    <q-icon
+      name="sym_o_close"
       style="visibility: hidden; position: absolute"
     ></q-icon>
     <!--end of preload-->
