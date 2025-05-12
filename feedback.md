@@ -17,3 +17,15 @@ Option for advanced logic to be calculated in Quick paint, everything derivable
 Have images in quickpaint help modal.
 
 Do too many zini stats get shown by default? E.g. 8-way, 100chain, wom zini. People have to hunt to find minimum
+
+Have setting for starting deepChain automatically when board finishes
+
+Make blue text darker on light mode
+
+Probably won't do - if I decrease my custom eff, it should continue to store any that are already there as they are guaranteed to be higher still, similarly with increasing eff
+
+Would be nice if possible to have an undo? (For board editor, but also zini explorer)
+
+Include display settings in bottom as well (maybe as a button that opens modal?) Or have another expanding box?
+
+Add eff boards mastery/win streak

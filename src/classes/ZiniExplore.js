@@ -1300,6 +1300,8 @@ class ZiniExplore {
           onCompleteRun: (result) => {
             this.classicPath = result.clicks;
             this.updateUiAndBoard();
+            this.ziniRunner = null;
+            this.classicPathBeforeRun = null;
           }
         },
         deepReportProgress
@@ -1338,6 +1340,8 @@ class ZiniExplore {
           onCompleteRun: (result) => {
             this.classicPath = result.clicks;
             this.updateUiAndBoard();
+            this.ziniRunner = null;
+            this.classicPathBeforeRun = null;
           }
         },
         deepReportProgress,

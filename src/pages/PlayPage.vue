@@ -1018,7 +1018,8 @@
             <div
               v-if="
                 effBoardShowSlowGenerationWarning &&
-                generateEffBoardsInBackground
+                generateEffBoardsInBackground &&
+                effWebWorkerCount !== effWebWorkerCountOptions.at(-1)
               "
               class="text-info"
               style="flex: 1 1 215px"
@@ -1141,6 +1142,14 @@
                 <q-checkbox
                   v-model="keyboardClickOpenOnKeyDown"
                   label="Keyboard Click Reveal On Key Down"
+                /><br /><br />
+                <q-btn
+                  @click="
+                    scrollToBoard();
+                    settingsModal = true;
+                  "
+                  color="secondary"
+                  label="display settings (scale etc.)"
                 />
               </q-card-section>
             </q-card>
@@ -2158,6 +2167,15 @@ function handlePageScroll(event) {
   }
 
   game.board.handlePageScroll(event);
+}
+
+function scrollToBoard() {
+  const element = document.getElementById("main-canvas");
+  element.scrollIntoView({
+    behavior: "instant",
+    block: "center",
+    inline: "nearest",
+  });
 }
 
 const mainCanvas = useTemplateRef("main-canvas");

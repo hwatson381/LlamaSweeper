@@ -32,3 +32,7 @@ body.body--dark .q-dialog a:visited {
 .no-transition-slider.q-slider--inactive .q-slider__selection {
   transition: none;
 }
+
+body:not(.body--dark) {
+  --q-info: #005567;
+}

@@ -420,3 +420,10 @@ There is a slight problem with images taking a while to load.
 Maybe show a message if board is invisible?
 Or maybe try preload important images first?
 Or signal that they should cached?
+
+Keyboard clicking on eff boards doesn't show depressed square
+
+(trialing) Change lightmode blue text
+https://quasar.dev/style/color-palette/
+
+(trialing) Also include display settings in box

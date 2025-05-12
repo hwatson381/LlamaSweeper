@@ -1,4 +1,5 @@
 import Utils from "./Utils";
+import { Dialog } from 'quasar';
 
 //Class to manage running inclusion exclusion zini, and interfacing with web workers
 class DeepChainZiniRunner {
