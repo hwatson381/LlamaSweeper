@@ -1348,25 +1348,29 @@ class Algorithms {
     return boardDimensions;
   }
 
-  static encodeClicks(clicks) {
-    const byteLength = clicks.length * 2;
-    const bytes = new Uint8Array(byteLength);
+  static encodeClicks(clicks, boardWidth, boardHeight) {
+    const bitPacker = new BitPacker();
 
-    clicks.forEach((click, i) => {
-      const typeBits = { left: 0, right: 1, chord: 2 }[click.type];
-      const packed = (typeBits << 14) | (click.x << 7) | click.y;
-      bytes[i * 2] = packed >> 8;
-      bytes[i * 2 + 1] = packed & 0xFF;
+    const clickTypeMap = { left: 0, right: 1, chord: 2 };
+    const bitsForOrder = Math.ceil(Math.log2(boardWidth * boardHeight));
+
+    clicks.forEach((click) => {
+      const typeBits = clickTypeMap[click.type];
+      const order = click.x * boardHeight + click.y;
+      bitPacker.writeBits(typeBits, 2);
+      bitPacker.writeBits(order, bitsForOrder);
     });
 
-    // Convert bytes to string
-    const binaryStr = String.fromCharCode(...bytes);
+    let bytes = bitPacker.getBytes();
 
-    // Base64 URL-safe encode
+    //convert bytes to string
+    let binaryStr = String.fromCharCode(...bytes);
+
+    //base64 url-safe encode
     return btoa(binaryStr).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   }
 
-  static decodeClicks(encoded, boardWidth = 100, boardHeight = 100) {
+  static decodeClicks(encoded, boardWidth, boardHeight) {
     try {
       // Restore base64 padding
       const padded = encoded + '==='.slice((encoded.length + 3) % 4);
@@ -1375,28 +1379,73 @@ class Algorithms {
 
       const bytes = Uint8Array.from(binaryStr, c => c.charCodeAt(0));
 
-      if (bytes.length % 2 !== 0) return false;
+      const bitUnpacker = new BitUnpacker(bytes);
+
+      const clickTypeMap = { 0: 'left', 1: 'right', 2: 'chord' };
+      const bitsForOrder = Math.ceil(Math.log2(boardWidth * boardHeight));
 
       const clicks = [];
 
-      for (let i = 0; i < bytes.length; i += 2) {
-        const packed = (bytes[i] << 8) | bytes[i + 1];
-        const typeBits = (packed >> 14) & 0b11;
-        const x = (packed >> 7) & 0b1111111;
-        const y = packed & 0b1111111;
+      while (bitUnpacker.bitPos < bytes.length * 8) {
+        const typeBits = bitUnpacker.readBits(2);
+        const order = bitUnpacker.readBits(bitsForOrder);
+        const x = Math.floor(order / boardHeight);
+        const y = order % boardHeight;
 
-        if (x >= boardWidth || y > boardHeight) return false;
+        if (x >= boardWidth || y >= boardHeight) return false;
 
-        const type = ['left', 'right', 'chord'][typeBits];
-        if (!type) return false;
-
-        clicks.push({ type, x, y });
+        clicks.push({ type: clickTypeMap[typeBits], x, y });
       }
 
       return clicks;
     } catch {
       return false;
     }
+  }
+}
+
+class BitPacker {
+  constructor() {
+    this.bits = [];
+    this.bitPos = 0;
+  }
+
+  writeBits(value, bitCount) {
+    for (let i = bitCount - 1; i >= 0; i--) {
+      const bit = (value >> i) & 1;
+      const byteIndex = Math.floor(this.bitPos / 8);
+      const bitOffset = 7 - (this.bitPos % 8);
+
+      if (this.bits[byteIndex] === undefined) {
+        this.bits[byteIndex] = 0;
+      }
+      this.bits[byteIndex] |= bit << bitOffset;
+
+      this.bitPos++;
+    }
+  }
+
+  getBytes() {
+    return new Uint8Array(this.bits);
+  }
+}
+
+class BitUnpacker {
+  constructor(bytes) {
+    this.bytes = bytes;
+    this.bitPos = 0;
+  }
+
+  readBits(bitCount) {
+    let value = 0;
+    for (let i = 0; i < bitCount; i++) {
+      const byteIndex = Math.floor(this.bitPos / 8);
+      const bitOffset = 7 - (this.bitPos % 8);
+      const bit = (this.bytes[byteIndex] >> bitOffset) & 1;
+      value = (value << 1) | bit;
+      this.bitPos++;
+    }
+    return value;
   }
 }
 

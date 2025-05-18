@@ -7263,6 +7263,7 @@ class Board {
     if (newQuery.c) {
       const pttWidth = pttMines.length;
       const pttHeight = pttMines[0].length;
+
       clickPathOrFalse = Algorithms.decodeClicks(
         newQuery.c,
         pttWidth,
@@ -7271,7 +7272,12 @@ class Board {
 
       //Set clickPath as false if same as current
       if (
-        newQuery.c === Algorithms.encodeClicks(this.ziniExplore.classicPath)
+        newQuery.c ===
+        Algorithms.encodeClicks(
+          this.ziniExplore.classicPath,
+          pttWidth,
+          pttHeight
+        )
       ) {
         clickPathOrFalse = false;
       }
@@ -7482,7 +7488,12 @@ class Board {
       }
 
       //With click path
-      let clickString = Algorithms.encodeClicks(this.ziniExplore.classicPath);
+      let clickString = Algorithms.encodeClicks(
+        this.ziniExplore.classicPath,
+        this.ziniExplorerMines.length,
+        this.ziniExplorerMines[0].length
+      );
+
       query.c = clickString;
 
       let hrefWithClickString = router.resolve({
