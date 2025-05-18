@@ -63,7 +63,14 @@ class BoardGenerator {
     b = pttaAsURL.searchParams.get("b");
     s = pttaAsURL.searchParams.get("m");
 
+    return this.readFromPttaSearchParams(b, s);
+  }
+
+  static readFromPttaSearchParams(b, s, suppressDialogsAndErrors = false) {
     if (b === null || s === null) {
+      if (suppressDialogsAndErrors) {
+        return false;
+      }
       Dialog.create({
         title: "Alert",
         message: "Please make sure the PTT URL ends with ?b=...&m=... where ... is the board data. If you don't see this info, try clicking the calculate button on the PTT calculator",
@@ -72,6 +79,9 @@ class BoardGenerator {
     }
 
     if (!/^\d+$/.test(b) || !/^[a-zA-Z0-9]+$/.test(s)) {
+      if (suppressDialogsAndErrors) {
+        return false;
+      }
       Dialog.create({
         title: "Alert",
         message: "The ?b=...&m=... part of the URL is in the wrong format",
@@ -109,6 +119,9 @@ class BoardGenerator {
       height < 1 ||
       width > 100
     ) {
+      if (suppressDialogsAndErrors) {
+        return false;
+      }
       Dialog.create({
         title: "Alert",
         message: "Bad value for PTT URL",

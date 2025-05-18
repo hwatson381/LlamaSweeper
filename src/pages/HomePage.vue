@@ -17,7 +17,7 @@
       </p>
       <p>
         The variants/tools I've made can be accessed on the
-        <a href="/#/play">variants</a> page. I also have a page where I have
+        <a href="/#/game">variants</a> page. I also have a page where I have
         collected and rated a variety of
         <a href="/#/others">minesweeper variants and resources</a> made by
         others.

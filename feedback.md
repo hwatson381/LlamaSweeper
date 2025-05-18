@@ -25,3 +25,9 @@ Probably won't do - if I decrease my custom eff, it should continue to store any
 Would be nice if possible to have an undo? (For board editor, but also zini explorer)
 
 Add eff boards mastery/win streak
+
+DeepChain doesn't update max eff after running - maybe strikethrough max eff and put new value next to it?
+
+Add setting for increase board storage limit on eff boards from 20
+
+Small bug - clicking run button twice on deepChain dialog cancels it

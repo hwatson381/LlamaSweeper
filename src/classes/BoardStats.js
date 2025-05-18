@@ -197,56 +197,17 @@ class BoardStats {
       "https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/"
     );
 
-    const width = this.mines.length;
-    const height = this.mines[0].length;
-
-    let boardDimensions;
-
-    if (width === 9 && height === 9) {
-      boardDimensions = "1";
-    } else if (width === 16 && height === 16) {
-      boardDimensions = "2";
-    } else if (width === 30 && height === 16) {
-      boardDimensions = "3";
-    } else {
-      let maxLength = width.toString().length;
-      boardDimensions =
-        width.toString() + height.toString().padStart(maxLength, "0");
-    }
+    let boardDimensions = Algorithms.getPttaDimensionString(this.mines);
 
     link.searchParams.set("b", boardDimensions);
 
     const totalMines = this.mines.flat().filter((s) => s).length;
 
     if (totalMines != 0) {
-      link.searchParams.set("m", this.getPttaMinesString());
+      link.searchParams.set("m", Algorithms.getPttaMinesString(this.mines));
     }
 
     return link.href;
-  }
-
-  getPttaMinesString() {
-    const width = this.mines.length;
-    const height = this.mines[0].length;
-
-    let result = "";
-
-    const totalNumberOfSquares = width * height;
-    for (var i = 0; i < totalNumberOfSquares; i += 5) {
-      var tempN = 0;
-      for (var j = i; j < i + 5; j++) {
-        if (j >= totalNumberOfSquares) {
-          tempN *= 2;
-        } else if (this.mines[j % width][Math.floor(j / width)] === false) {
-          tempN *= 2;
-        } else {
-          tempN *= 2;
-          tempN++;
-        }
-      }
-      result += tempN.toString(32);
-    }
-    return result;
   }
 
   calcStats(isWin, tilesArray) {

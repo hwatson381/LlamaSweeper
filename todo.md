@@ -285,6 +285,7 @@ See if we can find 196% on this game? https://minesweeper.online/game/4415263702
 [done] Do chainNeighbour optimisation
 
 Bug - 100x100/600 hits error with exceeding call stack size
+Bug - DeepChain also fails on this
 
 Games with sub 2 ptt
 https://minesweeper.online/game/4420379197 (passed)
@@ -427,3 +428,19 @@ Keyboard clicking on eff boards doesn't show depressed square
 https://quasar.dev/style/color-palette/
 
 (trialing) Also include display settings in box
+
+Disable smiley face button when deepchain is running (or make it cancel)
+
+Have enter button as shortcut for submitting on some dialogs? E.g. DeepChain dialog?
+[this has been done for input on ptt dialog]
+
+Review excellent eff
+
+Can we make clickPath query param even more compact by assuming each click is sensible (e.g. click on mine = flag and click on square = dig first time, chord second time)
+A third way could be - convert x/y clicks to their number on the board (e.g. something like x \* width + y), and then figure out max bytes that uses and pack things tighter if there is more space. E.g. in beginner, each coord can be represented by a number 0-80 which is 7 bits per coord pair
+
+DeepChain fails this :(
+Similar, but smaller than other pattern that relies on greedy rule failing
+https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=93&m=dc014g
+
+Maybe to do with left side bias?

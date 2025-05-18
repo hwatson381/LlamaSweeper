@@ -1302,6 +1302,102 @@ class Algorithms {
 
     return clicks;
   }
+
+  static getPttaMinesString(mines) {
+    const width = mines.length;
+    const height = mines[0].length;
+
+    let result = "";
+
+    const totalNumberOfSquares = width * height;
+    for (var i = 0; i < totalNumberOfSquares; i += 5) {
+      var tempN = 0;
+      for (var j = i; j < i + 5; j++) {
+        if (j >= totalNumberOfSquares) {
+          tempN *= 2;
+        } else if (mines[j % width][Math.floor(j / width)] === false) {
+          tempN *= 2;
+        } else {
+          tempN *= 2;
+          tempN++;
+        }
+      }
+      result += tempN.toString(32);
+    }
+    return result;
+  }
+
+  static getPttaDimensionString(mines) {
+    const width = mines.length;
+    const height = mines[0].length;
+
+    let boardDimensions;
+
+    if (width === 9 && height === 9) {
+      boardDimensions = "1";
+    } else if (width === 16 && height === 16) {
+      boardDimensions = "2";
+    } else if (width === 30 && height === 16) {
+      boardDimensions = "3";
+    } else {
+      let maxLength = width.toString().length;
+      boardDimensions =
+        width.toString() + height.toString().padStart(maxLength, "0");
+    }
+
+    return boardDimensions;
+  }
+
+  static encodeClicks(clicks) {
+    const byteLength = clicks.length * 2;
+    const bytes = new Uint8Array(byteLength);
+
+    clicks.forEach((click, i) => {
+      const typeBits = { left: 0, right: 1, chord: 2 }[click.type];
+      const packed = (typeBits << 14) | (click.x << 7) | click.y;
+      bytes[i * 2] = packed >> 8;
+      bytes[i * 2 + 1] = packed & 0xFF;
+    });
+
+    // Convert bytes to string
+    const binaryStr = String.fromCharCode(...bytes);
+
+    // Base64 URL-safe encode
+    return btoa(binaryStr).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  static decodeClicks(encoded, boardWidth = 100, boardHeight = 100) {
+    try {
+      // Restore base64 padding
+      const padded = encoded + '==='.slice((encoded.length + 3) % 4);
+      const base64 = padded.replace(/-/g, '+').replace(/_/g, '/');
+      const binaryStr = atob(base64);
+
+      const bytes = Uint8Array.from(binaryStr, c => c.charCodeAt(0));
+
+      if (bytes.length % 2 !== 0) return false;
+
+      const clicks = [];
+
+      for (let i = 0; i < bytes.length; i += 2) {
+        const packed = (bytes[i] << 8) | bytes[i + 1];
+        const typeBits = (packed >> 14) & 0b11;
+        const x = (packed >> 7) & 0b1111111;
+        const y = packed & 0b1111111;
+
+        if (x >= boardWidth || y > boardHeight) return false;
+
+        const type = ['left', 'right', 'chord'][typeBits];
+        if (!type) return false;
+
+        clicks.push({ type, x, y });
+      }
+
+      return clicks;
+    } catch {
+      return false;
+    }
+  }
 }
 
 export default Algorithms;

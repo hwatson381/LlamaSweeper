@@ -351,7 +351,7 @@
 
       <div
         class="clearfix q-my-md"
-        :style="{ paddingLeft: gameLeftPadding + 'px' }"
+        :style="{ paddingLeft: gameLeftPadding + 'px', userSelect: 'none' }"
       >
         <canvas
           ref="main-canvas"
@@ -565,6 +565,17 @@
                 >
                   <q-item-section>
                     <q-item-label>PTT ZiNi Calculator</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-item
+                  v-if="variant === 'board editor'"
+                  clickable
+                  v-close-popup
+                  @click="game.board.copyBoardLink()"
+                >
+                  <q-item-section>
+                    <q-item-label>Copy Board Link</q-item-label>
                   </q-item-section>
                 </q-item>
               </q-list>
@@ -813,6 +824,16 @@
                   >
                     <q-item-section>
                       <q-item-label>PTT ZiNi Calculator</q-item-label>
+                    </q-item-section>
+                  </q-item>
+
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="game.board.copyBoardLink()"
+                  >
+                    <q-item-section>
+                      <q-item-label>Copy Board Link</q-item-label>
                     </q-item-section>
                   </q-item>
                 </q-list>
@@ -1669,7 +1690,13 @@
           and then click load. This works because the bit at the end of the URL
           on the PTTACGfans calculator encodes board data.
         </p>
-        <q-input dense v-model="pttaUrl" label="PTT URL" v-focus /><br />
+        <q-input
+          dense
+          v-model="pttaUrl"
+          label="PTT URL"
+          v-focus
+          @keyup.enter="game.board.importPttaBoard()"
+        /><br />
         <q-btn @click="game.board.importPttaBoard()" color="primary"
           >Load</q-btn
         >
@@ -2049,7 +2076,11 @@ import { useLocalStorage } from "@vueuse/core";
 
 import testGames from "src/assets/janitor-test-data";
 
-import { event, useQuasar } from "quasar";
+import { useRoute, useRouter } from "vue-router";
+const route = useRoute();
+const router = useRouter();
+
+import { event, useQuasar, copyToClipboard } from "quasar";
 const $q = useQuasar();
 
 defineOptions({
@@ -2308,7 +2339,50 @@ let customWarning = computed(() => {
   return "";
 });
 
-let variant = ref("normal");
+let variant = ref(Utils.routeNameToVariant(route.params.variant));
+
+/* OK TO DELETE
+// Change variant based on route
+watch(
+  () => route.params.variant,
+  (newVariant) => {
+    variant.value = Utils.routeNameToVariant(newVariant);
+  }
+);
+
+// Change route when variant is changed from dropdown
+watch(variant, (newVariant) => {
+  let desiredRouteParam = Utils.variantToRouteName(newVariant);
+
+  if (desiredRouteParam !== route.params.variant) {
+    router.push({ name: "play", params: { variant: desiredRouteParam } });
+    expectedQuery = {};
+  }
+});
+
+let expectedQuery = {}; //Used to stop unnecessary query updates.
+
+// Watch for query change
+watch(
+  () => route.query,
+  (newQuery) => {
+    function updateBoardForQueryChange() {
+      if (game && game.board) {
+        game.board.updateForQueryChange(newQuery);
+      } else {
+        //Wait a bit as game.board may be initialised later
+        setTimeout(() => {
+          updateBoardForQueryChange();
+        }, 200);
+      }
+    }
+
+    updateBoardForQueryChange();
+  },
+  { immediate: true }
+);
+*/
+
 let zeroStart = useLocalStorage("ls_zeroStart", true);
 
 let begEffPreset = ref(200);
@@ -3286,16 +3360,29 @@ class Board {
       replayIsShown,
     });
 
-    this.resetBoard();
+    watch(
+      [() => route.params.variant, () => route.query],
+      ([newUrlVariant, newQuery], [oldUrlVariant, oldQuery]) => {
+        this.updateForUrlChange(
+          newUrlVariant,
+          newQuery,
+          oldUrlVariant,
+          oldQuery
+        );
+      },
+      { immediate: true }
+    );
+
+    this.resetBoard(true);
   }
 
   resetBoard(isVariantChange = false) {
+    this.regenerateUrlAndPushIfDifferent();
     if (
       !isVariantChange &&
       (this.variant === "board editor" || this.variant === "zini explorer") &&
       this.gameStage === "edit"
     ) {
-      //Edit mode cannot be reset
       this.promptForClearingEditBoard();
       return;
     }
@@ -6473,6 +6560,7 @@ class Board {
       isCurrentlyEditModeDisplay.value = false;
       //this.resetBoard(); //Is this needed?
       this.ziniExplore.refreshForEditedBoard(skipAskForPathReset);
+      this.regenerateUrlAndPushIfDifferent();
     } else {
       //do nothing
     }
@@ -7138,6 +7226,326 @@ class Board {
     }
     return tilesArrayClone;
   }
+
+  updateForQueryChange(newQuery) {
+    if (Utils.shallowObjectEquals(newQuery, expectedQuery)) {
+      return;
+    }
+
+    expectedQuery = newQuery;
+
+    switch (variant.value) {
+      case "zini explorer":
+        this.updateForZiniExploreQueryChange(newQuery);
+        break;
+      case "board editor":
+        this.updateForBoardEditorQueryChange(newQuery);
+        break;
+    }
+  }
+
+  updateForZiniExploreQueryPossibleChange(newQuery) {
+    if (!newQuery.b || !newQuery.m) {
+      return false;
+    }
+
+    let pttMines = BoardGenerator.readFromPttaSearchParams(
+      newQuery.b,
+      newQuery.m,
+      true
+    );
+
+    if (!pttMines) {
+      return false;
+    }
+
+    let clickPathOrFalse = false; //False if path is missing or invalid
+    if (newQuery.c) {
+      const pttWidth = pttMines.length;
+      const pttHeight = pttMines[0].length;
+      clickPathOrFalse = Algorithms.decodeClicks(
+        newQuery.c,
+        pttWidth,
+        pttHeight
+      );
+
+      //Set clickPath as false if same as current
+      if (
+        newQuery.c === Algorithms.encodeClicks(this.ziniExplore.classicPath)
+      ) {
+        clickPathOrFalse = false;
+      }
+    }
+
+    if (
+      Utils.shallow2DArrayEquals(pttMines, this.ziniExplorerMines) &&
+      !clickPathOrFalse
+    ) {
+      return false;
+    }
+
+    this.ziniExplore.killDeepChainZiniRunner(); //just in case
+    this.ziniExplorerMines = pttMines;
+
+    if (clickPathOrFalse) {
+      this.ziniExplore.classicPath = clickPathOrFalse;
+
+      //Very hacky, but this is needed for switching to analyse mode as if this runs immedaitely then this.variant won't be defined
+      setTimeout(() => {
+        this.switchToAnalyseMode(true);
+      }, 100);
+    } else {
+      this.ziniExplore.clearCurrentPath();
+    }
+
+    this.revertUnappliedWidthHeightSetting();
+
+    //this.switchToEditMode(); //Is just reseting the board enough?
+    return true;
+  }
+
+  updateForBoardEditorQueryPossibleChange(newQuery) {
+    if (!newQuery.b || !newQuery.m) {
+      return false;
+    }
+
+    let pttMines = BoardGenerator.readFromPttaSearchParams(
+      newQuery.b,
+      newQuery.m,
+      true
+    );
+
+    if (!pttMines) {
+      return false;
+    }
+
+    if (Utils.shallow2DArrayEquals(pttMines, this.boardEditorMines)) {
+      return false;
+    }
+
+    this.boardEditorMines = pttMines;
+
+    this.revertUnappliedWidthHeightSetting();
+
+    //this.switchToEditMode(); //Is just reseting the board enough?
+    return true;
+  }
+
+  /* OK TO DELETE
+  refreshQueryForZiniExplore() {
+    let b = Algorithms.getPttaDimensionString(this.ziniExplorerMines);
+    let m = Algorithms.getPttaMinesString(this.ziniExplorerMines);
+
+    expectedQuery = {
+      b: b,
+      m: m,
+    };
+
+    if (Utils.shallowObjectEquals(route.query, expectedQuery)) {
+      return;
+    }
+
+    //Full path required as otherwise might have race condition where query gets set on wrong path
+    // and then cleared when the code for watching for variant change runs
+    router.push({
+      name: "play",
+      params: { variant: "zini-explorer" },
+      query: expectedQuery,
+    });
+  }
+  */
+
+  /* OK TO DELETE
+  refreshQueryForBoardEditor() {
+    let b = Algorithms.getPttaDimensionString(this.boardEditorMines);
+    let m = Algorithms.getPttaMinesString(this.boardEditorMines);
+
+    expectedQuery = {
+      b: b,
+      m: m,
+    };
+
+    if (Utils.shallowObjectEquals(route.query, expectedQuery)) {
+      return;
+    }
+
+    //Full path required as otherwise might have race condition where query gets set on wrong path
+    // and then cleared when the code for watching for variant change runs
+    router.push({
+      name: "play",
+      params: { variant: "board-editor" },
+      query: expectedQuery,
+    });
+  }
+  */
+
+  updateForUrlChange(newUrlVariant, newQuery, oldUrlVariant, oldQuery) {
+    console.log("updateForUrlChange called");
+    //Watcher function which is called whenever query part of URL changes or variant part of path changes
+    //TODO, if these are different from expected, then update relevant data and force board reset.
+    let resetNeeded = false;
+
+    let newVariant = Utils.routeNameToVariant(newUrlVariant);
+    if (newVariant !== variant.value) {
+      variant.value = newVariant;
+      resetNeeded = true;
+    }
+
+    //Look at query part to see if anything has changed (maybe need to adjust ziniExploreMines etc)
+    switch (newVariant) {
+      case "zini explorer":
+        if (this.updateForZiniExploreQueryPossibleChange(newQuery)) {
+          resetNeeded = true;
+        }
+        break;
+      case "board editor":
+        if (this.updateForBoardEditorQueryPossibleChange(newQuery)) {
+          resetNeeded = true;
+        }
+        break;
+    }
+
+    if (resetNeeded) {
+      this.resetBoard(true);
+    }
+  }
+
+  regenerateUrlAndPushIfDifferent() {
+    console.log("regenerateUrlAndPushIfDifferent called");
+    //Called at start of board.reset and also whenever we need to change query parameters (e.g. switching to analyse mode on zini explorer)
+    let newUrlVariant = Utils.variantToRouteName(variant.value);
+
+    let urlPushNeeded = false;
+
+    if (newUrlVariant !== route.params.variant) {
+      urlPushNeeded = true;
+    }
+
+    let newQuery = {};
+    if (variant.value === "zini explorer") {
+      newQuery = {
+        b: Algorithms.getPttaDimensionString(this.ziniExplorerMines),
+        m: Algorithms.getPttaMinesString(this.ziniExplorerMines),
+      };
+
+      if (route.query.b !== newQuery.b || route.query.m !== newQuery.m) {
+        urlPushNeeded = true;
+      }
+    } else if (variant.value === "board editor") {
+      newQuery = {
+        b: Algorithms.getPttaDimensionString(this.boardEditorMines),
+        m: Algorithms.getPttaMinesString(this.boardEditorMines),
+      };
+
+      if (route.query.b !== newQuery.b || route.query.m !== newQuery.m) {
+        urlPushNeeded = true;
+      }
+    }
+
+    if (urlPushNeeded) {
+      router.push({
+        name: "play",
+        params: { variant: newUrlVariant },
+        query: newQuery,
+      });
+    }
+  }
+
+  copyBoardLink() {
+    //Copy the current URL to clipboard
+    let urlVariant = Utils.variantToRouteName(variant.value);
+
+    if (variant.value === "zini explorer") {
+      //Without click path
+      let query = {
+        b: Algorithms.getPttaDimensionString(this.ziniExplorerMines),
+        m: Algorithms.getPttaMinesString(this.ziniExplorerMines),
+      };
+
+      let href = router.resolve({
+        name: "play",
+        params: { variant: urlVariant },
+        query: query,
+      }).href;
+
+      let fullUrl = window.location.origin + "/" + href;
+
+      if (this.ziniExplore.classicPath.length === 0) {
+        //If there is no click path, then just copy link without clickpath
+        copyToClipboard(fullUrl);
+        $q.notify({
+          message: "Copied.",
+          color: "purple",
+          timeout: 700,
+        });
+        return;
+      }
+
+      //With click path
+      let clickString = Algorithms.encodeClicks(this.ziniExplore.classicPath);
+      query.c = clickString;
+
+      let hrefWithClickString = router.resolve({
+        name: "play",
+        params: { variant: urlVariant },
+        query: query,
+      }).href;
+
+      let fullUrlWithClickpath =
+        window.location.origin + "/" + hrefWithClickString;
+
+      $q.dialog({
+        title: "Copy Board Link",
+        options: {
+          type: "checkbox",
+          model: [],
+          // inline: true
+          items: [
+            {
+              label: "Include click path",
+              value: "click-path",
+              color: "secondary",
+            },
+          ],
+        },
+        cancel: true,
+        persistent: true,
+      }).onOk((data) => {
+        if (data.includes("click-path")) {
+          copyToClipboard(fullUrlWithClickpath);
+        } else {
+          copyToClipboard(fullUrl);
+        }
+        $q.notify({
+          message: "Copied.",
+          color: "purple",
+          timeout: 700,
+        });
+      });
+    } else if (variant.value === "board editor") {
+      let query = {
+        b: Algorithms.getPttaDimensionString(this.boardEditorMines),
+        m: Algorithms.getPttaMinesString(this.boardEditorMines),
+      };
+
+      let href = router.resolve({
+        name: "play",
+        params: { variant: urlVariant },
+        query: query,
+      }).href;
+
+      let fullUrl = window.location.origin + "/" + href;
+
+      copyToClipboard(fullUrl);
+      $q.notify({
+        message: "Copied.",
+        color: "purple",
+        timeout: 700,
+      });
+    } else {
+      throw new Error("Copying URL not implemented for this variant");
+    }
+  }
 }
 
 class BoardHistory {
@@ -7170,5 +7578,5 @@ var effShuffleManager = new EffShuffleManager(
   }
 ); //Needs to be var to stop an access-before-init error
 const boardHistory = new BoardHistory();
-const game = new Game();
+var game = new Game(); //Needs to be var to stop an access-before-init error
 </script>

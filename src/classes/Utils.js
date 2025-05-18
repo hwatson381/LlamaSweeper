@@ -66,6 +66,86 @@ class Utils {
       return `${timeString} on ${dateString}`;
     }
   }
+
+  static variantToRouteName(variant) {
+    const variantRouteMap = {
+      normal: "normal",
+      "eff boards": "eff-boards",
+      "board editor": "board-editor",
+      "zini explorer": "zini-explorer",
+      "mean openings": "mean-openings",
+    };
+
+    if (variantRouteMap[variant]) {
+      return variantRouteMap[variant];
+    } else {
+      return "normal";
+    }
+  }
+
+  static routeNameToVariant(routeName) {
+    const routeVariantMap = {
+      normal: "normal",
+      "eff-boards": "eff boards",
+      "board-editor": "board editor",
+      "zini-explorer": "zini explorer",
+      "mean-openings": "mean openings",
+    }
+
+    if (routeVariantMap[routeName]) {
+      return routeVariantMap[routeName];
+    } else {
+      return "normal";
+    }
+  }
+
+  static shallowObjectEquals(obj1, obj2) {
+    if (obj1 === obj2) {
+      return true;
+    }
+
+    if (typeof obj1 !== "object" || typeof obj2 !== "object") {
+      return false;
+    }
+
+    const keys1 = Object.keys(obj1);
+    const keys2 = Object.keys(obj2);
+
+    if (keys1.length !== keys2.length) {
+      return false;
+    }
+
+    for (const key of keys1) {
+      if (obj1[key] !== obj2[key]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  static shallow2DArrayEquals(arr1, arr2) {
+    if (arr1.length !== arr2.length) {
+      return false;
+    }
+
+    if (arr1[0].length !== arr2[0].length) {
+      return false;
+    }
+
+    let width = arr1.length;
+    let height = arr1[0].length;
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (arr1[x][y] !== arr2[x][y]) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
 }
 
 export default Utils;

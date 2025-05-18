@@ -1251,7 +1251,7 @@ class ZiniExplore {
     this.killDeepChainZiniRunner(); //just in case it is already running
 
     let scope = runFromCurrentIfDefault ? 'current' : 'beginning';
-    let rewrite = true;
+    let rewrite = false;
     let deepType = 'separate';
     let deepIterations = 5;
     let deepReportProgress = true;

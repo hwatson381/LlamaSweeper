@@ -17,7 +17,15 @@ export default route(function (/* { store, ssrContext } */) {
     : (process.env.VUE_ROUTER_MODE === 'history' ? createWebHistory : createWebHashHistory)
 
   const Router = createRouter({
-    scrollBehavior: () => ({ left: 0, top: 0 }),
+    scrollBehavior: (to, from) => {
+      // Don't scroll to top if staying on play page
+      if (!(to.name === 'play' && from.name === 'play')) {
+        return { left: 0, top: 0 }
+      }
+
+      // Otherwise, do nothing (stay at current scroll position)
+      return false
+    },
     routes,
 
     // Leave this as is and make changes in quasar.conf.js instead!
