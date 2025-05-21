@@ -3,6 +3,7 @@ const CONSTANTS = Object.freeze({
   FLAG: "flag",
   MINE: "mine",
   MINERED: "minered",
+  MINEWRONG: "minewrong",
 })
 
 export default CONSTANTS

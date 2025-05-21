@@ -26,8 +26,12 @@ Would be nice if possible to have an undo? (For board editor, but also zini expl
 
 Add eff boards mastery/win streak
 
-DeepChain doesn't update max eff after running - maybe strikethrough max eff and put new value next to it?
-
 Add setting for increase board storage limit on eff boards from 20
 
 Small bug - clicking run button twice on deepChain dialog cancels it
+
+Can the board be centred by default?
+
+Improve human-ness of replay
+
+Probably won't do - you could make a variation where you blast whenever you make a move that lowers the remaining achievable max eff

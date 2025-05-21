@@ -444,3 +444,6 @@ Similar, but smaller than other pattern that relies on greedy rule failing
 https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=93&m=dc014g
 
 Maybe to do with left side bias?
+
+VERY IMPORTANT:
+Can the board be centred by default?

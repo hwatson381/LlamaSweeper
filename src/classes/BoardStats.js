@@ -282,6 +282,7 @@ class BoardStats {
       this.refs.statsObject.value.bbbvs = bbbvs.toFixed(3);
       this.refs.statsObject.value.eff = Math.round(eff);
       this.refs.statsObject.value.maxEff = maxEff;
+      this.refs.statsObject.value.deepMaxEff = null;
       this.refs.statsObject.value.clicks = clicksObject;
       this.refs.statsObject.value.eightZini = eightZini;
       this.refs.statsObject.value.chainZini = chainZini;
@@ -301,6 +302,7 @@ class BoardStats {
       this.refs.statsObject.value.bbbvs = bbbvs.toFixed(3);
       this.refs.statsObject.value.eff = Math.round(eff);
       this.refs.statsObject.value.maxEff = maxEff;
+      this.refs.statsObject.value.deepMaxEff = null;
       this.refs.statsObject.value.clicks = clicksObject;
       this.refs.statsObject.value.eightZini = eightZini;
       this.refs.statsObject.value.chainZini = chainZini;
@@ -352,6 +354,9 @@ class BoardStats {
           this.refs.statsObject.value.deepZini = result.total;
           this.deepZini = result.total;
           this.deepZiniPath = result.clicks;
+
+          this.refs.statsObject.value.deepMaxEff = (
+            (100 * this.bbbv) / this.deepZini).toFixed(0);
 
           if (completionCallback) {
             completionCallback();

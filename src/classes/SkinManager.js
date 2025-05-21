@@ -16,6 +16,7 @@ class SkinManager {
       [CONSTANTS.FLAG, "/img/tiles/flag.svg"],
       [CONSTANTS.MINE, "/img/tiles/mine.svg"],
       [CONSTANTS.MINERED, "/img/tiles/mine_red.svg"],
+      [CONSTANTS.MINEWRONG, "/img/tiles/mine_wrong.svg"],
       ['tr_flag', '/img/tiles_transparent/flag.svg'],
       ['tr_mine', '/img/tiles_transparent/mine.svg'],
       ['tr_0', '/img/tiles_transparent/type0.svg'],

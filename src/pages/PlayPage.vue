@@ -413,7 +413,27 @@
               Eff: {{ statsObject.eff }}%
             </div>
             <div v-if="statsShowMaxEff && statsObject.maxEff !== null">
-              Max Eff: {{ statsObject.maxEff }}%
+              Max Eff:
+              <span
+                :style="{
+                  'text-decoration':
+                    statsObject.deepMaxEff !== null &&
+                    parseInt(statsObject.deepMaxEff) >
+                      parseInt(statsObject.maxEff)
+                      ? 'line-through'
+                      : 'none',
+                }"
+                >{{ statsObject.maxEff }}%</span
+              >
+              <span
+                v-if="
+                  statsObject.deepMaxEff !== null &&
+                  parseInt(statsObject.deepMaxEff) >
+                    parseInt(statsObject.maxEff)
+                "
+                class="text-info"
+                >&nbsp;{{ statsObject.deepMaxEff }}%</span
+              >
             </div>
             <div>
               Clicks: {{ statsObject.clicks.effective }} +
@@ -1109,12 +1129,13 @@
                   v-model="faceHitbox"
                   style="width: 175px; flex-shrink: 0"
                   :options="[
+                    { label: 'Whole bar', value: 'bar' },
+                    { label: 'Just face', value: 'face' },
                     {
                       label: 'Adaptive',
                       value: 'adaptive',
                     },
-                    { label: 'Just face', value: 'face' },
-                    { label: 'Whole bar', value: 'bar' },
+                    ,
                   ]"
                   emit-value
                   map-options
@@ -2221,6 +2242,7 @@ let statsObject = ref({
   bbbvs: null,
   eff: null,
   maxEff: null,
+  deepMaxEff: null,
   clicks: {
     total: null,
     effective: null,
@@ -2569,7 +2591,7 @@ let touchLongPressDisabled = useLocalStorage(
 let touchMaxTime = useLocalStorage("ls_touchMaxTime", 1000); //When do long touches get cancelled (maybe these become scrolls?)
 let touchScrollDistance = useLocalStorage("ls_touchScrollDistance", 3); //When do touches that move a lot unlock the scroll
 let verticalExpert = useLocalStorage("ls_verticalExpert", false);
-let faceHitbox = useLocalStorage("ls_faceHitbox", "adaptive"); //Hitbox for when the face is click to trigger a reset
+let faceHitbox = useLocalStorage("ls_faceHitbox", "bar"); //Hitbox for when the face is click to trigger a reset
 let soundEffectsEnabled = useLocalStorage(
   "ls_soundEffectsEnabled",
   Utils.isMobile()
@@ -5446,6 +5468,13 @@ class Board {
           this.tilesArray[x][y].state !== CONSTANTS.MINERED
         ) {
           this.tilesArray[x][y].state = CONSTANTS.MINE;
+        }
+
+        if (
+          !(isNormalMine || isMeanMine) &&
+          this.tilesArray[x][y].state === CONSTANTS.FLAG
+        ) {
+          this.tilesArray[x][y].state = CONSTANTS.MINEWRONG;
         }
       }
     }
