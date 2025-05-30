@@ -420,7 +420,7 @@ Look at making it so that zini explorer/board editor alter the URL
 There is a slight problem with images taking a while to load.
 Maybe show a message if board is invisible?
 Or maybe try preload important images first?
-Or signal that they should cached?
+Or signal that they should be cached?
 
 Keyboard clicking on eff boards doesn't show depressed square
 
@@ -428,8 +428,6 @@ Keyboard clicking on eff boards doesn't show depressed square
 https://quasar.dev/style/color-palette/
 
 (trialing) Also include display settings in box
-
-Disable smiley face button when deepchain is running (or make it cancel)
 
 Have enter button as shortcut for submitting on some dialogs? E.g. DeepChain dialog?
 [this has been done for input on ptt dialog]
@@ -447,3 +445,10 @@ Maybe to do with left side bias?
 
 VERY IMPORTANT:
 Can the board be centred by default?
+
+Path that beats deepChain zini (on real game) - from Potatoes, with improvement from master_hai
+https://minesweeper.online/game/4634307343
+
+For mscoach export -
+See here https://github.com/DavidNHill/JSMinesweeper/blob/master/Minesweeper/client/Board.js#L745
+In particular, the "isSolverFoundBomb" part

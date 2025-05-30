@@ -1,5 +1,6 @@
 import OrganisedPremiums from "src/classes/OrganisedPremiums.js";
 import WomZini from "./WomZini";
+import CONSTANTS from "src/includes/Constants";
 
 class Algorithms {
   constructor() {
@@ -1402,6 +1403,82 @@ class Algorithms {
       return false;
     }
   }
+
+  //For sending to mscoach solver, adapted from mscoach code
+  static getCompressedData(tilesArray, minesArray) {
+    // this identifies obvious mines
+    //this.resetForAnalysis(false, true);
+    const width = minesArray.length;
+    const height = minesArray[0].length;
+
+    const totalMines = minesArray.flat().filter(val => val).length;
+
+    let data = "";
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const tile = tilesArray[x][y];
+
+        if (minesArray[x][y] && tile.state === CONSTANTS.FLAG) {
+          if (tile.state === CONSTANTS.FLAG) {
+            // Correctly flagged mine
+            data = data + "F";
+          } else {
+            // Mine that are not flagged.
+            // If we wanted a more efficient representation, then we'd use "I" instead of "H" for solver found mines
+            // and then these would be "inflated" and therefore make the representation more compact
+            // we don't do this as long URLs still seem to usually parse.
+            data = data + "H";
+          }
+        } else if (typeof tile.state === "number") {
+          // Numbers
+          // These get inflated when next to mines
+
+          const originalTileNumber = tile.state;
+
+          let reduceBy = 0;
+          for (let i = x - 1; i <= x + 1; i++) {
+            for (let j = y - 1; j <= y + 1; j++) {
+              if (i < 0 || i >= width || j < 0 || j >= height) {
+                continue; //Out of bounds
+              }
+              if (i === x && j === y) {
+                continue; //Skip self (Not strictly needed, but for clarity)
+              }
+              if (minesArray[i][j] && tilesArray[i][j].state === CONSTANTS.FLAG) {
+                //Numbers next to flags get their value reduced.
+                //Mscoach also does this for solver deducable flags, but this is overkill for us
+                reduceBy++;
+              }
+            }
+          }
+
+          if (reduceBy > originalTileNumber) {
+            throw new Error(`Tile at x: ${x}, y: ${y} has too many flags around it, can't compress invalid data`);
+          }
+          data = data + (originalTileNumber - reduceBy);
+
+        } else {
+          // Anything else gets hidden (this may include wrongly placed flags)
+          data = data + "H";
+        }
+      }
+    }
+
+    const compressor = new Compressor();
+
+    let cWidth = compressor.compressNumber(width, 2);
+    let cHeight = compressor.compressNumber(height, 2);
+    let cMines = compressor.compressNumber(totalMines, 4);
+
+    let cBoard = compressor.compress(data);
+
+    let output = cWidth + cHeight + cMines + cBoard;
+
+    console.log("Compressed data length " + output.length + " analysis=" + output);
+
+    return { width: width, height: height, mineCount: totalMines, analysis: output };
+  }
 }
 
 class BitPacker {
@@ -1446,6 +1523,179 @@ class BitUnpacker {
       this.bitPos++;
     }
     return value;
+  }
+}
+
+//From https://github.com/DavidNHill/JSMinesweeper/blob/master/Minesweeper/client/Board.js
+class Compressor {
+  constructor() {
+    this.BASE62 = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+
+    // this array decides how many digits to allocate to each value on the board
+    // [0, 1, 2, 3, 4, 5, 6, 7, 8, hidden flag, HIDDEN, FLAG, overflagged]
+    this.VALUES = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "I", "H", "F", "O"];
+    this.BASES = [10, 7, 5, 5, 4, 3, 3, 1, 1, 4, 10, 8, 1];
+    this.digits = [];
+
+    let start = 0;
+    for (const n of this.BASES) {
+      this.digits.push(this.BASE62.substring(start, start + n));
+      start = start + n;
+    }
+
+    //console.log(this.digits);
+
+  }
+
+  compress(input) {
+    let output = "";
+
+    let count = 0;
+    let prevChar = "";
+    for (let i = 0; i < input.length; i++) {
+      let currChar = input.charAt(i);
+
+      if (prevChar == "") {
+        prevChar = currChar;
+        count = 1;
+
+      } else if (currChar == prevChar) {
+        count++;
+
+      } else {
+        // add the compressed data
+        output = output + this.compressFragment(prevChar, count);
+
+        // start counting the new data
+        prevChar = currChar;
+        count = 1;
+      }
+    }
+
+    // add the final compressed data
+    output = output + this.compressFragment(prevChar, count);
+
+    //console.log("Compressed data length " + output.length + " data: " + output);
+
+    return output;
+
+  }
+
+  // compress 'length' characters 'char'
+  compressFragment(char, length) {
+    // find the compression details
+
+    let index = this.VALUES.indexOf(char);
+    if (index == -1) {
+      console.log("Unable to find the value '" + char + "' in the compression values array");
+      return "";
+    }
+
+    let digits = this.digits[index];
+    let base = digits.length;
+
+    // for values with only 1 allocated value return that value 'length' times.
+    if (base == 1) {
+      return digits.repeat(length);
+    }
+
+    let output = "";
+
+    while (length != 0) {
+
+      let digit = length % base;
+      output = digits[digit] + output;
+
+      length = (length - digit) / base;
+
+    }
+
+    //console.log(output);
+
+    return output;
+  }
+
+  decompress(input) {
+    let output = "";
+
+    let count = 0;
+    let prevChar = "";
+    for (let i = 0; i < input.length; i++) {
+
+      let testChar = input.charAt(i);
+
+      let index = this.digits.findIndex((element) => element.includes(testChar));
+
+      // the value this character represents and the count it represents
+      let currChar = this.VALUES[index];
+      let currCount = this.digits[index].indexOf(testChar);
+      let base = this.digits[index].length;
+
+      if (prevChar == "") {
+        prevChar = currChar;
+        count = currCount;
+
+      } else if (currChar == prevChar) {
+        if (base == 1) {
+          count++;
+        } else {
+          count = count * base + currCount;
+        }
+
+      } else {
+        // add the compressed data
+        output = output + prevChar.repeat(count);
+
+        // start counting the new data
+        prevChar = currChar;
+
+        if (base == 1) {
+          count = 1;
+        } else {
+          count = currCount;
+        }
+      }
+    }
+
+    // add the final compressed data
+    output = output + prevChar.repeat(count);
+
+    //console.log("Decompressed data length " + output.length + " data: " + output);
+
+    return output;
+
+  }
+
+  compressNumber(number, size) {
+    const base = this.BASE62.length;
+
+    let output = "";
+    for (let i = 0; i < size; i++) {
+
+      let digit = number % base;
+      output = this.BASE62[digit] + output;
+      number = (number - digit) / base;
+
+    }
+
+    return output;
+
+  }
+
+  decompressNumber(value) {
+    const base = this.BASE62.length;
+
+    let output = 0;
+    for (let i = 0; i < value.length; i++) {
+
+      let digit = this.BASE62.indexOf(value.charAt(i));
+
+      output = output * base + digit;
+
+    }
+
+    return output;
+
   }
 }
 

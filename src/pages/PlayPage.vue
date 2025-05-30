@@ -589,6 +589,16 @@
                 </q-item>
 
                 <q-item
+                  clickable
+                  v-close-popup
+                  @click="game.board.sendToMsCoach()"
+                >
+                  <q-item-section>
+                    <q-item-label>MSCoach Solver</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-item
                   v-if="variant === 'board editor'"
                   clickable
                   v-close-popup
@@ -844,6 +854,16 @@
                   >
                     <q-item-section>
                       <q-item-label>PTT ZiNi Calculator</q-item-label>
+                    </q-item-section>
+                  </q-item>
+
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="game.board.sendToMsCoach()"
+                  >
+                    <q-item-section>
+                      <q-item-label>MSCoach Solver</q-item-label>
                     </q-item-section>
                   </q-item>
 
@@ -3471,6 +3491,9 @@ class Board {
 
     this.blasted = false;
     this.openedTiles = 0;
+    if (this.ziniExplore) {
+      this.ziniExplore.killDeepChainZiniRunner();
+    }
     if (this.stats) {
       this.stats.killDeepChainZiniRunner();
     }
@@ -3796,6 +3819,17 @@ class Board {
     } else {
       window.open(statsObject.value.pttaLink, "_blank").focus();
     }
+  }
+
+  sendToMsCoach() {
+    let msCoachParams = Algorithms.getCompressedData(
+      this.tilesArray,
+      this.mines
+    );
+
+    let msCoachUrl = `https://davidnhill.github.io/JSMinesweeper/index.html?board=${msCoachParams.width}x${msCoachParams.height}x${msCoachParams.mineCount}&analysis=${msCoachParams.analysis}`;
+
+    window.open(msCoachUrl, "_blank").focus();
   }
 
   handleMouseDown(event) {
