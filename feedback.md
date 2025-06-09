@@ -35,3 +35,5 @@ Can the board be centred by default?
 Improve human-ness of replay
 
 Probably won't do - you could make a variation where you blast whenever you make a move that lowers the remaining achievable max eff
+
+In the board editor, could we get a setting to toggle live stats when editing so you don't have to click play and fail for it to display them?

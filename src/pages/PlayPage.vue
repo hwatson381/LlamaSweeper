@@ -2617,9 +2617,12 @@ let soundEffectsEnabled = useLocalStorage(
   Utils.isMobile()
 );
 
-let meanOpeningMineDensity = ref(0.3); //mean opening settings
-let meanOpeningFlagDensity = ref(1);
-let meanMineClickBehaviour = ref("shield"); //flag, blast, shield for 0.5 seconds, ignore
+let meanOpeningMineDensity = useLocalStorage("ls_meanOpeningMineDensity", 0.3); //mean opening settings
+let meanOpeningFlagDensity = useLocalStorage("ls_meanOpeningFlagDensity", 1);
+let meanMineClickBehaviour = useLocalStorage(
+  "ls_meanMineClickBehaviour",
+  "shield"
+); //flag, blast, shield for 0.5 seconds, ignore
 
 let replayProgress = ref(-1);
 let replayProgressRounded = ref("-1.000"); //Same as replayProgress, but only to 3 d.p.
@@ -6030,8 +6033,8 @@ class Board {
   }
 
   refreshQuickPaintCounts() {
-    let redCount = this.mineCount;
-    let orangeCount = this.mineCount;
+    let redCount = this.unflagged;
+    let orangeCount = this.unflagged;
     let dotCount = 0;
     let whiteOrangeCount = 0;
 
@@ -6039,10 +6042,7 @@ class Board {
       for (let y = 0; y < this.height; y++) {
         const thisTile = this.tilesArray[x][y];
 
-        if (
-          thisTile.state === CONSTANTS.FLAG ||
-          thisTile.paintColour === "red"
-        ) {
+        if (thisTile.paintColour === "red") {
           redCount--;
           orangeCount--;
         }

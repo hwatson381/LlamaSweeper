@@ -452,3 +452,7 @@ https://minesweeper.online/game/4634307343
 For mscoach export -
 See here https://github.com/DavidNHill/JSMinesweeper/blob/master/Minesweeper/client/Board.js#L745
 In particular, the "isSolverFoundBomb" part
+
+Get help on wasm gen for eff boards?
+
+Allow specifying squares (or flags) to start open in board editor. Also make it possible to link to this (and go straight to play screen to prevent spoilers)
