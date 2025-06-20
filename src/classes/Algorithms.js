@@ -1362,6 +1362,9 @@ class Algorithms {
       bitPacker.writeBits(order, bitsForOrder);
     });
 
+    // Add end marker
+    bitPacker.writeBits(3, 2); // typeBits = 3, this is allowed since 3 isn't used in clickTypeMap
+
     let bytes = bitPacker.getBytes();
 
     //convert bytes to string
@@ -1387,8 +1390,10 @@ class Algorithms {
 
       const clicks = [];
 
-      while (bitUnpacker.bitPos < bytes.length * 8) {
+      while (bitUnpacker.bitPos + 2 < bytes.length * 8) {
         const typeBits = bitUnpacker.readBits(2);
+        if (typeBits === 3) break; // hit end marker
+
         const order = bitUnpacker.readBits(bitsForOrder);
         const x = Math.floor(order / boardHeight);
         const y = order % boardHeight;
