@@ -37,3 +37,7 @@ Improve human-ness of replay
 Probably won't do - you could make a variation where you blast whenever you make a move that lowers the remaining achievable max eff
 
 In the board editor, could we get a setting to toggle live stats when editing so you don't have to click play and fail for it to display them?
+
+Should there me slight edge around board with touch-action: manipulation?
+
+Basically harmless bug - when board is horizontally large, it touches right edge instead of having a small amount of padding as buffer

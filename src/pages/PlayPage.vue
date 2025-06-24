@@ -1,8 +1,8 @@
 <template>
   <q-page>
-    <div class="q-pa-md">
-      <p class="text-h4">Llama's minesweeper variants</p>
-      <p>
+    <div :class="['q-pa-md', centreInterface ? 'centre-interface' : '']">
+      <p class="text-h4 text-centreable">Llama's minesweeper variants</p>
+      <p class="margin-centreable text-centreable" style="max-width: 700px">
         This page has several minesweeper variants/tools I've made. Variants can
         be changed with the "variant" dropdown below. This is a work in
         progress, so there may be bugs. Feedback is very welcome, although I
@@ -28,7 +28,7 @@
       </div>
       <br />
       <div
-        class="flex q-mb-md"
+        class="flex q-mb-md flex-centreable"
         style="gap: 15px; justify-content: start; padding: 5px"
       >
         <q-select
@@ -68,7 +68,7 @@
         </div>
       </div>
       <div
-        class="flex q-gutter-sm"
+        class="flex q-gutter-sm flex-centreable"
         style="margin: 5px"
         v-if="variant !== 'board editor' && variant !== 'zini explorer'"
       >
@@ -108,7 +108,7 @@
           variant !== 'zini explorer'
         "
       >
-        <div class="flex" style="gap: 10px; margin: 5px">
+        <div class="flex flex-centreable" style="gap: 10px; margin: 5px">
           <q-input
             debounce="100"
             v-model.number="customWidth"
@@ -140,13 +140,14 @@
             @update:model-value="game.reset()"
           />
         </div>
-        {{ customWarning }}
+        <p class="text-centreable">{{ customWarning }}</p>
       </template>
 
       <q-card
         flat
         bordered
         style="max-width: 550px"
+        class="margin-centreable"
         v-if="variant === 'board editor' || variant === 'zini explorer'"
       >
         <q-card-section>
@@ -262,7 +263,7 @@
           </div>
         </q-card-section>
       </q-card>
-      <div v-if="variant === 'eff boards'">
+      <div class="text-centreable" v-if="variant === 'eff boards'">
         Generating boards with target eff: {{ minimumEff }}% (change this in
         settings below the board)
         <span v-if="generateEffBoardsInBackground" class="text-info"
@@ -270,7 +271,10 @@
           {{ effBoardsStoredFirstClickDisplay }})</span
         >
       </div>
-      <div v-if="variant === 'mean openings'" class="flex q-mt-md">
+      <div
+        v-if="variant === 'mean openings'"
+        class="flex q-mt-md flex-centreable"
+      >
         <q-select
           class="q-mx-md q-mb-md"
           outlined
@@ -350,8 +354,10 @@
       </div>
 
       <div
+        ref="game-container"
+        id="game-container"
         class="clearfix q-my-md"
-        :style="{ paddingLeft: gameLeftPadding + 'px', userSelect: 'none' }"
+        :style="{ userSelect: 'none', paddingLeft: gameCalculatedMarginLeft }"
       >
         <canvas
           ref="main-canvas"
@@ -369,13 +375,16 @@
           :style="{
             touchAction:
               mobileScrollSetting === 'disable' ? 'none' : 'manipulation',
+            marginLeft: 0 /*gameCalculatedMarginLeft*/,
           }"
         >
         </canvas>
+        <q-resize-observer debounce="30" @resize="game.refreshSize()" />
         <q-card
           square
           v-if="showStatsBlock"
           style="float: left; margin-bottom: 10px"
+          class="side-panel"
         >
           <q-card-section style="font-family: monospace">
             <div>Time: {{ statsObject.time }}s</div>
@@ -717,6 +726,7 @@
             !replayIsShown
           "
           style="float: left; margin-bottom: 10px"
+          class="side-panel"
         >
           <q-card-section>
             <q-markup-table class="q-mb-md" dense flat bordered>
@@ -896,6 +906,7 @@
           square
           v-if="variant === 'zini explorer' && ziniRunnerActive"
           style="float: left; margin-bottom: 10px"
+          class="side-panel"
         >
           <q-card-section>
             <span class="text-h6">Running DeepChain ZiNi</span><br />
@@ -912,7 +923,7 @@
         </q-card>
       </div>
       <div
-        class="flex q-ma-md"
+        class="flex q-ma-md flex-centreable"
         style="gap: 10px"
         v-if="variant !== 'zini explorer'"
       >
@@ -944,7 +955,7 @@
         flat
         bordered
         style="max-width: 550px"
-        class="q-my-md"
+        class="q-my-md margin-centreable"
         v-if="variant === 'eff boards'"
       >
         <q-card-section>
@@ -1127,7 +1138,7 @@
         </q-card-section>
       </q-card>
 
-      <div class="q-py-md" style="max-width: 700px">
+      <div class="q-py-md margin-centreable" style="max-width: 700px">
         <q-list bordered class="rounded-borders">
           <q-expansion-item
             expand-separator
@@ -1515,7 +1526,7 @@
       </div>
 
       <br />
-      <p>(textures from minesweeper.online)</p>
+      <p class="text-centreable">(textures from minesweeper.online)</p>
     </div>
   </q-page>
 
@@ -1536,15 +1547,45 @@
           color="light-green"
           @update:model-value="game.refreshSize()"
         />
-        Left padding
-        <q-slider
-          v-model="gameLeftPadding"
-          :min="0"
-          :max="1000"
-          :step="1"
-          label
-          color="light-green"
+        <q-select
+          class="q-mx-md q-mb-md"
+          outlined
+          options-dense
+          dense
+          transition-duration="100"
+          input-debounce="0"
+          v-model="gamePositioning"
+          style="width: 200px; flex-shrink: 0"
+          :options="[
+            {
+              label: 'Centre',
+              value: 'centre',
+            },
+            {
+              label: 'Left with padding',
+              value: 'left',
+            },
+          ]"
+          emit-value
+          map-options
+          stack-label
+          label="Board Positioning"
         />
+        <template v-if="gamePositioning === 'left'">
+          Left padding
+          <q-slider
+            v-model="gameLeftPadding"
+            :min="0"
+            :max="1000"
+            :step="1"
+            label
+            color="light-green"
+          />
+        </template>
+        <q-checkbox
+          v-model="centreInterface"
+          label="Centre interface (other than board)"
+        /><br />
         <q-checkbox
           v-model="showBorders"
           label="Show borders"
@@ -1966,6 +2007,13 @@
 </template>
 
 <style scoped>
+#game-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
 #main-canvas {
   user-select: none;
   float: left;
@@ -2080,6 +2128,19 @@ body.body--dark .flag-active .flag-toggle-icon {
 
 body.body--dark .stats-click-table-container {
   background-color: #616161;
+}
+
+.centre-interface .flex-centreable {
+  justify-content: center !important;
+}
+
+.centre-interface .margin-centreable {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.centre-interface .text-centreable {
+  text-align: center !important;
 }
 </style>
 
@@ -2251,6 +2312,7 @@ function scrollToBoard() {
 }
 
 const mainCanvas = useTemplateRef("main-canvas");
+const gameContainerDiv = useTemplateRef("game-container");
 
 let showStatsBlock = ref(false);
 let statsObject = ref({
@@ -2291,7 +2353,15 @@ let statsShowMaxEff = useLocalStorage("ls_statsShowMaxEff", true);
 let settingsModal = ref(false);
 let variantsHelpModal = ref(false);
 let tileSizeSlider = useLocalStorage("ls_tileSizeSlider", 25);
+let gamePositioning = useLocalStorage("ls_gamePositioning", "centre");
 let gameLeftPadding = useLocalStorage("ls_gameLeftPadding", 30);
+let gameCentrePadding = ref(0); //Add margin to left side of board to centre it
+let gameCalculatedMarginLeft = computed(() => {
+  return gamePositioning.value === "left"
+    ? gameLeftPadding.value + "px"
+    : gameCentrePadding.value + "px";
+});
+let centreInterface = useLocalStorage("ls_centreInterface", true);
 let showBorders = useLocalStorage("ls_showBorders", true);
 let showTimer = useLocalStorage("ls_showTimer", true);
 let showMineCount = useLocalStorage("ls_showMineCount", true);
@@ -3524,12 +3594,7 @@ class Board {
     this.dotCount = 0;
     this.whiteOrangeCount = 0; //orange + white
 
-    mainCanvas.value.width =
-      this.width * tileSizeSlider.value + 2 * boardHorizontalPadding.value;
-    mainCanvas.value.height =
-      this.height * tileSizeSlider.value +
-      boardTopPadding.value +
-      boardBottomPadding.value;
+    this.updateBoardPixelDimensions();
 
     if (this.gameStage === "analyse") {
       if (!isVariantChange) {
@@ -3551,6 +3616,34 @@ class Board {
             () => new Tile(CONSTANTS.UNREVEALED, { mainCanvas }, skinManager)
           )
       );
+  }
+
+  updateBoardPixelDimensions() {
+    //Set pixel dimensions for board
+    const mainCanvasWidth =
+      this.width * tileSizeSlider.value + 2 * boardHorizontalPadding.value;
+    const mainCanvasHeight =
+      this.height * tileSizeSlider.value +
+      boardTopPadding.value +
+      boardBottomPadding.value;
+
+    mainCanvas.value.width = mainCanvasWidth;
+    mainCanvas.value.height = mainCanvasHeight;
+
+    //Also set height in style (needed for flex layout to work)
+    mainCanvas.value.style.width = `${mainCanvasWidth} px`;
+    mainCanvas.value.style.height = `${mainCanvasHeight} px`;
+
+    //Figure out what left padding should be in order to centre the board
+    let gameContainerWidth =
+      gameContainerDiv.value.getBoundingClientRect().width;
+
+    let marginToCentre = Math.max(
+      (gameContainerWidth - mainCanvasWidth) / 2,
+      0
+    );
+
+    gameCentrePadding.value = marginToCentre;
   }
 
   populateHiddenNumbers(type) {
@@ -3621,12 +3714,7 @@ class Board {
   }
 
   refreshCanvasSize() {
-    mainCanvas.value.width =
-      this.width * tileSizeSlider.value + 2 * boardHorizontalPadding.value;
-    mainCanvas.value.height =
-      this.height * tileSizeSlider.value +
-      boardTopPadding.value +
-      boardBottomPadding.value;
+    this.updateBoardPixelDimensions();
 
     this.tileSize = tileSizeSlider.value;
     this.draw();
