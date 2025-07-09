@@ -456,3 +456,9 @@ In particular, the "isSolverFoundBomb" part
 Get help on wasm gen for eff boards?
 
 Allow specifying squares (or flags) to start open in board editor. Also make it possible to link to this (and go straight to play screen to prevent spoilers)
+
+Make it possible to send to zini explorer with path from particular timestamp via replay?
+
+Play noise on scroll cancel or other touch cancels to debug issues with ignored touches
+
+Allow user-select for copying from stats panel?

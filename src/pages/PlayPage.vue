@@ -509,9 +509,12 @@
               ZiNi (100chain): {{ statsObject.chainZini }}
             </div>
             <div v-if="statsShowWomZini">
-              ZiNi (WoM):
+              L ZiNi (WoM):
               <template v-if="statsObject.womZini !== null">
-                {{ statsObject.womZini }} | improved: {{ statsObject.cWomZini }}
+                {{ statsObject.womZini }}
+                <template v-if="statsShowWomZiniFix">
+                  | i: {{ statsObject.cWomZini }}</template
+                >
               </template>
               <span
                 v-else
@@ -653,7 +656,7 @@
                   @click="game.board.initReplay('womzini')"
                 >
                   <q-item-section>
-                    <q-item-label>WoM ZiNi</q-item-label>
+                    <q-item-label>WoM L ZiNi</q-item-label>
                   </q-item-section>
                 </q-item>
 
@@ -663,7 +666,7 @@
                   @click="game.board.initReplay('womzinifix')"
                 >
                   <q-item-section>
-                    <q-item-label>WoM ZiNi Improved</q-item-label>
+                    <q-item-label>WoM L ZiNi Improved</q-item-label>
                   </q-item-section>
                 </q-item>
 
@@ -1182,7 +1185,13 @@
                 <br />
                 <q-checkbox
                   v-model="statsShowWomZini"
-                  label="Show WoM ZiNi and HZiNi"
+                  label="Show WoM L ZiNi and HZiNi"
+                />
+                <br />
+                <q-checkbox
+                  :disable="!statsShowWomZini"
+                  v-model="statsShowWomZiniFix"
+                  label="Show WoM L ZiNi improved"
                 />
                 <br />
                 <q-checkbox v-model="statsShowMaxEff" label="Show max eff" />
@@ -1821,8 +1830,8 @@
                 label: '8 Way ZiNi',
                 value: '8 way',
               },
-              { label: 'WoM ZiNi', value: 'womzini' },
-              { label: 'WoM ZiNi Improved', value: 'womzinifix' },
+              { label: 'WoM L ZiNi', value: 'womzini' },
+              { label: 'WoM L ZiNi Improved', value: 'womzinifix' },
               { label: 'WoM HZiNi', value: 'womhzini' },
               { label: 'Chain ZiNi', value: 'chainzini' },
             ]"
@@ -2020,6 +2029,10 @@
   margin-right: 10px;
   margin-bottom: 10px;
   touch-action: manipulation;
+}
+
+.side-panel {
+  user-select: text;
 }
 
 #eff-stat.zini-match {
@@ -2348,6 +2361,7 @@ let showStatsClicksTable = ref(false);
 let statsShow8Way = useLocalStorage("ls_statsShow8Way", true);
 let statsShowChain = useLocalStorage("ls_statsShowChain", true);
 let statsShowWomZini = useLocalStorage("ls_statsShowWomZini", true);
+let statsShowWomZiniFix = useLocalStorage("ls_statsShowWomZiniFix", true);
 let statsShowMaxEff = useLocalStorage("ls_statsShowMaxEff", true);
 
 let settingsModal = ref(false);
@@ -2850,7 +2864,7 @@ function bulkrun() {
   eightZiniOut += `Average-diff: ${eightZiniDiffSum / bulkIterations.value}`;
   console.log(eightZiniOut);
 
-  let womFixZiniOut = "WoM zini WITH FIX stats: \n";
+  let womFixZiniOut = "WoM L zini WITH FIX stats: \n";
   let womFixZiniDiffSum = 0;
   for (let [key, val] of [...womFixDiff.entries()].sort(
     (a, b) => a[0] - b[0]
