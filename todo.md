@@ -460,5 +460,3 @@ Allow specifying squares (or flags) to start open in board editor. Also make it 
 Make it possible to send to zini explorer with path from particular timestamp via replay?
 
 Play noise on scroll cancel or other touch cancels to debug issues with ignored touches
-
-Allow user-select for copying from stats panel?

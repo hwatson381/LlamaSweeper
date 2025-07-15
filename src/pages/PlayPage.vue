@@ -5855,6 +5855,41 @@ class Board {
     }
   }
 
+  getSimplifiedTilesArray() {
+    //Create a copy of this.tilesArray where the values are what they would be if the mean mines were removed
+    let simplifiedTilesArray = this.cloneTilesArray();
+
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        if (
+          this.meanMineStates[x][y].isMine &&
+          this.meanMineStates[x][y].isActive
+        ) {
+          //Flip square to having state = 0 and also subtract 1 from neighbours
+          simplifiedTilesArray[x][y].state = 0;
+          for (let i = x - 1; i <= x + 1; i++) {
+            for (let j = y - 1; j <= y + 1; j++) {
+              if (i < 0 || j < 0 || i >= this.width || j >= this.height) {
+                continue;
+              }
+              if (i === x && y === j) {
+                continue;
+              }
+              if (
+                typeof simplifiedTilesArray[i][j].state === "number" &&
+                simplifiedTilesArray[i][j].state !== 0
+              ) {
+                simplifiedTilesArray[i][j].state--;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return simplifiedTilesArray;
+  }
+
   isTileEnclosed(tileX, tileY, useFlagVersion) {
     //Check if a tile is surrounded in such a way that we trivially
     // know that all it's neighbours are revealed or known mines
@@ -6020,7 +6055,12 @@ class Board {
   }
 
   calculateAndDisplayStats(isWin) {
-    this.stats.calcStats(isWin, this.tilesArray);
+    if (this.variant === "mean openings") {
+      let simplifiedTilesArray = this.getSimplifiedTilesArray();
+      this.stats.calcStats(isWin, simplifiedTilesArray);
+    } else {
+      this.stats.calcStats(isWin, this.tilesArray);
+    }
     showStatsBlock.value = true;
   }
 

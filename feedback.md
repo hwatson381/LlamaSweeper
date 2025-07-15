@@ -41,3 +41,17 @@ In the board editor, could we get a setting to toggle live stats when editing so
 Should there me slight edge around board with touch-action: manipulation?
 
 Basically harmless bug - when board is horizontally large, it touches right edge instead of having a small amount of padding as buffer
+
+Replaying from timestamp is REALLY important
+
+Do L+R chord
+
+Toggle flag mode on opening (problematic as no semi-transparent flags)
+
+Setting for 3bv limits?
+
+Should expert default for eff boards be raised? (150% too low?)
+
+Keyboard clicks don't register if not focussed
+
+Setting for making flag become restart button on phone
