@@ -55,3 +55,5 @@ Should expert default for eff boards be raised? (150% too low?)
 Keyboard clicks don't register if not focussed
 
 Setting for making flag become restart button on phone
+
+way to just put the ?b=mode&m=mines board code into the import url instead of just ptta url would be nice too

@@ -18,6 +18,7 @@
           padding: 5px;
           max-width: 600px;
         "
+        class="margin-centreable"
       >
         <span>Random dev stuff box</span><br />
         <button @click="bulkrun7">Bulk run</button>
@@ -1169,7 +1170,6 @@
                       label: 'Adaptive',
                       value: 'adaptive',
                     },
-                    ,
                   ]"
                   emit-value
                   map-options
@@ -1195,6 +1195,37 @@
                 />
                 <br />
                 <q-checkbox v-model="statsShowMaxEff" label="Show max eff" />
+                <br />
+                <q-select
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="statsRunDeepChain"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    { label: 'Eff Boards win', value: 'eff win' },
+                    { label: 'Eff Board win/lose', value: 'eff always' },
+                    {
+                      label: 'Any win',
+                      value: 'any win',
+                    },
+                    {
+                      label: 'Any win/lose',
+                      value: 'any always',
+                    },
+                    {
+                      label: 'Never',
+                      value: 'never',
+                    },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Run deepChain"
+                ></q-select>
                 <div class="flex" style="gap: 15px">
                   <q-input
                     dense
@@ -1595,6 +1626,31 @@
           v-model="centreInterface"
           label="Centre interface (other than board)"
         /><br />
+        <q-select
+          class="q-mx-md q-mb-md"
+          outlined
+          options-dense
+          dense
+          transition-duration="100"
+          input-debounce="0"
+          v-model="boardSkin"
+          style="width: 200px; flex-shrink: 0"
+          :options="[
+            {
+              label: 'Light',
+              value: 'light',
+            },
+            {
+              label: 'Dark',
+              value: 'dark',
+            },
+          ]"
+          emit-value
+          map-options
+          stack-label
+          label="Board Skin"
+          @update:model-value="game.refreshSize()"
+        />
         <q-checkbox
           v-model="showBorders"
           label="Show borders"
@@ -1791,6 +1847,8 @@
         <q-btn @click="game.board.importPttaBoard()" color="primary"
           >Load</q-btn
         >
+        <br /><br />Importing from minesweeper.online? Try the
+        <RouterLink to="/bookmark">bookmarklet</RouterLink>.
       </q-card-section>
 
       <q-card-actions align="right" class="text-primary">
@@ -2195,7 +2253,7 @@ import { useRoute, useRouter } from "vue-router";
 const route = useRoute();
 const router = useRouter();
 
-import { event, useQuasar, copyToClipboard } from "quasar";
+import { event, useQuasar, copyToClipboard, debounce } from "quasar";
 const $q = useQuasar();
 
 defineOptions({
@@ -2206,9 +2264,15 @@ onMounted(() => {
   document.body.addEventListener("keydown", handleKeyDown, true);
   document.body.addEventListener("keyup", handleKeyUp, true);
   window.addEventListener("scroll", handlePageScroll);
-  skinManager.addCallbackWhenAllLoaded(() => {
+  skinManager.addCallbackWhenAllPriorityLoaded(() => {
     game.initialise();
   });
+  skinManager.addCallbackWhenSingleImageLoaded(
+    debounce(() => {
+      game.refreshSize();
+      console.log("refresh called");
+    }, 100)
+  );
 });
 
 onUnmounted(() => {
@@ -2363,6 +2427,7 @@ let statsShowChain = useLocalStorage("ls_statsShowChain", true);
 let statsShowWomZini = useLocalStorage("ls_statsShowWomZini", true);
 let statsShowWomZiniFix = useLocalStorage("ls_statsShowWomZiniFix", true);
 let statsShowMaxEff = useLocalStorage("ls_statsShowMaxEff", true);
+let statsRunDeepChain = useLocalStorage("ls_statsRunDeepChain", "eff win");
 
 let settingsModal = ref(false);
 let variantsHelpModal = ref(false);
@@ -2380,6 +2445,7 @@ let showBorders = useLocalStorage("ls_showBorders", true);
 let showTimer = useLocalStorage("ls_showTimer", true);
 let showMineCount = useLocalStorage("ls_showMineCount", true);
 let showCoords = useLocalStorage("ls_showCoords", false);
+let boardSkin = useLocalStorage("ls_boardSkin", "light");
 
 //Dimensions for border
 let boardHorizontalPadding = computed(() => {
@@ -5590,6 +5656,13 @@ class Board {
     this.clearTimerTimeout();
     this.integerTimer = Math.floor(finalTime);
     this.calculateAndDisplayStats(false);
+    if (
+      (this.variant === "eff boards" &&
+        statsRunDeepChain.value === "eff always") ||
+      statsRunDeepChain.value === "any always"
+    ) {
+      game.board.stats.lateCalcDeepChainZini();
+    }
   }
 
   blast() {
@@ -5633,6 +5706,13 @@ class Board {
     this.clearTimerTimeout();
     this.integerTimer = Math.floor(finalTime);
     this.calculateAndDisplayStats(true);
+    if (
+      (this.variant === "eff boards" &&
+        ["eff win", "eff always"].includes(statsRunDeepChain.value)) ||
+      ["any win", "any always"].includes(statsRunDeepChain.value)
+    ) {
+      game.board.stats.lateCalcDeepChainZini();
+    }
   }
 
   markRemainingFlags() {
@@ -7501,12 +7581,22 @@ class Board {
     if (clickPathOrFalse) {
       this.ziniExplore.classicPath = clickPathOrFalse;
 
-      //Very hacky, but this is needed for switching to analyse mode as if this runs immedaitely then this.variant won't be defined
+      //Very hacky, but this is needed for switching to analyse mode as if this runs immediately then this.variant won't be defined
       setTimeout(() => {
         this.switchToAnalyseMode(true);
       }, 100);
     } else {
       this.ziniExplore.clearCurrentPath();
+    }
+
+    if (newQuery.d === "1" && !newQuery.c) {
+      //Run deepchain zini immediately if d=1 query param is set
+
+      //Very hacky, but this is needed for switching to analyse mode as if this runs immediately then this.variant won't be defined
+      setTimeout(() => {
+        this.switchToAnalyseMode(true);
+        game.board.ziniExplore.runDefaultAlgorithm(false);
+      }, 100);
     }
 
     this.revertUnappliedWidthHeightSetting();
@@ -7542,55 +7632,14 @@ class Board {
     return true;
   }
 
-  /* OK TO DELETE
-  refreshQueryForZiniExplore() {
-    let b = Algorithms.getPttaDimensionString(this.ziniExplorerMines);
-    let m = Algorithms.getPttaMinesString(this.ziniExplorerMines);
-
-    expectedQuery = {
-      b: b,
-      m: m,
-    };
-
-    if (Utils.shallowObjectEquals(route.query, expectedQuery)) {
-      return;
-    }
-
-    //Full path required as otherwise might have race condition where query gets set on wrong path
-    // and then cleared when the code for watching for variant change runs
-    router.push({
-      name: "play",
-      params: { variant: "zini-explorer" },
-      query: expectedQuery,
-    });
-  }
-  */
-
-  /* OK TO DELETE
-  refreshQueryForBoardEditor() {
-    let b = Algorithms.getPttaDimensionString(this.boardEditorMines);
-    let m = Algorithms.getPttaMinesString(this.boardEditorMines);
-
-    expectedQuery = {
-      b: b,
-      m: m,
-    };
-
-    if (Utils.shallowObjectEquals(route.query, expectedQuery)) {
-      return;
-    }
-
-    //Full path required as otherwise might have race condition where query gets set on wrong path
-    // and then cleared when the code for watching for variant change runs
-    router.push({
-      name: "play",
-      params: { variant: "board-editor" },
-      query: expectedQuery,
-    });
-  }
-  */
-
   updateForUrlChange(newUrlVariant, newQuery, oldUrlVariant, oldQuery) {
+    if (route.name !== "play") {
+      return; //Don't run if changing to different page
+    }
+    if (mainCanvas.value === null) {
+      //Running too early?
+      return;
+    }
     console.log("updateForUrlChange called");
     //Watcher function which is called whenever query part of URL changes or variant part of path changes
     //TODO, if these are different from expected, then update relevant data and force board reset.
@@ -7771,7 +7820,11 @@ class BoardHistory {
 }
 
 const benchmark = new Benchmark();
-const skinManager = new SkinManager();
+const skinManager = new SkinManager({
+  boardSkin,
+  analyseHiddenStyle,
+  replayShowHidden,
+});
 var effShuffleManager = new EffShuffleManager(
   {
     minimumEff,

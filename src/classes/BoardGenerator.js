@@ -51,12 +51,29 @@ class BoardGenerator {
       throw new Error("PTTA NOT SET");
     }
 
-    if (!pttaUrl.startsWith("https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/")) {
+    //Special case, if only search params are provided, we prepend the ptt part so it works
+    if (/^\??b=\d+&m=\w+$/.test(pttaUrl)) {
+      if (pttaUrl.charAt(0) !== "?") {
+        pttaUrl = "?" + pttaUrl;
+      }
+
+      pttaUrl = "https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/" + pttaUrl;
+    }
+
+    if (!pttaUrl.startsWith("https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/") &&
+      !pttaUrl.startsWith("https://llamasweeper.com/#/game/zini-explorer") &&
+      !pttaUrl.startsWith("https://llamasweeper.com/#/game/board-editor")) {
       Dialog.create({
         title: "Alert",
         message: "Please enter a URL of the form https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=...&m=... in the PTT URL field",
       });
       throw new Error("PTTA NOT URL");
+    }
+
+    //Special case - for llamasweeper.com, remove the /#/ bit, as this confuses it when finding search params (since # is used for anchors)
+    if (pttaUrl.startsWith("https://llamasweeper.com/#/game/zini-explorer") ||
+      pttaUrl.startsWith("https://llamasweeper.com/#/game/board-editor")) {
+      pttaUrl = pttaUrl.replace("#/", "");
     }
 
     const pttaAsURL = new URL(pttaUrl);

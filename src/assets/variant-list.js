@@ -529,6 +529,17 @@ let variantList = [
     ],
     "rating": 3.3,
     "popularity": 2
+  },
+  {
+    "name": "sudoku-puzzles.net - sudoku mine",
+    "url": "https://sudoku-puzzles.net/sudoku-mine-hard",
+    "desc": "A large collection of \"sudoku mine\" puzzles, where mines have to be placed into a sudoku grid with exactly 3 mines in each row, column and box. The site also contains a large number of other puzzles, mostly, but not exclusively, based around sudoku. I dislike the user interface as it doesn't support using left/right click for placing mines/safes. If this is an issue, I'd recommend playing on gmpuzzles.com instead.",
+    "image": "/img/variants/sudoku-mine.png",
+    "tags": [
+      "game"
+    ],
+    "rating": 2.7,
+    "popularity": 2
   }
 ]
 

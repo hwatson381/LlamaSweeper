@@ -460,3 +460,39 @@ Allow specifying squares (or flags) to start open in board editor. Also make it 
 Make it possible to send to zini explorer with path from particular timestamp via replay?
 
 Play noise on scroll cancel or other touch cancels to debug issues with ignored touches
+
+Consider whether to add mineswifter, also https://minesweepe.rs
+
+Small time save by getting fisher yates shuffle to terminate after first [number of mines] shuffles?
+
+Sort out skins -
+Delay showing until the current skin "main" and also replay + zini explorer skin are loaded
+In this period, we will have other skins use the missing texture
+Then let everything else load in at own pace.
+Is this extendable? What if we add more modes that use more skins?
+Have "priority" for loading images
+Also default all textures to the missing one, and then update on load callback
+
+Can canvas be made higher res?
+
+```
+canvas.width = width * window.devicePixelRatio;
+canvas.height = height * window.devicePixelRatio;
+canvas.style.width = width + 'px';
+canvas.style.height = height + 'px';
+```
+
+Also look at https://stackoverflow.com/questions/41763580/svg-rendered-into-canvas-blurred-on-retina-display
+css - image-rendering: pixelated;
+or js - ctx.imageSmoothingEnabled = false;
+
+Have stat whilst eff boards is playing for "live eff"
+
+To consider - have page for curiosities (like minesweeper board museum stuff)
+
+Need to have secondary callback for after images are loaded?
+Or just spam refresh board each time...
+
+flag toggle = reset button?
+
+Do a gif for installing bookmarklet
