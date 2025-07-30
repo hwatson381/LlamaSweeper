@@ -2032,14 +2032,24 @@
     :class="[
       {
         'flag-toggle': true,
-        'flag-active': flagToggleActive,
+        'flag-active': flagToggleActive && !flagToggleShowReset,
       },
       flagToggleLocationClass,
       flagToggleSizeClass,
     ]"
-    @click.prevent="flagToggleActive = !flagToggleActive"
+    @click.prevent="game.board.toggleFlagButton()"
   >
-    <q-icon name="flag" :class="[flagToggleSizeClass, 'flag-toggle-icon']" />
+    <q-icon
+      name="flag"
+      :class="[flagToggleSizeClass, 'flag-toggle-icon']"
+      v-show="!flagToggleShowReset"
+    />
+    <q-icon
+      name="sym_o_sentiment_satisfied"
+      style="position: absolute"
+      :class="[flagToggleSizeClass, 'flag-toggle-icon']"
+      v-show="flagToggleShowReset"
+    ></q-icon>
   </div>
 
   <div style="height: 150px"></div>
@@ -2071,6 +2081,13 @@
     @close-replay="game?.board?.closeReplay()"
   >
   </ReplayBar>
+
+  <!-- below is needed for to preload icon for flag-toggle reset button -->
+  <q-icon
+    name="sym_o_sentiment_satisfied"
+    style="visibility: hidden; position: absolute"
+  ></q-icon>
+  <!--end of preload-->
 </template>
 
 <style scoped>
@@ -2728,6 +2745,7 @@ let pttaImportModal = ref(false);
 let isCurrentlyEditModeDisplay = ref(true); //Lines up with game.board.gameStage = 'edit' - consider making ...gameStage a ref instead.
 
 let flagToggleActive = ref(false); //Whether to swap left and right mouse buttons
+let flagToggleShowReset = ref(false); //Shows after blast/game win to allow easier reset on mobile
 let flagToggleLocationClass = useLocalStorage(
   "ls_flagToggleLocationClass",
   "toggle-bot-right"
@@ -3598,6 +3616,7 @@ class Board {
 
     this.gameStage = "pregame";
 
+    flagToggleShowReset.value = false;
     flagToggleActive.value = false;
 
     //Perhaps slightly confusing - for editable boards, set this.mines to refer to either the board editor or zini explorer.
@@ -5663,6 +5682,7 @@ class Board {
     ) {
       game.board.stats.lateCalcDeepChainZini();
     }
+    flagToggleShowReset.value = true;
   }
 
   blast() {
@@ -5713,6 +5733,7 @@ class Board {
     ) {
       game.board.stats.lateCalcDeepChainZini();
     }
+    flagToggleShowReset.value = true;
   }
 
   markRemainingFlags() {
@@ -6827,7 +6848,7 @@ class Board {
       isCurrentlyEditModeDisplay.value = false;
       this.resetBoard();
     } else if (this.variant === "zini explorer") {
-      throw new Error("Analyse mode not available on zini explorer");
+      throw new Error("Play mode not available on zini explorer");
     } else {
       //do nothing
     }
@@ -6851,6 +6872,14 @@ class Board {
     }
 
     this.draw();
+  }
+
+  toggleFlagButton() {
+    if (flagToggleShowReset.value) {
+      game.reset();
+    } else {
+      flagToggleActive.value = !flagToggleActive.value;
+    }
   }
 
   draw() {

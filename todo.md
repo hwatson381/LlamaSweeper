@@ -493,6 +493,8 @@ To consider - have page for curiosities (like minesweeper board museum stuff)
 Need to have secondary callback for after images are loaded?
 Or just spam refresh board each time...
 
-flag toggle = reset button?
-
 Do a gif for installing bookmarklet
+
+Add KeyHunter?
+
+Does lack of mobile viewport hurt mobile performance?

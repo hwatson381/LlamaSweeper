@@ -92,8 +92,8 @@ class SkinManager {
     ];
 
     let themePaths = {
-      light: "/img/",
-      dark: "/img/dark/",
+      light: "/img/light",
+      dark: "/img/dark",
     }
 
     //Figure out how many images are priority images
@@ -220,7 +220,7 @@ class SkinManager {
       dotSecondary: "black",
       clickGain: '#346B3E', //previously 'green'
       clickLoss: '#7C3D3D', //previous 'red'
-      clickNeutral: 'yellow',
+      clickNeutral: '#757439', //yellow
       classicDig: '#f0ff78', //light yellow
       classicChord: '#0056ac', //light blue (closer to purple for dark scheme)
       premium: 'white',

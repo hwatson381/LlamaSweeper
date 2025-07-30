@@ -540,6 +540,18 @@ let variantList = [
     ],
     "rating": 2.7,
     "popularity": 2
+  },
+  {
+    "name": "minesweepe.rs",
+    "url": "https://minesweepe.rs/",
+    "desc": "A simple, but responsive minesweeper website that works extremely well on mobile. It is one of very few minesweeper website that support multi-touch on mobile (llamasweeper also has this) and has really good touch responsiveness. minesweepe.rs has clean graphics, and also resizes to take up the maximum amount of screen space. ",
+    "image": "/img/variants/minesweepe_rs.png",
+    "tags": [
+      "mobile",
+      "game"
+    ],
+    "rating": 2.8,
+    "popularity": 1
   }
 ]
 
