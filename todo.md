@@ -498,3 +498,5 @@ Do a gif for installing bookmarklet
 Add KeyHunter?
 
 Does lack of mobile viewport hurt mobile performance?
+Or maybe it's somehow the 1s time limit getting triggered?
+Could that be shared between touches?
