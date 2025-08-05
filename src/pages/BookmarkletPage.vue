@@ -29,6 +29,12 @@
         </li>
         <li>Click the bookmarklet to run it</li>
       </ol>
+      <q-img
+        src="/img/supporting/bookmarklet_demo.gif"
+        ratio="1"
+        style="max-width: 400px"
+        class="q-ma-sm q-mb-lg"
+      />
       <p class="text-h5">Mobile/alternate instructions (slightly harder)</p>
       <ol>
         <li>
@@ -49,7 +55,7 @@
         </li>
         <li>Click the bookmarklet to run it</li>
       </ol>
-      <p>
+      <p class="text-info">
         Note: Never run bookmarklets from untrusted sources. It's recommended to
         review the code of bookmarklets before using them.
       </p>
