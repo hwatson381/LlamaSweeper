@@ -1,8 +1,13 @@
 <template>
   <q-page>
-    <div :class="['q-pa-md', centreInterface ? 'centre-interface' : '']">
-      <p class="text-h4 text-centreable">Llama's minesweeper variants</p>
-      <p class="margin-centreable text-centreable" style="max-width: 700px">
+    <div :class="['q-py-md', centreInterface ? 'centre-interface' : '']">
+      <p class="text-h4 text-centreable q-px-md">
+        Llama's minesweeper variants
+      </p>
+      <p
+        class="margin-centreable text-centreable q-px-md"
+        style="max-width: 700px"
+      >
         This page has several minesweeper variants/tools I've made. Variants can
         be changed with the "variant" dropdown below. This is a work in
         progress, so there may be bugs. Feedback is very welcome, although I
@@ -29,7 +34,7 @@
       </div>
       <br />
       <div
-        class="flex q-mb-md flex-centreable"
+        class="flex q-mb-md flex-centreable q-mx-md"
         style="gap: 15px; justify-content: start; padding: 5px"
       >
         <q-select
@@ -69,7 +74,7 @@
         </div>
       </div>
       <div
-        class="flex q-gutter-sm flex-centreable"
+        class="flex q-gutter-sm flex-centreable q-px-md"
         style="margin: 5px"
         v-if="variant !== 'board editor' && variant !== 'zini explorer'"
       >
@@ -109,7 +114,10 @@
           variant !== 'zini explorer'
         "
       >
-        <div class="flex flex-centreable" style="gap: 10px; margin: 5px">
+        <div
+          class="flex flex-centreable q-px-md"
+          style="gap: 10px; margin: 5px"
+        >
           <q-input
             debounce="100"
             v-model.number="customWidth"
@@ -141,130 +149,132 @@
             @update:model-value="game.reset()"
           />
         </div>
-        <p class="text-centreable">{{ customWarning }}</p>
+        <p class="text-centreable q-px-md">{{ customWarning }}</p>
       </template>
 
-      <q-card
-        flat
-        bordered
-        style="max-width: 550px"
-        class="margin-centreable"
-        v-if="variant === 'board editor' || variant === 'zini explorer'"
-      >
-        <q-card-section>
-          <div class="flex q-mb-md" style="gap: 15px">
-            <q-input
-              debounce="100"
-              v-model.number="editBoardUnappliedWidth"
-              label="Width"
-              type="number"
-              dense
-              min="1"
-              max="100"
-            />
-            <q-input
-              debounce="100"
-              v-model.number="editBoardUnappliedHeight"
-              label="Height"
-              type="number"
-              dense
-              min="1"
-              max="100"
-            />
-            <q-btn-group>
-              <q-btn
-                color="primary"
-                label="Beg"
-                @click="
-                  editBoardUnappliedWidth = 9;
-                  editBoardUnappliedHeight = 9;
-                "
+      <div class="q-mx-md">
+        <q-card
+          flat
+          bordered
+          style="max-width: 550px"
+          class="margin-centreable"
+          v-if="variant === 'board editor' || variant === 'zini explorer'"
+        >
+          <q-card-section>
+            <div class="flex q-mb-md" style="gap: 15px">
+              <q-input
+                debounce="100"
+                v-model.number="editBoardUnappliedWidth"
+                label="Width"
+                type="number"
+                dense
+                min="1"
+                max="100"
               />
-              <q-btn
-                color="primary"
-                label="Int"
-                @click="
-                  editBoardUnappliedWidth = 16;
-                  editBoardUnappliedHeight = 16;
-                "
+              <q-input
+                debounce="100"
+                v-model.number="editBoardUnappliedHeight"
+                label="Height"
+                type="number"
+                dense
+                min="1"
+                max="100"
               />
-              <q-btn
-                color="primary"
-                label="Exp"
-                @click="
-                  () => {
-                    if (verticalExpert) {
-                      editBoardUnappliedWidth = 16;
-                      editBoardUnappliedHeight = 30;
-                    } else {
-                      editBoardUnappliedWidth = 30;
-                      editBoardUnappliedHeight = 16;
+              <q-btn-group>
+                <q-btn
+                  color="primary"
+                  label="Beg"
+                  @click="
+                    editBoardUnappliedWidth = 9;
+                    editBoardUnappliedHeight = 9;
+                  "
+                />
+                <q-btn
+                  color="primary"
+                  label="Int"
+                  @click="
+                    editBoardUnappliedWidth = 16;
+                    editBoardUnappliedHeight = 16;
+                  "
+                />
+                <q-btn
+                  color="primary"
+                  label="Exp"
+                  @click="
+                    () => {
+                      if (verticalExpert) {
+                        editBoardUnappliedWidth = 16;
+                        editBoardUnappliedHeight = 30;
+                      } else {
+                        editBoardUnappliedWidth = 30;
+                        editBoardUnappliedHeight = 16;
+                      }
                     }
+                  "
+                />
+              </q-btn-group>
+              <q-btn
+                @click="pttaImportModal = true"
+                color="secondary"
+                label="ptt import"
+              />
+            </div>
+            <div class="flex" style="gap: 15px">
+              <q-btn
+                @click="game.board.applyEditBoardWidthHeight()"
+                color="positive"
+                label="new board"
+              />
+              <q-btn-toggle
+                v-if="variant === 'board editor'"
+                v-model="isCurrentlyEditModeDisplay"
+                push
+                glossy
+                toggle-color="primary"
+                :options="[
+                  { label: 'Edit', value: true },
+                  { label: 'Play', value: false },
+                ]"
+                @update:model-value="
+                  (val) => {
+                    val
+                      ? game.board.switchToEditMode()
+                      : game.board.switchToPlayMode();
                   }
                 "
               />
-            </q-btn-group>
-            <q-btn
-              @click="pttaImportModal = true"
-              color="secondary"
-              label="ptt import"
-            />
-          </div>
-          <div class="flex" style="gap: 15px">
-            <q-btn
-              @click="game.board.applyEditBoardWidthHeight()"
-              color="positive"
-              label="new board"
-            />
-            <q-btn-toggle
-              v-if="variant === 'board editor'"
-              v-model="isCurrentlyEditModeDisplay"
-              push
-              glossy
-              toggle-color="primary"
-              :options="[
-                { label: 'Edit', value: true },
-                { label: 'Play', value: false },
-              ]"
-              @update:model-value="
-                (val) => {
-                  val
-                    ? game.board.switchToEditMode()
-                    : game.board.switchToPlayMode();
-                }
-              "
-            />
-            <q-btn-toggle
-              v-if="variant === 'zini explorer'"
-              v-model="isCurrentlyEditModeDisplay"
-              push
-              glossy
-              toggle-color="primary"
-              :options="[
-                { label: 'Edit', value: true },
-                { label: 'Analyse', value: false },
-              ]"
-              @update:model-value="
-                (val) => {
-                  val
-                    ? game.board.switchToEditMode()
-                    : game.board.switchToAnalyseMode();
-                }
-              "
-            />
-            <q-btn
-              v-if="variant === 'zini explorer'"
-              @click="
-                game.board.switchToAnalyseMode(true);
-                game.board.ziniExplore.runDefaultAlgorithmOrPromptForInfo();
-              "
-              color="primary"
-              label="DeepChain ZiNi"
-            />
-          </div>
-        </q-card-section>
-      </q-card>
-      <div class="text-centreable" v-if="variant === 'eff boards'">
+              <q-btn-toggle
+                v-if="variant === 'zini explorer'"
+                v-model="isCurrentlyEditModeDisplay"
+                push
+                glossy
+                toggle-color="primary"
+                :options="[
+                  { label: 'Edit', value: true },
+                  { label: 'Analyse', value: false },
+                ]"
+                @update:model-value="
+                  (val) => {
+                    val
+                      ? game.board.switchToEditMode()
+                      : game.board.switchToAnalyseMode();
+                  }
+                "
+              />
+              <q-btn
+                v-if="variant === 'zini explorer'"
+                @click="
+                  game.board.switchToAnalyseMode(true);
+                  game.board.ziniExplore.runDefaultAlgorithmOrPromptForInfo();
+                "
+                color="primary"
+                label="DeepChain ZiNi"
+              />
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
+      <div class="text-centreable q-mx-md" v-if="variant === 'eff boards'">
         Generating boards with target eff: {{ minimumEff }}% (change this in
         settings below the board)
         <span v-if="generateEffBoardsInBackground" class="text-info"
@@ -274,7 +284,7 @@
       </div>
       <div
         v-if="variant === 'mean openings'"
-        class="flex q-mt-md flex-centreable"
+        class="flex q-mt-md flex-centreable q-mx-md"
       >
         <q-select
           class="q-mx-md q-mb-md"
@@ -375,7 +385,11 @@
           @touchcancel="game.handleTouchCancel($event)"
           :style="{
             touchAction:
-              mobileScrollSetting === 'disable' ? 'none' : 'manipulation',
+              touchActionOverride !== 'ignore'
+                ? touchActionOverride
+                : mobileScrollSetting === 'disable'
+                ? 'none'
+                : 'manipulation',
             marginLeft: 0 /*gameCalculatedMarginLeft*/,
           }"
         >
@@ -502,6 +516,11 @@
                   </div>
                 </q-menu>
               </q-icon>
+            </div>
+            <div>
+              eCPS@CPS: {{ statsObject.clicks.effectiveClicksPerSecond }}@{{
+                statsObject.clicks.clicksPerSecond
+              }}
             </div>
             <div v-if="statsShow8Way && statsObject.eightZini !== null">
               ZiNi (8-way): {{ statsObject.eightZini }}
@@ -955,194 +974,196 @@
         </template>
       </div>
 
-      <q-card
-        flat
-        bordered
-        style="max-width: 550px"
-        class="q-my-md margin-centreable"
-        v-if="variant === 'eff boards'"
-      >
-        <q-card-section>
-          <div class="text-h6 q-mb-sm">Eff boards config</div>
-          <div v-if="boardSizePreset === 'beg'" class="flex">
-            <q-select
-              class="q-mx-md q-mb-md"
-              outlined
-              options-dense
-              dense
-              transition-duration="100"
-              input-debounce="0"
-              v-model="begEffPreset"
-              style="width: 130px"
-              :options="begEffOptions"
-              stack-label
-              label="Target beg eff"
-            ></q-select>
-            <q-input
-              v-if="begEffPreset === 'custom'"
-              debounce="100"
-              v-model.number="begEffCustom"
-              label="Custom eff"
-              type="number"
-              dense
-              min="100"
-              max="340"
-              style="width: 110px"
-            />
-          </div>
-          <div v-if="boardSizePreset === 'int'" class="flex">
-            <q-select
-              class="q-mx-md q-mb-md"
-              outlined
-              options-dense
-              dense
-              transition-duration="100"
-              input-debounce="0"
-              v-model="intEffPreset"
-              style="width: 130px"
-              :options="intEffOptions"
-              stack-label
-              label="Target int eff"
-            ></q-select>
-            <q-input
-              v-if="intEffPreset === 'custom'"
-              debounce="100"
-              v-model.number="intEffCustom"
-              label="Custom eff"
-              type="number"
-              dense
-              min="100"
-              max="340"
-              style="width: 110px"
-            />
-          </div>
-          <div v-if="boardSizePreset === 'exp'" class="flex">
-            <q-select
-              class="q-mx-md q-mb-md"
-              outlined
-              options-dense
-              dense
-              transition-duration="100"
-              input-debounce="0"
-              v-model="expEffPreset"
-              style="width: 130px"
-              :options="expEffOptions"
-              stack-label
-              label="Target exp eff"
-            ></q-select>
-            <q-input
-              v-if="expEffPreset === 'custom'"
-              debounce="100"
-              v-model.number="expEffCustom"
-              label="Custom eff"
-              type="number"
-              dense
-              min="100"
-              max="340"
-              style="width: 110px"
-            />
-          </div>
-          <div v-if="boardSizePreset === 'custom'">
-            <q-input
-              debounce="100"
-              v-model.number="customEffCustom"
-              label="Minimum Custom eff"
-              type="number"
-              dense
-              min="100"
-              max="340"
-              style="width: 110px"
-            />
-          </div>
-          <div
-            v-if="browserSupportsWebWorkers"
-            class="flex q-mb-sm"
-            style="align-items: center"
-          >
-            <q-checkbox
-              class="q-mr-md"
-              style="flex-shrink: 0"
-              v-model="generateEffBoardsInBackground"
-              label="Generate in background"
-            />
-            <div
-              v-if="
-                effBoardShowSlowGenerationWarning &&
-                !generateEffBoardsInBackground
-              "
-              class="text-info"
-              style="flex: 1 1 200px"
-            >
-              <b>IMPORTANT:</b> Recommended for high target efficiency
+      <div class="q-mx-md">
+        <q-card
+          flat
+          bordered
+          style="max-width: 550px"
+          class="q-my-md margin-centreable"
+          v-if="variant === 'eff boards'"
+        >
+          <q-card-section>
+            <div class="text-h6 q-mb-sm">Eff boards config</div>
+            <div v-if="boardSizePreset === 'beg'" class="flex">
+              <q-select
+                class="q-mx-md q-mb-md"
+                outlined
+                options-dense
+                dense
+                transition-duration="100"
+                input-debounce="0"
+                v-model="begEffPreset"
+                style="width: 130px"
+                :options="begEffOptions"
+                stack-label
+                label="Target beg eff"
+              ></q-select>
+              <q-input
+                v-if="begEffPreset === 'custom'"
+                debounce="100"
+                v-model.number="begEffCustom"
+                label="Custom eff"
+                type="number"
+                dense
+                min="100"
+                max="340"
+                style="width: 110px"
+              />
             </div>
-          </div>
-          <div v-if="browserSupportsConcurrency" class="flex q-mb-sm">
-            <q-select
-              class="q-mx-md q-mb-md"
-              outlined
-              options-dense
-              dense
-              transition-duration="100"
-              input-debounce="200"
-              v-model="effWebWorkerCount"
-              style="width: 210px; flex-shrink: 0"
-              :options="effWebWorkerCountOptions"
-              stack-label
-              label="Number of background workers"
-              @update:model-value="effShuffleManager.reinitWorkers()"
-            ></q-select>
-            <div
-              v-if="
-                effBoardShowSlowGenerationWarning &&
-                generateEffBoardsInBackground &&
-                effWebWorkerCount !== effWebWorkerCountOptions.at(-1)
-              "
-              class="text-info"
-              style="flex: 1 1 215px"
-            >
-              Consider increasing this if background generation is too slow
+            <div v-if="boardSizePreset === 'int'" class="flex">
+              <q-select
+                class="q-mx-md q-mb-md"
+                outlined
+                options-dense
+                dense
+                transition-duration="100"
+                input-debounce="0"
+                v-model="intEffPreset"
+                style="width: 130px"
+                :options="intEffOptions"
+                stack-label
+                label="Target int eff"
+              ></q-select>
+              <q-input
+                v-if="intEffPreset === 'custom'"
+                debounce="100"
+                v-model.number="intEffCustom"
+                label="Custom eff"
+                type="number"
+                dense
+                min="100"
+                max="340"
+                style="width: 110px"
+              />
             </div>
-          </div>
-          <div class="flex q-mb-sm">
-            <q-select
-              class="q-mx-md q-mb-md"
-              outlined
-              options-dense
-              dense
-              transition-duration="100"
-              input-debounce="0"
-              v-model="effFirstClickType"
-              @update:model-value="
-                effShuffleManager.sendUpdateFirstClickIfNeeded()
-              "
-              style="width: 150px; flex-shrink: 0"
-              :options="[
-                {
-                  label: 'Mouse',
-                  value: 'same',
-                },
-                { label: 'Random zero tile', value: 'random' },
-                { label: 'Top left corner', value: 'corner' },
-                { label: 'Middle', value: 'middle' },
-              ]"
-              emit-value
-              map-options
-              stack-label
-              label="First click location"
-            ></q-select>
-            <div
-              v-if="generateEffBoardsInBackground"
-              class="text-info"
-              style="flex: 1 1 215px"
-            >
-              Boards generated in the background will use the value of this
-              setting at time of generation and will ignore the "Mouse" option
+            <div v-if="boardSizePreset === 'exp'" class="flex">
+              <q-select
+                class="q-mx-md q-mb-md"
+                outlined
+                options-dense
+                dense
+                transition-duration="100"
+                input-debounce="0"
+                v-model="expEffPreset"
+                style="width: 130px"
+                :options="expEffOptions"
+                stack-label
+                label="Target exp eff"
+              ></q-select>
+              <q-input
+                v-if="expEffPreset === 'custom'"
+                debounce="100"
+                v-model.number="expEffCustom"
+                label="Custom eff"
+                type="number"
+                dense
+                min="100"
+                max="340"
+                style="width: 110px"
+              />
             </div>
-          </div>
-        </q-card-section>
-      </q-card>
+            <div v-if="boardSizePreset === 'custom'">
+              <q-input
+                debounce="100"
+                v-model.number="customEffCustom"
+                label="Minimum Custom eff"
+                type="number"
+                dense
+                min="100"
+                max="340"
+                style="width: 110px"
+              />
+            </div>
+            <div
+              v-if="browserSupportsWebWorkers"
+              class="flex q-mb-sm"
+              style="align-items: center"
+            >
+              <q-checkbox
+                class="q-mr-md"
+                style="flex-shrink: 0"
+                v-model="generateEffBoardsInBackground"
+                label="Generate in background"
+              />
+              <div
+                v-if="
+                  effBoardShowSlowGenerationWarning &&
+                  !generateEffBoardsInBackground
+                "
+                class="text-info"
+                style="flex: 1 1 200px"
+              >
+                <b>IMPORTANT:</b> Recommended for high target efficiency
+              </div>
+            </div>
+            <div v-if="browserSupportsConcurrency" class="flex q-mb-sm">
+              <q-select
+                class="q-mx-md q-mb-md"
+                outlined
+                options-dense
+                dense
+                transition-duration="100"
+                input-debounce="200"
+                v-model="effWebWorkerCount"
+                style="width: 210px; flex-shrink: 0"
+                :options="effWebWorkerCountOptions"
+                stack-label
+                label="Number of background workers"
+                @update:model-value="effShuffleManager.reinitWorkers()"
+              ></q-select>
+              <div
+                v-if="
+                  effBoardShowSlowGenerationWarning &&
+                  generateEffBoardsInBackground &&
+                  effWebWorkerCount !== effWebWorkerCountOptions.at(-1)
+                "
+                class="text-info"
+                style="flex: 1 1 215px"
+              >
+                Consider increasing this if background generation is too slow
+              </div>
+            </div>
+            <div class="flex q-mb-sm">
+              <q-select
+                class="q-mx-md q-mb-md"
+                outlined
+                options-dense
+                dense
+                transition-duration="100"
+                input-debounce="0"
+                v-model="effFirstClickType"
+                @update:model-value="
+                  effShuffleManager.sendUpdateFirstClickIfNeeded()
+                "
+                style="width: 150px; flex-shrink: 0"
+                :options="[
+                  {
+                    label: 'Mouse',
+                    value: 'same',
+                  },
+                  { label: 'Random zero tile', value: 'random' },
+                  { label: 'Top left corner', value: 'corner' },
+                  { label: 'Middle', value: 'middle' },
+                ]"
+                emit-value
+                map-options
+                stack-label
+                label="First click location"
+              ></q-select>
+              <div
+                v-if="generateEffBoardsInBackground"
+                class="text-info"
+                style="flex: 1 1 215px"
+              >
+                Boards generated in the background will use the value of this
+                setting at time of generation and will ignore the "Mouse" option
+              </div>
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
 
-      <div class="q-py-md margin-centreable" style="max-width: 700px">
+      <div class="q-py-md margin-centreable q-px-md" style="max-width: 700px">
         <q-list bordered class="rounded-borders">
           <q-expansion-item
             expand-separator
@@ -1453,6 +1474,10 @@
                       label: 'Hidden',
                       value: 'toggle-hidden',
                     },
+                    {
+                      label: 'Show Reset Only',
+                      value: 'toggle-hidden-reset',
+                    },
                   ]"
                   emit-value
                   map-options
@@ -1491,6 +1516,62 @@
                 <q-checkbox
                   v-model="verticalExpert"
                   label="Make expert boards portrait"
+                /><br />
+                <q-checkbox
+                  v-model="doubleTapZoomDisableHack"
+                  label="[advanced] double tap zoom disable hack"
+                />
+                <q-select
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="touchActionOverride"
+                  style="width: 220px; flex-shrink: 0"
+                  :options="[
+                    {
+                      label: 'Use other settings (recommended)',
+                      value: 'ignore',
+                    },
+                    {
+                      label: 'pan-x',
+                      value: 'pan-x',
+                    },
+                    {
+                      label: 'pan-y',
+                      value: 'pan-y',
+                    },
+                    {
+                      label: 'pinch-zoom',
+                      value: 'pinch-zoom',
+                    },
+                    {
+                      label: 'pan-x pan-y',
+                      value: 'pan-x pan-y',
+                    },
+                    {
+                      label: 'pan-x pinch-zoom',
+                      value: 'pan-x pinch-zoom',
+                    },
+                    {
+                      label: 'pan-y pinch-zoom',
+                      value: 'pan-y pinch-zoom',
+                    },
+                    {
+                      label: 'pan-x pan-y pinch-zoom',
+                      value: 'pan-x pan-y pinch-zoom',
+                    },
+                    {
+                      label: 'none',
+                      value: 'none',
+                    },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="[advanced] Touch action override"
                 />
               </q-card-section>
             </q-card>
@@ -1566,7 +1647,7 @@
       </div>
 
       <br />
-      <p class="text-centreable">(textures from minesweeper.online)</p>
+      <p class="text-centreable q-px-md">(textures from minesweeper.online)</p>
     </div>
   </q-page>
 
@@ -1615,7 +1696,7 @@
           Left padding
           <q-slider
             v-model="gameLeftPadding"
-            :min="0"
+            :min="-16"
             :max="1000"
             :step="1"
             label
@@ -2033,6 +2114,7 @@
       {
         'flag-toggle': true,
         'flag-active': flagToggleActive && !flagToggleShowReset,
+        'flag-show-reset': flagToggleShowReset,
       },
       flagToggleLocationClass,
       flagToggleSizeClass,
@@ -2104,6 +2186,7 @@
   margin-right: 10px;
   margin-bottom: 10px;
   touch-action: manipulation;
+  -webkit-touch-callout: none;
 }
 
 .side-panel {
@@ -2176,6 +2259,18 @@ body.body--dark .flag-active {
 
 .flag-toggle.toggle-hidden {
   display: none !important;
+}
+
+.flag-toggle.toggle-hidden-reset:not(.flag-show-reset) {
+  display: none !important;
+}
+
+.flag-toggle.toggle-hidden-reset.flag-show-reset {
+  border-radius: 10% 0 0 0;
+  border-left: 1px solid;
+  border-top: 1px solid;
+  right: -1px;
+  bottom: -1px;
 }
 
 .flag-toggle.toggle-normal {
@@ -2429,6 +2524,8 @@ let statsObject = ref({
     chordWasted: null,
     right: null,
     rightWasted: null,
+    clicksPerSecond: null,
+    effectiveClicksPerSecond: null,
   },
   eightZini: null,
   chainZini: null,
@@ -2454,7 +2551,7 @@ let gameLeftPadding = useLocalStorage("ls_gameLeftPadding", 30);
 let gameCentrePadding = ref(0); //Add margin to left side of board to centre it
 let gameCalculatedMarginLeft = computed(() => {
   return gamePositioning.value === "left"
-    ? gameLeftPadding.value + "px"
+    ? gameLeftPadding.value + 16 + "px"
     : gameCentrePadding.value + "px";
 });
 let centreInterface = useLocalStorage("ls_centreInterface", true);
@@ -2779,6 +2876,11 @@ let touchLongPressDisabled = useLocalStorage(
 let touchMaxTime = useLocalStorage("ls_touchMaxTime", 1000); //When do long touches get cancelled (maybe these become scrolls?)
 let touchScrollDistance = useLocalStorage("ls_touchScrollDistance", 3); //When do touches that move a lot unlock the scroll
 let verticalExpert = useLocalStorage("ls_verticalExpert", false);
+let doubleTapZoomDisableHack = useLocalStorage(
+  "ls_doubleTapZoomDisableHack",
+  false
+);
+let touchActionOverride = useLocalStorage("ls_touchActionOverride", "ignore");
 let faceHitbox = useLocalStorage("ls_faceHitbox", "bar"); //Hitbox for when the face is click to trigger a reset
 let soundEffectsEnabled = useLocalStorage(
   "ls_soundEffectsEnabled",
@@ -3533,6 +3635,7 @@ class Board {
 
     this.touchDepressedSquaresMap = new Map(); //Map from touch identifiers to depressed squares (for depressing squares on mobile)
     this.ongoingTouches = new Map(); //Track info about touches such as start location, time started etc.
+    this.lastTouchEnd = 0; //Used for disabling double tap zoom on mobile
 
     this.lastClientCoords = { clientX: 0, clientY: 0 }; //Coords used by keyboard clicks
     this.keyboardClickIsDigDown = false; //Used to help ignore repeating keys
@@ -4286,6 +4389,18 @@ class Board {
       //Get touch entry and delete it (whilst hanging onto reference inside this function)
       let thisTouch = this.ongoingTouches.get(touch.identifier);
       this.ongoingTouches.delete(touch.identifier);
+
+      if (doubleTapZoomDisableHack.value) {
+        const now = performance.now();
+
+        if (now - this.lastTouchEnd <= 300) {
+          //300ms double tap time
+          shouldPreventDefault = true;
+          return; //Ignore this touch end as it's part of a double tap
+        }
+
+        this.lastTouchEnd = now;
+      }
 
       if (thisTouch.isScrollingTouch) {
         shouldPreventDefault = false;

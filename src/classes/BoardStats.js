@@ -242,12 +242,13 @@ class BoardStats {
     }
 
     const totalClicks = this.clicks.length;
+    const totalEffectiveClicks = this.clicks.filter(
+      (c) => c.type === "left" || c.type === "right" || c.type === "chord"
+    ).length;
 
     const clicksObject = {
       total: totalClicks,
-      effective: this.clicks.filter(
-        (c) => c.type === "left" || c.type === "right" || c.type === "chord"
-      ).length,
+      effective: totalEffectiveClicks,
       wasted: this.clicks.filter(
         (c) =>
           c.type === "wasted_left" ||
@@ -260,6 +261,8 @@ class BoardStats {
       chordWasted: this.clicks.filter((c) => c.type === "wasted_chord").length,
       right: this.clicks.filter((c) => c.type === "right").length,
       rightWasted: this.clicks.filter((c) => c.type === "wasted_right").length,
+      clicksPerSecond: (totalClicks / time).toFixed(3),
+      effectiveClicksPerSecond: (totalEffectiveClicks / time).toFixed(3),
     };
 
     const eff = (100 * solved3bv) / totalClicks;

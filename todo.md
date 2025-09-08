@@ -493,10 +493,41 @@ To consider - have page for curiosities (like minesweeper board museum stuff)
 Need to have secondary callback for after images are loaded?
 Or just spam refresh board each time...
 
-Do a gif for installing bookmarklet
-
-Add KeyHunter?
+Add KeyHunter? https://keyhunter.org/
 
 Does lack of mobile viewport hurt mobile performance?
+-- very possibly? https://webkit.org/blog/7367/new-interaction-behaviors-in-ios-10/
+(above mentions that there are restrictions on viewport)
 Or maybe it's somehow the 1s time limit getting triggered?
 Could that be shared between touches?
+
+Remove/simplify the title/intro text on variants page (AOS gave similar feedback)
+
+[done?] Remove slight left padding (since it causes issues when centring board on phone)
+
+Extra mobile options -
+Experiment with touch action stuff
+
+Below from chatgpt 3. JS workaround for iOS Safari
+
+If you really want pan lock + no double-tap without killing pinch-zoom via meta viewport, you need to trap the double-tap manually:
+
+```
+let lastTouchEnd = 0;
+document.addEventListener("touchend", function (event) {
+  const now = Date.now();
+  if (now - lastTouchEnd <= 300) {
+    event.preventDefault(); // prevent double-tap zoom
+  }
+  lastTouchEnd = now;
+}, false);
+```
+
+Note - illegal values of touch action thingy don't get used
+Can do el.setAttribute("style", "...") but prob still doesn't work
+
+[done] cps stat
+Option to show stats in fixed way on mobile
+[done] Option to hide flag button except when reseting (can be on pre-existing dropdown)
+L+R chord (less important)
+Remove double zoom code idea?
