@@ -1517,10 +1517,6 @@
                   v-model="verticalExpert"
                   label="Make expert boards portrait"
                 /><br />
-                <q-checkbox
-                  v-model="doubleTapZoomDisableHack"
-                  label="[advanced] double tap zoom disable hack"
-                />
                 <q-select
                   class="q-mx-md q-mb-md"
                   outlined
@@ -2876,10 +2872,6 @@ let touchLongPressDisabled = useLocalStorage(
 let touchMaxTime = useLocalStorage("ls_touchMaxTime", 1000); //When do long touches get cancelled (maybe these become scrolls?)
 let touchScrollDistance = useLocalStorage("ls_touchScrollDistance", 3); //When do touches that move a lot unlock the scroll
 let verticalExpert = useLocalStorage("ls_verticalExpert", false);
-let doubleTapZoomDisableHack = useLocalStorage(
-  "ls_doubleTapZoomDisableHack",
-  false
-);
 let touchActionOverride = useLocalStorage("ls_touchActionOverride", "ignore");
 let faceHitbox = useLocalStorage("ls_faceHitbox", "bar"); //Hitbox for when the face is click to trigger a reset
 let soundEffectsEnabled = useLocalStorage(
@@ -3635,7 +3627,6 @@ class Board {
 
     this.touchDepressedSquaresMap = new Map(); //Map from touch identifiers to depressed squares (for depressing squares on mobile)
     this.ongoingTouches = new Map(); //Track info about touches such as start location, time started etc.
-    this.lastTouchEnd = 0; //Used for disabling double tap zoom on mobile
 
     this.lastClientCoords = { clientX: 0, clientY: 0 }; //Coords used by keyboard clicks
     this.keyboardClickIsDigDown = false; //Used to help ignore repeating keys
@@ -4389,18 +4380,6 @@ class Board {
       //Get touch entry and delete it (whilst hanging onto reference inside this function)
       let thisTouch = this.ongoingTouches.get(touch.identifier);
       this.ongoingTouches.delete(touch.identifier);
-
-      if (doubleTapZoomDisableHack.value) {
-        const now = performance.now();
-
-        if (now - this.lastTouchEnd <= 300) {
-          //300ms double tap time
-          shouldPreventDefault = true;
-          return; //Ignore this touch end as it's part of a double tap
-        }
-
-        this.lastTouchEnd = now;
-      }
 
       if (thisTouch.isScrollingTouch) {
         shouldPreventDefault = false;
