@@ -57,3 +57,7 @@ Keyboard clicks don't register if not focussed
 Setting for making flag become restart button on phone
 
 way to just put the ?b=mode&m=mines board code into the import url instead of just ptta url would be nice too
+
+Rectangle select tool for board editor/zini explorer (drag around/copy paste mines)
+
+Setting to allow drag clicking to place mines on board editor/llamasweeper

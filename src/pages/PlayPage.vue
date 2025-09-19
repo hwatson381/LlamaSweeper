@@ -436,6 +436,9 @@
             >
               Eff: {{ statsObject.eff }}%
             </div>
+            <div v-if="statsShowThrp && statsObject.thrp !== null">
+              Thrp: {{ statsObject.thrp }}%
+            </div>
             <div v-if="statsShowMaxEff && statsObject.maxEff !== null">
               Max Eff:
               <span
@@ -518,9 +521,18 @@
               </q-icon>
             </div>
             <div>
-              eCPS@CPS: {{ statsObject.clicks.effectiveClicksPerSecond }}@{{
+              Ce/s@Cl/s: {{ statsObject.clicks.effectiveClicksPerSecond }}@{{
                 statsObject.clicks.clicksPerSecond
               }}
+            </div>
+            <div v-if="statsShowCorr && statsObject.corr !== null">
+              Corr: {{ statsObject.corr }}
+            </div>
+            <div v-if="statsShowStnb && statsObject.stnb !== null">
+              STNB: {{ statsObject.stnb }}
+            </div>
+            <div v-if="statsShowRqp && statsObject.rqp !== null">
+              RQP: {{ statsObject.rqp }}
             </div>
             <div v-if="statsShow8Way && statsObject.eightZini !== null">
               ZiNi (8-way): {{ statsObject.eightZini }}
@@ -1247,6 +1259,16 @@
                   stack-label
                   label="Run deepChain"
                 ></q-select>
+                <q-checkbox
+                  v-model="statsShowStnb"
+                  label="Show STNB for standard sizes"
+                />
+                <br />
+                <q-checkbox v-model="statsShowThrp" label="Show throughput" />
+                <br />
+                <q-checkbox v-model="statsShowRqp" label="Show RQP" />
+                <br />
+                <q-checkbox v-model="statsShowCorr" label="Show Correctness" />
                 <div class="flex" style="gap: 15px">
                   <q-input
                     dense
@@ -1568,6 +1590,33 @@
                   map-options
                   stack-label
                   label="[advanced] Touch action override"
+                />
+                <q-checkbox v-model="showQuickStats" label="Show Quick Stats" />
+                <q-select
+                  v-if="showQuickStats"
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="quickStatsFontSize"
+                  style="width: 170px; flex-shrink: 0"
+                  :options="[
+                    { label: '8px', value: '8px' },
+                    { label: '10px', value: '10px' },
+                    { label: '12px', value: '12px' },
+                    { label: '14px', value: '14px' },
+                    { label: '16px', value: '16px' },
+                    { label: '18px', value: '18px' },
+                    { label: '20px', value: '20px' },
+                    { label: '22px', value: '22px' },
+                    { label: '24px', value: '24px' },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Quick Stats Font Size"
                 />
               </q-card-section>
             </q-card>
@@ -1924,8 +1973,8 @@
         <q-btn @click="game.board.importPttaBoard()" color="primary"
           >Load</q-btn
         >
-        <br /><br />Importing from minesweeper.online? Try the
-        <RouterLink to="/bookmark">bookmarklet</RouterLink>.
+        <br /><br />Importing from minesweeper.online? Try enable the
+        <RouterLink to="/wom-setting">Llamasweeper ZiNi setting</RouterLink>.
       </q-card-section>
 
       <q-card-actions align="right" class="text-primary">
@@ -2130,6 +2179,45 @@
     ></q-icon>
   </div>
 
+  <div
+    v-if="flagToggleShowReset && showQuickStats"
+    class="quick-stats"
+    :style="{ fontSize: quickStatsFontSize }"
+  >
+    <div>Time: {{ statsObject.time }}s</div>
+    <div v-if="!statsObject.isWonGame">
+      Est. Time: {{ statsObject.estTime }}s
+    </div>
+    <div v-if="statsObject.isWonGame">3bv: {{ statsObject.total3bv }}</div>
+    <div v-else>
+      3bv: {{ statsObject.solved3bv }}/{{ statsObject.total3bv }}
+    </div>
+    <div>3bv/s: {{ statsObject.bbbvs }}</div>
+    <div>Ce/s: {{ statsObject.clicks.effectiveClicksPerSecond }}</div>
+    <div>eff: {{ statsObject.eff }}%</div>
+    <div v-if="statsShowMaxEff && statsObject.maxEff !== null">
+      max eff:
+      <span
+        :style="{
+          'text-decoration':
+            statsObject.deepMaxEff !== null &&
+            parseInt(statsObject.deepMaxEff) > parseInt(statsObject.maxEff)
+              ? 'line-through'
+              : 'none',
+        }"
+        >{{ statsObject.maxEff }}%</span
+      >
+      <span
+        v-if="
+          statsObject.deepMaxEff !== null &&
+          parseInt(statsObject.deepMaxEff) > parseInt(statsObject.maxEff)
+        "
+        class="text-info"
+        >&nbsp;{{ statsObject.deepMaxEff }}%</span
+      >
+    </div>
+  </div>
+
   <div style="height: 150px"></div>
 
   <ReplayBar
@@ -2320,6 +2408,23 @@ body.body--dark .stats-click-table-container {
 
 .centre-interface .text-centreable {
   text-align: center !important;
+}
+
+.quick-stats {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  /*background-color: rgba(124, 128, 131, 0.7);*/
+  background-color: #d3d3d3d1;
+  color: black;
+  padding: 5px 10px;
+  border-radius: 10px;
+  user-select: none;
+  font-size: 10px;
+  pointer-events: none;
+  font-family: monospace;
+  z-index: 10000;
+  box-shadow: 3px 4px 10px #000000ad;
 }
 </style>
 
@@ -2530,6 +2635,10 @@ let statsObject = ref({
   bestZini: null,
   pttaLink: null,
   deepZini: null,
+  stnb: null,
+  thrp: null,
+  rqp: null,
+  corr: null,
 });
 let showStatsClicksTable = ref(false);
 let statsShow8Way = useLocalStorage("ls_statsShow8Way", true);
@@ -2538,6 +2647,10 @@ let statsShowWomZini = useLocalStorage("ls_statsShowWomZini", true);
 let statsShowWomZiniFix = useLocalStorage("ls_statsShowWomZiniFix", true);
 let statsShowMaxEff = useLocalStorage("ls_statsShowMaxEff", true);
 let statsRunDeepChain = useLocalStorage("ls_statsRunDeepChain", "eff win");
+let statsShowStnb = useLocalStorage("ls_statsShowStnb", true);
+let statsShowThrp = useLocalStorage("ls_statsShowThrp", true);
+let statsShowRqp = useLocalStorage("ls_statsShowRqp", true);
+let statsShowCorr = useLocalStorage("ls_statsShowCorr", true);
 
 let settingsModal = ref(false);
 let variantsHelpModal = ref(false);
@@ -2873,6 +2986,8 @@ let touchMaxTime = useLocalStorage("ls_touchMaxTime", 1000); //When do long touc
 let touchScrollDistance = useLocalStorage("ls_touchScrollDistance", 3); //When do touches that move a lot unlock the scroll
 let verticalExpert = useLocalStorage("ls_verticalExpert", false);
 let touchActionOverride = useLocalStorage("ls_touchActionOverride", "ignore");
+let showQuickStats = useLocalStorage("ls_showQuickStats", false);
+let quickStatsFontSize = useLocalStorage("ls_quickStatsFontSize", "14px");
 let faceHitbox = useLocalStorage("ls_faceHitbox", "bar"); //Hitbox for when the face is click to trigger a reset
 let soundEffectsEnabled = useLocalStorage(
   "ls_soundEffectsEnabled",

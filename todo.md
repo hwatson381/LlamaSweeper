@@ -527,7 +527,27 @@ Note - illegal values of touch action thingy don't get used
 Can do el.setAttribute("style", "...") but prob still doesn't work
 
 [done] cps stat
-Option to show stats in fixed way on mobile
+Option to show stats in fixed way on mobile (make this look nice? Like replay bar?)
 [done] Option to hide flag button except when reseting (can be on pre-existing dropdown)
 L+R chord (less important)
-Remove double zoom code idea?
+[done] Remove double zoom code idea?
+More stats? STNB?
+Rename eCPS to Ce/s and CPS to Cl/s
+Have settings block entirely for stats?
+Note - STNB is slightly wrong for beginner since it's meant for 8x8
+
+is showStatsBlock the same as flagToggleShowReset?
+
+Can sounds be done async (e.g. trigger with setTimeout so that canvas updates first?)
+
+https://apkpure.com/chocolate-sweeper/com.nyahoon.chocolatesweeper/download
+
+Improve zini explorer as wom added a link to it:
+
+- Add more replay highlighting
+- Remove feedback waffle text at top
+- Change the "bookmarklet link" under the PTT import to instead go to an instructional page for enabling the setting
+
+Make a page for llamasweeper (or similar) on fandom wiki?
+
+Reverse flashlight - radius near mouse can't be seen

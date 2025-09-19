@@ -274,6 +274,21 @@ class BoardStats {
       maxEff = null;
     }
 
+    let stnb = null;
+
+    stnb = this.calcStnb(time, solved3bv, bbbv);
+
+    const thrp = Math.round((100 * solved3bv) / totalEffectiveClicks);
+
+    let rqp = null;
+    if (isWin) {
+      rqp = (time + 1) / bbbvs;
+    } else {
+      rqp = (estTime + 1) / bbbvs;
+    };
+
+    const corr = totalEffectiveClicks / totalClicks;
+
     const pttaLink = this.getPttaLink();
 
     this.refs.statsObject.value = {};
@@ -296,6 +311,10 @@ class BoardStats {
       this.refs.statsObject.value.bestZini = bestZini;
       this.refs.statsObject.value.pttaLink = pttaLink;
       this.refs.statsObject.value.deepZini = null;
+      this.refs.statsObject.value.stnb = stnb !== null ? stnb.toFixed(3) : null;
+      this.refs.statsObject.value.thrp = Math.round(thrp);
+      this.refs.statsObject.value.rqp = rqp.toFixed(3);
+      this.refs.statsObject.value.corr = corr.toFixed(3);
     } else {
       this.refs.statsObject.value.isWonGame = false;
       this.refs.statsObject.value.time = time.toFixed(3);
@@ -316,6 +335,10 @@ class BoardStats {
       this.refs.statsObject.value.bestZini = bestZini;
       this.refs.statsObject.value.pttaLink = pttaLink;
       this.refs.statsObject.value.deepZini = null;
+      this.refs.statsObject.value.stnb = stnb !== null ? stnb.toFixed(3) : null;
+      this.refs.statsObject.value.thrp = Math.round(thrp);
+      this.refs.statsObject.value.rqp = rqp.toFixed(3);
+      this.refs.statsObject.value.corr = corr.toFixed(3);
     }
   }
 
@@ -368,6 +391,36 @@ class BoardStats {
       },
       true
     );
+  }
+
+  calcStnb(time, solved3bv, total3bv) {
+    //Check board dimensions
+    let width = this.mines.length;
+    let height = this.mines[0].length;
+    const totalMines = this.mines.flat().filter((s) => s).length;
+
+    let mode;
+
+    if (width === 9 && height === 9 && totalMines === 10) {
+      mode = 1; //Beginner
+    } else if (width === 16 && height === 16 && totalMines === 40) {
+      mode = 2; //Intermediate
+    } else if ((width === 30 && height === 16 && totalMines === 99) ||
+      (width === 16 && height === 30 && totalMines === 99)) {
+      mode = 3; //Expert
+    } else {
+      return null; //Not a standard board, so STNB can't be calculated
+    }
+
+    //Formula from https://minesweeper.fandom.com/wiki/STNB
+    //note - STNB is very confusing. Arbiter/Minesweepergame/saolei all seem to do it slightly differently
+    let stnb = (87.420 * (mode ** 2) - 155.829 * mode + 115.708) / ((time ** 1.7) / solved3bv / ((solved3bv / total3bv) ** 0.5));
+
+    //extra note. Another way to do STNB for partial games would be to use Estimated Time instead of time.
+    //This is equivalent to the below. Note ^0.7 in the formula instead of 0.5. 0.7 comes from doing a lot of maths with rearranging stuff (ends up being 1.7 - 0.7).
+    //let stnb = (87.420 * (mode ** 2) - 155.829 * mode + 115.708) / ((estTime ** 1.7) / solved3bv / ((solved3bv / total3bv) ** 0.7));
+
+    return stnb;
   }
 
   killDeepChainZiniRunner() {
