@@ -398,7 +398,7 @@ let variantList = [
   {
     "name": "Chocolate Sweeper",
     "url": "https://nyahoon.com/products/chocolate-sweeper",
-    "desc": "A quirky mobile app with a campaign that generates some of the hardest no guess logic you'll find in all of minesweeper outside of manually created puzzles. It generates no guess puzzles with guaranteed difficult logic, and makes you lose if you tap on a square that cannot be deduced to be safe. It has a leaderboard which adjusts the time of a game based on how hard the logic was that was used to solve the game. Highly recommended for anyone that wants to get very good at logic. It's available on Apple and Android.",
+    "desc": "A quirky mobile app with a campaign that generates some of the hardest no guess logic you'll find in all of minesweeper outside of manually created puzzles. It generates no guess puzzles with guaranteed difficult logic, and makes you lose if you tap on a square that cannot be deduced to be safe. It has a leaderboard which adjusts the time of a game based on how hard the logic was that was used to solve the game. Highly recommended for anyone that wants to get very good at logic. It's available on Apple and Android, although as of 2025 the app seems to have been taken down from both stores. It is still possible to get on Android by installing an APK file, although this must be done at your own risk and should only be done if you know what you are doing.",
     "image": "/img/variants/chocolatesweeper.png",
     "tags": [
       "game",
@@ -551,6 +551,28 @@ let variantList = [
       "game"
     ],
     "rating": 2.8,
+    "popularity": 1
+  },
+  {
+    "name": "Consecutive minesweeper",
+    "url": "https://scratch.mit.edu/projects/1221910016/",
+    "desc": "A minesweeper variant made on scratch where the mines are counted differently. It adds up the number of consecutive mines in each of the 8 directions. It uses left click to dig and space to flag, which is quite unusual. It does not have chording.",
+    "image": "/img/variants/scratch_minesweeper.png",
+    "tags": [
+      "game"
+    ],
+    "rating": 3.0,
+    "popularity": 1
+  },
+  {
+    "name": "KeyHunter",
+    "url": "https://keyhunter.org/",
+    "desc": "A word game that takes inspiration from both wordle and minesweeper. You have to find a target word, and are presented with a keyboard. The number of dots on each letter indicate how many of the adjacent keys are in the target word. Each guess must only differ from the last word by a single letter, although the letters can be in different positions.",
+    "image": "/img/variants/keyhunter.png",
+    "tags": [
+      "game"
+    ],
+    "rating": 3.1,
     "popularity": 1
   }
 ]

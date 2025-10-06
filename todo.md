@@ -461,8 +461,6 @@ Make it possible to send to zini explorer with path from particular timestamp vi
 
 Play noise on scroll cancel or other touch cancels to debug issues with ignored touches
 
-Consider whether to add mineswifter, also https://minesweepe.rs
-
 Small time save by getting fisher yates shuffle to terminate after first [number of mines] shuffles?
 
 Sort out skins -
@@ -492,8 +490,6 @@ To consider - have page for curiosities (like minesweeper board museum stuff)
 
 Need to have secondary callback for after images are loaded?
 Or just spam refresh board each time...
-
-Add KeyHunter? https://keyhunter.org/
 
 Does lack of mobile viewport hurt mobile performance?
 -- very possibly? https://webkit.org/blog/7367/new-interaction-behaviors-in-ios-10/
@@ -527,7 +523,7 @@ Note - illegal values of touch action thingy don't get used
 Can do el.setAttribute("style", "...") but prob still doesn't work
 
 [done] cps stat
-Option to show stats in fixed way on mobile (make this look nice? Like replay bar?)
+[done] Option to show stats in fixed way on mobile (make this look nice? Like replay bar?)
 [done] Option to hide flag button except when reseting (can be on pre-existing dropdown)
 L+R chord (less important)
 [done] Remove double zoom code idea?
@@ -540,14 +536,12 @@ is showStatsBlock the same as flagToggleShowReset?
 
 Can sounds be done async (e.g. trigger with setTimeout so that canvas updates first?)
 
-https://apkpure.com/chocolate-sweeper/com.nyahoon.chocolatesweeper/download
-
 Improve zini explorer as wom added a link to it:
 
 - Add more replay highlighting
 - Remove feedback waffle text at top
 - Change the "bookmarklet link" under the PTT import to instead go to an instructional page for enabling the setting
 
-Make a page for llamasweeper (or similar) on fandom wiki?
-
 Reverse flashlight - radius near mouse can't be seen
+
+Should deepchain zini run from beginning when in edit tab?
