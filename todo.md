@@ -540,8 +540,19 @@ Improve zini explorer as wom added a link to it:
 
 - Add more replay highlighting
 - Remove feedback waffle text at top
-- Change the "bookmarklet link" under the PTT import to instead go to an instructional page for enabling the setting
+- [done] Change the "bookmarklet link" under the PTT import to instead go to an instructional page for enabling the setting
 
 Reverse flashlight - radius near mouse can't be seen
 
 Should deepchain zini run from beginning when in edit tab?
+
+L+R chord notes:
+How does it work???
+
+Add to external resources page:
+hexcells
+tametsi
+broomsweeper
+
+Write up zini algorithms?
+Finish NF Eff guide?

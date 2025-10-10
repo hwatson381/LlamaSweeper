@@ -1276,7 +1276,7 @@
                     outlined
                     style="width: 120px"
                     @keydown.prevent="
-                      (event) => (keyboardClickDigKey = event.key)
+                      (event) => (keyboardClickDigKey = event.key.toLowerCase())
                     "
                     v-model="keyboardClickDigKey"
                     label="Keyboard Dig Key"
@@ -1288,7 +1288,8 @@
                     outlined
                     style="width: 120px"
                     @keydown.prevent="
-                      (event) => (keyboardClickFlagKey = event.key)
+                      (event) =>
+                        (keyboardClickFlagKey = event.key.toLowerCase())
                     "
                     v-model="keyboardClickFlagKey"
                     label="Keyboard Flag Key"
@@ -2498,14 +2499,14 @@ onUnmounted(() => {
 });
 
 function handleKeyDown(event) {
-  if (event.key === keyboardClickDigKey.value) {
+  if (event.key.toLowerCase() === keyboardClickDigKey.value.toLowerCase()) {
     if (!checkFocusForKeyPress(event)) {
       return;
     }
     game.board.sendKeyboardClick(true, false, true, event.timeStamp);
     return;
   }
-  if (event.key === keyboardClickFlagKey.value) {
+  if (event.key.toLowerCase() === keyboardClickFlagKey.value.toLowerCase()) {
     if (!checkFocusForKeyPress(event)) {
       return;
     }
@@ -2549,10 +2550,10 @@ function handleKeyDown(event) {
 }
 
 function handleKeyUp(event) {
-  if (event.key === keyboardClickDigKey.value) {
+  if (event.key.toLowerCase() === keyboardClickDigKey.value.toLowerCase()) {
     game.board.sendKeyboardClick(true, false, false, event.timeStamp);
   }
-  if (event.key === keyboardClickFlagKey.value) {
+  if (event.key.toLowerCase() === keyboardClickFlagKey.value.toLowerCase()) {
     game.board.sendKeyboardClick(false, true, false, event.timeStamp);
   }
 }
