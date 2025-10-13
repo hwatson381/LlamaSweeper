@@ -546,9 +546,6 @@ Reverse flashlight - radius near mouse can't be seen
 
 Should deepchain zini run from beginning when in edit tab?
 
-L+R chord notes:
-How does it work???
-
 Add to external resources page:
 hexcells
 tametsi
@@ -556,3 +553,14 @@ broomsweeper
 
 Write up zini algorithms?
 Finish NF Eff guide?
+Find record boards on wom?
+
+mbf/qq make_board export?
+
+Have slight delay before being able to reset board after win with flag toggle button thingy on mobile?
+
+l+r mini notes:
+need to stop second click of chord from being wasted?
+wasted clicks are tricky:
+the flag down for a chord can be wasted if on a number (when chord gets triggered by dig up)
+the dig up can also be wasted if on a number (when chord gets triggered by flag up)

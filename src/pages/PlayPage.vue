@@ -1185,6 +1185,24 @@
           >
             <q-card>
               <q-card-section>
+                <q-select
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="chordingButtons"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    { label: 'Left Click', value: 'l' },
+                    { label: 'Left + Right Click', value: 'l+r' },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Chording"
+                ></q-select>
                 <q-checkbox v-model="zeroStart" label="Zero Start" />
                 <br />
                 <q-select
@@ -2799,6 +2817,7 @@ watch(
 );
 */
 
+let chordingButtons = useLocalStorage("ls_chordingButtons", "l");
 let zeroStart = useLocalStorage("ls_zeroStart", true);
 
 let begEffPreset = ref(200);
@@ -3741,6 +3760,13 @@ class Board {
     this.updateTimerSetTimeoutHandle = null; //Handle for starting/stopping setTimeOut process that checks whether timer needs updating
     this.isLeftMouseDown = false;
 
+    this.lrChordingState = {
+      leftDown: false,
+      rightDown: false,
+      hoverType: "single", //block/single/empty (how the hover shows when left mouse down)
+      lastDrawnHoverType: "single",
+    };
+
     this.touchDepressedSquaresMap = new Map(); //Map from touch identifiers to depressed squares (for depressing squares on mobile)
     this.ongoingTouches = new Map(); //Track info about touches such as start location, time started etc.
 
@@ -4331,12 +4357,17 @@ class Board {
       Boolean(event.buttons & 1) ||
       (this.keyboardClickIsDigDown && !keyboardClickOpenOnKeyDown.value);
 
+    //checks if right mouse button down
+    const isRightDown =
+      Boolean(event.buttons & 2) || this.keyboardClickIsFlagDown;
+
     const requiresRedraw = this.mouseMove(
       unflooredCoords.tileX,
       unflooredCoords.tileY,
       isEnter,
       isLeave,
-      isLeftDown
+      isLeftDown,
+      isRightDown
     );
     if (requiresRedraw) {
       this.draw();
@@ -4914,6 +4945,40 @@ class Board {
     let unflooredCoords = coordsData.unflooredCoords;
     let canvasCoords = coordsData.canvasCoords;
 
+    if (touchIdentifier === "mouse" && chordingButtons.value === "l+r") {
+      //Update states for l+r chord
+      if (isDigInput) {
+        //Track whether left click is up or down
+        this.lrChordingState.leftDown = isDown;
+      }
+      if (isFlagInput) {
+        //Track whether right click is up or down
+        this.lrChordingState.rightDown = isDown;
+      }
+
+      //Update whether the hover is a 3x3 block or a single square, but only if there has been a new click event
+      if (isDigInput || isFlagInput) {
+        if (this.lrChordingState.leftDown && this.lrChordingState.rightDown) {
+          //Both down => hover should be 3x3 block
+          this.lrChordingState.hoverType = "block";
+        } else if (
+          this.lrChordingState.leftDown &&
+          !this.lrChordingState.rightDown &&
+          this.lrChordingState.hoverType !== "empty"
+        ) {
+          //Only left down => hover should be single square
+          this.lrChordingState.hoverType = "single";
+        } else if (
+          !this.lrChordingState.leftDown &&
+          !this.lrChordingState.rightDown &&
+          this.lrChordingState.hoverType !== "empty"
+        ) {
+          //If nothing is down then reset to default behaviour of single square hover
+          this.lrChordingState.hoverType = "single";
+        }
+      }
+    }
+
     // ########## Check for face click #############
 
     //Check for face click and exit early if it was clicked on
@@ -4998,6 +5063,34 @@ class Board {
       );
     }
 
+    //Potentially change hover when right click is down and on l+r chording
+    if (
+      chordingButtons.value === "l+r" &&
+      touchIdentifier === "mouse" &&
+      isFlagInput &&
+      isDown
+    ) {
+      isDrawRequired = this.holdDownFlag(
+        flooredCoords.tileX,
+        flooredCoords.tileY,
+        touchIdentifier
+      );
+    }
+
+    //Potentially change hover when right click is up and on l+r chording
+    if (
+      chordingButtons.value === "l+r" &&
+      touchIdentifier === "mouse" &&
+      isFlagInput &&
+      !isDown
+    ) {
+      isDrawRequired = this.releaseFlag(
+        flooredCoords.tileX,
+        flooredCoords.tileY,
+        touchIdentifier
+      );
+    }
+
     //Depress squares when hovered over with flag toggled on with mobile (chord on flag mode)
     if (this.gameStage === "running" && isDown && isFlagInput && isTouchInput) {
       isDrawRequired = this.holdDownTouchFlag(
@@ -5012,7 +5105,12 @@ class Board {
       this.gameStage === "running" &&
       isDown &&
       isFlagInput &&
-      !isTouchInput
+      !isTouchInput &&
+      !(
+        touchIdentifier === "mouse" &&
+        chordingButtons.value === "l+r" &&
+        this.lrChordingState.leftDown
+      )
     ) {
       this.attemptFlag(
         unflooredCoords.tileX,
@@ -5055,9 +5153,54 @@ class Board {
 
     let needToCheckForWinOrLoss = false;
 
-    //Try to chord or open square (e.g. mouse left click)
-    if (this.gameStage === "running" && !isDown && isDigInput) {
+    //Try to chord or open square with left click (e.g. mouse left click)
+    if (
+      this.gameStage === "running" &&
+      !isDown &&
+      isDigInput &&
+      !(touchIdentifier === "mouse" && chordingButtons.value === "l+r")
+    ) {
       this.attemptChordOrDig(
+        unflooredCoords.tileX,
+        unflooredCoords.tileY,
+        touchIdentifier,
+        event.timeStamp
+      );
+      needToCheckForWinOrLoss = true;
+      isDrawRequired = true;
+    }
+
+    //Try to chord square using l+r chord
+    //Lifting up either left click or right click when both were down
+    if (
+      this.gameStage === "running" &&
+      !isDown &&
+      ((isDigInput && this.lrChordingState.rightDown) || //Lift up left whilst right down
+        (isFlagInput && this.lrChordingState.leftDown)) && //Or lift up right whilst left down
+      touchIdentifier === "mouse" &&
+      chordingButtons.value === "l+r"
+    ) {
+      this.attemptChordOnly(
+        unflooredCoords.tileX,
+        unflooredCoords.tileY,
+        touchIdentifier
+      );
+      needToCheckForWinOrLoss = true;
+      isDrawRequired = true;
+    }
+
+    //Try to dig square when on l+r chord
+    //Lifting up left click when only left click was down, and also a chord was not spent
+    if (
+      this.gameStage === "running" &&
+      !isDown &&
+      isDigInput &&
+      !this.lrChordingState.rightDown &&
+      touchIdentifier === "mouse" &&
+      chordingButtons.value === "l+r" &&
+      this.lrChordingState.hoverType !== "empty"
+    ) {
+      this.attemptDigOnly(
         unflooredCoords.tileX,
         unflooredCoords.tileY,
         touchIdentifier,
@@ -5096,6 +5239,19 @@ class Board {
         false,
         touchIdentifier
       );
+    }
+
+    //Edge case, return to single hover when everything released and empty hover (has to happen at end so that we can block a secondary dig that would happen after chording)
+    if (
+      touchIdentifier === "mouse" &&
+      chordingButtons.value === "l+r" &&
+      (isDigInput || isFlagInput) &&
+      !this.lrChordingState.leftDown &&
+      !this.lrChordingState.rightDown &&
+      this.lrChordingState.hoverType === "empty"
+    ) {
+      //If nothing is down then reset to default behaviour of single square hover
+      this.lrChordingState.hoverType = "single";
     }
 
     //Check if an opening has occured on mean openings
@@ -5377,7 +5533,48 @@ class Board {
       unflooredTileY
     );
 
+    if (!this.checkCoordsInBounds(tileX, tileY)) {
+      //Click not on board, exit (doesn't count as wasted click)
+      this.updateDepressedSquares(tileX, tileY, false, touchIdentifier); //Undepress square as we have just done leftMouseUp
+      return;
+    }
+
+    if (typeof this.tilesArray[tileX][tileY].state === "number") {
+      //Attempt chord tile
+      this.attemptChordOnly(unflooredTileX, unflooredTileY, touchIdentifier);
+    } else if (this.tilesArray[tileX][tileY].state === CONSTANTS.UNREVEALED) {
+      //Attempt to dig tile
+      this.attemptDigOnly(
+        unflooredTileX,
+        unflooredTileY,
+        touchIdentifier,
+        eventTimestamp
+      );
+    } else {
+      this.stats.addWastedLeft(
+        tileX,
+        tileY,
+        unflooredTileX,
+        unflooredTileY,
+        time
+      );
+    }
+  }
+
+  attemptChordOnly(unflooredTileX, unflooredTileY, touchIdentifier) {
+    let time = this.getTime();
+
+    let { tileX, tileY } = this.unflooredToFlooredTileCoords(
+      unflooredTileX,
+      unflooredTileY
+    );
+
     this.updateDepressedSquares(tileX, tileY, false, touchIdentifier); //Undepress square as we have just done leftMouseUp
+
+    //expire the chord for l+r so that releasing let click afterwards doesn't do a dig
+    if (touchIdentifier === "mouse" && chordingButtons.value === "l+r") {
+      this.lrChordingState.hoverType = "empty";
+    }
 
     if (!this.checkCoordsInBounds(tileX, tileY)) {
       //Click not on board, exit (doesn't count as wasted click)
@@ -5385,7 +5582,7 @@ class Board {
     }
 
     if (typeof this.tilesArray[tileX][tileY].state === "number") {
-      //Attempt chord tile
+      //Attempt chord tile (can only happen on a number, otherwise wasted)
       this.chord(
         tileX,
         tileY,
@@ -5395,7 +5592,38 @@ class Board {
         unflooredTileY,
         true
       );
-    } else if (this.tilesArray[tileX][tileY].state === CONSTANTS.UNREVEALED) {
+    } else {
+      this.stats.addWastedChord(
+        tileX,
+        tileY,
+        unflooredTileX,
+        unflooredTileY,
+        time
+      );
+    }
+  }
+
+  attemptDigOnly(
+    unflooredTileX,
+    unflooredTileY,
+    touchIdentifier,
+    eventTimestamp
+  ) {
+    let time = this.getTime();
+
+    let { tileX, tileY } = this.unflooredToFlooredTileCoords(
+      unflooredTileX,
+      unflooredTileY
+    );
+
+    this.updateDepressedSquares(tileX, tileY, false, touchIdentifier); //Undepress square as we have just done leftMouseUp
+
+    if (!this.checkCoordsInBounds(tileX, tileY)) {
+      //Click not on board, exit (doesn't count as wasted click)
+      return;
+    }
+
+    if (this.tilesArray[tileX][tileY].state === CONSTANTS.UNREVEALED) {
       //Attempt to dig tile, although this behaviour may be changed on mean openings mode
       let doDig = true;
 
@@ -5426,7 +5654,7 @@ class Board {
             eventTimestamp <=
             this.meanMineStates[tileX][tileY].changedToMineTimestamp + 500
           ) {
-            //Click occred soon after mean mine was placed, click just gets wasted
+            //Click occured soon after mean mine was placed, click just gets wasted
             doDig = false;
             this.stats.addWastedLeft(
               tileX,
@@ -5520,6 +5748,34 @@ class Board {
     return requiresRedraw;
   }
 
+  holdDownFlag(tileX, tileY, touchIdentifier) {
+    //Currently only needed for l+r chord
+    //Don't track this in stats yet (but may add in future)
+    //All this does is potentially change depressed squares to block hover (if left mouse is also down)
+    const requiresRedraw = this.updateDepressedSquares(
+      tileX,
+      tileY,
+      this.lrChordingState.leftDown,
+      touchIdentifier
+    );
+
+    return requiresRedraw;
+  }
+
+  releaseFlag(tileX, tileY, touchIdentifier) {
+    //Currently only needed for l+r chord
+    //Don't track this in stats yet (but may add in future)
+    //All this does is potentially change depressed squares to single hover (if left mouse is still down)
+    const requiresRedraw = this.updateDepressedSquares(
+      tileX,
+      tileY,
+      this.lrChordingState.leftDown,
+      touchIdentifier
+    );
+
+    return requiresRedraw;
+  }
+
   holdDownTouchFlag(tileX, tileY, touchIdentifier) {
     let requiresRedraw;
 
@@ -5577,13 +5833,58 @@ class Board {
     }
   }
 
-  mouseMove(unflooredTileX, unflooredTileY, isEnter, isLeave, isLeftDown) {
+  mouseMove(
+    unflooredTileX,
+    unflooredTileY,
+    isEnter,
+    isLeave,
+    isLeftDown,
+    isRightDown
+  ) {
     let time = this.getTime();
 
     let { tileX, tileY } = this.unflooredToFlooredTileCoords(
       unflooredTileX,
       unflooredTileY
     );
+
+    if (chordingButtons.value === "l+r") {
+      //Update states for l+r chord
+      let buttonsChanged = false;
+      if (this.lrChordingState.leftDown !== isLeftDown) {
+        //left button changed, possibly off canvas
+        this.lrChordingState.leftDown = isLeftDown;
+        buttonsChanged = true;
+      }
+
+      if (this.lrChordingState.rightDown !== isRightDown) {
+        //right button changed, possibly off canvas
+        this.lrChordingState.rightDown = isRightDown;
+        buttonsChanged = true;
+      }
+
+      //Update whether the hover is a 3x3 block or a single square, but only if there has been a new click event
+      if (buttonsChanged) {
+        if (this.lrChordingState.leftDown && this.lrChordingState.rightDown) {
+          //Both down => hover should be 3x3 block
+          this.lrChordingState.hoverType = "block";
+        } else if (
+          this.lrChordingState.leftDown &&
+          !this.lrChordingState.rightDown &&
+          this.lrChordingState.hoverType !== "empty"
+        ) {
+          //Only left down => hover should be single square
+          this.lrChordingState.hoverType = "single";
+        } else if (
+          !this.lrChordingState.leftDown &&
+          !this.lrChordingState.rightDown &&
+          this.lrChordingState.hoverType !== "empty"
+        ) {
+          //If nothing is down then reset to default behaviour of single square hover
+          this.lrChordingState.hoverType = "single";
+        }
+      }
+    }
 
     const requiresRedraw = this.updateDepressedSquares(
       tileX,
@@ -5640,10 +5941,24 @@ class Board {
     const hoveredSquareMoved =
       tileX !== currentLocation.x || tileY !== currentLocation.y;
 
-    if (!hoveredSquareMoved && !leftMouseDownChanged) {
+    const hoverTypeChanged =
+      this.lrChordingState.hoverType !==
+      this.lrChordingState.lastDrawnHoverType;
+
+    if (
+      !hoveredSquareMoved &&
+      !leftMouseDownChanged &&
+      !(
+        touchIdentifier === "mouse" &&
+        chordingButtons.value === "l+r" &&
+        hoverTypeChanged
+      )
+    ) {
       const requiresRedraw = false;
       return requiresRedraw;
     }
+
+    this.lrChordingState.lastDrawnHoverType = this.lrChordingState.hoverType; //for l+r chord only
 
     //Maybe slightly excessive and inefficient, but easier to clear out hover and reapply each time rather than going through all cases
 
@@ -5695,18 +6010,37 @@ class Board {
 
     //Apply new hover for all squares (from touch and from mouse)
     let applyHover = (hoverSquareX, hoverSquareY) => {
+      var doSingleHover = false;
+      var doBlockHover = false;
+
+      if (touchIdentifier === "mouse" && chordingButtons.value === "l+r") {
+        //l+r chord does hover based on what buttons are depressed
+        if (this.lrChordingState.hoverType === "single") {
+          doSingleHover = true;
+        } else if (this.lrChordingState.hoverType === "block") {
+          doBlockHover = true;
+        } else {
+          //empty or something else, so don't hover anything
+          return;
+        }
+      } else {
+        //l chord does single hover on unrevealed squares
+        doSingleHover =
+          this.tilesArray[hoverSquareX][hoverSquareY].state ===
+          CONSTANTS.UNREVEALED;
+
+        //l chord does 3x3 block hover on numbers
+        doBlockHover =
+          typeof this.tilesArray[hoverSquareX][hoverSquareY].state === "number";
+      }
+
       //Single square
-      if (
-        this.tilesArray[hoverSquareX][hoverSquareY].state ===
-        CONSTANTS.UNREVEALED
-      ) {
+      if (doSingleHover) {
         this.tilesArray[hoverSquareX][hoverSquareY].depressed = true;
       }
 
       //Chord
-      if (
-        typeof this.tilesArray[hoverSquareX][hoverSquareY].state === "number"
-      ) {
+      if (doBlockHover) {
         for (let x = hoverSquareX - 1; x <= hoverSquareX + 1; x++) {
           for (let y = hoverSquareY - 1; y <= hoverSquareY + 1; y++) {
             //Note that the middle square automatically gets excluded as it's been revealed
@@ -5740,6 +6074,12 @@ class Board {
   clearAllDepressedSquares() {
     this.hoveredSquare = { x: null, y: null };
     this.isLeftMouseDown = false;
+    this.lrChordingState = {
+      leftDown: false,
+      rightDown: false,
+      hoverType: "single", //single, block, empty
+      lastDrawnHoverType: "single", //for l+r chord only
+    };
     this.touchDepressedSquaresMap.clear();
   }
 
