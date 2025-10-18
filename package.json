@@ -6,11 +6,13 @@
   "author": "llama",
   "private": true,
   "scripts": {
+    "build:wasm": "cd wasm && wasm-pack build --target web",
+    "dev:wasm": "cd wasm && wasm-pack build --target web --dev",
     "lint": "eslint --ext .js,.vue ./",
     "format": "prettier --write \"**/*.{js,vue,css,html,md,json}\" --ignore-path .gitignore",
     "test": "echo \"No test specified\" && exit 0",
-    "dev": "quasar dev",
-    "build": "quasar build && cp CNAME dist/spa",
+    "dev": "npm run dev:wasm && quasar dev",
+    "build": "npm run build:wasm && quasar build && cp CNAME dist/spa",
     "deploy": "push-dir --dir=dist/spa --remote=gh-pages --branch=main"
   },
   "dependencies": {
