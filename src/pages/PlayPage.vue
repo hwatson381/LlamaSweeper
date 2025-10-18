@@ -652,6 +652,16 @@
                     <q-item-label>Copy Board Link</q-item-label>
                   </q-item-section>
                 </q-item>
+
+                <q-item
+                  clickable
+                  v-close-popup
+                  @click="game.board.sendToMbfDialogue()"
+                >
+                  <q-item-section>
+                    <q-item-label>MBF Export</q-item-label>
+                  </q-item-section>
+                </q-item>
               </q-list>
             </q-btn-dropdown>
             <br />
@@ -919,6 +929,16 @@
                   >
                     <q-item-section>
                       <q-item-label>Copy Board Link</q-item-label>
+                    </q-item-section>
+                  </q-item>
+
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="game.board.sendToMbfDialogue()"
+                  >
+                    <q-item-section>
+                      <q-item-label>MBF Export</q-item-label>
                     </q-item-section>
                   </q-item>
                 </q-list>
@@ -2485,7 +2505,7 @@ import { useRoute, useRouter } from "vue-router";
 const route = useRoute();
 const router = useRouter();
 
-import { event, useQuasar, copyToClipboard, debounce } from "quasar";
+import { useQuasar, copyToClipboard, debounce, exportFile } from "quasar";
 const $q = useQuasar();
 
 defineOptions({
@@ -4256,6 +4276,54 @@ class Board {
     let msCoachUrl = `https://davidnhill.github.io/JSMinesweeper/index.html?board=${msCoachParams.width}x${msCoachParams.height}x${msCoachParams.mineCount}&analysis=${msCoachParams.analysis}`;
 
     window.open(msCoachUrl, "_blank").focus();
+  }
+
+  sendToMbfDialogue() {
+    //Dialogue that lets you either copy the mbf as a string for make_board, or
+    //or it lets you download as a .mbf file
+    $q.dialog({
+      title: "Send to MBF",
+      message:
+        'Copy hex string for <a href="https://mzrg.com/js/mine/make_board.html" target="blank">make_board</a> or download .mbf board file?',
+      html: true,
+      options: {
+        model: "copy", // the field in returned payload
+        type: "radio",
+        items: [
+          { label: "Copy MBF hex string", value: "copy" },
+          { label: "Download MBF file", value: "download" },
+        ],
+      },
+      cancel: true,
+      persistent: true,
+    })
+      .onOk((data) => {
+        // data is 'copy' or 'download'
+        console.log(data);
+        if (data === "copy") {
+          //Copy hex string for make_board
+          const mbfHexString = Algorithms.getMbfAsHexString(this.mines);
+
+          copyToClipboard(mbfHexString);
+          $q.notify({
+            message: "Copied.",
+            color: "purple",
+            timeout: 700,
+          });
+        } else {
+          //Download .mbf file
+          const mbfUintArray = Algorithms.getMbfBinaryData(this.mines);
+
+          const status = exportFile("board.mbf", mbfUintArray);
+
+          if (status !== true) {
+            console.error("Download failed or was prevented:", status);
+          }
+        }
+      })
+      .onCancel(() => {
+        // user cancelled
+      });
   }
 
   handleMouseDown(event) {
