@@ -1,34 +1,42 @@
 //Worker that helps us generate eff boards in the background
 import Algorithms from "src/classes/Algorithms";
+import init, { eight_way } from "../../wasm/pkg/llamasweeper_rust.js";
 
-const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+const characters =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 let workerId = characters.charAt(Math.floor(Math.random() * characters.length));
 
 console.log(`worker ${workerId} initialised`);
+
+let wasmReady = false;
+init().then(() => {
+  wasmReady = true;
+  console.debug("WASM ready");
+});
 
 let isPaused = true;
 let currentTask = {
   width: null,
   height: null,
   mineCount: null,
-  targetEff: null
-}
-let firstClickType = 'random'; //string describing where first click is
+  targetEff: null,
+};
+let firstClickType = "random"; //string describing where first click is
 let timeoutHandle = null;
 const MAX_BOARDS_TO_FIND_PER_TASK = 5;
 const MAX_WORK_DURATION_SECONDS = 2;
 
 onmessage = function (event) {
-  if (event.data.command === 'process') {
-    handleProcessCommand(event)
-  } else if (event.data.command === 'pause') {
-    handlePauseCommand()
-  } else if (event.data.command === 'updateFirstClickType') {
-    handleUpdateFirstClickType(event)
+  if (event.data.command === "process") {
+    handleProcessCommand(event);
+  } else if (event.data.command === "pause") {
+    handlePauseCommand();
+  } else if (event.data.command === "updateFirstClickType") {
+    handleUpdateFirstClickType(event);
   } else {
-    throw new Error('unrecognised command received in worker');
+    throw new Error("unrecognised command received in worker");
   }
-}
+};
 
 function handleProcessCommand(event) {
   currentTask.width = event.data.width;
@@ -49,10 +57,10 @@ function handlePauseCommand() {
 }
 
 function handleUpdateFirstClickType(event) {
-  if (['corner', 'middle', 'random'].includes(event.data.firstClickType)) {
+  if (["corner", "middle", "random"].includes(event.data.firstClickType)) {
     firstClickType = event.data.firstClickType;
   } else {
-    firstClickType = 'random'; //default to random
+    firstClickType = "random"; //default to random
   }
 }
 
@@ -63,7 +71,7 @@ function resume() {
   }
 }
 
-function doCurrentTask() {
+async function doCurrentTask() {
   //Try find best board...
   let doLongerWaitForNextRun = false;
   let foundBoards = [];
@@ -73,15 +81,18 @@ function doCurrentTask() {
 
   let firstClickCoords = null;
   switch (firstClickType) {
-    case 'corner':
+    case "corner":
       firstClickCoords = { x: 0, y: 0 };
       break;
-    case 'middle':
-      firstClickCoords = { x: Math.floor(currentTask.width / 2), y: Math.floor(currentTask.height / 2) };
+    case "middle":
+      firstClickCoords = {
+        x: Math.floor(currentTask.width / 2),
+        y: Math.floor(currentTask.height / 2),
+      };
       break;
     //All other cases instead give a random first click
-    case 'same':
-    case 'random':
+    case "same":
+    case "random":
     default:
       firstClickCoords = null;
   }
@@ -93,12 +104,20 @@ function doCurrentTask() {
     The way this loop works currently is that it does loops of Algorithms.effBoardShuffle
     until it exceeds time limit or finds MAX_BOARDS_TO_FIND_PER_TASK boards
   */
+
+  if (!wasmReady) {
+    console.debug(`worker ${workerId}: WASM not ready yet`);
+    await init();
+    wasmReady = true;
+  }
+
   while (true) {
     if (performance.now() / 1000 > endTimeSeconds) {
       break;
     }
 
-    let minesArray = Algorithms.effBoardShuffle(
+    console.debug(`worker ${workerId} calling eight_way`);
+    let minesArray = eight_way(
       currentTask.width,
       currentTask.height,
       currentTask.mineCount,
@@ -107,6 +126,8 @@ function doCurrentTask() {
       Math.max(endTimeSeconds - performance.now() / 1000, 0.1) //How many seconds we have to generate the board
     );
 
+    console.debug(`worker ${workerId} eight_way finished`);
+    console.debug(minesArray);
     if (minesArray) {
       if (firstClickCoords === null) {
         firstClickCoords = Algorithms.getRandomZeroCell(minesArray);
@@ -115,7 +136,7 @@ function doCurrentTask() {
       foundBoards.push({
         mines: minesArray,
         firstClick: firstClickCoords,
-        firstClickType: firstClickType
+        firstClickType: firstClickType,
       });
 
       if (foundBoards.length >= MAX_BOARDS_TO_FIND_PER_TASK) {
@@ -145,6 +166,6 @@ function sendMessageWithFoundBoards(foundBoards) {
   postMessage({
     boardKey: boardKey,
     workerId: workerId,
-    foundBoards: foundBoards
+    foundBoards: foundBoards,
   });
 }
