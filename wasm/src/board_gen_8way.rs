@@ -768,6 +768,8 @@ impl Board {
     /// # Generate Efficiency Board
     /// * Generates a single board
     /// * Returns bool true/false if it meets the target
+    ///
+    /// ***Important Note:*** Does not fully calculate zini, only checks enough to determine if target efficiency is met.
     pub fn generate_eff_board(&mut self, target_eff: f32, use_first_click: bool, first_click_row: usize, first_click_col: usize, opening: bool) -> Result<bool, String> {
 
         self.add_mines();
