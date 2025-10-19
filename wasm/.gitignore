@@ -5,5 +5,5 @@ bin/
 pkg/
 wasm-pack.log
 .github/
-tests/
 !tests/board_tests.rs
+tests/
