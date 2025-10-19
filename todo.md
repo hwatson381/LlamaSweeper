@@ -564,3 +564,5 @@ need to stop second click of chord from being wasted?
 wasted clicks are tricky:
 the flag down for a chord can be wasted if on a number (when chord gets triggered by dig up)
 the dig up can also be wasted if on a number (when chord gets triggered by flag up)
+
+Also add mbf import somehow?

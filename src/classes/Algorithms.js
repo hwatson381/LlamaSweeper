@@ -1484,6 +1484,50 @@ class Algorithms {
 
     return { width: width, height: height, mineCount: totalMines, analysis: output };
   }
+
+  static getMbfBinaryData(mines) {
+    const width = mines.length;
+    const height = mines[0].length;
+
+    /*
+      mbf structure:
+      first two bytes - width, height
+      next two bytes - mine count (goes up to 65535 mines)
+      rest - coords of mines. Each coord is 2 bytes, first byte is x, second byte is y.
+    */
+    const totalMines = mines.flat().filter(val => val).length;
+    const mbfData = new Uint8Array(4 + totalMines * 2); //Max size needed
+
+    mbfData[0] = width;
+    mbfData[1] = height;
+    mbfData[2] = (totalMines >> 8) & 0xFF;
+    mbfData[3] = totalMines & 0xFF;
+
+    let mineIndex = 0;
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (mines[x][y]) {
+          mbfData[4 + mineIndex * 2] = x;
+          mbfData[4 + mineIndex * 2 + 1] = y;
+          mineIndex++;
+        }
+      }
+    }
+
+    return mbfData;
+  }
+
+  static getMbfAsHexString(mines) {
+    const mbfData = this.getMbfBinaryData(mines);
+
+    //Convert to hex string
+    let hexString = mbfData.toHex();
+
+    //Add spaces between bytes
+    hexString = hexString.match(/.{1,2}/g).join(' ');
+
+    return hexString;
+  }
 }
 
 class BitPacker {
