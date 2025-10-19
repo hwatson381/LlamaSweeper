@@ -24,7 +24,7 @@ let currentTask = {
 let firstClickType = "random"; //string describing where first click is
 let timeoutHandle = null;
 const MAX_BOARDS_TO_FIND_PER_TASK = 5;
-const MAX_WORK_DURATION_SECONDS = 2;
+const MAX_WORK_DURATION_SECONDS = 10;
 
 onmessage = function (event) {
   if (event.data.command === "process") {
