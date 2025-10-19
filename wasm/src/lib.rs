@@ -1,13 +1,14 @@
 mod utils;
 pub mod board_gen_8way;
 use board_gen_8way::Board;
-use js_sys::{Array, Date};
+use js_sys::Array;
+use chrono::{Utc, Duration};
 use wasm_bindgen::prelude::*;
 
 /// # Eight Way Zini
 /// * Entry point for JavaScript
 /// * Iterates in search of a board that meets the target efficiency
-/// 
+///
 /// **Important note:** Llamasweeper target efficiency is a percentage (i.e, 110 for 110%), which needs to be converted.
 #[wasm_bindgen]
 pub fn eight_way(width: usize, height: usize, mine_count: usize, first_click_coords: JsValue, target_eff: f32, timeout_seconds: f64) -> Result<JsValue, JsValue> {
@@ -28,10 +29,10 @@ pub fn eight_way(width: usize, height: usize, mine_count: usize, first_click_coo
         first_click_col = js_sys::Reflect::get(&first_click_coords, &"x".into())?.as_f64().ok_or_else(|| "error converting first click")? as usize;
     }
 
-    let start = Date::now();
-    let end = start + (timeout_seconds * 1000.0);
+    let start = Utc::now();
+    let end = start + Duration::milliseconds(timeout_seconds as i64 * 1000);
     let mut iteration_count: u32 = 0;   // 4 billion should be plenty haha
-    let iteration_interval: u32 = 100;  // how often to check
+    let iteration_interval: u32 = 50;  // how often to check for timeout
 
     loop {
         let mut board = Board::new(width, height, mine_count)?;
@@ -40,9 +41,9 @@ pub fn eight_way(width: usize, height: usize, mine_count: usize, first_click_coo
         if success {
             return Ok(convert_to_js_array(board.to_mines_array()).into());
         }
-        
+
         iteration_count += 1;
-        if iteration_count % iteration_interval == 0 && js_sys::Date::now() >= end {
+        if iteration_count % iteration_interval == 0 && Utc::now() >= end {
             break;
         }
     }
@@ -51,15 +52,12 @@ pub fn eight_way(width: usize, height: usize, mine_count: usize, first_click_coo
 }
 
 fn convert_to_js_array(grid: Vec<Vec<bool>>) -> Array {
-    let js_array = Array::new();
-
-    for row in grid {
-        let js_row = Array::new();
-        for cell in row {
-            js_row.push(&JsValue::from(cell));
-        }
-        js_array.push(&js_row);
-    }
-
-    js_array
+    grid.into_iter()
+        .map(|row| {
+            let row_values: Vec<JsValue> = row.into_iter()
+                .map(JsValue::from)
+                .collect();
+            row_values.into_iter().collect::<Array>()
+        })
+        .collect()
 }
