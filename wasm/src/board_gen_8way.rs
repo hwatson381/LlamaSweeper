@@ -17,14 +17,14 @@ fn get_adjacent(row: usize, col: usize, row_count: usize, col_count: usize) -> R
     }
 
     let mut out: Vec<(usize, usize)> = Vec::with_capacity(8);
-    
+
     for r in max(1, row) - 1..=min(row_count - 1, row + 1) {
         for c in max(1, col) - 1..=min(col_count - 1, col + 1) {
             if (r, c) == (row, col) { continue }
             out.push((r, c));
         }
     }
-    
+
     Ok(out)
 }
 
@@ -102,7 +102,7 @@ pub enum SquareStatus {
 /// * `Island`: Island is considered to have 3bv
 /// * `Mine`: Mines do not have 3bv
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum SquareType {   
+pub enum SquareType {
     Opening,
     Border,
     Island,
@@ -115,10 +115,10 @@ impl Ord for SquareType {
         let priority = |zst: &SquareType| match zst {
             SquareType::Opening => 1,
             SquareType::Border => 2,
-            SquareType::Island => 2, 
-            SquareType::Mine => 4, 
+            SquareType::Island => 2,
+            SquareType::Mine => 4,
         };
-        
+
         priority(self).cmp(&priority(other))
     }
 }
@@ -150,7 +150,7 @@ impl fmt::Display for SquareType {
 pub struct Square {
     pub adjacent_mines: u8,
     pub square_type: SquareType,
-    pub square_status: SquareStatus,    
+    pub square_status: SquareStatus,
     pub premium: i8,
     pub row: u8,
     pub col: u8,
@@ -240,7 +240,7 @@ impl BoardInfo {
 }
 
 /// # Board
-/// 
+///
 /// * `squares`: main grid
 /// * `width`, `height`, `mine_count`: self-explanatory
 /// * `info`: 3bv, zini, openings count, islands count
@@ -289,7 +289,7 @@ impl Board {
 
         let openings_ids: HashMap<(usize, usize), usize> = HashMap::with_capacity(width * height - mine_count);
 
-        // pre-compute all adjacent locations.  
+        // pre-compute all adjacent locations.
         // i dont know for certain if this is actually faster/better, but it seems good, because squares will definitely require multiple lookups.
         let mut all_adjacents = HashMap::with_capacity(width * height);
         for row in 0..height {
@@ -321,14 +321,14 @@ impl Board {
         if data.len() % 2 != 0 {
             return Err("Board file has odd bytes".to_string());     // well that's odd
         }
-        
+
         // the first 4 bytes of the board file contain basic info about the board
         let width = data.get(0).ok_or_else(|| "No Width".to_owned())?;
         let height = data.get(1).ok_or_else(|| "No Height".to_owned())?;
         let mine_count_first_byte = data.get(2).ok_or_else(|| "No Mine Count 1".to_owned())?;
         let mine_count_second_byte = data.get(3).ok_or_else(|| "No Mine Count 2".to_owned())?;
 
-        if *width as usize > MAX_WIDTH || *height as usize > MAX_HEIGHT {     
+        if *width as usize > MAX_WIDTH || *height as usize > MAX_HEIGHT {
             return Err(format!("Bad Width or Height\nwidth: {width}\nheight: {height}"));   // that's too much, man!
         }
 
@@ -347,7 +347,7 @@ impl Board {
             board.squares[bytes[1] as usize][bytes[0] as usize].square_type = SquareType::Mine;
             board.mine_locations.insert((bytes[1] as usize, bytes[0] as usize));
         }
-        
+
         Ok(board)
     }
 
@@ -434,9 +434,9 @@ impl Board {
     /// * It is converted to a base 32 (5-bits) string to shorten it.
     /// * Extra pad bits are added on the right to make the length a multiple of 5.
     pub fn generate_pttacg(&self) -> String {
-        
+
         let mut result = String::new();
-        
+
         // board size
         if self.width == 9 && self.height == 9 {
             result.push_str("?b=1&m=");
@@ -448,7 +448,7 @@ impl Board {
             let str_width = self.width.to_string().len().max(self.height.to_string().len());
             result.push_str(&format!("?b={:<width$}{:<width$}&m=", self.width, self.height, width=str_width));
         }
-        
+
         // convert to bits
         let mut flat_mines: Vec<String> = self.squares
             .iter()
@@ -460,13 +460,13 @@ impl Board {
         if flat_mines.len() % 5 != 0 {
             flat_mines.extend(vec!["0".to_string(); 5 - (flat_mines.len() % 5)]);
         }
-        
+
         // convert to base 32
         for chunk in flat_mines.chunks(5) {
             let value = u32::from_str_radix(&chunk.join(""), 2).unwrap();
             result.push(char::from_digit(value, 32).unwrap());
         }
-        
+
         result
     }
 
@@ -517,7 +517,7 @@ impl Board {
 
         if opening {
             safe_squares.extend(self.all_adjacents.get(&(safe_row, safe_col)).expect("error during move mine (opening)"));
-        } 
+        }
 
         let mut all_safe = true;
         for (r, c) in &safe_squares {
@@ -529,22 +529,22 @@ impl Board {
         if all_safe {
             return;
         }
-        
+
         // random
         let mut rng = rand::rng();
 
-        /* 
+        /*
         iterate entire board to guarantee finding a new location.
-        arbitrarily chosen density threshold of 50%. 
+        arbitrarily chosen density threshold of 50%.
         case 1: avoid rare case of not finding a new location in the first few tries.
-        case 2: guaranteed opening.  a lot higher possibility of bad luck when using 9 squares.        
+        case 2: guaranteed opening.  a lot higher possibility of bad luck when using 9 squares.
         */
-        if self.mine_count as f32 / (self.width as f32 * self.height as f32) > 0.5 
+        if self.mine_count as f32 / (self.width as f32 * self.height as f32) > 0.5
         || opening {
 
             // using vec because the .choose() function doesn't work on hashsets
             let mut clear_spaces = Vec::with_capacity(self.width * self.height - self.mine_count);
-            
+
             for x in 0..(self.width * self.height) {
                 let r = x / self.width;
                 let c = x % self.width;
@@ -556,7 +556,7 @@ impl Board {
             for (row, col) in &safe_squares {
                 while self.squares[*row][*col].square_type == SquareType::Mine {
                     let (new_row, new_col) = clear_spaces.choose(&mut rng).expect("no clear spaces???? this should not be possible");
-                    if safe_squares.contains(&(*new_row, *new_col)) 
+                    if safe_squares.contains(&(*new_row, *new_col))
                     || self.squares[*new_row][*new_col].square_type == SquareType::Mine {  // edge case of choosing the same new location again
                         continue;
                     }
@@ -573,7 +573,7 @@ impl Board {
         }
 
         // randomly choose a new location and hope it is clear.
-        // this "should" almost always be faster than iterating the entire board (for a single square), 
+        // this "should" almost always be faster than iterating the entire board (for a single square),
         // unless choosing random numbers is much slower than iterating.  don't know for sure, but it seems unlikely.
         let mut new_row = rng.random_range(0..self.height);
         let mut new_col = rng.random_range(0..self.width);
@@ -600,7 +600,7 @@ impl Board {
 
         Ok(())
     }
-    
+
     /// # Initialize Squares
     /// * Next step after adding mines
     /// * Assigns numbers and types
@@ -633,7 +633,7 @@ impl Board {
                 // island or border.  the distinction is borders are adjacent to openings, islands are not
                 self.squares[row][col].square_type = SquareType::Island;
                 for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("initialize square (adjacent to zero)") {
-                    if self.squares[*adj_row][*adj_col].square_type != SquareType::Mine 
+                    if self.squares[*adj_row][*adj_col].square_type != SquareType::Mine
                     && self.squares[*adj_row][*adj_col].adjacent_mines == 0 {      // use adjacent_mines instead of square_type because squares haven't been fully assigned yet
                         self.squares[row][col].square_type = SquareType::Border;
                         break;
@@ -650,10 +650,10 @@ impl Board {
                     for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error during initialize squares (island)") {
                         if self.squares[*adj_row][*adj_col].square_type == SquareType::Mine {
                             continue;
-                        } 
-                        self.squares[*adj_row][*adj_col].premium += 1;    
+                        }
+                        self.squares[*adj_row][*adj_col].premium += 1;
                     }
-                } 
+                }
             }
         }
     }
@@ -665,7 +665,7 @@ impl Board {
         /* initialize */
         let mut visited: HashSet<(usize, usize)> = HashSet::with_capacity(self.width * self.height);
         visited.extend(self.mine_locations.iter().cloned());
-        let mut opening_or_island: bool; // true = opening, false = island 
+        let mut opening_or_island: bool; // true = opening, false = island
 
         // iterate all squares
         for row in 0..self.height {
@@ -704,7 +704,7 @@ impl Board {
                     visiting.insert((r, c));
 
                     if opening_or_island {      // process opening
-                        if self.squares[r][c].square_type == SquareType::Opening {   
+                        if self.squares[r][c].square_type == SquareType::Opening {
                             current_opening.squares_inner.insert((r, c));
                         } else if self.squares[r][c].square_type == SquareType::Border {
                             current_opening.squares_border.insert((r, c));
@@ -768,7 +768,7 @@ impl Board {
     /// # Generate Efficiency Board
     /// * Generates a single board
     /// * Returns bool true/false if it meets the target
-    pub fn generate_eff_board(&mut self, target_score: f32, use_first_click: bool, first_click_row: usize, first_click_col: usize, opening: bool) -> Result<bool, String> {
+    pub fn generate_eff_board(&mut self, target_eff: f32, use_first_click: bool, first_click_row: usize, first_click_col: usize, opening: bool) -> Result<bool, String> {
 
         self.add_mines();
 
@@ -777,18 +777,59 @@ impl Board {
         }
 
         self.initialize_all()?;
-        
-        let current_zini = self.calculate_zini_8way(false)? as f32;
-        let current_eff_score = self.info.bbbv as f32 / current_zini;
 
-        Ok(current_eff_score >= target_score)
+        // all permutations
+        let eight_way: Vec<(bool, bool, bool)> = (0..8)
+            .map(|i| (
+                i & 1 != 0,      // bit 0
+                i & 2 != 0,      // bit 1
+                i & 4 != 0,      // bit 2
+            ))
+            .collect();
+
+        let mut best_zini: u16 = u16::MAX;
+        let mut current_eff_score: f32 = 0.0;
+        let mut first_check = false;
+        for (row_desc, col_desc, swap) in eight_way {
+            match self.zini(row_desc, col_desc, swap) {
+                Ok((zini_score, _path)) => {
+                    if zini_score < best_zini {
+                        best_zini = zini_score;
+                    }
+                },
+                Err(e) => {
+                    eprintln!("8-Way ZINI failed: {}", e);
+                    return Err(format!("8-Way ZINI failed: {}", e));
+                }
+            }
+
+            // exit early if target met
+            current_eff_score = self.info.bbbv as f32 / (best_zini as f32);
+            if current_eff_score >= target_eff {
+                break;
+            }
+
+            // exit early if not close enough
+            if !first_check {
+                let bbbv = self.info.bbbv as f32;
+                let zini = best_zini as f32;
+                if bbbv / (bbbv - (bbbv - zini) * 1.15 - 2.0) < target_eff {
+                    break;
+                }
+                first_check = true;
+            }
+        }
+
+        self.info.zini = best_zini;
+
+        Ok(current_eff_score >= target_eff)
     }
 
     /// # Calculate 8-way ZINI
     /// ### All 8 permutations for tie-break
     /// (includes zini init)
     pub fn calculate_zini_8way(&mut self, print_score: bool) -> Result<u16, String> {
-        
+
         if print_score {
             println!("\nStarting 8-Way ZINI... Good luck!");
         }
@@ -797,7 +838,7 @@ impl Board {
         let eight_way: Vec<(bool, bool, bool)> = (0..8)
             .map(|i| (
                 i & 1 != 0,      // bit 0
-                i & 2 != 0,      // bit 1  
+                i & 2 != 0,      // bit 1
                 i & 4 != 0,      // bit 2
             ))
             .collect();
@@ -818,7 +859,7 @@ impl Board {
                 }
             }
         }
-        
+
         if print_score {
             println!("--------------Start Line--------------");
             println!("8-way ZINI Score: {}", best_zini);
@@ -837,8 +878,9 @@ impl Board {
     /// * standard zini (top left) is (false, false, false)
     pub fn zini(&mut self, row_desc: bool, col_desc: bool, swap_row_col: bool) -> Result<(u16, Vec<ClickInfo>), String> {
 
+        // TODO: change to time-based emergency brake
         let mut emergency_break = 0u32;
-        const EMERGENCY_BREAK_LIMIT: u32 = 1_000;      /* u32 max: 4_294_967_296 */
+        const EMERGENCY_BREAK_LIMIT: u32 = 10_000;      /* u32 max: 4_294_967_296 */
 
         let mut zini_score = 0u16;
         let mut path: Vec<ClickInfo> = Vec::new();
@@ -846,7 +888,7 @@ impl Board {
         let mut remaining: HashSet<(usize, usize)> = HashSet::with_capacity(self.width * self.height - self.mine_count);
         let mut premiums: Vec<(usize, usize)> = Vec::with_capacity(self.width * self.height - self.mine_count);
         self.zini_create_premium_remain(&mut premiums, &mut remaining)?;
-        
+
         let mut current_board: Vec<Vec<Square>> = self.squares.clone();  // the idea behind duplicating here is to keep the original for debug purposes
 
         while !remaining.is_empty() {
@@ -873,7 +915,7 @@ impl Board {
 
             if emergency_break > EMERGENCY_BREAK_LIMIT {
                 eprintln!("Emergency break triggered!\n");
-            
+
                 self.error_printer(remaining, current_board[r][c], zini_score, "Emergency break triggered!");
                 println!("Final Path:");
                 self.path_printer(&path);
@@ -889,7 +931,7 @@ impl Board {
 
         if zini_score == 0 {
             eprintln!("\n******************\nZINI final score zero!");
-            
+
             // fake last click, but its good enough
             self.error_printer(remaining, current_board[0][0], zini_score, "ZINI final score zero!");
             println!("Final Path:");
@@ -906,19 +948,19 @@ impl Board {
         Ok((zini_score, path))
 
     }
-    
+
     /// # ZINI Final Initialization
     /// * Adjust premiums for openings
     /// * Applied after BFS
     pub fn zini_init_final(&mut self) -> Result<(), String> {
-      
+
         if self.info.bbbv == 0 {
             return Err(format!("Board not initialized!"));
         }
 
         for opening in &self.openings_locations {
             for opening_square in &opening.squares_inner {     // never want it flagged, so under the nf threshold is important
-                self.squares[opening_square.0][opening_square.1].premium = -1; 
+                self.squares[opening_square.0][opening_square.1].premium = -1;
             }
             for opening_square in &opening.squares_border {
                 self.squares[opening_square.0][opening_square.1].premium += 1;    // +1 to treat the entire opening as 1 adjacent 3bv
@@ -929,7 +971,7 @@ impl Board {
     }
 
     pub fn zini_create_premium_remain(&mut self, premiums: &mut Vec<(usize, usize)>, remaining: &mut HashSet<(usize, usize)>) -> Result<(), String> {
-        
+
         for row in 0..self.height {
             for col in 0..self.width {
                 if self.squares[row][col].square_type != SquareType::Mine
@@ -952,17 +994,17 @@ impl Board {
     /// * columns descending
     /// * swap rows & columns
     pub fn zini_sort_premium(
-        &self, 
-        premiums: &mut Vec<(usize, usize)>, 
-        zini_board: &Vec<Vec<Square>>, 
-        row_desc: bool, 
-        col_desc: bool, 
+        &self,
+        premiums: &mut Vec<(usize, usize)>,
+        zini_board: &Vec<Vec<Square>>,
+        row_desc: bool,
+        col_desc: bool,
         swap_row_col: bool
     ) -> Result<(), String> {
 
-      /* 
-      a little crazy to read, 
-      but basically this is just using the built-in sort (timsort), 
+      /*
+      a little crazy to read,
+      but basically this is just using the built-in sort (timsort),
       and swapping the order of comparisons based on the parameters.
       the logic of which fields go in which order is defined on the structs.
       because the data is semi-sorted, the time complexity is very good.
@@ -973,7 +1015,7 @@ impl Board {
           .sort_by(|&(r1, c1), &(r2, c2)| {
           let a = &zini_board[r1][c1];
           let b = &zini_board[r2][c2];
-          
+
           a.cmp(&b)
               .then(
                   if !swap_row_col {
@@ -990,7 +1032,7 @@ impl Board {
 }
 
     pub fn zini_get_premium(&self, premiums: &Vec<(usize, usize)>, zini_board: &Vec<Vec<Square>>) -> Result<(usize, usize), String> {
-        
+
         for (r, c) in premiums {
             if zini_board[*r][*c].premium >= ZINI_NF_THRESHOLD {
                 return Ok((*r, *c));
@@ -1002,7 +1044,7 @@ impl Board {
         }
 
         return Err(format!("No premium found"));
-    } 
+    }
 
     /// # ZINI Find Completed (All)
     /// Check entire board
@@ -1011,7 +1053,7 @@ impl Board {
 
         for row in 0..self.height {
             for col in 0..self.width {
-                if zini_board[row][col].square_type == SquareType::Mine 
+                if zini_board[row][col].square_type == SquareType::Mine
                 || zini_board[row][col].square_status == SquareStatus::Completed
                 || zini_board[row][col].square_status == SquareStatus::Unclicked {
                     continue;
@@ -1032,8 +1074,8 @@ impl Board {
             return Err(format!("Mines should not be checked: {}, {}", row + 1, col + 1));
         }
         let mut finished = true;
-        for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error during check completed") {    
-            if zini_board[*adj_row][*adj_col].square_type == SquareType::Mine 
+        for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error during check completed") {
+            if zini_board[*adj_row][*adj_col].square_type == SquareType::Mine
             || zini_board[*adj_row][*adj_col].square_status == SquareStatus::Completed {
                 continue;
             }
@@ -1060,9 +1102,9 @@ impl Board {
         for (row, col) in changed_squares {
             to_check.insert((*row, *col));
             for (adj_row, adj_col) in self.all_adjacents.get(&(*row, *col)).expect("error during check changed") {
-                if zini_board[*adj_row][*adj_col].square_type == SquareType::Mine 
+                if zini_board[*adj_row][*adj_col].square_type == SquareType::Mine
                 || zini_board[*adj_row][*adj_col].square_status == SquareStatus::Completed
-                || zini_board[*adj_row][*adj_col].square_status == SquareStatus::Unclicked 
+                || zini_board[*adj_row][*adj_col].square_status == SquareStatus::Unclicked
                 || checked_squares.contains(&(*adj_row, *adj_col)) {
                     continue;
                 }
@@ -1081,17 +1123,17 @@ impl Board {
 
         Ok(())
     }
-    
+
     /// # Zini Click
     /// * Basic logic to split up how a click is handled.
     /// * Anything under the threshold gets a left click (NF),
     /// * Otherwise it gets the flag & chord.
-    pub fn zini_click(&self, 
-        zini_board: &mut Vec<Vec<Square>>, 
-        row: usize, 
-        col: usize, 
-        remaining: &mut HashSet<(usize, usize)>, 
-        click_count: &mut u16, 
+    pub fn zini_click(&self,
+        zini_board: &mut Vec<Vec<Square>>,
+        row: usize,
+        col: usize,
+        remaining: &mut HashSet<(usize, usize)>,
+        click_count: &mut u16,
         path: &mut Vec<ClickInfo>,
         changed_squares: &mut Vec<(usize, usize)>
     ) -> Result<(), String> {
@@ -1104,7 +1146,7 @@ impl Board {
         }
 
         // flag solve
-        if zini_board[row][col].premium >= ZINI_NF_THRESHOLD 
+        if zini_board[row][col].premium >= ZINI_NF_THRESHOLD
         && zini_board[row][col].square_type != SquareType::Opening {
             match self.zini_perform_solve(zini_board, row, col, remaining, click_count, path, changed_squares) {
                 Ok(()) => Ok(()),
@@ -1124,15 +1166,15 @@ impl Board {
             Ok(())
         }
     }
-        
+
     /// # ZINI Perform Solve
     /// * "perform solve" meaning flag all adjacent (unflagged) mines and then chord.
-    pub fn zini_perform_solve(&self, 
-        zini_board: &mut Vec<Vec<Square>>, 
-        row: usize, 
-        col: usize, 
-        remaining: &mut HashSet<(usize, usize)>, 
-        click_count: &mut u16, 
+    pub fn zini_perform_solve(&self,
+        zini_board: &mut Vec<Vec<Square>>,
+        row: usize,
+        col: usize,
+        remaining: &mut HashSet<(usize, usize)>,
+        click_count: &mut u16,
         path: &mut Vec<ClickInfo>,
         changed_squares: &mut Vec<(usize, usize)>,
     ) -> Result<(), String> {
@@ -1187,9 +1229,9 @@ impl Board {
 
     /// # ZINI Chord
     /// ## Does **NOT** include flagging step.
-    pub fn zini_chord(&self, 
-        zini_board: &mut Vec<Vec<Square>>, 
-        row: usize, col: usize, 
+    pub fn zini_chord(&self,
+        zini_board: &mut Vec<Vec<Square>>,
+        row: usize, col: usize,
         remaining: &mut HashSet<(usize, usize)>,
         changed_squares: &mut Vec<(usize, usize)>,
     ) -> Result<(), String> {
@@ -1239,12 +1281,12 @@ impl Board {
     /// * Update premium of all adjacent squares.
     /// * Mines being "clicked" means being flagged (right click).
     /// * Non-mines get revealed (left click).
-    /// 
+    ///
     /// ## When Clicked:
     /// * Islands and Borders
     ///   * Get their own premium increased by 1.
     ///   * Openings get their own premium decreased to the minimum.
-    /// 
+    ///
     /// * Mines
     ///   * Increase premium of adjacent squares by 1.
     /// 	* They go from unflagged (-1 penalty) to flagged (no penalty).
@@ -1289,7 +1331,7 @@ impl Board {
             remaining.remove(&(row, col));
             changed_squares.push((row, col));
         }
-        
+
         // handle individual cases
         match zini_board[row][col].square_type {
             SquareType::Mine => {
@@ -1303,7 +1345,7 @@ impl Board {
 
             SquareType::Island => {
                 // commented out for "llama style" premium where clicking an island does not give it a bonus (because it does not have the penalty)
-                // zini_board[row][col].premium += 1;  
+                // zini_board[row][col].premium += 1;
 
                 for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error during zini click (island)") {
                     if zini_board[*adj_row][*adj_col].square_type == SquareType::Mine {
@@ -1323,7 +1365,7 @@ impl Board {
                 let opening_id = self.openings_ids.get(&(row, col)).ok_or(format!("Opening ID not found for {}, {}", row + 1, col + 1))?;
 
                 let opening = self.openings_locations.get(*opening_id).ok_or(format!("Opening not found for ID {}", opening_id))?;
-                let border_squares = opening.squares_border.clone(); 
+                let border_squares = opening.squares_border.clone();
                 let inner_squares = opening.squares_inner.clone();  /* cloning for recursive call */ // TODO: maybe there is a better way?
 
                 for inner_square in inner_squares {
@@ -1331,14 +1373,14 @@ impl Board {
                     zini_board[inner_square.0][inner_square.1].premium = ZINI_MIN_PREMIUM;
                     remaining.remove(&(inner_square.0, inner_square.1));
                 }
-                
-                for border_square in border_squares {                    
+
+                for border_square in border_squares {
                     // "llama style" version where opening borders indirectly doesn't improve their premium.
                     // negative one to offset the +1 during the reveal_or_flag(), for net no-change.
                     // alterate explanation: to remove the +1 adjacent 3bv bonus from the opening.
-                    zini_board[border_square.0][border_square.1].premium -= 1;  
+                    zini_board[border_square.0][border_square.1].premium -= 1;
 
-                    if zini_board[border_square.0][border_square.1].square_status == SquareStatus::Clicked 
+                    if zini_board[border_square.0][border_square.1].square_status == SquareStatus::Clicked
                     || zini_board[border_square.0][border_square.1].square_status == SquareStatus::Completed {
                         continue;
                     }
@@ -1360,10 +1402,10 @@ impl Board {
     /// * `full_board` - print the full board
     /// * `openings_mode` - print if a square is border, island, opening (full board required)
     /// * `premium_mode` - print zini premiums (full board required)
-    pub fn info_printer(&self, 
-        normal_info: bool, 
-        full_board: bool, 
-        openings_mode: bool, 
+    pub fn info_printer(&self,
+        normal_info: bool,
+        full_board: bool,
+        openings_mode: bool,
         premium_mode: bool) {
 
         if normal_info {
@@ -1410,7 +1452,7 @@ impl Board {
                 }
                 print!("\n");
             }
-        } 
+        }
 
         if !premium_mode {
             return;
@@ -1455,7 +1497,7 @@ impl Board {
             // top row print
             for col in 0..self.width {
                 let square = &self.squares[row][col];
-                print!("  {} ", square);        
+                print!("  {} ", square);
             }
             print!("\n");
 
@@ -1507,5 +1549,5 @@ impl Board {
         }
         println!("\n\n");
     }
-    
+
 }
