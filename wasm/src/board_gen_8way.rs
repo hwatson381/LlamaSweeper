@@ -1071,7 +1071,6 @@ impl Board {
     /// # ZINI Check Completed
     /// Check single square
     fn zini_check_completed(&self, zini_board: &mut Vec<Vec<Square>>, row: usize, col: usize) -> Result<(), String> {
-        // TODO: mines should be filtered out before getting here, but aren't
         if zini_board[row][col].square_type == SquareType::Mine {
             return Err(format!("Mines should not be checked: {}, {}", row + 1, col + 1));
         }
@@ -1367,16 +1366,14 @@ impl Board {
                 let opening_id = self.openings_ids.get(&(row, col)).ok_or(format!("Opening ID not found for {}, {}", row + 1, col + 1))?;
 
                 let opening = self.openings_locations.get(*opening_id).ok_or(format!("Opening not found for ID {}", opening_id))?;
-                let border_squares = opening.squares_border.clone();
-                let inner_squares = opening.squares_inner.clone();  /* cloning for recursive call */ // TODO: maybe there is a better way?
 
-                for inner_square in inner_squares {
+                for inner_square in &opening.squares_inner {
                     zini_board[inner_square.0][inner_square.1].square_status = SquareStatus::Completed;
                     zini_board[inner_square.0][inner_square.1].premium = ZINI_MIN_PREMIUM;
                     remaining.remove(&(inner_square.0, inner_square.1));
                 }
 
-                for border_square in border_squares {
+                for border_square in &opening.squares_border {
                     // "llama style" version where opening borders indirectly doesn't improve their premium.
                     // negative one to offset the +1 during the reveal_or_flag(), for net no-change.
                     // alterate explanation: to remove the +1 adjacent 3bv bonus from the opening.
