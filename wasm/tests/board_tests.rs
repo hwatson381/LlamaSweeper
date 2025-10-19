@@ -1,5 +1,6 @@
 #[cfg(test)]
 mod tests {
+    use chrono::Utc;
     use llamasweeper_rust::board_gen_8way::Board;
 
     #[test]
@@ -210,14 +211,18 @@ mod tests {
 
     #[test]
     fn test_expert_board_multiple_attempts() {
-        // Generate multiple expert boards to ensure they meet a reasonable threshold
+        // test multiple generations
+
         let width = 30;
         let height = 16;
         let mines = 99;
-        let threshold = 1.6;
-        let max_attempts = 1000;
+        let threshold = 1.7;
+        let max_attempts = 10_000;
+        let amount_find = 20;
 
         let mut successful_boards = Vec::new();
+
+        let start = Utc::now();
 
         for i in 0..max_attempts {
             let mut board = Board::new(width, height, mines)
@@ -228,22 +233,27 @@ mod tests {
                     let pttacg = board.generate_pttacg();
                     successful_boards.push(pttacg);
 
-                    if successful_boards.len() >= 3 {
-                        break; // Found enough boards
+                    if successful_boards.len() >= amount_find {
+                        println!("Found {} boards after {} attempts.", amount_find, i + 1);
+                        break;
                     }
                 }
             }
 
-            if (i + 1) % 100 == 0 {
-                println!("Attempted {} boards, found {} above threshold", i + 1, successful_boards.len());
-            }
+            // if (i + 1) % 100 == 0 {
+            //     println!("Attempted {} boards, found {} above threshold", i + 1, successful_boards.len());
+            // }
         }
+
+        let elapsed = Utc::now() - start;
 
         println!("\n{} board(s) found above threshold {:.2}%", successful_boards.len(), threshold * 100.0);
 
         for pttacg_str in &successful_boards {
             println!("https://llamasweeper.com/#/game/zini-explorer{}", pttacg_str);
         }
+
+        println!("\nTime elapsed: {:.2} seconds", elapsed.num_milliseconds() as f64 / 1000.0);
 
         // We expect at least one board to be found
         assert!(successful_boards.len() > 0, "Should find at least one board above threshold");
