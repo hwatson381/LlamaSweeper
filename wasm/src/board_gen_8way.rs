@@ -1,5 +1,5 @@
 use std::{fmt, vec};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque, BTreeSet};
 use std::cmp::{min, max};
 use std::hash::Hash;
 use rand::prelude::*;
@@ -7,7 +7,9 @@ use rand::prelude::*;
 const MAX_WIDTH: usize = 128;
 const MAX_HEIGHT: usize = 128;
 const ZINI_NF_THRESHOLD: i8 = 0;   /* threshold for zini premium to determine to NF click or not */
-const ZINI_MIN_PREMIUM: i8 = -9;   /* arbitrary low value */
+const ZINI_MIN_PREMIUM: i8 = -9;
+const ZINI_MAX_PREMIUM: i8 = 16;
+const ZINI_PREMIUM_OFFSET: i8 = 9;  /* offset to make premiums positive */
 
 /// # Get Adjacent
 /// Helper function to get all valid adjacent locations from a given (row, col)
@@ -26,6 +28,32 @@ fn get_adjacent(row: usize, col: usize, row_count: usize, col_count: usize) -> R
     }
 
     Ok(out)
+}
+
+/// # Swapper
+/// #### Helper function to swap coordinates for sorting purposes.
+/// Running it on swapped coordinates will have the result of setting them back to how they originally were.
+pub fn swapper(location: (usize, usize), swap_row: bool, swap_col: bool, swap_row_col: bool, unswap: bool) -> (usize, usize) {
+    if !swap_row && !swap_col && !swap_row_col {
+        return location;
+    }
+
+    let (mut row, mut col) = (location.0, location.1);
+
+    if unswap && swap_row_col {
+        (row, col) = (col, row);
+    }
+    if swap_row {
+        row = usize::MAX - row;
+    }
+    if swap_col {
+        col = usize::MAX - col;
+    }
+    if swap_row_col && !unswap {
+        (row, col) = (col, row);
+    }
+
+    (row, col)
 }
 
 /// # Opening
@@ -51,6 +79,8 @@ impl Opening {
         self.squares_inner.clear();
     }
 
+    /// # All Squares
+    /// Returns an iterator over all squares in the opening (borders + inner)
     pub fn all_squares(&self) -> impl Iterator<Item = &(usize, usize)> {
         self.squares_border.iter().chain(self.squares_inner.iter())
     }
@@ -604,6 +634,7 @@ impl Board {
     /// # Initialize Squares
     /// * Next step after adding mines
     /// * Assigns numbers and types
+    /// * Adds ZINI premium
     pub fn initialize_squares(&mut self) {
         // number
         for (row, col) in &self.mine_locations {
@@ -615,43 +646,47 @@ impl Board {
         // type & premium
         for row in 0..self.height {
             for col in 0..self.width {
-                self.squares[row][col].row = row as u8;
-                self.squares[row][col].col = col as u8;
+                let current_square = &mut self.squares[row][col];
+                current_square.row = row as u8;
+                current_square.col = col as u8;
 
-                // mines go to minimum, mainly for debug purposes
-                // also, the order matters and mines need to be first
-                if self.squares[row][col].square_type == SquareType::Mine {
-                    self.squares[row][col].premium = ZINI_MIN_PREMIUM;
+                // the order matters and mines need to be processed first
+                // mines go to minimum, they need to be something
+                if current_square.square_type == SquareType::Mine {
+                    current_square.premium = ZINI_MIN_PREMIUM;
                     continue;
                 }
 
-                // opening is default
-                if self.squares[row][col].adjacent_mines == 0 {
+                // opening is the default value, so skip
+                if current_square.adjacent_mines == 0 {
                     continue;
                 }
 
                 // island or border.  the distinction is borders are adjacent to openings, islands are not
-                self.squares[row][col].square_type = SquareType::Island;
+                current_square.square_type = SquareType::Island;
                 for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("initialize square (adjacent to zero)") {
-                    if self.squares[*adj_row][*adj_col].square_type != SquareType::Mine
-                    && self.squares[*adj_row][*adj_col].adjacent_mines == 0 {      // use adjacent_mines instead of square_type because squares haven't been fully assigned yet
+                    let adj_square = &self.squares[*adj_row][*adj_col];
+                    if adj_square.square_type != SquareType::Mine
+                    && adj_square.adjacent_mines == 0 {      // use adjacent_mines instead of square_type because squares haven't been fully assigned yet
                         self.squares[row][col].square_type = SquareType::Border;
                         break;
                     }
                 }
 
                 // premium
-                self.squares[row][col].premium -= self.squares[row][col].adjacent_mines as i8;
+                let current_square = &mut self.squares[row][col];
+                current_square.premium -= current_square.adjacent_mines as i8;
 
-                if self.squares[row][col].square_type == SquareType::Island {
-                    self.squares[row][col].premium += 1;    // "llama style" offset the -1 "click to open penalty" (which is part of ZiniSquare::new())
+                if current_square.square_type == SquareType::Island {
+                    current_square.premium += 1;    // "llama style" offset the -1 "click to open penalty" (which is part of ZiniSquare::new())
 
                     // islands increase the adjacent 3bv of all their neighbors by 1
                     for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error during initialize squares (island)") {
-                        if self.squares[*adj_row][*adj_col].square_type == SquareType::Mine {
+                        let adj_square = &mut self.squares[*adj_row][*adj_col];
+                        if adj_square.square_type == SquareType::Mine {
                             continue;
                         }
-                        self.squares[*adj_row][*adj_col].premium += 1;
+                        adj_square.premium += 1;
                     }
                 }
             }
@@ -673,20 +708,21 @@ impl Board {
                 if visited.contains(&(row, col)) {
                     continue;
                 }
-                if self.squares[row][col].square_type == SquareType::Mine {
+                let current_square = &self.squares[row][col];
+                if current_square.square_type == SquareType::Mine {
                     return Err("Mine found during BFS".into());     // mines are pre-added to visited
                 }
 
-                if self.squares[row][col].square_type == SquareType::Island {
+                if current_square.square_type == SquareType::Island {
                     opening_or_island = false;
                     self.info.islands_count += 1;
-                } else if self.squares[row][col].square_type == SquareType::Opening {
+                } else if current_square.square_type == SquareType::Opening {
                     opening_or_island = true;
                     self.info.openings_count += 1;
-                } else if self.squares[row][col].square_type == SquareType::Border {
+                } else if current_square.square_type == SquareType::Border {
                     continue;   // skip because borders get handled by openings
                 } else {
-                    return Err(format!("Square is neither opening nor island\n{} {}\n{:#?}", row, col, self.squares[row][col]));
+                    return Err(format!("Square is neither opening nor island\n{} {}\n{:#?}", row, col, current_square));
                 }
 
                 // BFS
@@ -702,18 +738,19 @@ impl Board {
                         continue;
                     }
                     visiting.insert((r, c));
+                    let current_square = &self.squares[r][c];
 
                     if opening_or_island {      // process opening
-                        if self.squares[r][c].square_type == SquareType::Opening {
+                        if current_square.square_type == SquareType::Opening {
                             current_opening.squares_inner.insert((r, c));
-                        } else if self.squares[r][c].square_type == SquareType::Border {
+                        } else if current_square.square_type == SquareType::Border {
                             current_opening.squares_border.insert((r, c));
                             continue;
                         } else {
                             continue;
                         }
                     } else {                    // process island
-                        if self.squares[r][c].square_type == SquareType::Island {
+                        if current_square.square_type == SquareType::Island {
                             self.info.bbbv += 1;
                             current_island.insert((r, c));
                         } else {
@@ -779,6 +816,7 @@ impl Board {
         }
 
         self.initialize_all()?;
+        let bbbv = self.info.bbbv as f32;
 
         // all permutations
         let eight_way: Vec<(bool, bool, bool)> = (0..8)
@@ -813,7 +851,6 @@ impl Board {
 
             // exit early if not close enough
             if !first_check {
-                let bbbv = self.info.bbbv as f32;
                 let zini = best_zini as f32;
                 if bbbv / (bbbv - (bbbv - zini) * 1.15 - 2.0) < target_eff {
                     break;
@@ -829,7 +866,6 @@ impl Board {
 
     /// # Calculate 8-way ZINI
     /// ### All 8 permutations for tie-break
-    /// (includes zini init)
     pub fn calculate_zini_8way(&mut self, print_score: bool) -> Result<u16, String> {
 
         if print_score {
@@ -847,12 +883,14 @@ impl Board {
 
         let mut best_zini: u16 = u16::MAX;
         let mut best_path: Vec<ClickInfo> = Vec::new();
+        let mut best_swaps: (bool, bool, bool) = (false, false, false);
         for (row_desc, col_desc, swap) in eight_way {
             match self.zini(row_desc, col_desc, swap) {
                 Ok((zini_score, path)) => {
                     if zini_score < best_zini {
                         best_zini = zini_score;
                         best_path = path;
+                        best_swaps = (row_desc, col_desc, swap);
                     }
                 },
                 Err(e) => {
@@ -865,6 +903,7 @@ impl Board {
         if print_score {
             println!("--------------Start Line--------------");
             println!("8-way ZINI Score: {}", best_zini);
+            println!("8-way ZINI Swaps: {:?}", best_swaps);
             self.path_printer(&best_path);
             println!("8-way ZINI Score: {}", best_zini);
             println!("---------------End Line---------------");
@@ -876,31 +915,42 @@ impl Board {
     }
 
     /// # ZINI Algorithm
-    /// * tie_break_direction is based on the combination of row_desc, col_desc, and swap_row_col.
+    /// * tie_break_direction is based on the combination of swaps.
     /// * standard zini (top left) is (false, false, false)
-    pub fn zini(&mut self, row_desc: bool, col_desc: bool, swap_row_col: bool) -> Result<(u16, Vec<ClickInfo>), String> {
+    pub fn zini(&mut self, swap_r: bool, swap_c: bool, swap_r_c: bool) -> Result<(u16, Vec<ClickInfo>), String> {
+        // TODO: add check if board initialized
 
         // TODO: change to time-based emergency brake
         let mut emergency_break = 0u32;
         const EMERGENCY_BREAK_LIMIT: u32 = 10_000;      /* u32 max: 4_294_967_296 */
 
+        let mut current_board: Vec<Vec<Square>> = self.squares.clone();  // duplicating to keep the original unchanged for future iterations
         let mut zini_score = 0u16;
         let mut path: Vec<ClickInfo> = Vec::new();
-        let mut changed_squares: Vec<(usize, usize)> = Vec::with_capacity(self.width * self.height / 2);    // more than necessary almost always
-        let mut remaining: HashSet<(usize, usize)> = HashSet::with_capacity(self.width * self.height - self.mine_count);
-        let mut premiums: Vec<(usize, usize)> = Vec::with_capacity(self.width * self.height - self.mine_count);
-        self.zini_create_premium_remain(&mut premiums, &mut remaining)?;
 
-        let mut current_board: Vec<Vec<Square>> = self.squares.clone();  // the idea behind duplicating here is to keep the original for debug purposes
+        let mut changed_squares: HashMap<(usize, usize), i8> = HashMap::with_capacity(self.width * self.height / 2);  // square location: premium before change
+        let (mut premiums, mut remaining) = self.zini_create_premiums_and_remaining(swap_r, swap_c, swap_r_c)?;
 
         while !remaining.is_empty() {
-            self.zini_sort_premium(&mut premiums, &current_board, row_desc, col_desc, swap_row_col)?;
-            let (r, c) = self.zini_get_premium(&premiums, &current_board)?;
+            let (r, c) = self.zini_get_premium(&mut premiums, swap_r, swap_c, swap_r_c)?;
+            let current_square = current_board[r][c];
+
+            if current_square.premium < ZINI_NF_THRESHOLD {
+                if current_square.square_type != SquareType::Border
+                && current_square.square_status != SquareStatus::Clicked
+                && current_square.square_status != SquareStatus::Completed {
+                    self.zini_click(&mut current_board, r, c, &mut remaining, &mut zini_score, &mut path, &mut changed_squares)?;
+                    self.zini_check_all_changed(&mut current_board, &mut changed_squares)?;
+                    self.zini_update_premium(&mut premiums, &current_board, &changed_squares, swap_r, swap_c, swap_r_c)?;
+                }
+                self.nf_stage(&mut current_board, premiums.clone(), &mut zini_score, &mut path, &mut remaining, &mut changed_squares, swap_r, swap_c, swap_r_c)?;
+                break;
+            }
 
             match self.zini_click(&mut current_board, r, c, &mut remaining, &mut zini_score, &mut path, &mut changed_squares) {
                 Ok(()) => {},
                 Err(e) => {
-                    self.error_printer(remaining, current_board[r][c], zini_score, &e);
+                    self.error_printer(remaining, current_square, zini_score, &e);
                     println!("Final Path:");
                     self.path_printer(&path);
                     println!("\n\n");
@@ -912,7 +962,8 @@ impl Board {
                 }
             }
 
-            self.zini_check_changed(&mut current_board, &mut changed_squares)?;
+            self.zini_check_all_changed(&mut current_board, &mut changed_squares)?;
+            self.zini_update_premium(&mut premiums, &current_board, &changed_squares, swap_r, swap_c, swap_r_c)?;
             changed_squares.clear();
 
             if emergency_break > EMERGENCY_BREAK_LIMIT {
@@ -947,6 +998,9 @@ impl Board {
             return Err(format!("ZINI (Simple) failed miserably!\n"));
         }
 
+        // println!("\n\nFinal State:");
+        // self.zini_premium_printer(&current_board);
+
         Ok((zini_score, path))
 
     }
@@ -961,7 +1015,7 @@ impl Board {
         }
 
         for opening in &self.openings_locations {
-            for opening_square in &opening.squares_inner {     // never want it flagged, so under the nf threshold is important
+            for opening_square in &opening.squares_inner {     // never want it flagged, so setting it under the nf threshold is important
                 self.squares[opening_square.0][opening_square.1].premium = -1;
             }
             for opening_square in &opening.squares_border {
@@ -972,141 +1026,103 @@ impl Board {
         Ok(())
     }
 
-    pub fn zini_create_premium_remain(&mut self, premiums: &mut Vec<(usize, usize)>, remaining: &mut HashSet<(usize, usize)>) -> Result<(), String> {
+    /// # ZINI Create Premiums & Remaining
+    /// * Create initial premiums and remaining squares
+    /// * Premiums use swapped row/col
+    /// * Remainings are normal row/col
+    pub fn zini_create_premiums_and_remaining(&mut self, swap_r: bool, swap_c: bool, swap_r_c: bool) -> Result<([BTreeSet<(usize, usize)>; 16], HashSet<(usize, usize)>), String> {
 
-        for row in 0..self.height {
-            for col in 0..self.width {
-                if self.squares[row][col].square_type != SquareType::Mine
-                && self.squares[row][col].square_status != SquareStatus::Completed {
-                    premiums.push((row, col));
-                    remaining.insert((row, col));
-                }
+        /* creating with vectors first for better performance than repeatedly inserting in a btreeset */
+        let mut starting_premiums: [Vec<(usize, usize)>; ZINI_MAX_PREMIUM as usize] = std::array::from_fn(|_| Vec::with_capacity(self.width * self.height / 4));
+        let mut remaining: HashSet<(usize, usize)> = HashSet::with_capacity(self.width * self.height - self.mine_count);
+
+        for item in &self.islands_locations {
+            for (r, c) in item {
+                starting_premiums[(self.squares[*r][*c].premium + ZINI_PREMIUM_OFFSET) as usize].push(swapper((*r, *c), swap_r, swap_c, swap_r_c, false));
+                remaining.insert((*r, *c));
             }
         }
 
-        if premiums.is_empty() {
-            return Err(format!("No valid locations found during premium list creation"));
+        for opening in &self.openings_locations {
+            for (r, c) in opening.all_squares() {
+                starting_premiums[(self.squares[*r][*c].premium + ZINI_PREMIUM_OFFSET) as usize].push(swapper((*r, *c), swap_r, swap_c, swap_r_c, false));
+                remaining.insert((*r, *c));
+            }
         }
 
-        Ok(())
+        let out_premiums: [BTreeSet<(usize, usize)>; 16] = starting_premiums.map(|vec| vec.into_iter().collect());
+
+        Ok((out_premiums, remaining))
     }
-    /// # ZINI Sort Premiums
+
+    /// # ZINI Update Premiums
     /// Tie-break options:
     /// * rows descending
     /// * columns descending
     /// * swap rows & columns
-    pub fn zini_sort_premium(
+    pub fn zini_update_premium(
         &self,
-        premiums: &mut Vec<(usize, usize)>,
+        premiums: &mut [BTreeSet<(usize, usize)>; 16],
         zini_board: &Vec<Vec<Square>>,
-        row_desc: bool,
-        col_desc: bool,
-        swap_row_col: bool
+        changed_squares: &HashMap<(usize, usize), i8>,
+        swap_r: bool,
+        swap_c: bool,
+        swap_r_c: bool
     ) -> Result<(), String> {
 
-      /*
-      a little crazy to read,
-      but basically this is just using the built-in sort (timsort),
-      and swapping the order of comparisons based on the parameters.
-      the logic of which fields go in which order is defined on the structs.
-      because the data is semi-sorted, the time complexity is very good.
-      after sorting, the first element is the best premium.
-      */
+        // TODO: new style
+        for ((row, col), old_premium) in changed_squares {
+            let square = &zini_board[*row][*col];
+            let swapped_coords = swapper((*row, *col), swap_r, swap_c, swap_r_c, false);
 
-      premiums
-          .sort_by(|&(r1, c1), &(r2, c2)| {
-          let a = &zini_board[r1][c1];
-          let b = &zini_board[r2][c2];
+            if square.square_status == SquareStatus::Completed {
+                premiums[(old_premium + ZINI_PREMIUM_OFFSET) as usize].remove(&swapped_coords);
+                continue;
+            }
 
-          a.cmp(&b)
-              .then(
-                  if !swap_row_col {
-                      if !row_desc { r1.cmp(&r2) } else { r2.cmp(&r1) }
-                      .then(if !col_desc { c1.cmp(&c2) } else { c2.cmp(&c1) })
-                  } else {
-                      if !col_desc { c1.cmp(&c2) } else { c2.cmp(&c1) }
-                      .then(if !row_desc { r1.cmp(&r2) } else { r2.cmp(&r1) })
-                  }
-              )
-          });
+            let new_premium = square.premium;
+            if old_premium == &new_premium {
+                continue;
+            }
+
+            premiums[(old_premium + ZINI_PREMIUM_OFFSET) as usize].remove(&swapped_coords);
+            premiums[(new_premium + ZINI_PREMIUM_OFFSET) as usize].insert(swapped_coords);
+        }
 
       Ok(())
 }
 
-    pub fn zini_get_premium(&self, premiums: &Vec<(usize, usize)>, zini_board: &Vec<Vec<Square>>) -> Result<(usize, usize), String> {
+    /// # ZINI Get Premium
+    /// * Get best premium from premiums
+    pub fn zini_get_premium(&self, premiums: &mut [BTreeSet<(usize, usize)>], swap_r: bool, swap_c: bool, swap_r_c: bool) -> Result<(usize, usize), String> {
 
-        for (r, c) in premiums {
-            if zini_board[*r][*c].premium >= ZINI_NF_THRESHOLD {
-                return Ok((*r, *c));
-            } else {    // skips NF squares that are already revealed
-                if zini_board[*r][*c].square_status == SquareStatus::Unclicked {
-                    return Ok((*r, *c));
-                }
+        for btree in premiums.iter_mut().rev() {
+            match btree.pop_first() {
+                Some((r, c)) => {
+                    return Ok(swapper((r, c), swap_r, swap_c, swap_r_c, true));
+                },
+                None => {},
             }
         }
 
-        return Err(format!("No premium found"));
+        return Err(format!("No premium found!"));   // cursed string
     }
 
-    /// # ZINI Find Completed (All)
-    /// Check entire board
-    /// * (Not currently used)
-    pub fn zini_find_completed_all(&self, zini_board: &mut Vec<Vec<Square>>) -> Result<(), String> {
-
-        for row in 0..self.height {
-            for col in 0..self.width {
-                if zini_board[row][col].square_type == SquareType::Mine
-                || zini_board[row][col].square_status == SquareStatus::Completed
-                || zini_board[row][col].square_status == SquareStatus::Unclicked {
-                    continue;
-                }
-
-                self.zini_check_completed(zini_board, row, col)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    /// # ZINI Check Completed
-    /// Check single square
-    fn zini_check_completed(&self, zini_board: &mut Vec<Vec<Square>>, row: usize, col: usize) -> Result<(), String> {
-        if zini_board[row][col].square_type == SquareType::Mine {
-            return Err(format!("Mines should not be checked: {}, {}", row + 1, col + 1));
-        }
-        let mut finished = true;
-        for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error during check completed") {
-            if zini_board[*adj_row][*adj_col].square_type == SquareType::Mine
-            || zini_board[*adj_row][*adj_col].square_status == SquareStatus::Completed {
-                continue;
-            }
-            if zini_board[*adj_row][*adj_col].square_status == SquareStatus::Unclicked {
-                finished = false;
-                break;
-            }
-        }
-        if finished {
-            zini_board[row][col].square_status = SquareStatus::Completed;
-            zini_board[row][col].premium = ZINI_MIN_PREMIUM;
-        }
-
-        Ok(())
-    }
-
-    /// # ZINI Check Changed
+    /// # ZINI Check All Changed
     /// ### Check all changed squares for completion.
     /// When a square is changed, all adjacent squares are also changed and must be checked.
-    pub fn zini_check_changed(&self, zini_board: &mut Vec<Vec<Square>>, changed_squares: &mut Vec<(usize, usize)>) -> Result<(), String> {
-        let mut checked_squares: HashSet<(usize, usize)> = HashSet::new();
-        let mut to_check: HashSet<(usize, usize)> = HashSet::with_capacity(changed_squares.capacity());
+    pub fn zini_check_all_changed(&self, zini_board: &mut Vec<Vec<Square>>, changed_squares: &mut HashMap<(usize, usize), i8>) -> Result<(), String> {
+/*
+        // TODO: with more squares getting added to the changed_squares, it may be unnecessary to iterate all adjacents again.
+        let mut to_check: HashSet<(usize, usize)> = HashSet::with_capacity(changed_squares.capacity() * 4);
 
-        for (row, col) in changed_squares {
+        for (row, col) in changed_squares.keys() {
             to_check.insert((*row, *col));
             for (adj_row, adj_col) in self.all_adjacents.get(&(*row, *col)).expect("error during check changed") {
-                if zini_board[*adj_row][*adj_col].square_type == SquareType::Mine
-                || zini_board[*adj_row][*adj_col].square_status == SquareStatus::Completed
-                || zini_board[*adj_row][*adj_col].square_status == SquareStatus::Unclicked
-                || checked_squares.contains(&(*adj_row, *adj_col)) {
+                let adj_square = &zini_board[*adj_row][*adj_col];
+                if adj_square.square_type == SquareType::Mine
+                || adj_square.square_status == SquareStatus::Completed
+                || adj_square.square_status == SquareStatus::Unclicked {
                     continue;
                 }
                 to_check.insert((*adj_row, *adj_col));
@@ -1114,12 +1130,49 @@ impl Board {
         }
 
         for (row, col) in to_check {
-            if checked_squares.contains(&(row, col)) {
+            self.zini_check_completed(zini_board, changed_squares, row, col)?;
+        }
+ */
+        for (row, col) in changed_squares.clone().keys() {
+            self.zini_check_completed(zini_board, changed_squares, *row, *col)?;
+        }
+
+
+        Ok(())
+    }
+
+    /// # ZINI Check Completed
+    /// ### Check single square
+    /// * Criteria: all adjacent non-mine squares are clicked or completed
+    fn zini_check_completed(&self, zini_board: &mut Vec<Vec<Square>>, changed_squares: &mut HashMap<(usize, usize), i8>, row: usize, col: usize) -> Result<(), String> {
+
+        let current_square = &zini_board[row][col];
+        if current_square.square_type == SquareType::Mine {
+            return Err(format!("Mines should not be checked: {}, {}", row + 1, col + 1));
+        }
+
+        let mut finished = true;
+        for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error during check completed") {
+            let adj_square = &zini_board[*adj_row][*adj_col];
+            if adj_square.square_type == SquareType::Mine
+            || adj_square.square_status == SquareStatus::Completed {
                 continue;
             }
-            checked_squares.insert((row, col));
+            if adj_square.square_status == SquareStatus::Unclicked {
+                finished = false;
+                break;
+            }
+        }
 
-            self.zini_check_completed(zini_board, row, col)?;
+        let current_square = &mut zini_board[row][col];
+        if current_square.square_status == SquareStatus::Unclicked {
+            finished = false;
+        }
+
+        if finished {
+            changed_squares.entry((row, col)).or_insert(current_square.premium);  // TODO: for removal from premiums
+            current_square.square_status = SquareStatus::Completed;
+            current_square.premium = ZINI_MIN_PREMIUM;
         }
 
         Ok(())
@@ -1136,19 +1189,21 @@ impl Board {
         remaining: &mut HashSet<(usize, usize)>,
         click_count: &mut u16,
         path: &mut Vec<ClickInfo>,
-        changed_squares: &mut Vec<(usize, usize)>
+        changed_squares: &mut HashMap<(usize, usize), i8>
     ) -> Result<(), String> {
+
         // error checking
-        if zini_board[row][col].square_type == SquareType::Mine {
+        let current_square = &zini_board[row][col];
+        if current_square.square_type == SquareType::Mine {
             return Err(format!("Mine clicks (flags) are only supposed to happen during perform solve: {}, {}", row + 1, col + 1));
         }
-        if zini_board[row][col].square_status == SquareStatus::Completed {
+        if current_square.square_status == SquareStatus::Completed {
             return Err(format!("Clicked on a completed square: {}, {}", row + 1, col + 1));
         }
 
         // flag solve
-        if zini_board[row][col].premium >= ZINI_NF_THRESHOLD
-        && zini_board[row][col].square_type != SquareType::Opening {
+        if current_square.premium >= ZINI_NF_THRESHOLD
+        && current_square.square_type != SquareType::Opening {
             match self.zini_perform_solve(zini_board, row, col, remaining, click_count, path, changed_squares) {
                 Ok(()) => Ok(()),
                 Err(e) => Err(format!("ZINI perform solve failed: {}", e)),
@@ -1157,8 +1212,8 @@ impl Board {
             *click_count += 1;
             path.push(ClickInfo {
                 number: *click_count,
-                square: zini_board[row][col],
-                c_type: ClickType::NF,
+                square: *current_square,
+                c_type: ClickType::NF,  /* TODO: better way to handle islands/openings in NF clicks? */
             });
             match self.zini_reveal_or_flag(zini_board, row, col, remaining, changed_squares) {
                 Ok(()) => {},
@@ -1177,8 +1232,9 @@ impl Board {
         remaining: &mut HashSet<(usize, usize)>,
         click_count: &mut u16,
         path: &mut Vec<ClickInfo>,
-        changed_squares: &mut Vec<(usize, usize)>,
+        changed_squares: &mut HashMap<(usize, usize), i8>,
     ) -> Result<(), String> {
+
         // error checking
         if zini_board[row][col].square_type == SquareType::Mine {
             return Err(format!("Something went horribly wrong.\nSolve attempted on a mine: {}, {}", row + 1, col + 1));
@@ -1186,7 +1242,6 @@ impl Board {
         if zini_board[row][col].square_status == SquareStatus::Completed {
             return Err(format!("Something went horribly wrong.\nSolve attempted on a completed square: {}, {}", row + 1, col + 1));
         }
-
 
         /* flag mines */
         for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error in zini perform solve") {
@@ -1234,23 +1289,25 @@ impl Board {
         zini_board: &mut Vec<Vec<Square>>,
         row: usize, col: usize,
         remaining: &mut HashSet<(usize, usize)>,
-        changed_squares: &mut Vec<(usize, usize)>,
+        changed_squares: &mut HashMap<(usize, usize), i8>,
     ) -> Result<(), String> {
 
         // error handling
-        if zini_board[row][col].square_status == SquareStatus::Unclicked {
+        let current_square = &mut zini_board[row][col];
+        if current_square.square_status == SquareStatus::Unclicked {
             return Err(format!("Cannot chord on an unclicked square!: {}, {}", row + 1, col + 1));
         }
-        if zini_board[row][col].square_status == SquareStatus::Completed {
+        if current_square.square_status == SquareStatus::Completed {
             return Err(format!("Chord on a completed square!: {}, {}", row + 1, col + 1));
         }
 
         let mut adjacent_mines = false;
         for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error in zini chord") {
-            if zini_board[*adj_row][*adj_col].square_type == SquareType::Mine {
+            let adj_square = &zini_board[*adj_row][*adj_col];
+            if adj_square.square_type == SquareType::Mine {
                 adjacent_mines = true;
 
-                if zini_board[*adj_row][*adj_col].square_status != SquareStatus::Clicked {
+                if adj_square.square_status != SquareStatus::Clicked {
                     return Err(format!("Cannot chord: adjacent unflagged mine at {}, {}", adj_row + 1, adj_col + 1));
                 }
             }
@@ -1261,8 +1318,9 @@ impl Board {
 
         // actual chording
         for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error in zini chord") {
-            if zini_board[*adj_row][*adj_col].square_status != SquareStatus::Unclicked
-            || zini_board[*adj_row][*adj_col].square_type == SquareType::Mine {
+            let adj_square = &zini_board[*adj_row][*adj_col];
+            if adj_square.square_status != SquareStatus::Unclicked
+            || adj_square.square_type == SquareType::Mine {
                 continue;
             }
 
@@ -1271,8 +1329,11 @@ impl Board {
                 Err(e) => return Err(format!("ZINI reveal or flag failed during chord on square: {}, {}\n{}", row + 1, col + 1, e)),
             }
         }
-        zini_board[row][col].square_status = SquareStatus::Completed;
-        zini_board[row][col].premium = ZINI_MIN_PREMIUM;
+
+        let current_square = &mut zini_board[row][col];
+        changed_squares.entry((row, col)).or_insert(current_square.premium);  // TODO: for removal from premiums
+        current_square.square_status = SquareStatus::Completed;
+        current_square.premium = ZINI_MIN_PREMIUM;
 
         Ok(())
     }
@@ -1312,80 +1373,128 @@ impl Board {
         row: usize,
         col: usize,
         remaining: &mut HashSet<(usize, usize)>,
-        changed_squares: &mut Vec<(usize, usize)>,
+        changed_squares: &mut HashMap<(usize, usize), i8>,
     ) -> Result<(), String> {
 
         // error handling
         if row >= self.height || col >= self.width {
             return Err(format!("Out of bounds click: {}, {}", row + 1, col + 1));
         }
-        if zini_board[row][col].square_status == SquareStatus::Clicked {
+
+        let current_square = &mut zini_board[row][col];
+        if current_square.square_status == SquareStatus::Clicked {
             return Err(format!("Zini Square already clicked: {}, {}", row + 1, col + 1));
         }
-        if zini_board[row][col].square_status == SquareStatus::Completed {
+        if current_square.square_status == SquareStatus::Completed {
             return Err(format!("Zini Square already completed: {}, {}", row + 1, col + 1));
         }
 
         // actual click
-        zini_board[row][col].square_status = SquareStatus::Clicked;
-        if zini_board[row][col].square_type != SquareType::Mine {
+        current_square.square_status = SquareStatus::Clicked;
+        if current_square.square_type != SquareType::Mine {
             remaining.remove(&(row, col));
-            changed_squares.push((row, col));
+            changed_squares.entry((row, col)).or_insert(current_square.premium);  // TODO: changed squares tracking
         }
 
         // handle individual cases
-        match zini_board[row][col].square_type {
+        match current_square.square_type {
             SquareType::Mine => {
                 for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error during zini click (mine)") {
-                    if zini_board[*adj_row][*adj_col].square_type == SquareType::Mine {
+                    let adj_square = &mut zini_board[*adj_row][*adj_col];
+                    if adj_square.square_type == SquareType::Mine {
                         continue;
                     }
-                    zini_board[*adj_row][*adj_col].premium += 1;
+                    changed_squares.entry((*adj_row, *adj_col)).or_insert(adj_square.premium);
+                    adj_square.premium += 1;  // TODO: changed squares tracking
                 }
             },
 
             SquareType::Island => {
                 // commented out for "llama style" premium where clicking an island does not give it a bonus (because it does not have the penalty)
-                // zini_board[row][col].premium += 1;
+                // current_square.premium += 1;
 
                 for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error during zini click (island)") {
-                    if zini_board[*adj_row][*adj_col].square_type == SquareType::Mine {
+                    let adj_square = &mut zini_board[*adj_row][*adj_col];
+                    if adj_square.square_type == SquareType::Mine {
                         continue;
                     }
-                    zini_board[*adj_row][*adj_col].premium -= 1;
+                    changed_squares.entry((*adj_row, *adj_col)).or_insert(adj_square.premium);
+                    adj_square.premium -= 1;  // TODO: changed squares tracking
                 }
             },
 
             SquareType::Border => {
-                zini_board[row][col].premium += 1;
+                current_square.premium += 1;
             },
 
             SquareType::Opening => {
-                zini_board[row][col].premium = ZINI_MIN_PREMIUM;
-
+                current_square.premium = ZINI_MIN_PREMIUM;
                 let opening_id = self.openings_ids.get(&(row, col)).ok_or(format!("Opening ID not found for {}, {}", row + 1, col + 1))?;
-
                 let opening = self.openings_locations.get(*opening_id).ok_or(format!("Opening not found for ID {}", opening_id))?;
 
-                for inner_square in &opening.squares_inner {
-                    zini_board[inner_square.0][inner_square.1].square_status = SquareStatus::Completed;
-                    zini_board[inner_square.0][inner_square.1].premium = ZINI_MIN_PREMIUM;
-                    remaining.remove(&(inner_square.0, inner_square.1));
+                for (inner_row, inner_col) in &opening.squares_inner {
+                    let inner_square = &mut zini_board[*inner_row][*inner_col];
+                    changed_squares.entry((*inner_row, *inner_col)).or_insert(inner_square.premium);  // TODO: for removal from premiums
+                    inner_square.square_status = SquareStatus::Completed;
+                    inner_square.premium = ZINI_MIN_PREMIUM;
+                    remaining.remove(&(*inner_row, *inner_col));
                 }
 
-                for border_square in &opening.squares_border {
-                    // "llama style" version where opening borders indirectly doesn't improve their premium.
-                    // negative one to offset the +1 during the reveal_or_flag(), for net no-change.
-                    // alterate explanation: to remove the +1 adjacent 3bv bonus from the opening.
-                    zini_board[border_square.0][border_square.1].premium -= 1;
-
-                    if zini_board[border_square.0][border_square.1].square_status == SquareStatus::Clicked
-                    || zini_board[border_square.0][border_square.1].square_status == SquareStatus::Completed {
+                for (border_row, border_col) in &opening.squares_border {
+                    let border_square = &mut zini_board[*border_row][*border_col];
+                    if border_square.square_status == SquareStatus::Completed {
                         continue;
                     }
-                    self.zini_reveal_or_flag(zini_board, border_square.0, border_square.1, remaining, changed_squares)?;
+
+                    changed_squares.entry((*border_row, *border_col)).or_insert(border_square.premium);
+                    border_square.premium -= 1;   // "llama style" (remove the adjacent 3bv from the opening)
+
+                    if border_square.square_status == SquareStatus::Clicked {
+                        continue;
+                    }
+                    self.zini_reveal_or_flag(zini_board, *border_row, *border_col, remaining, changed_squares)?;
                 }
             },
+        }
+
+        Ok(())
+    }
+
+    pub fn nf_stage(&self,
+        zini_board: &mut Vec<Vec<Square>>,
+        premiums: [BTreeSet<(usize, usize)>; 16],
+        click_count: &mut u16,
+        path: &mut Vec<ClickInfo>,
+        remaining: &mut HashSet<(usize, usize)>,
+        changed_squares: &mut HashMap<(usize, usize), i8>,
+        swap_r: bool, swap_c: bool, swap_r_c: bool
+    ) -> Result<(), String> {
+
+        let mut final_squares: Vec<_> = IntoIterator::into_iter(premiums)
+            .flat_map(|set| set.into_iter())
+            .collect();
+
+        final_squares.sort_unstable();
+
+        for (unswapped_r, unswapped_c) in final_squares {
+            let (row, col) = swapper((unswapped_r, unswapped_c), swap_r, swap_c, swap_r_c, true);
+            let current_square = &zini_board[row][col];
+
+            if current_square.square_status == SquareStatus::Clicked
+            || current_square.square_status == SquareStatus::Completed
+            || current_square.square_type == SquareType::Border {
+              continue;
+            }
+
+            *click_count += 1;
+            path.push(ClickInfo {
+                number: *click_count,
+                square: *current_square,
+                c_type: ClickType::NF,
+            });
+            // TODO: technically, it would give slightly faster performance to copy the parts from reveal_or_flag() that are specifically required, without the extra parts
+            // the main reason to use this for now is to easily handle openings that will reveal all squares
+            self.zini_reveal_or_flag(zini_board, row, col, remaining, changed_squares)?;
         }
 
         Ok(())
@@ -1491,6 +1600,7 @@ impl Board {
     }
 
     pub fn zini_premium_printer(&self, zini_board: &Vec<Vec<Square>>) {
+        println!("\nb = border\ni = island\no = opening\nx = mine\n* = completed\nf = flagged\n. = unclicked\nc = clicked");
         println!("\nZINI Premiums:\n");
         for row in 0..self.height {
             // top row print
@@ -1529,15 +1639,15 @@ impl Board {
 
             // fourth row print
             for col in 0..self.width {
+                let square = zini_board[row][col];
                 if self.squares[row][col].square_type == SquareType::Mine {
-                    if zini_board[row][col].square_status == SquareStatus::Clicked {
+                    if square.square_status == SquareStatus::Clicked {
                         print!("  f ");
                     } else {
                         print!("  x ");
                     }
                     continue;
                 }
-                let square = zini_board[row][col];
                 match square.square_status {
                     SquareStatus::Clicked => print!("  c "),
                     SquareStatus::Unclicked => print!("  . "),

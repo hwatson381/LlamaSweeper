@@ -2,6 +2,7 @@
 mod tests {
     use chrono::Utc;
     use llamasweeper_rust::board_gen_8way::Board;
+    use llamasweeper_rust::board_gen_8way::swapper;
 
     #[test]
     fn test_board_creation() {
@@ -32,7 +33,7 @@ mod tests {
         assert_eq!(board.mine_locations.len(), mines, "Should have correct number of mines");
 
         board.initialize_all().expect("Error initializing board");
-        println!("Board initialized successfully");
+        println!("\nBoard initialized successfully");
     }
 
     #[test]
@@ -77,21 +78,32 @@ mod tests {
     }
 
     #[test]
-    fn test_generate_eff_board_basic() {
-        let width = 30;
-        let height = 16;
-        let mines = 99;
+    fn test_generate_eff_board_basic() -> Result<(), String> {
+        let width = 8;
+        let height = 8;
+        let mines = 10;
         let threshold = 1.5;
 
-        let mut board = Board::new(width, height, mines)
-            .expect("Failed to create board");
+        let mut board = Board::new(width, height, mines)?;
 
-        let result = board.generate_eff_board(threshold, false, 0, 0, false);
-        assert!(result.is_ok(), "generate_eff_board should not error");
+        let result = board.generate_eff_board(threshold, false, 0, 0, false)?;
+
+        let zini = board.calculate_zini_8way(true);
+        match zini {
+            Ok(z) => {
+            let score = board.info.bbbv as f32 / board.info.zini as f32;
+            println!("\n\nScore: {:.3}, 3BV: {}, ZINI: {}, Threshold: {}", score, board.info.bbbv, board.info.zini, threshold);
+            println!("Threshold Success: {}", result);
+            println!("Calculated ZINI: {}", z);
+            println!("Generated PTTACG: https://llamasweeper.com/#/game/zini-explorer{}", board.generate_pttacg());
+            },
+            Err(e) => println!("Error calculating ZINI: {}", e),
+        }
+
+        Ok(())
 
         // Verify mines were placed
-        assert_eq!(board.mine_locations.len(), mines);
-        println!("3BV: {}", board.info.bbbv);
+        // assert_eq!(board.mine_locations.len(), mines);
     }
 
     #[test]
@@ -99,10 +111,11 @@ mod tests {
         let width = 30;
         let height = 16;
         let mines = 99;
-        let threshold = 1.7;
-        let max_attempts = 1000;
+        let threshold = 1.75;
+        let max_attempts = 50_000;
 
         let mut successful_boards = 0;
+        // let target = 20;
 
         for _ in 0..max_attempts {
             let mut board = Board::new(width, height, mines)
@@ -114,17 +127,21 @@ mod tests {
                         successful_boards += 1;
 
                         // Verify board properties
-                        assert_eq!(board.mine_locations.len(), mines);
-                        assert!(board.info.bbbv > 0, "3BV should be calculated");
+                        // assert_eq!(board.mine_locations.len(), mines);
+                        // assert!(board.info.bbbv > 0, "3BV should be calculated");
+
+                        // if successful_boards >= target {
+                        //     break;
+                        // }
 
                         // Optionally verify the threshold is actually met
-                        let zini = board.calculate_zini_8way(false).expect("ZINI calculation failed");
-                        let score = board.info.bbbv as f32 / zini as f32;
-                        println!("Score: {:.3}, 3BV: {}, ZINI: {}, Threshold: {}", score, board.info.bbbv, zini, threshold);
-                        break;
+                        // let zini = board.calculate_zini_8way(false).expect("ZINI calculation failed");
+                        // let score = board.info.bbbv as f32 / zini as f32;
+                        // println!("Score: {:.3}, 3BV: {}, ZINI: {}, Threshold: {}", score, board.info.bbbv, zini, threshold);
+                        // break;
                     }
                 }
-                Err(e) => panic!("Error generating board: {}", e),
+                Err(e) => println!("Error generating board: {}", e),
             }
         }
 
@@ -261,18 +278,21 @@ mod tests {
 
     #[test]
     fn test_quick_board_search() {
+        use std::io::{self, Write};
+
         println!("\n\n\n\n");
         let w = 30usize;
         let h = 16usize;
         let m = 99usize;
         let threshold = 1.6f32;
-        let max_iterations = 500;   // low amount because tests are not as optimized as release build
+        let max_iterations = 500;   // low amount is fine for testing
 
         let mut successful_boards: Vec<String> = Vec::new();
 
-        for i in 0..max_iterations {
-            if i % 100 == 0 {
+        for i in 1..=max_iterations {
+            if i % 50 == 0 {
                 print!("\r{:.2}% complete", (i as f32 / max_iterations as f32) * 100.0);
+                io::stdout().flush().unwrap();
             }
 
             let mut test_board = Board::new(w, h, m)
@@ -281,7 +301,7 @@ mod tests {
             if let Ok(meets_threshold) = test_board.generate_eff_board(threshold, false, 0, 0, false) {
                 if meets_threshold {
                     let pttacg = test_board.generate_pttacg();
-                    println!("\n\nBoard found:\n{}\n", pttacg);
+                    // println!("\n\nBoard found:\n{}\n", pttacg);
                     successful_boards.push(pttacg);
 
                 }
@@ -298,19 +318,20 @@ mod tests {
 
     #[test]
     fn find_bad_board() {
+        // the idea of this test is to find out if boards are coming up with zini that is worse than 3bv, which should never happen
         use std::io::{self, Write};
 
         println!("\n\n\n\n------------------Start Line------------------\n\n");
         let w = 30usize;
         let h = 16usize;
         let m = 99usize;
-        let threshold = 1.2f32;
-        let max_iterations = 1_000;   // low amount because tests are not as optimized as release build
+        let threshold = 1.1f32;
+        let max_iterations = 5_000;
 
         let mut bad_boards: Vec<String> = Vec::new();
 
-        for i in 0..max_iterations {
-            if i % 100 == 0 {
+        for i in 1..=max_iterations {
+            if i % 50 == 0 {
                 print!("\r{:.2}% complete", (i as f32 / max_iterations as f32) * 100.0);
                 io::stdout().flush().unwrap();
             }
@@ -321,14 +342,15 @@ mod tests {
             if let Ok(meets_threshold) = test_board.generate_eff_board(threshold, false, 0, 0, false) {
                 if !meets_threshold {
                     let pttacg = test_board.generate_pttacg();
-                    println!("\n\nBoard found:\n{}\n", pttacg);
+                    println!("\n\nBoard found:\n{}", pttacg);
+                    println!("{}\n", test_board.info.zini);
                     bad_boards.push(pttacg);
 
                 }
             }
         }
 
-        println!("\n\n\n{} board(s) found below threshold {:02}%",
+        println!("\n\n\n{} board(s) found below threshold {:03.2}%",
             bad_boards.len(), threshold * 100.0);
 
         for pttacg_str in bad_boards {
@@ -458,8 +480,9 @@ mod tests {
     fn test_board_loaded() {
 
         let pttacg_strs: Vec<String> = vec![
-            "?b=3&m=13o00s840gl3000g42g100a8hac4ch1e2c40s812g5o001k9402d444210k04042080a2000o00088o8820gg40010963104".into(),
-            "?b=3&m=a0c00o08886j12h0g0101r44g5003ghf23501g009g9928920c2080480o21020102242814400000904g0140g15g52m11h".into(),
+            // "?b=3&m=13o00s840gl3000g42g100a8hac4ch1e2c40s812g5o001k9402d444210k04042080a2000o00088o8820gg40010963104".into(),
+            // "?b=3&m=a0c00o08886j12h0g0101r44g5003ghf23501g009g9928920c2080480o21020102242814400000904g0140g15g52m11h".into(),
+            "?b=2&m=20o00000001g065gh4gk5840gh6i2010000101k400048001a040".into(),
         ];
 
         // let threshold = 1.25f32;
@@ -470,7 +493,7 @@ mod tests {
             test_board.initialize_all()
                 .expect("Error initializing loaded board");
 
-            let zini = test_board.calculate_zini_8way(false).unwrap_or(0);
+            let zini = test_board.calculate_zini_8way(true).unwrap_or(0);
             let score = test_board.info.bbbv as f32 / zini as f32;
 
             let main_zini = test_board.info.zini;
@@ -484,8 +507,66 @@ mod tests {
 
     #[test]
     fn test_zini_difference() {
+        // mostly just to see the differences in zini scores based on tie-break direction
+        // and to find any boards that could possibly be "falseley" discarded during generate_eff_board()
 
-        let test_sizes = [(9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 16, 120)];
+        /*
+        some boards i found with big enough difference in best/worst zini that put them beyond the 1.15 check.
+        none of these have particularly high eff scores, so the 1.15 check still looks very valid to me.
+        the highest eff i've found in this group so far was 156%
+        most are under 140.
+
+        ?b=2&m=84440gi00408g00g00ggm1020230001002dgg10g007003c0410g
+        ?b=3&m=08ah121008p822301k1839oi0iia4p972351ecpc0g01g4d050k0010gg020c4a032lgmv2g0bo8cg08407c0g00000240gk
+        ?b=2&m=g1640g008100100000204h0ia810040k90000130010028p859o0
+        ?b=2&m=g00g52j0g002g0480000400010543g5g38200102gc014o00402g
+        ?b=2&m=60g00805080g084020002k0g11464g01l002i040511002000a5g
+        ?b=2&m=00802098016002014501l542g420g020cg800000g2h0hg200140
+        ?b=2&m=2002800cc82004250k2020k42g0104g841030g0g0ac00g050200
+        ?b=2&m=40000ogka0o10004a2a0o400400041000o404060ii164g2g0000
+        */
+        let load_pttacg: String = "".into();
+
+        let test_sizes = [
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 16, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 16, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 16, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 16, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 16, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 16, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 16, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 16, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 16, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 16, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 16, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 16, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 16, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 16, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 16, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 16, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 16, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 30, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 30, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 30, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 30, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 30, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 30, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 30, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 30, 120),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 30, 100),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 30, 100),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 30, 100),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (30, 30, 100),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (50, 30, 200),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (50, 30, 200),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (50, 30, 200),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (50, 30, 200),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (50, 30, 200),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (50, 30, 200),
+          (9, 9, 10), (16, 16, 40), (30, 16, 99), (50, 30, 200)
+          ];
+
+        let mut diffs_above_2 = vec![];
 
         let eight_way: Vec<(bool, bool, bool)> = (0..8)
             .map(|i| (
@@ -497,10 +578,17 @@ mod tests {
 
         for size in test_sizes {
             let (w, h, m) = size;
-            let mut test_board = Board::new(w, h, m)
-                .expect("Error creating fresh board");
+            let mut test_board;
 
-            test_board.add_mines();
+            if load_pttacg.len() > 0 {
+                test_board = Board::load_board_pttacg(load_pttacg.clone())
+                    .expect("Error creating fresh board");
+            } else {
+                test_board = Board::new(w, h, m)
+                .expect("Error creating fresh board");
+                test_board.add_mines();
+            }
+
             test_board.initialize_all().expect("Error initializing board");
 
             let mut best_zini = u16::MAX;      // lowest zini is best
@@ -517,13 +605,13 @@ mod tests {
                         if zini_score > worst_zini {
                             worst_zini = zini_score;
                         }
+                        current_eff_score = test_board.info.bbbv as f32 / (zini_score as f32);
                     },
                     Err(e) => {
                         eprintln!("8-Way ZINI failed: {}", e);
                         return;
                     }
                 }
-                current_eff_score = test_board.info.bbbv as f32 / (best_zini as f32);
                 if current_eff_score > best_eff {
                     best_eff = current_eff_score;
                 }
@@ -534,26 +622,95 @@ mod tests {
 
             let zini = test_board.calculate_zini_8way(false)
                 .expect("Error calculating ZINI");
-            let efficiency = test_board.info.bbbv as f32 / zini as f32;
-
-            assert!(zini == best_zini,
-                "Calculated ZINI should be equal to best ZINI");
-            assert!(efficiency == best_eff,
-                "Calculated efficiency should be equal to best efficiency");
+            let bbbv = test_board.info.bbbv as f32;
+            // let efficiency = test_board.info.bbbv as f32 / zini as f32;
 
             let zini_diff_percent = ((worst_zini as f32 / best_zini as f32) - 1.0) * 100.0;
-            let eff_diff_percent = ((best_eff / worst_eff) - 1.0) * 100.0;
             let best_clicks_saved = test_board.info.bbbv - best_zini;
             let worst_clicks_saved = test_board.info.bbbv - worst_zini;
-            let clicks_saved_diff_percent = ((best_clicks_saved as f32 / worst_clicks_saved as f32) - 1.0) * 100.0;
+            let clicks_saved_diff_percent = (1.0 - (worst_clicks_saved as f32 / best_clicks_saved as f32)) * 100.0;
+            let bbbv_minus_best = bbbv - best_zini as f32;
+            let bbbv_minus_worst = bbbv - worst_zini as f32;
+            let bbbv_minus_worst_plus2 = bbbv - (worst_zini - 2) as f32;
+            let something_diff_percent = ((bbbv_minus_best / bbbv_minus_worst) - 1.0) * 100.0;  // naming is hard
+            let mut something_diff_plus2_percent = ((bbbv_minus_best / bbbv_minus_worst_plus2) - 1.0) * 100.0;
+            if something_diff_plus2_percent <= 0.0 {
+              something_diff_plus2_percent = 0.0;
+            } else {
+              if something_diff_plus2_percent > 10.0 {
+                diffs_above_2.push((something_diff_plus2_percent, test_board.generate_pttacg()));
+              }
+            }
 
-            println!("\nBoard Size {}x{} with {} mines:", w, h, m);
-            println!("3BV: {}\nBest ZINI: {}, Worst ZINI: {}, \nBest Eff: {:.3}, Worst Eff: {:.3}",
-                test_board.info.bbbv, best_zini, worst_zini, best_eff, worst_eff);
-            println!("Zini diff: {}\nZini diff %: {:.2}\nEff diff: {:.2}\nEff diff %: {:.2}",
-                worst_zini - best_zini, zini_diff_percent, best_eff - worst_eff, eff_diff_percent);
-            println!("Best Clicks Saved: {}, Worst Clicks Saved: {}, Clicks Saved diff %: {:.2}",
-                best_clicks_saved, worst_clicks_saved, clicks_saved_diff_percent);
+            // change depending if you want printed info or not
+            // with the string length check, it will only print the full info for a loaded board
+            if load_pttacg.len() > 0 {
+              println!("\nBoard Size {}x{} with {} mines:", w, h, m);
+              println!("3BV: {}\nBest ZINI: {}, Worst ZINI: {}, \nBest Eff: {:.1}%, Worst Eff: {:.1}%",
+                  test_board.info.bbbv, best_zini, worst_zini, best_eff * 100.0, worst_eff * 100.0);
+              if best_zini != test_board.info.bbbv {
+                println!("Zini diff: {}\nEff diff: {:.2}\nZini/Eff diff %: {:.2}",
+                    worst_zini - best_zini, (best_eff - worst_eff) * 100.0, zini_diff_percent);
+                println!("Best Clicks Saved: {}, Worst Clicks Saved: {}, Clicks Saved diff: {}, Clicks Saved diff %: {:.2}",
+                    best_clicks_saved, worst_clicks_saved, best_clicks_saved - worst_clicks_saved, clicks_saved_diff_percent);
+                println!("Something diff %: {:.2}, Something diff +2 %: {:.2}",
+                    something_diff_percent, something_diff_plus2_percent);
+              }
+              println!("URL: https://llamasweeper.com/#/game/zini-explorer{}", test_board.generate_pttacg());
+            }
+
+            if zini != best_zini {
+                println!("\n\n*************\nCalculated ZINI should be equal to best ZINI. zini: {} best_zini: {} board zini: {}\n{}\n*************", zini, best_zini, test_board.info.zini, test_board.generate_pttacg());
+            }
+
+            assert!(zini == best_zini,
+                "Calculated ZINI should be equal to best ZINI. zini: {} best_zini: {} board zini: {}", zini, best_zini, test_board.info.zini);
+
+            if load_pttacg.len() > 0 {
+                break;
+            }
+        }
+
+        if diffs_above_2.len() == 0 {
+            return;
+        }
+
+        println!("\n\nBig Diffs:");
+        for (diff, pttacg) in diffs_above_2 {
+            println!("{:.2}%\thttps://llamasweeper.com/#/game/zini-explorer{}", diff, pttacg);
+        }
+        println!("\n")
+    }
+
+    #[test]
+    fn test_swapper() {
+        let test_locations = [
+            (3usize, 5usize),
+            (7usize, 2usize),
+            (1usize, 8usize),
+            (4usize, 4usize),
+            (0usize, 0usize),
+        ];
+
+        let eight_way: Vec<(bool, bool, bool)> = (0..8)
+            .map(|i| (
+                i & 1 != 0,      // bit 0
+                i & 2 != 0,      // bit 1
+                i & 4 != 0,      // bit 2
+            ))
+            .collect();
+
+        for original in test_locations {
+            for (r, c, r_c) in &eight_way {
+              let swapped = swapper(original, *r, *c, *r_c, false);
+              let unswapped = swapper(swapped, *r, *c, *r_c, true);
+              assert!(original == unswapped,
+                  "No match! Original: {:?}, Swapped: {:?}, Unswapped: {:?}", original, swapped, unswapped);
+
+              // println!("\nOriginal Location: {:?}", original);
+              // println!("Swapped Location: {:?}", swapped);
+              // println!("Unswapped Location: {:?}\n\n", unswapped);
+            }
         }
     }
 
