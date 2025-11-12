@@ -111,11 +111,11 @@ mod tests {
         let width = 30;
         let height = 16;
         let mines = 99;
-        let threshold = 1.75;
-        let max_attempts = 50_000;
+        let threshold = 1.8;
+        let max_attempts = 500_000;
 
         let mut successful_boards = 0;
-        // let target = 20;
+        let target = 20;
 
         for _ in 0..max_attempts {
             let mut board = Board::new(width, height, mines)
@@ -130,9 +130,9 @@ mod tests {
                         // assert_eq!(board.mine_locations.len(), mines);
                         // assert!(board.info.bbbv > 0, "3BV should be calculated");
 
-                        // if successful_boards >= target {
-                        //     break;
-                        // }
+                        if successful_boards >= target {
+                            break;
+                        }
 
                         // Optionally verify the threshold is actually met
                         // let zini = board.calculate_zini_8way(false).expect("ZINI calculation failed");
