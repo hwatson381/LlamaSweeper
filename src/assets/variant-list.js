@@ -574,6 +574,39 @@ let variantList = [
     ],
     "rating": 3.1,
     "popularity": 1
+  },
+  {
+    "name": "Back to square one",
+    "url": "https://malfet.itch.io/square-one",
+    "desc": "A very fun and unique puzzle game where the aim is to move stuff around to get the board to show all 1s. There's 30 levels, and according to the dev it should take around 30-60 minutes to play.",
+    "image": "/img/variants/square-one.png",
+    "tags": [
+      "game"
+    ],
+    "rating": 4.2,
+    "popularity": 2
+  },
+  {
+    "name": "MIT Puzzles",
+    "url": "https://mitpuzzles.com/",
+    "desc": "A website run by the MIT university with the aim of studying human reasoning and cognition through logic puzzles. It has a minesweeper game (essential the same as the one on puzzle-minesweeper.com) where the numbers are given at the start and you need to flag all of the mines. It also has several other puzzle games that scratch a similar itch to minesweeper along with leaderboards to compete on. I like all of the puzzles, but would most recommend checking out aquarium.",
+    "image": "/img/variants/mit-puzzles.png",
+    "tags": [
+      "game"
+    ],
+    "rating": 3.3,
+    "popularity": 1
+  },
+  {
+    "name": "nerdsweeper",
+    "url": "https://nerdsweeper.com/christmas",
+    "desc": "A Christmas advent calendar minesweeper made in 2025. It has 24 days with each day having a twist on the regular minesweeper rules. The minesweeper implementation isn't the best and some of the days are overly complicated, although it is clear that a lot of effort has been put into it, and there are many impressively creative ideas. I found day 19 \"musicsweeper\" to be the most interesting, although also very challenging.",
+    "image": "/img/variants/nerdsweeper.png",
+    "tags": [
+      "game"
+    ],
+    "rating": 3.4,
+    "popularity": 2
   }
 ]
 

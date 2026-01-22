@@ -550,6 +550,10 @@ Add to external resources page:
 hexcells
 tametsi
 broomsweeper
+(done) https://malfet.itch.io/square-one
+(done) mitpuzzles
+(done) nerdsweeper
+blindsweeper/fadesweeper/spotsweeper - see here https://discord.com/channels/814801005195558953/814801005195558956/1463320873619685450
 
 Write up zini algorithms?
 Finish NF Eff guide?
@@ -566,3 +570,8 @@ the flag down for a chord can be wasted if on a number (when chord gets triggere
 the dig up can also be wasted if on a number (when chord gets triggered by flag up)
 
 Also add mbf import somehow?
+
+Add stuff from ms-toolib? ng algorithm?
+https://github.com/eee555/ms-toollib/blob/372399b8ab8af9600d6e20a42e70a5b2e70bf5e9/demos/vue3_ts/src/App.vue#L27C1
+https://discord.com/channels/814801005195558953/1443384765020508181/1457329988196892682
+built in probability calculator? This could also auto-display hint on blast, so slightly strong than wom

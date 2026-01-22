@@ -57,3 +57,31 @@ Keyboard clicks don't register if not focussed
 Rectangle select tool for board editor/zini explorer (drag around/copy paste mines)
 
 Setting to allow drag clicking to place mines on board editor/llamasweeper
+
+there is still no option to disable overshoot when scroll right?
+(from Jeff) - but in general, have more options for customising scroll, such as scroll slop, scroll multiplier etc. Could be complicated as may need to implement my own scroll from scratch.
+
+chatgpt suggests this
+.scroll-area {
+overscroll-behavior: contain; /_ Prevent scroll chaining (no bounce to parent) _/
+scroll-snap-type: y mandatory;
+}
+.scroll-item {
+scroll-snap-align: start;
+}
+
+Or using library such as
+https://better-scroll.github.io/docs/en-US/
+https://github.com/pbakaus/scroller
+
+Also this
+
+```
+If your game doesn’t actually need the page to scroll — e.g. it just pans a game area — it’s often better to:
+
+disable scrolling entirely (touch-action: none),
+
+and implement camera movement or content drag inside a fixed <div> using transforms.
+
+That way, your game never fights the browser’s inertial scroll.
+```

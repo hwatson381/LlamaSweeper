@@ -160,4 +160,4 @@ Chord A dominates Chord B if:
 - Possibly consider the chain a move currently belongs to as "fixed", and then can use simple analysis from that
 - Lazy way and expensive way - play both chords and compare board states, to see if one is better than the other
 
-Alternate idea - performance improvement could come from recalculating "deep premium" less often for squares with very negative premium? Or maybe recalculate based on locatoin of recent changes? Or treat enclosed areas separately? Or figure out "never-chords" and "never-flags" and split up board based on that.
+Alternate idea - performance improvement could come from recalculating "deep premium" less often for squares with very negative premium? Or maybe recalculate based on location of recent changes? Or treat enclosed areas separately? Or figure out "never-chords" and "never-flags" and split up board based on that.
