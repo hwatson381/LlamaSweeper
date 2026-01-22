@@ -550,9 +550,6 @@ Add to external resources page:
 hexcells
 tametsi
 broomsweeper
-(done) https://malfet.itch.io/square-one
-(done) mitpuzzles
-(done) nerdsweeper
 blindsweeper/fadesweeper/spotsweeper - see here https://discord.com/channels/814801005195558953/814801005195558956/1463320873619685450
 
 Write up zini algorithms?
