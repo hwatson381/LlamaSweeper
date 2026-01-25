@@ -362,7 +362,7 @@ class EffShuffleManager {
       }
 
       //exp
-      if (key.startsWith("16-16-40-")) {
+      if (key.startsWith("30-16-99-") || key.startsWith("16-30-99-")) {
         if (
           this.consts.expEffOptions.includes(targetEff) ||
           targetEff > this.consts.expEffSlowGenPoint
