@@ -529,9 +529,39 @@ impl Board {
         locations.shuffle(&mut rng);
 
         for x in 0..locations.len() {
-            let row = x / self.width;
-            let col = x % self.width;
             if locations[x] {
+                let row = x / self.width;
+                let col = x % self.width;
+                self.mine_locations.insert((row, col));
+                self.squares[row][col].square_type = SquareType::Mine;
+            }
+        }
+    }
+
+    /// # Add Mines (Alternate Version)
+    /// "skip and continue" style
+    pub fn add_mines_skip_style(&mut self, safe_row: usize, safe_col: usize) {
+        let mut rng = rand::rng();
+
+        let safe_index = (safe_row * self.width) + safe_col;
+        let mut locations = vec![false; (self.width * self.height) - 1];
+        locations[(self.width * self.height) - self.mine_count..].fill(true); // true = mine
+
+        locations.shuffle(&mut rng);
+
+        let mut new_locations = Vec::with_capacity(self.width * self.height);
+        for i in 0..safe_index {
+            new_locations.push(locations[i]);
+        }
+        new_locations.push(false);
+        for i in safe_index..locations.len() {
+            new_locations.push(locations[i]);
+        }
+
+        for (i, mine) in new_locations.into_iter().enumerate() {
+            if mine {
+                let row = i / self.width;
+                let col = i % self.width;
                 self.mine_locations.insert((row, col));
                 self.squares[row][col].square_type = SquareType::Mine;
             }
@@ -1013,7 +1043,7 @@ impl Board {
     pub fn zini_init_final(&mut self) -> Result<(), String> {
 
         if self.info.bbbv == 0 {
-            return Err(format!("Board not initialized!"));
+            return Err(format!("Board not initialized!"));    // cursed string
         }
 
         for opening in &self.openings_locations {
@@ -1118,7 +1148,6 @@ impl Board {
         for (row, col) in changed_squares.clone().keys() {
             self.zini_check_completed(zini_board, changed_squares, *row, *col)?;
         }
-
 
         Ok(())
     }

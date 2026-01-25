@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
     use chrono::Utc;
-    use llamasweeper_rust::board_gen_8way::Board;
-    use llamasweeper_rust::board_gen_8way::swapper;
+    use llamasweeper_rust::board_gen_8way::{Board, SquareType, swapper};
+    use std::io::{self, Write};
 
     #[test]
     fn test_board_creation() {
@@ -313,8 +313,6 @@ mod tests {
 
     #[test]
     fn test_quick_board_search() {
-        use std::io::{self, Write};
-
         println!("\n\n\n\n");
         let w = 30usize;
         let h = 16usize;
@@ -354,7 +352,6 @@ mod tests {
     #[test]
     fn find_bad_board() {
         // the idea of this test is to find out if boards are coming up with zini that is worse than 3bv, which should never happen
-        use std::io::{self, Write};
 
         println!("\n\n\n\n------------------Start Line------------------\n\n");
         let w = 30usize;
@@ -747,6 +744,87 @@ mod tests {
               // println!("Unswapped Location: {:?}\n\n", unswapped);
             }
         }
+    }
+
+    #[test]
+    fn test_mine_placement() {
+        let width = 30;
+        let height = 16;
+        let mines = 99;
+
+        let first_click_row = 7usize;    // middle of board
+        let first_click_col = 14usize;
+        let adjacent_row = first_click_row;
+        let adjacent_col = first_click_col + 1;
+
+        let max_iterations = 10_000_000usize;
+        // let max_iterations = 100_000usize;
+
+        // count how many boards that:
+        // * open with a one on first click
+        // * have a mine in the square to the right of first click
+        // targets:
+        // * all boards: 4.1%
+        // * one boards: 12.5%
+        let mut og_right_mine_count = 0usize;
+        let mut alt_right_mine_count = 0usize;
+
+        // count of boards that open with a 1
+        let mut og_one_board_count = 0usize;
+        let mut alt_one_board_count = 0usize;
+
+        for i in 0..max_iterations {
+            if i % 5_000 == 0 {
+                print!("\r{:.2}% complete", (i as f32 / max_iterations as f32) * 100.0);
+                io::stdout().flush().unwrap();
+            }
+
+            let mut og_board = Board::new(width, height, mines)
+              .expect("Failed to create board");
+            og_board.add_mines();
+            og_board.move_mine(first_click_row, first_click_col, false);
+            og_board.initialize_squares();
+            if og_board.squares[first_click_row][first_click_col].adjacent_mines == 1 {
+                og_one_board_count += 1;
+                if og_board.squares[adjacent_row][adjacent_col].square_type == SquareType::Mine {
+                    og_right_mine_count += 1;
+                };
+            }
+
+            let mut alt_board = Board::new(width, height, mines)
+              .expect("Failed to create board");
+            alt_board.add_mines_skip_style(first_click_row, first_click_col);
+            alt_board.initialize_squares();
+            if alt_board.squares[first_click_row][first_click_col].adjacent_mines == 1 {
+                alt_one_board_count += 1;
+                if alt_board.squares[adjacent_row][adjacent_col].square_type == SquareType::Mine {
+                    alt_right_mine_count += 1;
+                };
+            }
+
+            // error check
+            assert_ne!(og_board.squares[first_click_row][first_click_col].square_type, SquareType::Mine,
+                "First click location should not have a mine");
+            assert_ne!(alt_board.squares[first_click_row][first_click_col].square_type, SquareType::Mine,
+                "First click location should not have a mine");
+        }
+
+        let prob_original = (og_right_mine_count as f64 / max_iterations as f64) * 100.0;
+        let prob_alternate = (alt_right_mine_count as f64 / max_iterations as f64) * 100.0;
+        let prob_og_discard = (og_right_mine_count as f64 / og_one_board_count as f64) * 100.0;
+        let prob_alt_discard = (alt_right_mine_count as f64 / alt_one_board_count as f64) * 100.0;
+
+        println!("\n\nAfter {} iterations:", max_iterations);
+        println!("Mine Counts:\t{},\t{}\n1Board Counts:\t{},\t{}",
+            og_right_mine_count, alt_right_mine_count,
+            og_one_board_count, alt_one_board_count,
+        );
+        println!("(Move) Total % of right-mine:\t{:.4}%", prob_original);
+        println!("(Skip) Total % of right-mine:\t{:.4}%", prob_alternate);
+        println!("(Move) % of mine on one-board:\t{:.4}%", prob_og_discard);
+        println!("(Skip) % of mine on one-board:\t{:.4}%", prob_alt_discard);
+        println!("\n\n");
+
     }
 
 }
