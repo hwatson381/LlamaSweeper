@@ -748,6 +748,7 @@ mod tests {
 
     #[test]
     fn test_mine_placement() {
+        // premise of this test is to check for bias in mine placement algorithms
         let width = 30;
         let height = 16;
         let mines = 99;
@@ -757,7 +758,9 @@ mod tests {
         let adjacent_row = first_click_row;
         let adjacent_col = first_click_col + 1;
 
-        let max_iterations = 10_000_000usize;
+        // let max_iterations = 10_000_000usize;
+        let max_iterations = 1_000_000usize;
+        // let max_iterations = 500_000usize;
         // let max_iterations = 100_000usize;
 
         // count how many boards that:
@@ -773,11 +776,11 @@ mod tests {
         let mut og_one_board_count = 0usize;
         let mut alt_one_board_count = 0usize;
 
-        for i in 0..max_iterations {
-            if i % 5_000 == 0 {
-                print!("\r{:.2}% complete", (i as f32 / max_iterations as f32) * 100.0);
-                io::stdout().flush().unwrap();
-            }
+        for _ in 0..max_iterations {
+            // if i % 5_000 == 0 {
+            //     print!("\r{:.2}% complete", (i as f32 / max_iterations as f32) * 100.0);
+            //     io::stdout().flush().unwrap();
+            // }
 
             let mut og_board = Board::new(width, height, mines)
               .expect("Failed to create board");

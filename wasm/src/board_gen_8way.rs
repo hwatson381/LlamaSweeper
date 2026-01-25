@@ -544,8 +544,9 @@ impl Board {
         let mut rng = rand::rng();
 
         let safe_index = (safe_row * self.width) + safe_col;
-        let mut locations = vec![false; (self.width * self.height) - 1];
-        locations[(self.width * self.height) - self.mine_count..].fill(true); // true = mine
+        let minus_one = (self.width * self.height) - 1; // off-by-one errors are fun
+        let mut locations = vec![false; minus_one];
+        locations[minus_one - self.mine_count..].fill(true); // true = mine
 
         locations.shuffle(&mut rng);
 
@@ -566,6 +567,8 @@ impl Board {
                 self.squares[row][col].square_type = SquareType::Mine;
             }
         }
+
+        assert!(self.mine_locations.len() == self.mine_count);
     }
 
     /// # Move Mine
