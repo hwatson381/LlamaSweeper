@@ -189,9 +189,9 @@ mod tests {
     }
 
     #[test]
-    fn test_pttacg_generation() {
+    fn test_pttacg_generation_nonstandard_size() {
         let width = 9;
-        let height = 100; // important note: different number of digits to make sure the padding is correct
+        let height = 100; // different number of digits to make sure the padding is correct
         let mines = 99;
         let threshold = 1.5;
 
@@ -216,6 +216,33 @@ mod tests {
         assert_eq!(pttacg_str_h.parse::<usize>().unwrap(), height, "PTTACG string height must match numerical value");
         assert_eq!(pttacg_str_w.len(), str_width, "PTTACG string width must have correct padding");
         assert_eq!(pttacg_str_h.len(), str_width, "PTTACG string height must have correct padding");
+    }
+
+    #[test]
+    fn test_pttacg_generation_standard_size() {
+        let widths = [30, 16, 9];
+        let heights = [16, 16, 9];
+        let mines = [99, 40, 10];
+        let levels = [3, 2, 1];
+        let threshold = 1.5;
+
+        // that default zip syntax is a bit awkward haha
+        for (((w, h), m), l) in widths.iter().zip(heights.iter()).zip(mines.iter()).zip(levels.iter()) {
+          let mut board = Board::new(*w, *h, *m)
+              .expect("Failed to create board");
+          board.generate_eff_board(threshold, false, 0, 0, false)
+              .expect("Failed to generate board");
+          let pttacg_str = board.generate_pttacg();
+          println!("Generated PTTACG: https://llamasweeper.com/#/game/zini-explorer{}", pttacg_str);
+
+          // Verify
+          let pttacg_str_dim_start = pttacg_str.find("?b=").unwrap() + 3;   // +3 to skip "?b="
+          let level_str = &pttacg_str[pttacg_str_dim_start..pttacg_str_dim_start + 1];
+          assert!(!pttacg_str.is_empty(), "PTTACG string must not be empty");
+          assert!(pttacg_str.contains("?b="), "PTTACG string must contain board parameter");
+          assert!(!pttacg_str.contains(" "), "PTTACG string must not have a space");
+          assert_eq!(format!("{}", l), level_str, "PTTACG string level must match");
+        }
     }
 
     #[test]
