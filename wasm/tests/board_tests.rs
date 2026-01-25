@@ -190,8 +190,8 @@ mod tests {
 
     #[test]
     fn test_pttacg_generation() {
-        let width = 30;
-        let height = 9;
+        let width = 9;
+        let height = 100; // important note: different number of digits to make sure the padding is correct
         let mines = 99;
         let threshold = 1.5;
 
@@ -201,13 +201,21 @@ mod tests {
         board.generate_eff_board(threshold, false, 0, 0, false)
             .expect("Failed to generate board");
 
-        let pttacg = board.generate_pttacg();
+        let pttacg_str = board.generate_pttacg();
+        println!("Generated PTTACG: https://llamasweeper.com/#/game/zini-explorer{}", pttacg_str);
 
-        // Verify PTTACG string is not empty and has expected format
-        assert!(!pttacg.is_empty(), "PTTACG string should not be empty");
-        assert!(pttacg.contains("?b="), "PTTACG should contain board parameter");
-
-        println!("Generated PTTACG: https://llamasweeper.com/#/game/zini-explorer{}", pttacg);
+        // Verify
+        let str_width = width.to_string().len().max(height.to_string().len());
+        let pttacg_str_dim_start = pttacg_str.find("?b=").unwrap() + 3;   // +3 to skip "?b="
+        let pttacg_str_w = &pttacg_str[pttacg_str_dim_start..pttacg_str_dim_start + str_width];
+        let pttacg_str_h = &pttacg_str[pttacg_str_dim_start + str_width..pttacg_str_dim_start + str_width + str_width];
+        assert!(!pttacg_str.is_empty(), "PTTACG string must not be empty");
+        assert!(pttacg_str.contains("?b="), "PTTACG string must contain board parameter");
+        assert!(!pttacg_str.contains(" "), "PTTACG string must not have a space");
+        assert_eq!(pttacg_str_w.parse::<usize>().unwrap(), width, "PTTACG string width must match numerical value");
+        assert_eq!(pttacg_str_h.parse::<usize>().unwrap(), height, "PTTACG string height must match numerical value");
+        assert_eq!(pttacg_str_w.len(), str_width, "PTTACG string width must have correct padding");
+        assert_eq!(pttacg_str_h.len(), str_width, "PTTACG string height must have correct padding");
     }
 
     #[test]
