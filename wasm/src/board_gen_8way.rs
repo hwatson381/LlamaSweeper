@@ -1,5 +1,6 @@
 use std::{fmt, vec};
-use std::collections::{HashMap, HashSet, VecDeque, BTreeSet};
+use std::collections::{VecDeque, BTreeSet};
+use foldhash::{HashMap, HashMapExt, HashSet, HashSetExt};
 use std::cmp::{min, max};
 use std::hash::Hash;
 use rand::prelude::*;
@@ -543,7 +544,8 @@ impl Board {
     /// * opening: guarantee an opening
     pub fn move_mine(&mut self, safe_row: usize, safe_col: usize, opening: bool) {
 
-        let mut safe_squares = HashSet::from([(safe_row, safe_col)]);
+        let mut safe_squares = HashSet::with_capacity(9);
+        safe_squares.insert((safe_row, safe_col));
 
         if opening {
             safe_squares.extend(self.all_adjacents.get(&(safe_row, safe_col)).expect("error during move mine (opening)"));
@@ -1112,27 +1114,7 @@ impl Board {
     /// ### Check all changed squares for completion.
     /// When a square is changed, all adjacent squares are also changed and must be checked.
     pub fn zini_check_all_changed(&self, zini_board: &mut Vec<Vec<Square>>, changed_squares: &mut HashMap<(usize, usize), i8>) -> Result<(), String> {
-/*
-        // TODO: with more squares getting added to the changed_squares, it may be unnecessary to iterate all adjacents again.
-        let mut to_check: HashSet<(usize, usize)> = HashSet::with_capacity(changed_squares.capacity() * 4);
 
-        for (row, col) in changed_squares.keys() {
-            to_check.insert((*row, *col));
-            for (adj_row, adj_col) in self.all_adjacents.get(&(*row, *col)).expect("error during check changed") {
-                let adj_square = &zini_board[*adj_row][*adj_col];
-                if adj_square.square_type == SquareType::Mine
-                || adj_square.square_status == SquareStatus::Completed
-                || adj_square.square_status == SquareStatus::Unclicked {
-                    continue;
-                }
-                to_check.insert((*adj_row, *adj_col));
-            }
-        }
-
-        for (row, col) in to_check {
-            self.zini_check_completed(zini_board, changed_squares, row, col)?;
-        }
- */
         for (row, col) in changed_squares.clone().keys() {
             self.zini_check_completed(zini_board, changed_squares, *row, *col)?;
         }
