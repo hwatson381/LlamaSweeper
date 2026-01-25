@@ -476,7 +476,7 @@ impl Board {
             result.push_str("?b=3&m=");
         } else {
             let str_width = self.width.to_string().len().max(self.height.to_string().len());
-            result.push_str(&format!("?b={:<width$}{:<width$}&m=", self.width, self.height, width=str_width));
+            result.push_str(&format!("?b={:0>width$}{:0>width$}&m=", self.width, self.height, width=str_width));
         }
 
         // convert to bits

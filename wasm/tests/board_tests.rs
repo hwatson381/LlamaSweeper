@@ -191,7 +191,7 @@ mod tests {
     #[test]
     fn test_pttacg_generation() {
         let width = 30;
-        let height = 16;
+        let height = 9;
         let mines = 99;
         let threshold = 1.5;
 
