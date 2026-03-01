@@ -5,6 +5,8 @@ use js_sys::Array;
 use chrono::{Utc, Duration};
 use wasm_bindgen::prelude::*;
 
+use crate::board_gen_8way::Profiler;
+
 /// # Eight Way Zini
 /// * Entry point for JavaScript
 /// * Iterates in search of a board that meets the target efficiency
@@ -35,7 +37,8 @@ pub fn eight_way(width: usize, height: usize, mine_count: usize, first_click_coo
     let iteration_interval: u32 = 50;  // how often to check for timeout
 
     loop {
-        let mut board = Board::new(width, height, mine_count)?;
+        let profiler = Profiler::build();
+        let mut board = Board::new(width, height, mine_count, profiler)?;
         let success = board.generate_eff_board(target_eff / 100.0, use_first_click, first_click_row, first_click_col, true)?;
 
         if success {
