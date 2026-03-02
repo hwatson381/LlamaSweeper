@@ -1539,9 +1539,10 @@ impl Board {
         let mut zini_score = 0u16;
         let mut path: Vec<ClickInfo> = Vec::new();
 
-        let mut remaining = self.zini_create_remaining_small();
+        //let mut remaining = self.zini_create_remaining_small();
+        let mut remaining: u16 = self.width as u16 * self.height as u16 - self.mine_count as u16;
 
-        while !remaining.is_empty() {
+        while remaining > 0 {
             let (r, c) = self.zini_get_premium_small(&current_board, swap_r, swap_c, swap_r_c)?;
             let current_square = current_board[r][c];
 
@@ -1564,7 +1565,8 @@ impl Board {
             match self.zini_click_small(&mut current_board, r, c, &mut remaining, &mut zini_score, &mut path) {
                 Ok(()) => {},
                 Err(e) => {
-                    self.error_printer(remaining, current_square, zini_score, &e);
+                    //commented out cos remaining changed type
+                    //self.error_printer(remaining, current_square, zini_score, &e);
                     println!("Final Path:");
                     self.path_printer(&path);
                     println!("\n\n");
@@ -1587,7 +1589,8 @@ impl Board {
             if emergency_break > EMERGENCY_BREAK_LIMIT {
                 eprintln!("Emergency break triggered!\n");
 
-                self.error_printer(remaining, current_board[r][c], zini_score, "Emergency break triggered!");
+                //commented out cos remaining changed type
+                //self.error_printer(remaining, current_board[r][c], zini_score, "Emergency break triggered!");
                 println!("Final Path:");
                 self.path_printer(&path);
                 println!("\n\n");
@@ -1604,7 +1607,8 @@ impl Board {
             eprintln!("\n******************\nZINI final score zero!");
 
             // fake last click, but its good enough
-            self.error_printer(remaining, current_board[0][0], zini_score, "ZINI final score zero!");
+            //commented out cos remaining changed type
+            //self.error_printer(remaining, current_board[0][0], zini_score, "ZINI final score zero!");
             println!("Final Path:");
             self.path_printer(&path);
             println!("\n\n");
@@ -1857,7 +1861,7 @@ impl Board {
         zini_board: &mut Vec<Vec<Square>>,
         row: usize,
         col: usize,
-        remaining: &mut HashSet<(usize, usize)>,
+        remaining: &mut u16,
         click_count: &mut u16,
         path: &mut Vec<ClickInfo>
     ) -> Result<(), String> {
@@ -1899,7 +1903,7 @@ impl Board {
         zini_board: &mut Vec<Vec<Square>>,
         row: usize,
         col: usize,
-        remaining: &mut HashSet<(usize, usize)>,
+        remaining: &mut u16,
         click_count: &mut u16,
         path: &mut Vec<ClickInfo>,
     ) -> Result<(), String> {
@@ -1957,7 +1961,7 @@ impl Board {
     pub fn zini_chord_small(&self,
         zini_board: &mut Vec<Vec<Square>>,
         row: usize, col: usize,
-        remaining: &mut HashSet<(usize, usize)>
+        remaining: &mut u16
     ) -> Result<(), String> {
 
         // error handling
@@ -2039,7 +2043,7 @@ impl Board {
         zini_board: &mut Vec<Vec<Square>>,
         row: usize,
         col: usize,
-        remaining: &mut HashSet<(usize, usize)>,
+        remaining: &mut u16,
     ) -> Result<(), String> {
 
         // error handling
@@ -2057,8 +2061,11 @@ impl Board {
 
         // actual click
         current_square.square_status = SquareStatus::Clicked;
-        if current_square.square_type != SquareType::Mine {
-            remaining.remove(&(row, col));
+        if current_square.square_type != SquareType::Mine && current_square.square_type != SquareType::Opening {
+            //The conditions for if statement are for different reasons
+            //Mines don't affect remaining squares as they get flagged
+            //Openings do affect remaining squares, but are accounted for later
+            *remaining -= 1;
         }
 
         // handle individual cases
@@ -2100,7 +2107,7 @@ impl Board {
                     let inner_square = &mut zini_board[*inner_row][*inner_col];
                     inner_square.square_status = SquareStatus::Completed;
                     inner_square.premium = ZINI_MIN_PREMIUM;
-                    remaining.remove(&(*inner_row, *inner_col));
+                    *remaining -= 1;
                 }
 
                 for (border_row, border_col) in &opening.squares_border {
@@ -2126,7 +2133,7 @@ impl Board {
         zini_board: &mut Vec<Vec<Square>>,
         click_count: &mut u16,
         path: &mut Vec<ClickInfo>,
-        remaining: &mut HashSet<(usize, usize)>,
+        remaining: &mut u16,
     ) -> Result<(), String> {
 
         for r in 0..self.height {
