@@ -1,6 +1,6 @@
 use std::{fmt, vec};
 use std::collections::{VecDeque, BTreeSet};
-use foldhash::{HashMap, HashMapExt, HashSet, HashSetExt};
+use rustc_hash::{{FxHashMap, FxHashSet}};
 use std::cmp::{min, max};
 use std::hash::Hash;
 use rand::prelude::*;
@@ -64,15 +64,15 @@ pub fn swapper(location: (usize, usize), swap_row: bool, swap_col: bool, swap_ro
 /// * Openings are considered to be one 3bv for the entire region
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Opening {
-    pub squares_border: HashSet<(usize, usize)>,
-    pub squares_inner: HashSet<(usize, usize)>,
+    pub squares_border: FxHashSet<(usize, usize)>,
+    pub squares_inner: FxHashSet<(usize, usize)>,
 }
 
 impl Opening {
     pub fn new() -> Self {
         Opening {
-            squares_border: HashSet::new(),
-            squares_inner: HashSet::new(),
+            squares_border: FxHashSet::default(),
+            squares_inner: FxHashSet::default(),
         }
     }
 
@@ -287,11 +287,11 @@ pub struct Board {
     pub height: usize,
     pub mine_count: usize,
     pub info: BoardInfo,
-    pub mine_locations: HashSet<(usize, usize)>,
-    pub islands_locations: Vec<HashSet<(usize, usize)>>,
+    pub mine_locations: FxHashSet<(usize, usize)>,
+    pub islands_locations: Vec<FxHashSet<(usize, usize)>>,
     pub openings_locations: Vec<Opening>,
-    pub openings_ids: HashMap<(usize, usize), usize>,
-    pub all_adjacents: HashMap<(usize, usize), Vec<(usize, usize)>>,
+    pub openings_ids: FxHashMap<(usize, usize), usize>,
+    pub all_adjacents: FxHashMap<(usize, usize), Vec<(usize, usize)>>,
     pub profiler: Profiler
 }
 
@@ -320,11 +320,11 @@ impl Board {
             height
         ];
 
-        let openings_ids: HashMap<(usize, usize), usize> = HashMap::with_capacity(width * height - mine_count);
+        let openings_ids: FxHashMap<(usize, usize), usize> = FxHashMap::with_capacity_and_hasher(width * height - mine_count, Default::default());
 
         // pre-compute all adjacent locations.
         // i dont know for certain if this is actually faster/better, but it seems good, because squares will definitely require multiple lookups.
-        let mut all_adjacents = HashMap::with_capacity(width * height);
+        let mut all_adjacents = FxHashMap::with_capacity_and_hasher(width * height, Default::default());
         for row in 0..height {
             for col in 0..width {
                 let adjacent_cells = get_adjacent(row, col, height, width).map_err(|_| "Error generating adjacents")?;
@@ -338,7 +338,7 @@ impl Board {
             height,
             mine_count,
             info: BoardInfo::new(),
-            mine_locations: HashSet::with_capacity(mine_count),
+            mine_locations: FxHashSet::with_capacity_and_hasher(mine_count, Default::default()),
             openings_locations: Vec::new(),
             islands_locations: Vec::new(),
             openings_ids,
@@ -432,7 +432,7 @@ impl Board {
             return Err(format!("Width, Height, and mine length do not match:\n {}, {}, {}\n{}", width, height, mine_locations_str, pttacg_str));
         }
 
-        let mut mine_locations_vec:Vec<bool> = Vec::with_capacity(mine_locations_str.len());
+        let mut mine_locations_vec:Vec<bool> = Vec::with_capacity(5 * mine_locations_str.len());
         for s in mine_locations_str.chars() {
             // convert from base 32 to binary
             let binary_value = s.to_digit(32).ok_or_else(|| format!("Bad digit '{}' in: {}", s, pttacg_str))?;
@@ -582,7 +582,7 @@ impl Board {
     /// * opening: guarantee an opening
     pub fn move_mine(&mut self, safe_row: usize, safe_col: usize, opening: bool) {
 
-        let mut safe_squares = HashSet::with_capacity(9);
+        let mut safe_squares = FxHashSet::with_capacity_and_hasher(9, Default::default());
         safe_squares.insert((safe_row, safe_col));
 
         if opening {
@@ -738,7 +738,7 @@ impl Board {
     /// * Also calculates 3bv.
     fn openings_islands_3bv(&mut self) -> Result<(), String> {
         /* initialize */
-        let mut visited: HashSet<(usize, usize)> = HashSet::with_capacity(self.width * self.height);
+        let mut visited: FxHashSet<(usize, usize)> = FxHashSet::with_capacity_and_hasher(self.width * self.height, Default::default());
         visited.extend(self.mine_locations.iter().cloned());
         let mut opening_or_island: bool; // true = opening, false = island
 
@@ -767,8 +767,8 @@ impl Board {
 
                 // BFS
                 let mut queue: VecDeque<(usize, usize)> = VecDeque::new();
-                let mut visiting: HashSet<(usize, usize)> = HashSet::new();  /* "local visited", because some squares need to be processed more than once */
-                let mut current_island: HashSet<(usize, usize)> = HashSet::new();
+                let mut visiting: FxHashSet<(usize, usize)> = FxHashSet::default();  /* "local visited", because some squares need to be processed more than once */
+                let mut current_island: FxHashSet<(usize, usize)> = FxHashSet::default();
                 let mut current_opening = Opening::new();
                 queue.push_back((row, col));
 
@@ -968,7 +968,7 @@ impl Board {
         let mut zini_score = 0u16;
         let mut path: Vec<ClickInfo> = Vec::new();
 
-        let mut changed_squares: HashMap<(usize, usize), i8> = HashMap::with_capacity(self.width * self.height / 2);  // square location: premium before change
+        let mut changed_squares: FxHashMap<(usize, usize), i8> = FxHashMap::with_capacity_and_hasher(self.width * self.height / 2, Default::default());  // square location: premium before change
         let (mut premiums, mut remaining) = self.zini_create_premiums_and_remaining(swap_r, swap_c, swap_r_c)?;
 
         while !remaining.is_empty() {
@@ -1070,11 +1070,11 @@ impl Board {
     /// * Create initial premiums and remaining squares
     /// * Premiums use swapped row/col
     /// * Remainings are normal row/col
-    pub fn zini_create_premiums_and_remaining(&mut self, swap_r: bool, swap_c: bool, swap_r_c: bool) -> Result<([BTreeSet<(usize, usize)>; 16], HashSet<(usize, usize)>), String> {
+    pub fn zini_create_premiums_and_remaining(&mut self, swap_r: bool, swap_c: bool, swap_r_c: bool) -> Result<([BTreeSet<(usize, usize)>; 16], FxHashSet<(usize, usize)>), String> {
 
         /* creating with vectors first for better performance than repeatedly inserting in a btreeset */
         let mut starting_premiums: [Vec<(usize, usize)>; ZINI_MAX_PREMIUM as usize] = std::array::from_fn(|_| Vec::with_capacity(self.width * self.height / 4));
-        let mut remaining: HashSet<(usize, usize)> = HashSet::with_capacity(self.width * self.height - self.mine_count);
+        let mut remaining: FxHashSet<(usize, usize)> = FxHashSet::with_capacity_and_hasher(self.width * self.height - self.mine_count, Default::default());
 
         for item in &self.islands_locations {
             for (r, c) in item {
@@ -1104,7 +1104,7 @@ impl Board {
         &self,
         premiums: &mut [BTreeSet<(usize, usize)>; 16],
         zini_board: &Vec<Vec<Square>>,
-        changed_squares: &HashMap<(usize, usize), i8>,
+        changed_squares: &FxHashMap<(usize, usize), i8>,
         swap_r: bool,
         swap_c: bool,
         swap_r_c: bool
@@ -1151,7 +1151,7 @@ impl Board {
     /// # ZINI Check All Changed
     /// ### Check all changed squares for completion.
     /// When a square is changed, all adjacent squares are also changed and must be checked.
-    pub fn zini_check_all_changed(&self, zini_board: &mut Vec<Vec<Square>>, changed_squares: &mut HashMap<(usize, usize), i8>) -> Result<(), String> {
+    pub fn zini_check_all_changed(&self, zini_board: &mut Vec<Vec<Square>>, changed_squares: &mut FxHashMap<(usize, usize), i8>) -> Result<(), String> {
 
         for (row, col) in changed_squares.clone().keys() {
             self.zini_check_completed(zini_board, changed_squares, *row, *col)?;
@@ -1163,7 +1163,7 @@ impl Board {
     /// # ZINI Check Completed
     /// ### Check single square
     /// * Criteria: all adjacent non-mine squares are clicked or completed
-    fn zini_check_completed(&self, zini_board: &mut Vec<Vec<Square>>, changed_squares: &mut HashMap<(usize, usize), i8>, row: usize, col: usize) -> Result<(), String> {
+    fn zini_check_completed(&self, zini_board: &mut Vec<Vec<Square>>, changed_squares: &mut FxHashMap<(usize, usize), i8>, row: usize, col: usize) -> Result<(), String> {
 
         let current_square = &zini_board[row][col];
         if current_square.square_type == SquareType::Mine {
@@ -1205,10 +1205,10 @@ impl Board {
         zini_board: &mut Vec<Vec<Square>>,
         row: usize,
         col: usize,
-        remaining: &mut HashSet<(usize, usize)>,
+        remaining: &mut FxHashSet<(usize, usize)>,
         click_count: &mut u16,
         path: &mut Vec<ClickInfo>,
-        changed_squares: &mut HashMap<(usize, usize), i8>
+        changed_squares: &mut FxHashMap<(usize, usize), i8>
     ) -> Result<(), String> {
 
         // error checking
@@ -1248,10 +1248,10 @@ impl Board {
         zini_board: &mut Vec<Vec<Square>>,
         row: usize,
         col: usize,
-        remaining: &mut HashSet<(usize, usize)>,
+        remaining: &mut FxHashSet<(usize, usize)>,
         click_count: &mut u16,
         path: &mut Vec<ClickInfo>,
-        changed_squares: &mut HashMap<(usize, usize), i8>,
+        changed_squares: &mut FxHashMap<(usize, usize), i8>,
     ) -> Result<(), String> {
 
         // error checking
@@ -1307,8 +1307,8 @@ impl Board {
     pub fn zini_chord(&self,
         zini_board: &mut Vec<Vec<Square>>,
         row: usize, col: usize,
-        remaining: &mut HashSet<(usize, usize)>,
-        changed_squares: &mut HashMap<(usize, usize), i8>,
+        remaining: &mut FxHashSet<(usize, usize)>,
+        changed_squares: &mut FxHashMap<(usize, usize), i8>,
     ) -> Result<(), String> {
 
         // error handling
@@ -1391,8 +1391,8 @@ impl Board {
         zini_board: &mut Vec<Vec<Square>>,
         row: usize,
         col: usize,
-        remaining: &mut HashSet<(usize, usize)>,
-        changed_squares: &mut HashMap<(usize, usize), i8>,
+        remaining: &mut FxHashSet<(usize, usize)>,
+        changed_squares: &mut FxHashMap<(usize, usize), i8>,
     ) -> Result<(), String> {
 
         // error handling
@@ -1484,8 +1484,8 @@ impl Board {
         premiums: [BTreeSet<(usize, usize)>; 16],
         click_count: &mut u16,
         path: &mut Vec<ClickInfo>,
-        remaining: &mut HashSet<(usize, usize)>,
-        changed_squares: &mut HashMap<(usize, usize), i8>,
+        remaining: &mut FxHashSet<(usize, usize)>,
+        changed_squares: &mut FxHashMap<(usize, usize), i8>,
         swap_r: bool, swap_c: bool, swap_r_c: bool
     ) -> Result<(), String> {
 
@@ -1631,9 +1631,9 @@ impl Board {
     /// * Create ~~initial premiums and~~ remaining squares
     /// * ~~Premiums use swapped row/col~~
     /// * Remainings are normal row/col
-    pub fn zini_create_remaining_small(&mut self) -> HashSet<(usize, usize)> {
+    pub fn zini_create_remaining_small(&mut self) -> FxHashSet<(usize, usize)> {
 
-        let mut remaining: HashSet<(usize, usize)> = HashSet::with_capacity(self.width * self.height - self.mine_count);
+        let mut remaining: FxHashSet<(usize, usize)> = FxHashSet::with_capacity_and_hasher(self.width * self.height - self.mine_count, Default::default());
 
         for item in &self.islands_locations {
             for (r, c) in item {
@@ -1658,7 +1658,7 @@ impl Board {
     pub fn zini_update_premium_small(
         &self,
         zini_board: &Vec<Vec<Square>>,
-        changed_squares: &HashMap<(usize, usize), i8>,
+        changed_squares: &FxHashMap<(usize, usize), i8>,
         swap_r: bool,
         swap_c: bool,
         swap_r_c: bool
@@ -1807,7 +1807,7 @@ impl Board {
     /// # ZINI Check All Changed
     /// ### Check all changed squares for completion.
     /// When a square is changed, all adjacent squares are also changed and must be checked.
-    pub fn zini_check_all_changed_small(&self, zini_board: &mut Vec<Vec<Square>>, changed_squares: &mut HashMap<(usize, usize), i8>) -> Result<(), String> {
+    pub fn zini_check_all_changed_small(&self, zini_board: &mut Vec<Vec<Square>>, changed_squares: &mut FxHashMap<(usize, usize), i8>) -> Result<(), String> {
 
         for (row, col) in changed_squares.clone().keys() {
             self.zini_check_completed(zini_board, changed_squares, *row, *col)?;
@@ -1819,7 +1819,7 @@ impl Board {
     /// # ZINI Check Completed
     /// ### Check single square
     /// * Criteria: all adjacent non-mine squares are clicked or completed
-    fn zini_check_completed_small(&self, zini_board: &mut Vec<Vec<Square>>, changed_squares: &mut HashMap<(usize, usize), i8>, row: usize, col: usize) -> Result<(), String> {
+    fn zini_check_completed_small(&self, zini_board: &mut Vec<Vec<Square>>, changed_squares: &mut FxHashMap<(usize, usize), i8>, row: usize, col: usize) -> Result<(), String> {
 
         let current_square = &zini_board[row][col];
         if current_square.square_type == SquareType::Mine {
@@ -2345,7 +2345,7 @@ impl Board {
     }
 
     /// # Error Printer
-    pub fn error_printer(&self, remaining: HashSet<(usize, usize)>, last_click: Square, click_count: u16, message: &str) {
+    pub fn error_printer(&self, remaining: FxHashSet<(usize, usize)>, last_click: Square, click_count: u16, message: &str) {
         // important note: added +1 to match llamasweeper one-based
         eprintln!("\n***************\nError Info:\n{}\n", message);
         println!("\nFinal Remaining Squares:");
@@ -2436,12 +2436,12 @@ impl Board {
 }
 
 pub struct Profiler {
-    times: HashMap<String, TimeEntry>
+    times: FxHashMap<String, TimeEntry>
 }
 
 impl Profiler {
     pub fn build() -> Self {
-        let times: HashMap<String, TimeEntry> = HashMap::new();
+        let times: FxHashMap<String, TimeEntry> = FxHashMap::default();
 
         Profiler { times }
     }
