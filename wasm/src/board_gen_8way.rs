@@ -980,7 +980,7 @@ impl Board {
                 && current_square.square_status != SquareStatus::Clicked
                 && current_square.square_status != SquareStatus::Completed {
                     self.zini_click(&mut current_board, r, c, &mut remaining, &mut zini_score, &mut path, &mut changed_squares)?;
-                    self.zini_check_all_changed(&mut current_board, &mut changed_squares)?;
+                    //self.zini_check_all_changed(&mut current_board, &mut changed_squares)?;
                     self.zini_update_premium(&mut premiums, &current_board, &changed_squares, swap_r, swap_c, swap_r_c)?;
                 }
                 self.nf_stage(&mut current_board, premiums.clone(), &mut zini_score, &mut path, &mut remaining, &mut changed_squares, swap_r, swap_c, swap_r_c)?;
@@ -1002,7 +1002,7 @@ impl Board {
                 }
             }
 
-            self.zini_check_all_changed(&mut current_board, &mut changed_squares)?;
+            //self.zini_check_all_changed(&mut current_board, &mut changed_squares)?;
             self.zini_update_premium(&mut premiums, &current_board, &changed_squares, swap_r, swap_c, swap_r_c)?;
             changed_squares.clear();
 
