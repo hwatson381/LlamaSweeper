@@ -983,7 +983,7 @@ impl Board {
                     //self.zini_check_all_changed(&mut current_board, &mut changed_squares)?;
                     self.zini_update_premium(&mut premiums, &current_board, &changed_squares, swap_r, swap_c, swap_r_c)?;
                 }
-                self.nf_stage(&mut current_board, premiums.clone(), &mut zini_score, &mut path, &mut remaining, &mut changed_squares, swap_r, swap_c, swap_r_c)?;
+                self.nf_stage(&mut current_board, &mut zini_score, &mut path, &mut remaining, &mut changed_squares)?;
                 break;
             }
 
@@ -1481,39 +1481,33 @@ impl Board {
 
     pub fn nf_stage(&self,
         zini_board: &mut Vec<Vec<Square>>,
-        premiums: [BTreeSet<(usize, usize)>; 16],
         click_count: &mut u16,
         path: &mut Vec<ClickInfo>,
         remaining: &mut FxHashSet<(usize, usize)>,
-        changed_squares: &mut FxHashMap<(usize, usize), i8>,
-        swap_r: bool, swap_c: bool, swap_r_c: bool
+        changed_squares: &mut FxHashMap<(usize, usize), i8>
     ) -> Result<(), String> {
 
-        let mut final_squares: Vec<_> = IntoIterator::into_iter(premiums)
-            .flat_map(|set| set.into_iter())
-            .collect();
+        for r in 0..self.height {
+            for c in 0..self.width {
+                let current_square = &zini_board[r][c];
 
-        final_squares.sort_unstable();
+                if current_square.square_status == SquareStatus::Clicked
+                || current_square.square_status == SquareStatus::Completed
+                || current_square.square_type == SquareType::Border 
+                || current_square.square_type == SquareType::Mine {
+                    continue;
+                }
 
-        for (unswapped_r, unswapped_c) in final_squares {
-            let (row, col) = swapper((unswapped_r, unswapped_c), swap_r, swap_c, swap_r_c, true);
-            let current_square = &zini_board[row][col];
-
-            if current_square.square_status == SquareStatus::Clicked
-            || current_square.square_status == SquareStatus::Completed
-            || current_square.square_type == SquareType::Border {
-              continue;
+                *click_count += 1;
+                path.push(ClickInfo {
+                    number: *click_count,
+                    square: *current_square,
+                    c_type: ClickType::NF,
+                });
+                // TODO: technically, it would give slightly faster performance to copy the parts from reveal_or_flag() that are specifically required, without the extra parts
+                // the main reason to use this for now is to easily handle openings that will reveal all squares
+                self.zini_reveal_or_flag(zini_board, r, c, remaining, changed_squares)?;
             }
-
-            *click_count += 1;
-            path.push(ClickInfo {
-                number: *click_count,
-                square: *current_square,
-                c_type: ClickType::NF,
-            });
-            // TODO: technically, it would give slightly faster performance to copy the parts from reveal_or_flag() that are specifically required, without the extra parts
-            // the main reason to use this for now is to easily handle openings that will reveal all squares
-            self.zini_reveal_or_flag(zini_board, row, col, remaining, changed_squares)?;
         }
 
         Ok(())
