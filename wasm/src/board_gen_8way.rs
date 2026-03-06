@@ -969,9 +969,10 @@ impl Board {
         let mut path: Vec<ClickInfo> = Vec::new();
 
         let mut changed_squares: FxHashMap<(usize, usize), i8> = FxHashMap::with_capacity_and_hasher(self.width * self.height / 2, Default::default());  // square location: premium before change
-        let (mut premiums, mut remaining) = self.zini_create_premiums_and_remaining(swap_r, swap_c, swap_r_c)?;
+        let mut premiums = self.zini_create_premiums(swap_r, swap_c, swap_r_c);
+        let mut remaining: u16 = self.width as u16 * self.height as u16 - self.mine_count as u16;
 
-        while !remaining.is_empty() {
+        while remaining > 0 {
             let (r, c) = self.zini_get_premium(&mut premiums, swap_r, swap_c, swap_r_c)?;
             let current_square = current_board[r][c];
 
@@ -980,7 +981,6 @@ impl Board {
                 && current_square.square_status != SquareStatus::Clicked
                 && current_square.square_status != SquareStatus::Completed {
                     self.zini_click(&mut current_board, r, c, &mut remaining, &mut zini_score, &mut path, &mut changed_squares)?;
-                    //self.zini_check_all_changed(&mut current_board, &mut changed_squares)?;
                     self.zini_update_premium(&mut premiums, &current_board, &changed_squares, swap_r, swap_c, swap_r_c)?;
                 }
                 self.nf_stage(&mut current_board, &mut zini_score, &mut path, &mut remaining, &mut changed_squares)?;
@@ -990,7 +990,7 @@ impl Board {
             match self.zini_click(&mut current_board, r, c, &mut remaining, &mut zini_score, &mut path, &mut changed_squares) {
                 Ok(()) => {},
                 Err(e) => {
-                    self.error_printer(remaining, current_square, zini_score, &e);
+                    self.error_printer( current_square, zini_score, &e);
                     println!("Final Path:");
                     self.path_printer(&path);
                     println!("\n\n");
@@ -1002,14 +1002,13 @@ impl Board {
                 }
             }
 
-            //self.zini_check_all_changed(&mut current_board, &mut changed_squares)?;
             self.zini_update_premium(&mut premiums, &current_board, &changed_squares, swap_r, swap_c, swap_r_c)?;
             changed_squares.clear();
 
             if emergency_break > EMERGENCY_BREAK_LIMIT {
                 eprintln!("Emergency break triggered!\n");
 
-                self.error_printer(remaining, current_board[r][c], zini_score, "Emergency break triggered!");
+                self.error_printer(current_board[r][c], zini_score, "Emergency break triggered!");
                 println!("Final Path:");
                 self.path_printer(&path);
                 println!("\n\n");
@@ -1026,7 +1025,7 @@ impl Board {
             eprintln!("\n******************\nZINI final score zero!");
 
             // fake last click, but its good enough
-            self.error_printer(remaining, current_board[0][0], zini_score, "ZINI final score zero!");
+            self.error_printer(current_board[0][0], zini_score, "ZINI final score zero!");
             println!("Final Path:");
             self.path_printer(&path);
             println!("\n\n");
@@ -1070,29 +1069,22 @@ impl Board {
     /// * Create initial premiums and remaining squares
     /// * Premiums use swapped row/col
     /// * Remainings are normal row/col
-    pub fn zini_create_premiums_and_remaining(&mut self, swap_r: bool, swap_c: bool, swap_r_c: bool) -> Result<([BTreeSet<(usize, usize)>; 16], FxHashSet<(usize, usize)>), String> {
+    pub fn zini_create_premiums(&mut self, swap_r: bool, swap_c: bool, swap_r_c: bool) -> [BTreeSet<(usize, usize)>; 16] {
 
         /* creating with vectors first for better performance than repeatedly inserting in a btreeset */
-        let mut starting_premiums: [Vec<(usize, usize)>; ZINI_MAX_PREMIUM as usize] = std::array::from_fn(|_| Vec::with_capacity(self.width * self.height / 4));
-        let mut remaining: FxHashSet<(usize, usize)> = FxHashSet::with_capacity_and_hasher(self.width * self.height - self.mine_count, Default::default());
+        let mut starting_premiums: [Vec<(usize, usize)>; ZINI_MAX_PREMIUM as usize] = std::array::from_fn(|_| Vec::with_capacity(self.width * self.height / 8));
 
-        for item in &self.islands_locations {
-            for (r, c) in item {
-                starting_premiums[(self.squares[*r][*c].premium + ZINI_PREMIUM_OFFSET) as usize].push(swapper((*r, *c), swap_r, swap_c, swap_r_c, false));
-                remaining.insert((*r, *c));
-            }
-        }
-
-        for opening in &self.openings_locations {
-            for (r, c) in opening.all_squares() {
-                starting_premiums[(self.squares[*r][*c].premium + ZINI_PREMIUM_OFFSET) as usize].push(swapper((*r, *c), swap_r, swap_c, swap_r_c, false));
-                remaining.insert((*r, *c));
+        for r in 0..self.height {
+            for c in 0..self.width {
+                if self.squares[r][c].square_type != SquareType::Mine {
+                    starting_premiums[(self.squares[r][c].premium + ZINI_PREMIUM_OFFSET) as usize].push(swapper((r, c), swap_r, swap_c, swap_r_c, false))
+                }
             }
         }
 
         let out_premiums: [BTreeSet<(usize, usize)>; 16] = starting_premiums.map(|vec| vec.into_iter().collect());
 
-        Ok((out_premiums, remaining))
+        out_premiums
     }
 
     /// # ZINI Update Premiums
@@ -1148,55 +1140,6 @@ impl Board {
         return Err(format!("No premium found!"));   // cursed string
     }
 
-    /// # ZINI Check All Changed
-    /// ### Check all changed squares for completion.
-    /// When a square is changed, all adjacent squares are also changed and must be checked.
-    pub fn zini_check_all_changed(&self, zini_board: &mut Vec<Vec<Square>>, changed_squares: &mut FxHashMap<(usize, usize), i8>) -> Result<(), String> {
-
-        for (row, col) in changed_squares.clone().keys() {
-            self.zini_check_completed(zini_board, changed_squares, *row, *col)?;
-        }
-
-        Ok(())
-    }
-
-    /// # ZINI Check Completed
-    /// ### Check single square
-    /// * Criteria: all adjacent non-mine squares are clicked or completed
-    fn zini_check_completed(&self, zini_board: &mut Vec<Vec<Square>>, changed_squares: &mut FxHashMap<(usize, usize), i8>, row: usize, col: usize) -> Result<(), String> {
-
-        let current_square = &zini_board[row][col];
-        if current_square.square_type == SquareType::Mine {
-            return Err(format!("Mines should not be checked: {}, {}", row + 1, col + 1));
-        }
-
-        let mut finished = true;
-        for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error during check completed") {
-            let adj_square = &zini_board[*adj_row][*adj_col];
-            if adj_square.square_type == SquareType::Mine
-            || adj_square.square_status == SquareStatus::Completed {
-                continue;
-            }
-            if adj_square.square_status == SquareStatus::Unclicked {
-                finished = false;
-                break;
-            }
-        }
-
-        let current_square = &mut zini_board[row][col];
-        if current_square.square_status == SquareStatus::Unclicked {
-            finished = false;
-        }
-
-        if finished {
-            changed_squares.entry((row, col)).or_insert(current_square.premium);  // TODO: for removal from premiums
-            current_square.square_status = SquareStatus::Completed;
-            current_square.premium = ZINI_MIN_PREMIUM;
-        }
-
-        Ok(())
-    }
-
     /// # Zini Click
     /// * Basic logic to split up how a click is handled.
     /// * Anything under the threshold gets a left click (NF),
@@ -1205,7 +1148,7 @@ impl Board {
         zini_board: &mut Vec<Vec<Square>>,
         row: usize,
         col: usize,
-        remaining: &mut FxHashSet<(usize, usize)>,
+        remaining: &mut u16,
         click_count: &mut u16,
         path: &mut Vec<ClickInfo>,
         changed_squares: &mut FxHashMap<(usize, usize), i8>
@@ -1248,7 +1191,7 @@ impl Board {
         zini_board: &mut Vec<Vec<Square>>,
         row: usize,
         col: usize,
-        remaining: &mut FxHashSet<(usize, usize)>,
+        remaining: &mut u16,
         click_count: &mut u16,
         path: &mut Vec<ClickInfo>,
         changed_squares: &mut FxHashMap<(usize, usize), i8>,
@@ -1307,7 +1250,7 @@ impl Board {
     pub fn zini_chord(&self,
         zini_board: &mut Vec<Vec<Square>>,
         row: usize, col: usize,
-        remaining: &mut FxHashSet<(usize, usize)>,
+        remaining: &mut u16,
         changed_squares: &mut FxHashMap<(usize, usize), i8>,
     ) -> Result<(), String> {
 
@@ -1391,7 +1334,7 @@ impl Board {
         zini_board: &mut Vec<Vec<Square>>,
         row: usize,
         col: usize,
-        remaining: &mut FxHashSet<(usize, usize)>,
+        remaining: &mut u16,
         changed_squares: &mut FxHashMap<(usize, usize), i8>,
     ) -> Result<(), String> {
 
@@ -1410,8 +1353,11 @@ impl Board {
 
         // actual click
         current_square.square_status = SquareStatus::Clicked;
-        if current_square.square_type != SquareType::Mine {
-            remaining.remove(&(row, col));
+        if current_square.square_type != SquareType::Mine && current_square.square_type != SquareType::Opening {
+            //The conditions for if statement are for different reasons
+            //Mines don't affect remaining squares as they get flagged
+            //Openings do affect remaining squares, but are accounted for later
+            *remaining -= 1;
             changed_squares.entry((row, col)).or_insert(current_square.premium);  // TODO: changed squares tracking
         }
 
@@ -1456,7 +1402,7 @@ impl Board {
                     changed_squares.entry((*inner_row, *inner_col)).or_insert(inner_square.premium);  // TODO: for removal from premiums
                     inner_square.square_status = SquareStatus::Completed;
                     inner_square.premium = ZINI_MIN_PREMIUM;
-                    remaining.remove(&(*inner_row, *inner_col));
+                    *remaining -= 1;
                 }
 
                 for (border_row, border_col) in &opening.squares_border {
@@ -1483,7 +1429,7 @@ impl Board {
         zini_board: &mut Vec<Vec<Square>>,
         click_count: &mut u16,
         path: &mut Vec<ClickInfo>,
-        remaining: &mut FxHashSet<(usize, usize)>,
+        remaining: &mut u16,
         changed_squares: &mut FxHashMap<(usize, usize), i8>
     ) -> Result<(), String> {
 
@@ -1533,7 +1479,6 @@ impl Board {
         let mut zini_score = 0u16;
         let mut path: Vec<ClickInfo> = Vec::new();
 
-        //let mut remaining = self.zini_create_remaining_small();
         let mut remaining: u16 = self.width as u16 * self.height as u16 - self.mine_count as u16;
 
         while remaining > 0 {
@@ -1548,7 +1493,6 @@ impl Board {
                 && current_square.square_status != SquareStatus::Clicked
                 && current_square.square_status != SquareStatus::Completed {
                     self.zini_click(&mut current_board, r, c, &mut remaining, &mut zini_score, &mut path, &mut changed_squares)?;
-                    self.zini_check_all_changed_small(&mut current_board, &mut changed_squares)?;
                     self.zini_update_premium_small(&current_board, &changed_squares, swap_r, swap_c, swap_r_c)?;
                 }
                 */
@@ -1571,14 +1515,9 @@ impl Board {
                     return Err(format!("ZINI click failed: {}\nClick Count:{:#?}\n", e, zini_score));
                 }
             }
-
-            //self.zini_check_all_changed_small is not needed since don't have to complete surrounded squares
-            //Or remove from btree thingy as doing premiums some other way
-            //self.zini_check_all_changed_small(&mut current_board, &mut changed_squares)?;
             
             //not using changed squares stuff to update btree thingy
             //self.zini_update_premium_small( &current_board, &changed_squares, swap_r, swap_c, swap_r_c)?;
-            //changed_squares.clear();
 
             if emergency_break > EMERGENCY_BREAK_LIMIT {
                 eprintln!("Emergency break triggered!\n");
@@ -1619,29 +1558,6 @@ impl Board {
 
         Ok((zini_score, path))
 
-    }
-
-    /// # ZINI Create ~~Premiums &~~ Remaining
-    /// * Create ~~initial premiums and~~ remaining squares
-    /// * ~~Premiums use swapped row/col~~
-    /// * Remainings are normal row/col
-    pub fn zini_create_remaining_small(&mut self) -> FxHashSet<(usize, usize)> {
-
-        let mut remaining: FxHashSet<(usize, usize)> = FxHashSet::with_capacity_and_hasher(self.width * self.height - self.mine_count, Default::default());
-
-        for item in &self.islands_locations {
-            for (r, c) in item {
-                remaining.insert((*r, *c));
-            }
-        }
-
-        for opening in &self.openings_locations {
-            for (r, c) in opening.all_squares() {
-                remaining.insert((*r, *c));
-            }
-        }
-
-        remaining
     }
 
     /// # ZINI Update Premiums
@@ -1798,56 +1714,7 @@ impl Board {
         return Err(format!("No premium found!"));   // cursed string
     }
 
-    /// # ZINI Check All Changed
-    /// ### Check all changed squares for completion.
-    /// When a square is changed, all adjacent squares are also changed and must be checked.
-    pub fn zini_check_all_changed_small(&self, zini_board: &mut Vec<Vec<Square>>, changed_squares: &mut FxHashMap<(usize, usize), i8>) -> Result<(), String> {
-
-        for (row, col) in changed_squares.clone().keys() {
-            self.zini_check_completed(zini_board, changed_squares, *row, *col)?;
-        }
-
-        Ok(())
-    }
-
-    /// # ZINI Check Completed
-    /// ### Check single square
-    /// * Criteria: all adjacent non-mine squares are clicked or completed
-    fn zini_check_completed_small(&self, zini_board: &mut Vec<Vec<Square>>, changed_squares: &mut FxHashMap<(usize, usize), i8>, row: usize, col: usize) -> Result<(), String> {
-
-        let current_square = &zini_board[row][col];
-        if current_square.square_type == SquareType::Mine {
-            return Err(format!("Mines should not be checked: {}, {}", row + 1, col + 1));
-        }
-
-        let mut finished = true;
-        for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error during check completed") {
-            let adj_square = &zini_board[*adj_row][*adj_col];
-            if adj_square.square_type == SquareType::Mine
-            || adj_square.square_status == SquareStatus::Completed {
-                continue;
-            }
-            if adj_square.square_status == SquareStatus::Unclicked {
-                finished = false;
-                break;
-            }
-        }
-
-        let current_square = &mut zini_board[row][col];
-        if current_square.square_status == SquareStatus::Unclicked {
-            finished = false;
-        }
-
-        if finished {
-            changed_squares.entry((row, col)).or_insert(current_square.premium);  // TODO: for removal from premiums
-            current_square.square_status = SquareStatus::Completed;
-            current_square.premium = ZINI_MIN_PREMIUM;
-        }
-
-        Ok(())
-    }
-
-        /// # Zini Click
+    /// # Zini Click
     /// * Basic logic to split up how a click is handled.
     /// * Anything under the threshold gets a left click (NF),
     /// * Otherwise it gets the flag & chord.
@@ -2339,13 +2206,10 @@ impl Board {
     }
 
     /// # Error Printer
-    pub fn error_printer(&self, remaining: FxHashSet<(usize, usize)>, last_click: Square, click_count: u16, message: &str) {
+    pub fn error_printer(&self, last_click: Square, click_count: u16, message: &str) {
         // important note: added +1 to match llamasweeper one-based
         eprintln!("\n***************\nError Info:\n{}\n", message);
-        println!("\nFinal Remaining Squares:");
-        for (row, col) in &remaining {
-            println!("({}, {})", row + 1, col + 1);
-        }
+
         println!("\n");
 
         println!("\nLast Click: {}, {} (premium {})\n", last_click.row + 1, last_click.col + 1, last_click.premium);
