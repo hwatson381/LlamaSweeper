@@ -10,8 +10,6 @@ const MAX_WIDTH: usize = 128;
 const MAX_HEIGHT: usize = 128;
 const ZINI_NF_THRESHOLD: i8 = 0;   /* threshold for zini premium to determine to NF click or not */
 const ZINI_MIN_PREMIUM: i8 = -9;
-const ZINI_MAX_PREMIUM: i8 = 16;
-const ZINI_PREMIUM_OFFSET: i8 = 9;  /* offset to make premiums positive */
 
 /// # Get Adjacent
 /// Helper function to get all valid adjacent locations from a given (row, col)
@@ -1062,22 +1060,22 @@ impl Board {
     /// * Create initial premiums and remaining squares
     /// * Premiums use swapped row/col
     /// * Remainings are normal row/col
-    pub fn zini_create_premiums(&mut self, swap_r: bool, swap_c: bool, swap_r_c: bool) -> [BTreeSet<(usize, usize)>; 16] {
+    pub fn zini_create_premiums(&mut self, swap_r: bool, swap_c: bool, swap_r_c: bool) -> [BTreeSet<(usize, usize)>; 8] {
 
         /* creating with vectors first for better performance than repeatedly inserting in a btreeset */
-        let mut starting_premiums: [Vec<(usize, usize)>; ZINI_MAX_PREMIUM as usize] = std::array::from_fn(|_| Vec::with_capacity(self.width * self.height / 8));
+        let mut starting_premiums: [Vec<(usize, usize)>; 8] = std::array::from_fn(|_| Vec::with_capacity(self.width * self.height / 8));
 
         for r in 0..self.height {
             for c in 0..self.width {
                 if self.squares[r][c].square_type != SquareType::Mine {
                     if self.squares[r][c].premium >= 0 {
-                        starting_premiums[(self.squares[r][c].premium + ZINI_PREMIUM_OFFSET) as usize].push(swapper((r, c), swap_r, swap_c, swap_r_c, false))
+                        starting_premiums[self.squares[r][c].premium as usize].push(swapper((r, c), swap_r, swap_c, swap_r_c, false))
                     }
                 }
             }
         }
 
-        let out_premiums: [BTreeSet<(usize, usize)>; 16] = starting_premiums.map(|vec| vec.into_iter().collect());
+        let out_premiums: [BTreeSet<(usize, usize)>; 8] = starting_premiums.map(|vec| vec.into_iter().collect());
 
         out_premiums
     }
@@ -1089,7 +1087,7 @@ impl Board {
     /// * swap rows & columns
     pub fn zini_update_premium(
         &self,
-        premiums: &mut [BTreeSet<(usize, usize)>; 16],
+        premiums: &mut [BTreeSet<(usize, usize)>; 8],
         zini_board: &Vec<Vec<Square>>,
         changed_squares: &FxHashMap<(usize, usize), i8>,
         swap_r: bool,
@@ -1109,10 +1107,10 @@ impl Board {
 
             //New idea - only store non-negative premiums
             if *old_premium >= 0 {
-                premiums[(old_premium + ZINI_PREMIUM_OFFSET) as usize].remove(&swapped_coords);
+                premiums[*old_premium as usize].remove(&swapped_coords);
             }
             if new_premium >= 0 {
-                premiums[(new_premium + ZINI_PREMIUM_OFFSET) as usize].insert(swapped_coords);
+                premiums[new_premium as usize].insert(swapped_coords);
             }
         }
 
