@@ -118,7 +118,6 @@ pub struct ClickInfo {
 }
 
 /// # ZINI Square Status
-/// * `Completed`: Finished, nothing left to do
 /// * `Unclicked`: Not revealed
 /// * `Clicked`: Revealed/Flagged
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -973,19 +972,13 @@ impl Board {
         let mut remaining: u16 = self.width as u16 * self.height as u16 - self.mine_count as u16;
 
         while remaining > 0 {
-            let (r, c) = self.zini_get_premium(&mut premiums, swap_r, swap_c, swap_r_c)?;
-            let current_square = current_board[r][c];
-
-            if current_square.premium < ZINI_NF_THRESHOLD {
-                if current_square.square_type != SquareType::Border
-                && current_square.square_status != SquareStatus::Clicked
-                && current_square.square_status != SquareStatus::Completed {
-                    self.zini_click(&mut current_board, r, c, &mut remaining, &mut zini_score, &mut path, &mut changed_squares)?;
-                    self.zini_update_premium(&mut premiums, &current_board, &changed_squares, swap_r, swap_c, swap_r_c)?;
-                }
+            //Get square with highest premium, and if no squares >= 0 then start NF
+            let Some((r, c)) = self.zini_get_premium(&mut premiums, swap_r, swap_c, swap_r_c) else {
                 self.nf_stage(&mut current_board, &mut zini_score, &mut path, &mut remaining, &mut changed_squares)?;
                 break;
-            }
+            };
+
+            let current_square = current_board[r][c];
 
             match self.zini_click(&mut current_board, r, c, &mut remaining, &mut zini_score, &mut path, &mut changed_squares) {
                 Ok(()) => {},
@@ -1077,7 +1070,9 @@ impl Board {
         for r in 0..self.height {
             for c in 0..self.width {
                 if self.squares[r][c].square_type != SquareType::Mine {
-                    starting_premiums[(self.squares[r][c].premium + ZINI_PREMIUM_OFFSET) as usize].push(swapper((r, c), swap_r, swap_c, swap_r_c, false))
+                    if self.squares[r][c].premium >= 0 {
+                        starting_premiums[(self.squares[r][c].premium + ZINI_PREMIUM_OFFSET) as usize].push(swapper((r, c), swap_r, swap_c, swap_r_c, false))
+                    }
                 }
             }
         }
@@ -1107,18 +1102,18 @@ impl Board {
             let square = &zini_board[*row][*col];
             let swapped_coords = swapper((*row, *col), swap_r, swap_c, swap_r_c, false);
 
-            if square.square_status == SquareStatus::Completed {
-                premiums[(old_premium + ZINI_PREMIUM_OFFSET) as usize].remove(&swapped_coords);
-                continue;
-            }
-
             let new_premium = square.premium;
             if old_premium == &new_premium {
                 continue;
             }
 
-            premiums[(old_premium + ZINI_PREMIUM_OFFSET) as usize].remove(&swapped_coords);
-            premiums[(new_premium + ZINI_PREMIUM_OFFSET) as usize].insert(swapped_coords);
+            //New idea - only store non-negative premiums
+            if *old_premium >= 0 {
+                premiums[(old_premium + ZINI_PREMIUM_OFFSET) as usize].remove(&swapped_coords);
+            }
+            if new_premium >= 0 {
+                premiums[(new_premium + ZINI_PREMIUM_OFFSET) as usize].insert(swapped_coords);
+            }
         }
 
       Ok(())
@@ -1126,18 +1121,18 @@ impl Board {
 
     /// # ZINI Get Premium
     /// * Get best premium from premiums
-    pub fn zini_get_premium(&self, premiums: &mut [BTreeSet<(usize, usize)>], swap_r: bool, swap_c: bool, swap_r_c: bool) -> Result<(usize, usize), String> {
+    pub fn zini_get_premium(&self, premiums: &mut [BTreeSet<(usize, usize)>], swap_r: bool, swap_c: bool, swap_r_c: bool) -> Option<(usize, usize)> {
 
         for btree in premiums.iter_mut().rev() {
             match btree.pop_first() {
                 Some((r, c)) => {
-                    return Ok(swapper((r, c), swap_r, swap_c, swap_r_c, true));
+                    return Some(swapper((r, c), swap_r, swap_c, swap_r_c, true));
                 },
                 None => {},
             }
         }
 
-        return Err(format!("No premium found!"));   // cursed string
+        return None;   // No premiums >= 0
     }
 
     /// # Zini Click
@@ -1158,9 +1153,6 @@ impl Board {
         let current_square = &zini_board[row][col];
         if current_square.square_type == SquareType::Mine {
             return Err(format!("Mine clicks (flags) are only supposed to happen during perform solve: {}, {}", row + 1, col + 1));
-        }
-        if current_square.square_status == SquareStatus::Completed {
-            return Err(format!("Clicked on a completed square: {}, {}", row + 1, col + 1));
         }
 
         // flag solve
@@ -1200,9 +1192,6 @@ impl Board {
         // error checking
         if zini_board[row][col].square_type == SquareType::Mine {
             return Err(format!("Something went horribly wrong.\nSolve attempted on a mine: {}, {}", row + 1, col + 1));
-        }
-        if zini_board[row][col].square_status == SquareStatus::Completed {
-            return Err(format!("Something went horribly wrong.\nSolve attempted on a completed square: {}, {}", row + 1, col + 1));
         }
 
         /* flag mines */
@@ -1259,9 +1248,6 @@ impl Board {
         if current_square.square_status == SquareStatus::Unclicked {
             return Err(format!("Cannot chord on an unclicked square!: {}, {}", row + 1, col + 1));
         }
-        if current_square.square_status == SquareStatus::Completed {
-            return Err(format!("Chord on a completed square!: {}, {}", row + 1, col + 1));
-        }
 
         let mut adjacent_mines = false;
         for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error in zini chord") {
@@ -1294,7 +1280,7 @@ impl Board {
 
         let current_square = &mut zini_board[row][col];
         changed_squares.entry((row, col)).or_insert(current_square.premium);  // TODO: for removal from premiums
-        current_square.square_status = SquareStatus::Completed;
+        current_square.square_status = SquareStatus::Clicked;
         current_square.premium = ZINI_MIN_PREMIUM;
 
         Ok(())
@@ -1347,9 +1333,6 @@ impl Board {
         if current_square.square_status == SquareStatus::Clicked {
             return Err(format!("Zini Square already clicked: {}, {}", row + 1, col + 1));
         }
-        if current_square.square_status == SquareStatus::Completed {
-            return Err(format!("Zini Square already completed: {}, {}", row + 1, col + 1));
-        }
 
         // actual click
         current_square.square_status = SquareStatus::Clicked;
@@ -1400,16 +1383,13 @@ impl Board {
                 for (inner_row, inner_col) in &opening.squares_inner {
                     let inner_square = &mut zini_board[*inner_row][*inner_col];
                     changed_squares.entry((*inner_row, *inner_col)).or_insert(inner_square.premium);  // TODO: for removal from premiums
-                    inner_square.square_status = SquareStatus::Completed;
+                    inner_square.square_status = SquareStatus::Clicked;
                     inner_square.premium = ZINI_MIN_PREMIUM;
                     *remaining -= 1;
                 }
 
                 for (border_row, border_col) in &opening.squares_border {
                     let border_square = &mut zini_board[*border_row][*border_col];
-                    if border_square.square_status == SquareStatus::Completed {
-                        continue;
-                    }
 
                     changed_squares.entry((*border_row, *border_col)).or_insert(border_square.premium);
                     border_square.premium -= 1;   // "llama style" (remove the adjacent 3bv from the opening)
@@ -1438,7 +1418,6 @@ impl Board {
                 let current_square = &zini_board[r][c];
 
                 if current_square.square_status == SquareStatus::Clicked
-                || current_square.square_status == SquareStatus::Completed
                 || current_square.square_type == SquareType::Border 
                 || current_square.square_type == SquareType::Mine {
                     continue;
