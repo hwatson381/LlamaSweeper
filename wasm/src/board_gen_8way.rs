@@ -1459,23 +1459,10 @@ impl Board {
         let mut remaining: u16 = self.width as u16 * self.height as u16 - self.mine_count as u16;
 
         while remaining > 0 {
-            let (r, c) = self.zini_get_premium_small(&current_board, swap_r, swap_c, swap_r_c)?;
-            let current_square = current_board[r][c];
-
-            if current_square.premium < ZINI_NF_THRESHOLD {
-                //Stuff below for doing a single NF click is commented out because
-                //We changed how premiums work so there is now chance the "default" choice could be on an invalid square
-                /*
-                if current_square.square_type != SquareType::Border
-                && current_square.square_status != SquareStatus::Clicked
-                && current_square.square_status != SquareStatus::Completed {
-                    self.zini_click(&mut current_board, r, c, &mut remaining, &mut zini_score, &mut path, &mut changed_squares)?;
-                    self.zini_update_premium_small(&current_board, &changed_squares, swap_r, swap_c, swap_r_c)?;
-                }
-                */
+            let Some((r, c)) = self.zini_get_premium_small(&current_board, swap_r, swap_c, swap_r_c) else {
                 self.nf_stage_small(&mut current_board, &mut zini_score, &mut path, &mut remaining)?;
                 break;
-            }
+            };
 
             match self.zini_click_small(&mut current_board, r, c, &mut remaining, &mut zini_score, &mut path) {
                 Ok(()) => {},
@@ -1577,15 +1564,15 @@ impl Board {
 
     /// # ZINI Get Premium
     /// * Get best premium from premiums
-    pub fn zini_get_premium_small(&self, zini_board: &Vec<Vec<Square>>, swap_r: bool, swap_c: bool, swap_r_c: bool) -> Result<(usize, usize), String> {
+    pub fn zini_get_premium_small(&self, zini_board: &Vec<Vec<Square>>, swap_r: bool, swap_c: bool, swap_r_c: bool) -> Option<(usize, usize)> {
         /*
             loop through normally
             but when premium is tied, compare it to tie break (whether it is top-lefter than current square)
          */
 
-        let mut highest_premium_so_far = ZINI_NF_THRESHOLD - 1; // = -1; If this remains highest then need to do NF. Could even start with 0 if we let it always fail tiebreak
-        let mut lowest_tiebreak_so_far = (usize::MAX, usize::MAX);
-        let mut best_coords_so_far: (usize, usize) = (0, 0); //Some arbitrary value
+        let mut highest_premium_so_far = ZINI_NF_THRESHOLD; // = 0; Start off at 0 as we need to at minimum find a square with premium 0 in order to not do NF. 
+        let mut lowest_tiebreak_so_far = (usize::MAX, usize::MAX); //Any square will beat this in the tiebreak
+        let mut best_coords_so_far: Option<(usize, usize)> = None;
 
         for r in 0..self.height {
             for c in 0..self.width {
@@ -1603,7 +1590,7 @@ impl Board {
                     //Square is a strict improvement on previous best premium
                     highest_premium_so_far = premium;
                     lowest_tiebreak_so_far = tiebreak;
-                    best_coords_so_far = (r, c);
+                    best_coords_so_far = Some((r, c));
                     continue; //Improvement found, go to next loop
                 }
 
@@ -1618,7 +1605,7 @@ impl Board {
                     //Square is a strict improvement based on tied premium and first coord
                     highest_premium_so_far = premium;
                     lowest_tiebreak_so_far = tiebreak;
-                    best_coords_so_far = (r, c);
+                    best_coords_so_far = Some((r, c));
                     continue; //Improvement found, go to next loop
                 }
 
@@ -1627,68 +1614,12 @@ impl Board {
                     //tied premium + first coord, but second coord is improvement
                     highest_premium_so_far = premium;
                     lowest_tiebreak_so_far = tiebreak;
-                    best_coords_so_far = (r, c);
+                    best_coords_so_far = Some((r, c));
                 }
             }
         }
 
-        return Ok(best_coords_so_far);
-
-        /* js reference
-        
-            //Set up enumeration order
-      const xStart = xReverse ? width - 1 : 0;
-      const xEnd = xReverse ? 0 : width - 1;
-      const yStart = yReverse ? height - 1 : 0;
-      const yEnd = yReverse ? 0 : height - 1;
-      const iStart = xySwap ? yStart : xStart;
-      const iEnd = xySwap ? yEnd : xEnd;
-      const jStart = xySwap ? xStart : yStart;
-      const jEnd = xySwap ? xEnd : yEnd;
-      const iReverse = xySwap ? yReverse : xReverse;
-      const jReverse = xySwap ? xReverse : yReverse;
-
-      for (
-        let i = iStart;
-        iReverse ? i >= 0 : i <= iEnd;
-        iReverse ? i-- : i++
-      ) {
-        for (
-          let j = jStart;
-          jReverse ? j >= 0 : j <= jEnd;
-          jReverse ? j-- : j++
-        ) {
-          const [x, y] = xySwap ? [j, i] : [i, j];
-          const thisSquare = squareInfo[x][y];
-          if (thisSquare.isMine) {
-            continue;
-          }
-          if (nfClick === null && thisSquare.is3bv) {
-            //First square enumerated over becomes nfClick
-            if (!revealedStates[x][y]) {
-              nfClick = { x, y };
-            }
-          }
-          if (highestPremiumSoFar < premiums[x][y]) {
-            highestPremiumSoFar = premiums[x][y];
-            chordClick = { x, y };
-          }
-        }
-      }
-
-         */
-        
-        /*
-
-        let (x_start, xEnd) = if swap_c {
-            (self.width - 1, 0)
-        } else {
-            (0, self.width - 1)
-        };
-
-         */
-
-        return Err(format!("No premium found!"));   // cursed string
+        return best_coords_so_far;
     }
 
     /// # Zini Click
