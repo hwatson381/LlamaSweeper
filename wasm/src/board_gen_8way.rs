@@ -120,7 +120,6 @@ pub struct ClickInfo {
 /// * `Clicked`: Revealed/Flagged
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SquareStatus {
-    Completed,
     Unclicked,
     Clicked,
 }
@@ -1479,9 +1478,6 @@ impl Board {
                     return Err(format!("ZINI click failed: {}\nClick Count:{:#?}\n", e, zini_score));
                 }
             }
-            
-            //not using changed squares stuff to update btree thingy
-            //self.zini_update_premium_small( &current_board, &changed_squares, swap_r, swap_c, swap_r_c)?;
 
             if emergency_break > EMERGENCY_BREAK_LIMIT {
                 eprintln!("Emergency break triggered!\n");
@@ -1522,44 +1518,6 @@ impl Board {
 
         Ok((zini_score, path))
 
-    }
-
-    /// # ZINI Update Premiums
-    /// Tie-break options:
-    /// * rows descending
-    /// * columns descending
-    /// * swap rows & columns
-    pub fn zini_update_premium_small(
-        &self,
-        zini_board: &Vec<Vec<Square>>,
-        changed_squares: &FxHashMap<(usize, usize), i8>,
-        swap_r: bool,
-        swap_c: bool,
-        swap_r_c: bool
-    ) -> Result<(), String> {
-
-        // TODO: new style
-        for ((row, col), old_premium) in changed_squares {
-            let square = &zini_board[*row][*col];
-            let swapped_coords = swapper((*row, *col), swap_r, swap_c, swap_r_c, false);
-
-            if square.square_status == SquareStatus::Completed {
-                //commented out to remove red squiggly
-                //premiums[(old_premium + ZINI_PREMIUM_OFFSET) as usize].remove(&swapped_coords);
-                continue;
-            }
-
-            let new_premium = square.premium;
-            if old_premium == &new_premium {
-                continue;
-            }
-
-            //commented out to remove red squiggly
-            //premiums[(old_premium + ZINI_PREMIUM_OFFSET) as usize].remove(&swapped_coords);
-            //premiums[(new_premium + ZINI_PREMIUM_OFFSET) as usize].insert(swapped_coords);
-        }
-
-      Ok(())
     }
 
     /// # ZINI Get Premium
@@ -1640,9 +1598,6 @@ impl Board {
         if current_square.square_type == SquareType::Mine {
             return Err(format!("Mine clicks (flags) are only supposed to happen during perform solve: {}, {}", row + 1, col + 1));
         }
-        if current_square.square_status == SquareStatus::Completed {
-            return Err(format!("Clicked on a completed square: {}, {}", row + 1, col + 1));
-        }
 
         // flag solve
         if current_square.premium >= ZINI_NF_THRESHOLD
@@ -1680,9 +1635,6 @@ impl Board {
         // error checking
         if zini_board[row][col].square_type == SquareType::Mine {
             return Err(format!("Something went horribly wrong.\nSolve attempted on a mine: {}, {}", row + 1, col + 1));
-        }
-        if zini_board[row][col].square_status == SquareStatus::Completed {
-            return Err(format!("Something went horribly wrong.\nSolve attempted on a completed square: {}, {}", row + 1, col + 1));
         }
 
         /* flag mines */
@@ -1738,9 +1690,6 @@ impl Board {
         if current_square.square_status == SquareStatus::Unclicked {
             return Err(format!("Cannot chord on an unclicked square!: {}, {}", row + 1, col + 1));
         }
-        if current_square.square_status == SquareStatus::Completed {
-            return Err(format!("Chord on a completed square!: {}, {}", row + 1, col + 1));
-        }
 
         let mut adjacent_mines = false;
         for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error in zini chord") {
@@ -1772,7 +1721,7 @@ impl Board {
         }
 
         let current_square = &mut zini_board[row][col];
-        current_square.square_status = SquareStatus::Completed;
+        current_square.square_status = SquareStatus::Clicked;
         current_square.premium = ZINI_MIN_PREMIUM;
 
         Ok(())
@@ -1824,9 +1773,6 @@ impl Board {
         if current_square.square_status == SquareStatus::Clicked {
             return Err(format!("Zini Square already clicked: {}, {}", row + 1, col + 1));
         }
-        if current_square.square_status == SquareStatus::Completed {
-            return Err(format!("Zini Square already completed: {}, {}", row + 1, col + 1));
-        }
 
         // actual click
         current_square.square_status = SquareStatus::Clicked;
@@ -1874,16 +1820,13 @@ impl Board {
                 for (inner_row, inner_col) in &opening.squares_inner {
                     //Slightly pointless to process these as we never need to chord zero tiles...
                     let inner_square = &mut zini_board[*inner_row][*inner_col];
-                    inner_square.square_status = SquareStatus::Completed;
+                    inner_square.square_status = SquareStatus::Clicked;
                     inner_square.premium = ZINI_MIN_PREMIUM;
                     *remaining -= 1;
                 }
 
                 for (border_row, border_col) in &opening.squares_border {
                     let border_square = &mut zini_board[*border_row][*border_col];
-                    if border_square.square_status == SquareStatus::Completed {
-                        continue;
-                    }
 
                     border_square.premium -= 1;   // "llama style" (remove the adjacent 3bv from the opening)
 
@@ -1910,7 +1853,6 @@ impl Board {
                 let current_square = &zini_board[r][c];
 
                 if current_square.square_status == SquareStatus::Clicked
-                || current_square.square_status == SquareStatus::Completed
                 || current_square.square_type == SquareType::Border 
                 || current_square.square_type == SquareType::Mine {
                     continue;
@@ -2190,8 +2132,7 @@ impl Board {
                 }
                 match square.square_status {
                     SquareStatus::Clicked => print!("  c "),
-                    SquareStatus::Unclicked => print!("  . "),
-                    SquareStatus::Completed => print!("  * "),
+                    SquareStatus::Unclicked => print!("  . ")
                 }
             }
             print!("\n\n");
