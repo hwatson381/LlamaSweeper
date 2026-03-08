@@ -287,7 +287,7 @@ pub struct Board {
     pub islands_locations: Vec<FxHashSet<(usize, usize)>>,
     pub openings_locations: Vec<Opening>,
     pub openings_ids: FxHashMap<(usize, usize), usize>,
-    pub all_adjacents: FxHashMap<(usize, usize), Vec<(usize, usize)>>,
+    pub all_adjacents: Vec<Vec<Vec<(usize, usize)>>>,
     pub profiler: Profiler
 }
 
@@ -320,13 +320,11 @@ impl Board {
 
         // pre-compute all adjacent locations.
         // i dont know for certain if this is actually faster/better, but it seems good, because squares will definitely require multiple lookups.
-        let mut all_adjacents = FxHashMap::with_capacity_and_hasher(width * height, Default::default());
-        for row in 0..height {
-            for col in 0..width {
-                let adjacent_cells = get_adjacent(row, col, height, width).map_err(|_| "Error generating adjacents")?;
-                all_adjacents.insert((row, col), adjacent_cells);
-            }
-        }
+        let all_adjacents: Vec<Vec<Vec<(usize, usize)>>> = (0..height).map(|row| {
+            (0..width).map(|col| {
+                get_adjacent(row, col, height, width).expect("Shouldn't fail?")
+            }).collect()
+        }).collect();
 
         Ok(Board {
             squares,
@@ -582,7 +580,7 @@ impl Board {
         safe_squares.insert((safe_row, safe_col));
 
         if opening {
-            safe_squares.extend(self.all_adjacents.get(&(safe_row, safe_col)).expect("error during move mine (opening)"));
+            safe_squares.extend(self.all_adjacents[safe_row][safe_col].iter().copied());
         }
 
         let mut all_safe = true;
@@ -674,8 +672,8 @@ impl Board {
     pub fn initialize_squares(&mut self) {
         // number
         for (row, col) in &self.mine_locations {
-            for (adj_row, adj_col) in self.all_adjacents.get(&(*row, *col)).expect("initialize square (numbers)") {
-                self.squares[*adj_row][*adj_col].adjacent_mines += 1;
+            for &(adj_row, adj_col) in &self.all_adjacents[*row][*col] {
+                self.squares[adj_row][adj_col].adjacent_mines += 1;
             }
         }
 
@@ -700,8 +698,8 @@ impl Board {
 
                 // island or border.  the distinction is borders are adjacent to openings, islands are not
                 current_square.square_type = SquareType::Island;
-                for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("initialize square (adjacent to zero)") {
-                    let adj_square = &self.squares[*adj_row][*adj_col];
+                for &(adj_row, adj_col) in &self.all_adjacents[row][col] {
+                    let adj_square = &self.squares[adj_row][adj_col];
                     if adj_square.square_type != SquareType::Mine
                     && adj_square.adjacent_mines == 0 {      // use adjacent_mines instead of square_type because squares haven't been fully assigned yet
                         self.squares[row][col].square_type = SquareType::Border;
@@ -717,8 +715,8 @@ impl Board {
                     current_square.premium += 1;    // "llama style" offset the -1 "click to open penalty" (which is part of ZiniSquare::new())
 
                     // islands increase the adjacent 3bv of all their neighbors by 1
-                    for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error during initialize squares (island)") {
-                        let adj_square = &mut self.squares[*adj_row][*adj_col];
+                    for &(adj_row, adj_col) in &self.all_adjacents[row][col] {
+                        let adj_square = &mut self.squares[adj_row][adj_col];
                         if adj_square.square_type == SquareType::Mine {
                             continue;
                         }
@@ -794,11 +792,11 @@ impl Board {
                         }
                     }
 
-                    for (adj_row, adj_col) in self.all_adjacents.get(&(r, c)).expect("Error During BFS") {
-                        if visited.contains(&(*adj_row, *adj_col)) || visiting.contains(&(*adj_row, *adj_col)) {
+                    for &(adj_row, adj_col) in &self.all_adjacents[r][c] {
+                        if visited.contains(&(adj_row, adj_col)) || visiting.contains(&(adj_row, adj_col)) {
                             continue;
                         }
-                        queue.push_back((*adj_row, *adj_col));
+                        queue.push_back((adj_row, adj_col));
                     }
                 }
 
@@ -1192,16 +1190,16 @@ impl Board {
         }
 
         /* flag mines */
-        for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error in zini perform solve") {
-            if zini_board[*adj_row][*adj_col].square_type == SquareType::Mine
-            && zini_board[*adj_row][*adj_col].square_status != SquareStatus::Clicked {
+        for &(adj_row, adj_col) in &self.all_adjacents[row][col] {
+            if zini_board[adj_row][adj_col].square_type == SquareType::Mine
+            && zini_board[adj_row][adj_col].square_status != SquareStatus::Clicked {
                 *click_count += 1;
                 path.push(ClickInfo {
                     number: *click_count,
-                    square: zini_board[*adj_row][*adj_col],
+                    square: zini_board[adj_row][adj_col],
                     c_type: ClickType::Flag,
                 });
-                self.zini_reveal_or_flag(zini_board, *adj_row, *adj_col, remaining, changed_squares)?;
+                self.zini_reveal_or_flag(zini_board, adj_row, adj_col, remaining, changed_squares)?;
             }
         }
 
@@ -1247,8 +1245,8 @@ impl Board {
         }
 
         let mut adjacent_mines = false;
-        for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error in zini chord") {
-            let adj_square = &zini_board[*adj_row][*adj_col];
+        for &(adj_row, adj_col) in &self.all_adjacents[row][col] {
+            let adj_square = &zini_board[adj_row][adj_col];
             if adj_square.square_type == SquareType::Mine {
                 adjacent_mines = true;
 
@@ -1262,14 +1260,14 @@ impl Board {
         }
 
         // actual chording
-        for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error in zini chord") {
-            let adj_square = &zini_board[*adj_row][*adj_col];
+        for &(adj_row, adj_col) in &self.all_adjacents[row][col] {
+            let adj_square = &zini_board[adj_row][adj_col];
             if adj_square.square_status != SquareStatus::Unclicked
             || adj_square.square_type == SquareType::Mine {
                 continue;
             }
 
-            match self.zini_reveal_or_flag(zini_board, *adj_row, *adj_col, remaining, changed_squares) {
+            match self.zini_reveal_or_flag(zini_board, adj_row, adj_col, remaining, changed_squares) {
                 Ok(()) => {},
                 Err(e) => return Err(format!("ZINI reveal or flag failed during chord on square: {}, {}\n{}", row + 1, col + 1, e)),
             }
@@ -1344,12 +1342,12 @@ impl Board {
         // handle individual cases
         match current_square.square_type {
             SquareType::Mine => {
-                for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error during zini click (mine)") {
-                    let adj_square = &mut zini_board[*adj_row][*adj_col];
+                for &(adj_row, adj_col) in &self.all_adjacents[row][col] {
+                    let adj_square = &mut zini_board[adj_row][adj_col];
                     if adj_square.square_type == SquareType::Mine {
                         continue;
                     }
-                    changed_squares.entry((*adj_row, *adj_col)).or_insert(adj_square.premium);
+                    changed_squares.entry((adj_row, adj_col)).or_insert(adj_square.premium);
                     adj_square.premium += 1;  // TODO: changed squares tracking
                 }
             },
@@ -1358,12 +1356,12 @@ impl Board {
                 // commented out for "llama style" premium where clicking an island does not give it a bonus (because it does not have the penalty)
                 // current_square.premium += 1;
 
-                for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error during zini click (island)") {
-                    let adj_square = &mut zini_board[*adj_row][*adj_col];
+                for &(adj_row, adj_col) in &self.all_adjacents[row][col] {
+                    let adj_square = &mut zini_board[adj_row][adj_col];
                     if adj_square.square_type == SquareType::Mine {
                         continue;
                     }
-                    changed_squares.entry((*adj_row, *adj_col)).or_insert(adj_square.premium);
+                    changed_squares.entry((adj_row, adj_col)).or_insert(adj_square.premium);
                     adj_square.premium -= 1;  // TODO: changed squares tracking
                 }
             },
@@ -1638,16 +1636,16 @@ impl Board {
         }
 
         /* flag mines */
-        for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error in zini perform solve") {
-            if zini_board[*adj_row][*adj_col].square_type == SquareType::Mine
-            && zini_board[*adj_row][*adj_col].square_status != SquareStatus::Clicked {
+        for &(adj_row, adj_col) in &self.all_adjacents[row][col] {
+            if zini_board[adj_row][adj_col].square_type == SquareType::Mine
+            && zini_board[adj_row][adj_col].square_status != SquareStatus::Clicked {
                 *click_count += 1;
                 path.push(ClickInfo {
                     number: *click_count,
-                    square: zini_board[*adj_row][*adj_col],
+                    square: zini_board[adj_row][adj_col],
                     c_type: ClickType::Flag,
                 });
-                self.zini_reveal_or_flag_small(zini_board, *adj_row, *adj_col, remaining)?;
+                self.zini_reveal_or_flag_small(zini_board, adj_row, adj_col, remaining)?;
             }
         }
 
@@ -1692,8 +1690,8 @@ impl Board {
         }
 
         let mut adjacent_mines = false;
-        for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error in zini chord") {
-            let adj_square = &zini_board[*adj_row][*adj_col];
+        for &(adj_row, adj_col) in &self.all_adjacents[row][col] {
+            let adj_square = &zini_board[adj_row][adj_col];
             if adj_square.square_type == SquareType::Mine {
                 adjacent_mines = true;
 
@@ -1707,14 +1705,14 @@ impl Board {
         }
 
         // actual chording
-        for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error in zini chord") {
-            let adj_square = &zini_board[*adj_row][*adj_col];
+        for &(adj_row, adj_col) in &self.all_adjacents[row][col] {
+            let adj_square = &zini_board[adj_row][adj_col];
             if adj_square.square_status != SquareStatus::Unclicked
             || adj_square.square_type == SquareType::Mine {
                 continue;
             }
 
-            match self.zini_reveal_or_flag_small(zini_board, *adj_row, *adj_col, remaining) {
+            match self.zini_reveal_or_flag_small(zini_board, adj_row, adj_col, remaining) {
                 Ok(()) => {},
                 Err(e) => return Err(format!("ZINI reveal or flag failed during chord on square: {}, {}\n{}", row + 1, col + 1, e)),
             }
@@ -1786,8 +1784,8 @@ impl Board {
         // handle individual cases
         match current_square.square_type {
             SquareType::Mine => {
-                for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error during zini click (mine)") {
-                    let adj_square = &mut zini_board[*adj_row][*adj_col];
+                for &(adj_row, adj_col) in &self.all_adjacents[row][col] {
+                    let adj_square = &mut zini_board[adj_row][adj_col];
                     if adj_square.square_type == SquareType::Mine {
                         continue;
                     }
@@ -1799,8 +1797,8 @@ impl Board {
                 // commented out for "llama style" premium where clicking an island does not give it a bonus (because it does not have the penalty)
                 // current_square.premium += 1;
 
-                for (adj_row, adj_col) in self.all_adjacents.get(&(row, col)).expect("error during zini click (island)") {
-                    let adj_square = &mut zini_board[*adj_row][*adj_col];
+                for &(adj_row, adj_col) in &self.all_adjacents[row][col] {
+                    let adj_square = &mut zini_board[adj_row][adj_col];
                     if adj_square.square_type == SquareType::Mine {
                         continue;
                     }
