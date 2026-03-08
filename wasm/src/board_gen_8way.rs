@@ -1374,8 +1374,8 @@ impl Board {
 
             SquareType::Opening => {
                 current_square.premium = ZINI_MIN_PREMIUM;
-                let opening_id = self.openings_ids.get(&(row, col)).ok_or(format!("Opening ID not found for {}, {}", row + 1, col + 1))?;
-                let opening = self.openings_locations.get(*opening_id).ok_or(format!("Opening not found for ID {}", opening_id))?;
+                let opening_id = self.openings_ids.get(&(row, col)).expect("all squares should have an id");
+                let opening = self.openings_locations.get(*opening_id).expect("all opening ids should be in locations vec");
 
                 for (inner_row, inner_col) in &opening.squares_inner {
                     let inner_square = &mut zini_board[*inner_row][*inner_col];
@@ -1814,8 +1814,8 @@ impl Board {
 
             SquareType::Opening => {
                 current_square.premium = ZINI_MIN_PREMIUM;
-                let opening_id = self.openings_ids.get(&(row, col)).ok_or(format!("Opening ID not found for {}, {}", row + 1, col + 1))?;
-                let opening = self.openings_locations.get(*opening_id).ok_or(format!("Opening not found for ID {}", opening_id))?;
+                let opening_id = self.openings_ids.get(&(row, col)).expect("all squares should have an id");
+                let opening = self.openings_locations.get(*opening_id).expect("all opening ids should be in locations vec");
 
                 for (inner_row, inner_col) in &opening.squares_inner {
                     //Slightly pointless to process these as we never need to chord zero tiles...
