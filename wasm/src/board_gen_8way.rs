@@ -732,14 +732,14 @@ impl Board {
     /// * Also calculates 3bv.
     fn openings_islands_3bv(&mut self) -> Result<(), String> {
         /* initialize */
-        let mut visited: FxHashSet<(usize, usize)> = FxHashSet::with_capacity_and_hasher(self.width * self.height, Default::default());
-        visited.extend(self.mine_locations.iter().cloned());
+        let mut visited: Vec<Vec<bool>> = vec![vec![false; self.width]; self.height];
+        self.mine_locations.iter().for_each(|(r,c)| {visited[*r][*c] = true;});
         let mut opening_or_island: bool; // true = opening, false = island
 
         // iterate all squares
         for row in 0..self.height {
             for col in 0..self.width {
-                if visited.contains(&(row, col)) {
+                if visited[row][col] {
                     continue;
                 }
                 let current_square = &self.squares[row][col];
@@ -768,7 +768,7 @@ impl Board {
 
                 // main loop
                 while let Some((r, c)) = queue.pop_front() {
-                    if visited.contains(&(r, c)) || visiting.contains(&(r, c)) {
+                    if visited[r][c] || visiting.contains(&(r, c)) {
                         continue;
                     }
                     visiting.insert((r, c));
@@ -793,7 +793,7 @@ impl Board {
                     }
 
                     for &(adj_row, adj_col) in &self.all_adjacents[r][c] {
-                        if visited.contains(&(adj_row, adj_col)) || visiting.contains(&(adj_row, adj_col)) {
+                        if visited[adj_row][adj_col] || visiting.contains(&(adj_row, adj_col)) {
                             continue;
                         }
                         queue.push_back((adj_row, adj_col));
@@ -802,11 +802,11 @@ impl Board {
 
                 /* while loop finished */
                 if opening_or_island {
-                    visited.extend(current_opening.squares_inner.iter());   // only inner, because borders can be part of multiple openings
+                    current_opening.squares_inner.iter().for_each(|(r,c)| {visited[*r][*c] = true;}); // only inner, because borders can be part of multiple openings
                     self.openings_locations.push(current_opening);
                     self.info.bbbv += 1;   // each opening counts as 1 bbbv
                 } else {
-                    visited.extend(current_island.iter());
+                    current_island.iter().for_each(|(r,c)| {visited[*r][*c] = true;});
                     self.islands_locations.push(current_island);
                 }
             }
