@@ -244,9 +244,7 @@ impl Ord for Square {
 /// * `islands_count`: number of islands
 pub struct BoardInfo {
     pub bbbv: u16,      // all the boys say hey bb, hey bv, hey
-    pub zini: u16,
-    pub openings_count: u16,
-    pub islands_count: u16,
+    pub zini: u16
 }
 
 impl BoardInfo {
@@ -254,16 +252,12 @@ impl BoardInfo {
         BoardInfo {
             bbbv: 0,
             zini: 0,
-            openings_count: 0,
-            islands_count: 0,
         }
     }
 
     pub fn reset(&mut self) {
         self.bbbv = 0;
         self.zini = 0;
-        self.openings_count = 0;
-        self.islands_count = 0;
     }
 }
 
@@ -273,7 +267,6 @@ impl BoardInfo {
 /// * `width`, `height`, `mine_count`: self-explanatory
 /// * `info`: 3bv, zini, openings count, islands count
 /// * `mine_locations`: set of (row, col) for all mine locations
-/// * `islands_locations`: vector of sets of (row, col) for island locations
 /// * `openings_locations`: vector of openings
 /// * `openings_ids`: map `(row, col)`: index in `openings_locations`, in order to look up a square's opening
 /// * `all_adjacents`: pre-computed map of all adjacent squares for each square
@@ -284,7 +277,6 @@ pub struct Board {
     pub mine_count: usize,
     pub info: BoardInfo,
     pub mine_locations: FxHashSet<(usize, usize)>,
-    pub islands_locations: Vec<FxHashSet<(usize, usize)>>,
     pub openings_locations: Vec<Opening>,
     pub openings_ids: FxHashMap<(usize, usize), usize>,
     pub all_adjacents: Vec<Vec<Vec<(usize, usize)>>>,
@@ -334,7 +326,6 @@ impl Board {
             info: BoardInfo::new(),
             mine_locations: FxHashSet::with_capacity_and_hasher(mine_count, Default::default()),
             openings_locations: Vec::new(),
-            islands_locations: Vec::new(),
             openings_ids,
             all_adjacents,
             profiler
@@ -513,7 +504,6 @@ impl Board {
         self.mine_locations.clear();
         self.openings_locations.clear();
         self.openings_ids.clear();
-        self.islands_locations.clear();
     }
 
     /// # Add Mines
@@ -727,10 +717,91 @@ impl Board {
         }
     }
 
+    /// # Calculate openings and 3bv
+    /// * BFS to group openings.
+    /// * Also calculates 3bv.
+    fn openings_islands_3bv(&mut self) -> Result<(), String> {
+        //Track visited squares belonging to openings: -1 means unvisited, and 0...infinity means belong to an opening with that id
+        let mut visited: Vec<Vec<i16>> = vec![vec![-1; self.width]; self.height];
+
+        let mut current_opening_id: i16 = 0;
+
+        // iterate all squares
+        for row in 0..self.height {
+            for col in 0..self.width {
+                let current_square = &self.squares[row][col];
+                if current_square.square_type == SquareType::Mine {
+                    continue;
+                }
+                
+                if current_square.square_type == SquareType::Border {
+                    //Don't care about these, they get handled when we do BFS on openings
+                    continue;
+                }
+
+                if current_square.square_type == SquareType::Island {
+                    self.info.bbbv += 1;
+                    continue;
+                }
+
+                //If we are here, we must be on an opening (zero tile)
+                if current_square.square_type != SquareType::Opening {
+                    return Err(format!("Square is neither opening nor island nor mine nor border\n{} {}\n{:#?}", row, col, current_square));
+                }
+
+                if visited[row][col] != -1 {
+                    //We are on an opening cell that has already been visited
+                    continue;
+                }
+
+                //Do BFS over the opening
+                let mut queue: VecDeque<(usize, usize)> = VecDeque::new();
+                let mut current_opening = Opening::new();
+                queue.push_back((row, col));
+
+                // main loop
+                while let Some((r, c)) = queue.pop_front() {
+                    if visited[r][c] == current_opening_id as i16 {
+                        //Already processed as part of this opening. Skip.
+                        continue;
+                    }
+
+                    visited[r][c] = current_opening_id;
+                    let current_square = &self.squares[r][c];
+
+                    if current_square.square_type == SquareType::Opening {
+                        current_opening.squares_inner.insert((r, c));
+                        self.openings_ids.insert((r, c), current_opening_id as usize);
+                    } else if current_square.square_type == SquareType::Border {
+                        current_opening.squares_border.insert((r, c));
+                        continue; //Don't need to expand from borders
+                    } else {
+                        return Err(format!("Found a non-opening/border square when doing BFS on openings \n{} {}\n{:#?}", r, c, current_square));
+                    }
+
+                    for &(adj_row, adj_col) in &self.all_adjacents[r][c] {
+                        if visited[adj_row][adj_col] == current_opening_id {
+                            continue;
+                        }
+                        queue.push_back((adj_row, adj_col));
+                    }
+                }
+
+                //Opening BFS has finished
+                self.openings_locations.push(current_opening);
+                current_opening_id += 1; //Increment opening_id for the next opening
+                self.info.bbbv += 1;   // each opening counts as 1 bbbv
+
+            }
+        }
+
+        Ok(())
+    }
+
     /// # Openings, Islands, and 3BV
     /// * BFS to group openings and islands.
     /// * Also calculates 3bv.
-    fn openings_islands_3bv(&mut self) -> Result<(), String> {
+    fn openings_islands_3bv_old(&mut self) -> Result<(), String> {
         /* initialize */
         let mut visited: Vec<Vec<bool>> = vec![vec![false; self.width]; self.height];
         self.mine_locations.iter().for_each(|(r,c)| {visited[*r][*c] = true;});
@@ -749,10 +820,8 @@ impl Board {
 
                 if current_square.square_type == SquareType::Island {
                     opening_or_island = false;
-                    self.info.islands_count += 1;
                 } else if current_square.square_type == SquareType::Opening {
                     opening_or_island = true;
-                    self.info.openings_count += 1;
                 } else if current_square.square_type == SquareType::Border {
                     continue;   // skip because borders get handled by openings
                 } else {
@@ -807,7 +876,6 @@ impl Board {
                     self.info.bbbv += 1;   // each opening counts as 1 bbbv
                 } else {
                     current_island.iter().for_each(|(r,c)| {visited[*r][*c] = true;});
-                    self.islands_locations.push(current_island);
                 }
             }
         }
@@ -2003,8 +2071,6 @@ impl Board {
             println!("Board Info:");
             println!("BBBV: {}", self.info.bbbv);
             println!("ZINI: {}", self.info.zini);
-            println!("Openings: {}", self.info.openings_count);
-            println!("Islands: {}", self.info.islands_count);
         }
 
         if !full_board {    /* indentation control */
