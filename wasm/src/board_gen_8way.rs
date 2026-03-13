@@ -268,7 +268,7 @@ impl BoardInfo {
 /// * `info`: 3bv, zini, openings count, islands count
 /// * `mine_locations`: set of (row, col) for all mine locations
 /// * `openings_locations`: vector of openings
-/// * `openings_ids`: map `(row, col)`: index in `openings_locations`, in order to look up a square's opening
+/// * `openings_ids`: grid of `[row][col]` -> index in `openings_locations`, in order to look up a square's opening. `usize::MAX` means no opening.
 /// * `all_adjacents`: pre-computed map of all adjacent squares for each square
 pub struct Board {
     pub squares: Vec<Vec<Square>>,
@@ -278,7 +278,7 @@ pub struct Board {
     pub info: BoardInfo,
     pub mine_locations: FxHashSet<(usize, usize)>,
     pub openings_locations: Vec<Opening>,
-    pub openings_ids: FxHashMap<(usize, usize), usize>,
+    pub openings_ids: Vec<Vec<usize>>,
     pub all_adjacents: Vec<Vec<Vec<(usize, usize)>>>,
     pub profiler: Profiler
 }
@@ -308,7 +308,7 @@ impl Board {
             height
         ];
 
-        let openings_ids: FxHashMap<(usize, usize), usize> = FxHashMap::with_capacity_and_hasher(width * height - mine_count, Default::default());
+        let openings_ids: Vec<Vec<usize>> = vec![vec![usize::MAX; width]; height];
 
         // pre-compute all adjacent locations.
         // i dont know for certain if this is actually faster/better, but it seems good, because squares will definitely require multiple lookups.
@@ -503,7 +503,7 @@ impl Board {
         self.info.reset();
         self.mine_locations.clear();
         self.openings_locations.clear();
-        self.openings_ids.clear();
+        self.openings_ids.iter_mut().for_each(|row| row.fill(usize::MAX));
     }
 
     /// # Add Mines
@@ -771,7 +771,7 @@ impl Board {
 
                     if current_square.square_type == SquareType::Opening {
                         current_opening.squares_inner.push((r, c));
-                        self.openings_ids.insert((r, c), current_opening_id as usize);
+                        self.openings_ids[r][c] = current_opening_id as usize;
                     } else if current_square.square_type == SquareType::Border {
                         current_opening.squares_border.push((r, c));
                         continue; //Don't need to expand from borders
@@ -1348,8 +1348,8 @@ impl Board {
 
             SquareType::Opening => {
                 current_square.premium = ZINI_MIN_PREMIUM;
-                let opening_id = self.openings_ids.get(&(row, col)).expect("all squares should have an id");
-                let opening = self.openings_locations.get(*opening_id).expect("all opening ids should be in locations vec");
+                let opening_id = self.openings_ids[row][col];
+                let opening = self.openings_locations.get(opening_id).expect("all opening ids should be in locations vec");
 
                 for (inner_row, inner_col) in &opening.squares_inner {
                     let inner_square = &mut zini_board[*inner_row][*inner_col];
@@ -1788,8 +1788,8 @@ impl Board {
 
             SquareType::Opening => {
                 current_square.premium = ZINI_MIN_PREMIUM;
-                let opening_id = self.openings_ids.get(&(row, col)).expect("all squares should have an id");
-                let opening = self.openings_locations.get(*opening_id).expect("all opening ids should be in locations vec");
+                let opening_id = self.openings_ids[row][col];
+                let opening = self.openings_locations.get(opening_id).expect("all opening ids should be in locations vec");
 
                 for (inner_row, inner_col) in &opening.squares_inner {
                     //Slightly pointless to process these as we never need to chord zero tiles...
