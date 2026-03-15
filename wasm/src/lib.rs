@@ -36,9 +36,12 @@ pub fn eight_way(width: usize, height: usize, mine_count: usize, first_click_coo
     let mut iteration_count: u32 = 0;   // 4 billion should be plenty haha
     let iteration_interval: u32 = 50;  // how often to check for timeout
 
+    let profiler = Profiler::build();
+    let mut board = Board::new(width, height, mine_count, profiler)?;
+
     loop {
-        let profiler = Profiler::build();
-        let mut board = Board::new(width, height, mine_count, profiler)?;
+        board.reset(); //Note that first iteration doesn't need reset, but this is harmless
+        
         let success = board.generate_eff_board(target_eff / 100.0, use_first_click, first_click_row, first_click_col, true)?;
 
         if success {
