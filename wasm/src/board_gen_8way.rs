@@ -649,7 +649,7 @@ impl Board {
     /// * After mines are added, this runs all the initializations
     pub fn initialize_all(&mut self) -> Result<(), String> {
         self.initialize_squares();
-        self.openings_3bv()?;
+        self.openings()?;
         self.zini_init_final()?;
 
         Ok(())
@@ -702,6 +702,8 @@ impl Board {
                 current_square.premium -= current_square.adjacent_mines as i8;
 
                 if current_square.square_type == SquareType::Island {
+                    self.info.bbbv += 1; // islands count towards 3bv (openings handled elsewhere)
+
                     current_square.premium += 1;    // "llama style" offset the -1 "click to open penalty" (which is part of ZiniSquare::new())
 
                     // islands increase the adjacent 3bv of all their neighbors by 1
@@ -717,81 +719,60 @@ impl Board {
         }
     }
 
-    /// # Calculate openings and 3bv
+    /// # Calculate openings
     /// * BFS to group openings.
-    /// * Also calculates 3bv.
-    fn openings_3bv(&mut self) -> Result<(), String> {
-        //Track visited squares belonging to openings: -1 means unvisited, and 0...infinity means belong to an opening with that id
+    fn openings(&mut self) -> Result<(), String> {
+        // Track visited squares belonging to openings: -1 means unvisited, and 0...infinity means belong to an opening with that id
         let mut visited: Vec<Vec<i16>> = vec![vec![-1; self.width]; self.height];
-
-        let mut current_opening_id: i16 = 0;
 
         // iterate all squares
         for row in 0..self.height {
             for col in 0..self.width {
                 let current_square = &self.squares[row][col];
-                if current_square.square_type == SquareType::Mine {
-                    continue;
-                }
-                
-                if current_square.square_type == SquareType::Border {
-                    //Don't care about these, they get handled when we do BFS on openings
-                    continue;
-                }
-
-                if current_square.square_type == SquareType::Island {
-                    self.info.bbbv += 1;
-                    continue;
-                }
-
-                //If we are here, we must be on an opening (zero tile)
                 if current_square.square_type != SquareType::Opening {
-                    return Err(format!("Square is neither opening nor island nor mine nor border\n{} {}\n{:#?}", row, col, current_square));
+                    continue;
                 }
 
                 if visited[row][col] != -1 {
-                    //We are on an opening cell that has already been visited
+                    // We are on an opening cell that has already been visited
                     continue;
                 }
 
-                //Do BFS over the opening
+                // Do BFS over the opening
                 let mut queue: VecDeque<(usize, usize)> = VecDeque::new();
                 let mut current_opening = Opening::new();
                 queue.push_back((row, col));
 
                 // main loop
                 while let Some((r, c)) = queue.pop_front() {
-                    if visited[r][c] == current_opening_id as i16 {
-                        //Already processed as part of this opening. Skip.
+                    if visited[r][c] == self.openings_locations.len() as i16 {
+                        // Already processed as part of this opening. Skip.
                         continue;
                     }
 
-                    visited[r][c] = current_opening_id;
+                    visited[r][c] = self.openings_locations.len() as i16;
                     let current_square = &self.squares[r][c];
 
                     if current_square.square_type == SquareType::Opening {
                         current_opening.squares_inner.push((r, c));
-                        self.openings_ids[r][c] = current_opening_id as usize;
+                        self.openings_ids[r][c] = self.openings_locations.len();
                     } else if current_square.square_type == SquareType::Border {
                         current_opening.squares_border.push((r, c));
-                        continue; //Don't need to expand from borders
+                        continue; // Don't need to expand from borders
                     } else {
                         return Err(format!("Found a non-opening/border square when doing BFS on openings \n{} {}\n{:#?}", r, c, current_square));
                     }
 
                     for &(adj_row, adj_col) in &self.all_adjacents[r][c] {
-                        if visited[adj_row][adj_col] == current_opening_id {
+                        if visited[adj_row][adj_col] == self.openings_locations.len() as i16 {
                             continue;
                         }
                         queue.push_back((adj_row, adj_col));
                     }
                 }
 
-                //Opening BFS has finished
+                // Opening BFS has finished
                 self.openings_locations.push(current_opening);
-                current_opening_id += 1; //Increment opening_id for the next opening
-                self.info.bbbv += 1;   // each opening counts as 1 bbbv
-
             }
         }
 
@@ -943,7 +924,7 @@ impl Board {
         let mut remaining: u16 = self.width as u16 * self.height as u16 - self.mine_count as u16;
 
         while remaining > 0 {
-            //Get square with highest premium, and if no squares >= 0 then start NF
+            // Get square with highest premium, and if no squares >= 0 then start NF
             let Some((r, c)) = self.zini_get_premium(&mut premiums, swap_r, swap_c, swap_r_c) else {
                 self.nf_stage(&mut current_board, &mut zini_score, &mut path, &mut remaining, &mut changed_squares)?;
                 break;
@@ -1009,9 +990,10 @@ impl Board {
     }
 
     /// # ZINI Final Initialization
-    /// * Adjust premiums for openings
+    /// * Adjust 3bv & premiums for openings
     /// * Applied after BFS
     pub fn zini_init_final(&mut self) -> Result<(), String> {
+        self.info.bbbv += self.openings_locations.len() as u16;
 
         if self.info.bbbv == 0 {
             return Err(format!("Board not initialized!"));    // cursed string
@@ -1078,7 +1060,7 @@ impl Board {
                 continue;
             }
 
-            //New idea - only store non-negative premiums
+            // New idea - only store non-negative premiums
             if *old_premium >= 0 {
                 premiums[*old_premium as usize].remove(&swapped_coords);
             }
@@ -1308,9 +1290,9 @@ impl Board {
         // actual click
         current_square.square_status = SquareStatus::Clicked;
         if current_square.square_type != SquareType::Mine && current_square.square_type != SquareType::Opening {
-            //The conditions for if statement are for different reasons
-            //Mines don't affect remaining squares as they get flagged
-            //Openings do affect remaining squares, but are accounted for later
+            // The conditions for if statement are for different reasons
+            // Mines don't affect remaining squares as they get flagged
+            // Openings do affect remaining squares, but are accounted for later
             *remaining -= 1;
             changed_squares.entry((row, col)).or_insert(current_square.premium);  // TODO: changed squares tracking
         }
@@ -1440,8 +1422,8 @@ impl Board {
             match self.zini_click_small(&mut current_board, r, c, &mut remaining, &mut zini_score, &mut path) {
                 Ok(()) => {},
                 Err(e) => {
-                    //commented out cos remaining changed type
-                    //self.error_printer(remaining, current_square, zini_score, &e);
+                    // commented out cos remaining changed type
+                    // self.error_printer(remaining, current_square, zini_score, &e);
                     println!("Final Path:");
                     self.path_printer(&path);
                     println!("\n\n");
@@ -1456,8 +1438,8 @@ impl Board {
             if emergency_break > EMERGENCY_BREAK_LIMIT {
                 eprintln!("Emergency break triggered!\n");
 
-                //commented out cos remaining changed type
-                //self.error_printer(remaining, current_board[r][c], zini_score, "Emergency break triggered!");
+                // commented out cos remaining changed type
+                // self.error_printer(remaining, current_board[r][c], zini_score, "Emergency break triggered!");
                 println!("Final Path:");
                 self.path_printer(&path);
                 println!("\n\n");
@@ -1474,8 +1456,8 @@ impl Board {
             eprintln!("\n******************\nZINI final score zero!");
 
             // fake last click, but its good enough
-            //commented out cos remaining changed type
-            //self.error_printer(remaining, current_board[0][0], zini_score, "ZINI final score zero!");
+            // commented out cos remaining changed type
+            // self.error_printer(remaining, current_board[0][0], zini_score, "ZINI final score zero!");
             println!("Final Path:");
             self.path_printer(&path);
             println!("\n\n");
@@ -1503,7 +1485,7 @@ impl Board {
          */
 
         let mut highest_premium_so_far = ZINI_NF_THRESHOLD; // = 0; Start off at 0 as we need to at minimum find a square with premium 0 in order to not do NF. 
-        let mut lowest_tiebreak_so_far = (usize::MAX, usize::MAX); //Any square will beat this in the tiebreak
+        let mut lowest_tiebreak_so_far = (usize::MAX, usize::MAX); // Any square will beat this in the tiebreak
         let mut best_coords_so_far: Option<(usize, usize)> = None;
 
         for r in 0..self.height {
@@ -1511,39 +1493,39 @@ impl Board {
                 let premium = zini_board[r][c].premium;
 
                 if premium < highest_premium_so_far {
-                    //Square is not an improvement
+                    // Square is not an improvement
                     continue;
                 }
 
-                //Square has equal or better premium
+                // Square has equal or better premium
                 let tiebreak = swapper((r, c), swap_r, swap_c, swap_r_c, false);
 
                 if premium > highest_premium_so_far {
-                    //Square is a strict improvement on previous best premium
+                    // Square is a strict improvement on previous best premium
                     highest_premium_so_far = premium;
                     lowest_tiebreak_so_far = tiebreak;
                     best_coords_so_far = Some((r, c));
-                    continue; //Improvement found, go to next loop
+                    continue; // Improvement found, go to next loop
                 }
 
                 // premium == highest_premium_so_far, so compare tie break. Try find lowest first coord, and after that lowest second coord
                 
                 if tiebreak.0 > lowest_tiebreak_so_far.0 {
-                    //Not an improvement
+                    // Not an improvement
                     continue;
                 }
 
                 if tiebreak.0 < lowest_tiebreak_so_far.0 {
-                    //Square is a strict improvement based on tied premium and first coord
+                    // Square is a strict improvement based on tied premium and first coord
                     highest_premium_so_far = premium;
                     lowest_tiebreak_so_far = tiebreak;
                     best_coords_so_far = Some((r, c));
-                    continue; //Improvement found, go to next loop
+                    continue; // Improvement found, go to next loop
                 }
 
                 // first coords are equal, check second coord
                 if tiebreak.1 < lowest_tiebreak_so_far.1 {
-                    //tied premium + first coord, but second coord is improvement
+                    // tied premium + first coord, but second coord is improvement
                     highest_premium_so_far = premium;
                     lowest_tiebreak_so_far = tiebreak;
                     best_coords_so_far = Some((r, c));
@@ -1751,9 +1733,9 @@ impl Board {
         // actual click
         current_square.square_status = SquareStatus::Clicked;
         if current_square.square_type != SquareType::Mine && current_square.square_type != SquareType::Opening {
-            //The conditions for if statement are for different reasons
-            //Mines don't affect remaining squares as they get flagged
-            //Openings do affect remaining squares, but are accounted for later
+            // The conditions for if statement are for different reasons
+            // Mines don't affect remaining squares as they get flagged
+            // Openings do affect remaining squares, but are accounted for later
             *remaining -= 1;
         }
 
@@ -1792,7 +1774,7 @@ impl Board {
                 let opening = self.openings_locations.get(opening_id).expect("all opening ids should be in locations vec");
 
                 for (inner_row, inner_col) in &opening.squares_inner {
-                    //Slightly pointless to process these as we never need to chord zero tiles...
+                    // Slightly pointless to process these as we never need to chord zero tiles...
                     let inner_square = &mut zini_board[*inner_row][*inner_col];
                     inner_square.square_status = SquareStatus::Clicked;
                     inner_square.premium = ZINI_MIN_PREMIUM;
