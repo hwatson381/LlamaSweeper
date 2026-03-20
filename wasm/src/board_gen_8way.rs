@@ -2101,46 +2101,39 @@ impl Board {
         let initial_zini = self.calculate_zini_8way_small(false)?;
         let initial_eff = (self.info.bbbv as f32 / (initial_zini as f32)) * 100.0;
         println!("\nInitial Board:\nhttps://llamasweeper.com/#/game/zini-explorer{}", self.generate_pttacg());
-        println!("Initial ZINI: {} ({:.2}%)\n", initial_zini, initial_eff);
+        println!("Initial ZINI: {}\nInitial 3BV: {}\nInitial Efficiency: {:.2}%\n", initial_zini, self.info.bbbv, initial_eff);
 
-        let max_attempts =  1_000u32; // 1_000_000u32;  // a million i guess haha
+        let max_attempts =  1_000u32;   // 1_000_000u32;
         let mut current_attempt  = 0u32;
 
         let mut best_board: Board = Board::new(self.width, self.height, self.mine_count, Profiler::build())?;
-        let mut best_zini: u16 = u16::MAX;
         let mut current_eff_score: f32 = 0.0;
+        let mut best_eff_score: f32 = 0.0;
+        let mut bbbv: f32;
+        let mut first_check: bool;
         'outer: while current_eff_score < target_eff && current_attempt < max_attempts {
-            let bbbv = self.info.bbbv as f32;
-            let mut current_zini: u16;
-            let mut first_check = false;
+            bbbv = self.info.bbbv as f32;
+            first_check = false;
             for (row_desc, col_desc, swap) in EIGHT_WAY {
-              // TODO: this is based on lowest zini mostly, which is a bit incorrect
-              // TODO: we need to be going based on highest efficiency score, not necessarily lowest zini
-                match self.zini_small(row_desc, col_desc, swap) {
-                    Ok((zini_score, _path)) => {
-                        current_zini = zini_score;
-                        if zini_score < best_zini {
-                            best_zini = zini_score;
-                            let best_pttacg = self.generate_pttacg();
-                            best_board = Board::load_board_pttacg(best_pttacg)?;  // clunky, but good enough for now, since we are not deriving clone or copy haha
-                        }
-                    },
-                    Err(e) => {
-                        eprintln!("8-Way ZINI failed: {}", e);
-                        return Err(format!("8-Way ZINI failed: {}", e));
-                    }
+                let (zini_score, _path) = self.zini_small(row_desc, col_desc, swap)
+                    .map_err(|e| { eprintln!("8-Way ZINI failed: {}", e); format!("8-Way ZINI (small) failed: {}", e) })?;
+                let zini = zini_score as f32;
+
+                current_eff_score = bbbv / zini;
+                if current_eff_score > best_eff_score {
+                    best_eff_score = current_eff_score;
+                    let best_pttacg = self.generate_pttacg();
+                    best_board = Board::load_board_pttacg(best_pttacg)?;  // clunky, but good enough for now, since we are not deriving clone or copy haha
                 }
 
                 // exit early if target met
-                current_eff_score = self.info.bbbv as f32 / (current_zini as f32);
                 if current_eff_score >= target_eff {
                     break 'outer;
                 }
 
                 // exit early if not close enough
                 if !first_check {
-                    let zini = best_zini as f32;
-                    if bbbv / (bbbv - (bbbv - zini) * 1.15 - 2.0) < target_eff {
+                    if bbbv / (bbbv - (bbbv - zini) * 1.1 - 2.0) < target_eff {   // slightly tighter range (1.1), since it is less important for this
                         break;
                     }
                     first_check = true;
@@ -2152,15 +2145,16 @@ impl Board {
             self.ultra_take_mine()?;
             self.ultra_place_mine(use_first_click, first_click_row, first_click_col, opening);
             self.partial_reset();
-            self.re_initialize_all()?;
+            self.initialize_all()?;
         }
 
         // if we ended up with something worse, we want to revert to the best we managed to get
-        if self.info.zini > best_zini {
+        if current_eff_score < best_eff_score {
             *self = best_board;
+            self.initialize_all()?;
         }
 
-        eprintln!("Ultra Board Generation Attempts: {}", current_attempt);
+        eprintln!("Ultra Board Generation Iterations: {}", current_attempt);
         Ok(current_eff_score >= target_eff)
     }
 
@@ -2177,16 +2171,6 @@ impl Board {
         self.info.reset();
         self.openings_locations.clear();
         self.openings_ids = vec![vec![usize::MAX; self.width]; self.height];
-    }
-
-    /// # Re-Initialize All
-    /// * After mines are added, this runs all the initializations
-    pub fn re_initialize_all(&mut self) -> Result<(), String> {
-        self.initialize_squares();
-        self.openings()?;
-        self.zini_init_final()?;
-
-        Ok(())
     }
 
     /// # Ultra Take Mine

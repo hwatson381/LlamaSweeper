@@ -835,7 +835,7 @@ mod tests {
         let width = 30;
         let height = 16;
         let mines = 99;
-        let threshold = 1.8;
+        let threshold = 1.9;
 
         let mut board = Board::new(width, height, mines, Profiler::build())?;
 
