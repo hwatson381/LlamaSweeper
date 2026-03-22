@@ -8,6 +8,8 @@
   "scripts": {
     "build:wasm": "cd wasm && wasm-pack build --target web",
     "dev:wasm": "cd wasm && wasm-pack build --target web",
+    "dev:js": "quasar dev",
+    "build:js": "quasar build && cp CNAME dist/spa",
     "lint": "eslint --ext .js,.vue ./",
     "format": "prettier --write \"**/*.{js,vue,css,html,md,json}\" --ignore-path .gitignore",
     "test": "echo \"No test specified\" && exit 0",
