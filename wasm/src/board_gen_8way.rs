@@ -10,6 +10,18 @@ const MAX_WIDTH: usize = 128;
 const MAX_HEIGHT: usize = 128;
 const ZINI_NF_THRESHOLD: i8 = 0;   /* threshold for zini premium to determine to NF click or not */
 const ZINI_MIN_PREMIUM: i8 = -9;
+const ULTRA_THRESHOLD: usize = 4;   // starting with 4 to see what happens
+
+const EIGHT_WAY: [(bool, bool, bool); 8] = [
+    (false, false, false),  // 0b000
+    (false, false, true),   // 0b001
+    (false, true,  false),  // 0b010
+    (false, true,  true),   // 0b011
+    (true,  false, false),  // 0b100
+    (true,  false, true),   // 0b101
+    (true,  true,  false),  // 0b110
+    (true,  true,  true),   // 0b111
+];
 
 /// # Get Adjacent
 /// Helper function to get all valid adjacent locations from a given (row, col)
@@ -203,6 +215,19 @@ impl Square {
         self.premium = -2;
         self.row = 0;
         self.col = 0;
+    }
+
+    /// # Partial Reset
+    /// Reset everything except whether it is a mine.
+    pub fn partial_reset(&mut self) {
+        self.adjacent_mines = 0;
+        self.square_status = SquareStatus::Unclicked;
+        self.premium = -2;
+        self.row = 0;
+        self.col = 0;
+        if self.square_type != SquareType::Mine {
+            self.square_type = SquareType::Opening;
+        }
     }
 }
 
@@ -809,19 +834,10 @@ impl Board {
         self.initialize_all()?;
         let bbbv = self.info.bbbv as f32;
 
-        // all permutations
-        let eight_way: Vec<(bool, bool, bool)> = (0..8)
-            .map(|i| (
-                i & 1 != 0,      // bit 0
-                i & 2 != 0,      // bit 1
-                i & 4 != 0,      // bit 2
-            ))
-            .collect();
-
         let mut best_zini: u16 = u16::MAX;
         let mut current_eff_score: f32 = 0.0;
         let mut first_check = false;
-        for (row_desc, col_desc, swap) in eight_way {
+        for (row_desc, col_desc, swap) in EIGHT_WAY {
             match self.zini(row_desc, col_desc, swap) {
                 Ok((zini_score, _path)) => {
                     if zini_score < best_zini {
@@ -863,19 +879,10 @@ impl Board {
             println!("\nStarting 8-Way ZINI... Good luck!");
         }
 
-        // all permutations
-        let eight_way: Vec<(bool, bool, bool)> = (0..8)
-            .map(|i| (
-                i & 1 != 0,      // bit 0
-                i & 2 != 0,      // bit 1
-                i & 4 != 0,      // bit 2
-            ))
-            .collect();
-
         let mut best_zini: u16 = u16::MAX;
         let mut best_path: Vec<ClickInfo> = Vec::new();
         let mut best_swaps: (bool, bool, bool) = (false, false, false);
-        for (row_desc, col_desc, swap) in eight_way {
+        for (row_desc, col_desc, swap) in EIGHT_WAY {
             match self.zini(row_desc, col_desc, swap) {
                 Ok((zini_score, path)) => {
                     if zini_score < best_zini {
@@ -1371,7 +1378,7 @@ impl Board {
                 let current_square = &zini_board[r][c];
 
                 if current_square.square_status == SquareStatus::Clicked
-                || current_square.square_type == SquareType::Border 
+                || current_square.square_type == SquareType::Border
                 || current_square.square_type == SquareType::Mine {
                     continue;
                 }
@@ -1484,7 +1491,7 @@ impl Board {
             but when premium is tied, compare it to tie break (whether it is top-lefter than current square)
          */
 
-        let mut highest_premium_so_far = ZINI_NF_THRESHOLD; // = 0; Start off at 0 as we need to at minimum find a square with premium 0 in order to not do NF. 
+        let mut highest_premium_so_far = ZINI_NF_THRESHOLD; // = 0; Start off at 0 as we need to at minimum find a square with premium 0 in order to not do NF.
         let mut lowest_tiebreak_so_far = (usize::MAX, usize::MAX); // Any square will beat this in the tiebreak
         let mut best_coords_so_far: Option<(usize, usize)> = None;
 
@@ -1509,7 +1516,7 @@ impl Board {
                 }
 
                 // premium == highest_premium_so_far, so compare tie break. Try find lowest first coord, and after that lowest second coord
-                
+
                 if tiebreak.0 > lowest_tiebreak_so_far.0 {
                     // Not an improvement
                     continue;
@@ -1809,7 +1816,7 @@ impl Board {
                 let current_square = &zini_board[r][c];
 
                 if current_square.square_status == SquareStatus::Clicked
-                || current_square.square_type == SquareType::Border 
+                || current_square.square_type == SquareType::Border
                 || current_square.square_type == SquareType::Mine {
                     continue;
                 }
@@ -1837,19 +1844,10 @@ impl Board {
             println!("\nStarting 8-Way ZINI... Good luck!");
         }
 
-        // all permutations
-        let eight_way: Vec<(bool, bool, bool)> = (0..8)
-            .map(|i| (
-                i & 1 != 0,      // bit 0
-                i & 2 != 0,      // bit 1
-                i & 4 != 0,      // bit 2
-            ))
-            .collect();
-
         let mut best_zini: u16 = u16::MAX;
         let mut best_path: Vec<ClickInfo> = Vec::new();
         let mut best_swaps: (bool, bool, bool) = (false, false, false);
-        for (row_desc, col_desc, swap) in eight_way {
+        for (row_desc, col_desc, swap) in EIGHT_WAY {
             match self.zini_small(row_desc, col_desc, swap) {
                 Ok((zini_score, path)) => {
                     if zini_score < best_zini {
@@ -1895,19 +1893,10 @@ impl Board {
         self.initialize_all()?;
         let bbbv = self.info.bbbv as f32;
 
-        // all permutations
-        let eight_way: Vec<(bool, bool, bool)> = (0..8)
-            .map(|i| (
-                i & 1 != 0,      // bit 0
-                i & 2 != 0,      // bit 1
-                i & 4 != 0,      // bit 2
-            ))
-            .collect();
-
         let mut best_zini: u16 = u16::MAX;
         let mut current_eff_score: f32 = 0.0;
         let mut first_check = false;
-        for (row_desc, col_desc, swap) in eight_way {
+        for (row_desc, col_desc, swap) in EIGHT_WAY {
             match self.zini_small(row_desc, col_desc, swap) {
                 Ok((zini_score, _path)) => {
                     if zini_score < best_zini {
@@ -2094,6 +2083,270 @@ impl Board {
         println!("\n\n");
     }
 
+}
+
+/// Ultra Efficiency Board Generation
+impl Board {
+
+    /// # Generate Ultra Board
+    pub fn generate_ultra_board(&mut self, target_eff: f32, use_first_click: bool, first_click_row: usize, first_click_col: usize, opening: bool) -> Result<bool, String> {
+
+        self.add_mines();
+
+        if use_first_click {
+            self.move_mine(first_click_row, first_click_col, opening);
+        }
+
+        self.initialize_all()?;
+        let initial_zini = self.calculate_zini_8way_small(false)?;
+        let initial_eff = (self.info.bbbv as f32 / (initial_zini as f32)) * 100.0;
+        println!("\nInitial Board:\nhttps://llamasweeper.com/#/game/zini-explorer{}", self.generate_pttacg());
+        println!("Initial ZINI: {}\nInitial 3BV: {}\nInitial Efficiency: {:.2}%\n", initial_zini, self.info.bbbv, initial_eff);
+
+        let max_attempts =  1_000u32;   // 1_000_000u32;
+        let mut current_attempt  = 0u32;
+
+        let mut best_board: Board = Board::new(self.width, self.height, self.mine_count, Profiler::build())?;
+        let mut current_eff_score: f32 = 0.0;
+        let mut best_eff_score: f32 = 0.0;
+        let mut bbbv: f32;
+        let mut first_check: bool;
+        'outer: while current_eff_score < target_eff && current_attempt < max_attempts {
+            bbbv = self.info.bbbv as f32;
+            first_check = false;
+            for (row_desc, col_desc, swap) in EIGHT_WAY {
+                let (zini_score, _path) = self.zini_small(row_desc, col_desc, swap)
+                    .map_err(|e| { eprintln!("8-Way ZINI failed: {}", e); format!("8-Way ZINI (small) failed: {}", e) })?;
+                let zini = zini_score as f32;
+
+                current_eff_score = bbbv / zini;
+                if current_eff_score > best_eff_score {
+                    best_eff_score = current_eff_score;
+                    let best_pttacg = self.generate_pttacg();
+                    best_board = Board::load_board_pttacg(best_pttacg)?;  // clunky, but good enough for now, since we are not deriving clone or copy haha
+                }
+
+                // exit early if target met
+                if current_eff_score >= target_eff {
+                    break 'outer;
+                }
+
+                // exit early if not close enough
+                if !first_check {
+                    if bbbv / (bbbv - (bbbv - zini) * 1.1 - 2.0) < target_eff {   // slightly tighter range (1.1), since it is less important for this
+                        break;
+                    }
+                    first_check = true;
+                }
+            }
+
+            // if we haven't broken out yet, it means we need to reset and try again
+            current_attempt += 1;
+            self.ultra_take_mine()?;
+            self.ultra_place_mine(use_first_click, first_click_row, first_click_col, opening);
+            self.partial_reset();
+            self.initialize_all()?;
+        }
+
+        // if we ended up with something worse, we want to revert to the best we managed to get
+        if current_eff_score < best_eff_score {
+            *self = best_board;
+            self.initialize_all()?;
+        }
+
+        eprintln!("Ultra Board Generation Iterations: {}", current_attempt);
+        Ok(current_eff_score >= target_eff)
+    }
+
+
+    /// # Partially Reset Board
+    /// Prepare to re-analyze the board with changed mines
+    pub fn partial_reset(&mut self) {
+        for row in 0..self.height {
+            for col in 0..self.width {
+                self.squares[row][col].partial_reset();
+            }
+        }
+
+        self.info.reset();
+        self.openings_locations.clear();
+        self.openings_ids = vec![vec![usize::MAX; self.width]; self.height];
+    }
+
+    /// # Ultra Take Mine
+    /// Take away a mine, with the goal that we "should" find a mine that moving somewhere else will help improve the efficiency score
+    pub fn ultra_take_mine(&mut self) -> Result<(), String> {
+        // get all the numbers (adjacent mine count)
+        let mut numbers: Vec<Vec<(usize, usize)>> = vec![vec![]; 9];
+        for row in 0..self.height {
+            for col in 0..self.width {
+                let current_square = &self.squares[row][col];
+                if current_square.square_type == SquareType::Mine
+                || current_square.adjacent_mines == 0 {
+                  continue;
+                }
+                numbers[current_square.adjacent_mines as usize].push((row, col));
+            }
+        }
+
+        // get the actual options
+        let possible_numbers: Vec<usize> = numbers.iter()
+            .enumerate()
+            .filter(|(_num, squares)| !squares.is_empty())
+            .map(|(num, _squares)| num)
+            .collect();
+
+        let high_numbers: Vec<usize> = possible_numbers.iter()
+            .filter(|num| **num >= ULTRA_THRESHOLD)
+            .copied()
+            .collect();
+
+        let highest_num = possible_numbers.iter().max().expect("(highest num) there should be at least one possible number");
+
+        // choose randomly which mine we are going to take
+        // we want to prefer numbers above the threshold, but it's possible that there may not be any
+        let mut rng = rand::rng();
+        let chosen_number: &usize;
+        if highest_num < &ULTRA_THRESHOLD {
+            chosen_number = possible_numbers.choose(&mut rng).expect("(chosen number) there should be at least one possible number");
+        } else {
+            chosen_number = high_numbers.choose(&mut rng).expect("(chosen number) there should be at least one possible number");
+        }
+
+        // after a number is chosen randomly, we take one of the squares with that number randomly
+        let chosen_square = numbers[*chosen_number].choose(&mut rng).expect("there should be at least one square with the chosen number");
+
+        let best_mine = self.ultra_find_best_mine(chosen_square.0, chosen_square.1)?;
+
+        self.mine_locations.remove(&best_mine);
+        self.squares[best_mine.0][best_mine.1].square_type = SquareType::Opening;
+        Ok(())
+    }
+
+    /// # Ultra Find Best Mine
+    /// * Find the mine that has the highest sum of adjacent numbers
+    /// (and fewest amount of adjacent ones)
+    pub fn ultra_find_best_mine(&self, row: usize, col: usize) -> Result<(usize, usize), String> {
+        let mut mines: Vec<(usize, usize)> = Vec::new();
+        for &(adj_row, adj_col) in &self.all_adjacents[row][col] {
+            let adj_square = &self.squares[adj_row][adj_col];
+            if adj_square.square_type == SquareType::Mine {
+                mines.push((adj_row, adj_col));
+            }
+        }
+
+        if mines.is_empty() {
+            return Err(format!("There should be at least one adjacent mine to the chosen square: {}, {}", row + 1, col + 1));
+        }
+
+        // the highest sum means that removing this mine will reduce the most numbers
+        let mut mine_sums: Vec<Vec<(usize, usize)>> = vec![vec![]; 50]; // 50 "should" be higher than any possible sum "i think"
+        for mine in mines {
+            let mut sum: usize = 0;
+            for &(adj_row, adj_col) in &self.all_adjacents[mine.0][mine.1] {
+                let adj_square = &self.squares[adj_row][adj_col];
+                if adj_square.square_type == SquareType::Mine {
+                    continue;
+                }
+                sum += adj_square.adjacent_mines as usize;
+            }
+            mine_sums[sum].push(mine);
+        }
+
+        let highest_sum = mine_sums.iter().rposition(|squares| !squares.is_empty()).expect("there should be at least one mine");
+        if mine_sums[highest_sum].len() == 1 {
+            return Ok(mine_sums[highest_sum][0]);
+        }
+
+        // ideally, we want to avoid reducing a 1 to a 0
+        // so we are scanning for how many ones are adjacent to each mine
+        // and then we will take the one with the fewest adjacent ones (with random tie break)
+        let possible_mines = &mine_sums[highest_sum];
+        let mut mines_with_ones:Vec<Vec<(usize, usize)>> = vec![vec![]; 10]; // ten should be plenty haha
+        for mine in possible_mines {
+            let mut ones_count: usize = 0;
+            for &(adj_row, adj_col) in &self.all_adjacents[mine.0][mine.1] {
+                let adj_square = &self.squares[adj_row][adj_col];
+                if adj_square.square_type == SquareType::Mine {
+                    continue;
+                }
+                if adj_square.adjacent_mines == 1 {
+                    ones_count += 1;
+                }
+            }
+            mines_with_ones[ones_count].push(*mine);
+        }
+
+        let mut rng = rand::rng();
+        let fewest_ones = mines_with_ones.iter().position(|squares| !squares.is_empty()).expect("there should be at least one mine");
+        let best_mine = mines_with_ones[fewest_ones].choose(&mut rng).expect("there should be at least one mine");
+
+        Ok(*best_mine)
+    }
+
+    /// # Ultra Place Mine
+    /// ### Place a Mine
+    /// * safe_row, safe_col: coordinates for safe first click
+    /// * opening: guarantee an opening
+    pub fn ultra_place_mine(&mut self, use_first_click: bool,safe_row: usize, safe_col: usize, opening: bool) {
+
+        let mut safe_squares = FxHashSet::with_capacity_and_hasher(9, Default::default());
+
+        if use_first_click {
+            safe_squares.insert((safe_row, safe_col));
+
+            if opening {
+                safe_squares.extend(self.all_adjacents[safe_row][safe_col].iter().copied());
+            }
+        }
+
+        // randomly choose a new location and hope it is clear.
+        let mut rng = rand::rng();
+        let mut new_row = rng.random_range(0..self.height);
+        let mut new_col = rng.random_range(0..self.width);
+
+        let max_attempts = 50u32;
+        let mut current_attempt = 0u32;
+        let mut found_new_place = false;
+        while !found_new_place {
+            if self.squares[new_row][new_col].square_type == SquareType::Mine
+            || safe_squares.contains(&(new_row, new_col)) {
+                new_row = rng.random_range(0..self.height);
+                new_col = rng.random_range(0..self.width);
+            } else {
+                if current_attempt < max_attempts && !self.ultra_check_place(new_row, new_col) {
+                    current_attempt += 1;   // if we can't find a "viable" place after a bunch of tries, just go ahead anywhere
+                    continue;
+                }
+                self.squares[new_row][new_col].square_type = SquareType::Mine;
+                self.mine_locations.insert((new_row, new_col));
+                found_new_place = true;
+            }
+        }
+    }
+
+    /// # Ultra Check Place
+    /// Check if the new location is viable. <br>
+    /// If the new location would create a high number, it is not viable.
+    pub fn ultra_check_place(&mut self, row: usize, col: usize) -> bool {
+
+        let mut highest_num: usize = 0;
+
+        for &(adj_row, adj_col) in &self.all_adjacents[row][col] {
+            let adj_square = &self.squares[adj_row][adj_col];
+            if adj_square.square_type == SquareType::Mine
+            || adj_square.square_type == SquareType::Opening {
+                continue;
+            }
+            highest_num = highest_num.max(adj_square.adjacent_mines as usize);
+        }
+
+        if highest_num > ULTRA_THRESHOLD {
+            return false;
+        }
+
+        true
+    }
 }
 
 pub struct Profiler {

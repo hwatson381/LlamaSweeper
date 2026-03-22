@@ -830,4 +830,38 @@ mod tests {
 
     }
 
+    #[test]
+    fn test_ultra_gen_basic() -> Result<(), String> {
+        let width = 30;
+        let height = 16;
+        let mines = 99;
+        let threshold = 1.9;
+
+        let mut board = Board::new(width, height, mines, Profiler::build())?;
+
+        let result = board.generate_ultra_board(threshold, false, 0, 0, false);
+        if result.is_err() {
+            // board.info_printer(true, true, true, false);
+            eprintln!("https://llamasweeper.com/#/game/zini-explorer{}", board.generate_pttacg());
+            return Err(format!("generate_ultra_board error: {}", result.err().unwrap()));
+        }
+
+        let zini = board.calculate_zini_8way(false);
+        match zini {
+            Ok(z) => {
+            let score = board.info.bbbv as f32 / board.info.zini as f32;
+            println!("\nScore: {:.3}, 3BV: {}, ZINI: {}, Threshold: {}", score, board.info.bbbv, board.info.zini, threshold);
+            // println!("Threshold Success: {}", result);
+            println!("Final ZINI: {}", z);
+            println!("Generated PTTACG: https://llamasweeper.com/#/game/zini-explorer{}", board.generate_pttacg());
+            },
+            Err(e) => println!("Error calculating ZINI: {}", e),
+        }
+
+        Ok(())
+
+        // Verify mines were placed
+        // assert_eq!(board.mine_locations.len(), mines);
+    }
+
 }
