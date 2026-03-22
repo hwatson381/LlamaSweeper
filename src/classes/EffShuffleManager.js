@@ -20,6 +20,9 @@ class EffShuffleManager {
     // which square we use as first click for worker generated boards
     this.workerPoolCurrentFirstClickType = ""; //Values: middle, corner, random, same
 
+    // which implementation of 8way zini the workers are using
+    this.workerPoolCurrentImplementationType = ""; //Values: wasm_small, wasm_large, js
+
     this.maxStoredBoardsPerSize = 20;
     this.sendWorkerCurrentTaskDebounceTimeoutHandle = null;
 
@@ -114,6 +117,7 @@ class EffShuffleManager {
     this.workerPool = [];
     this.workerPoolCurrentTaskKey = "";
     this.workerPoolCurrentFirstClickType = "";
+    this.workerPoolCurrentImplementationType = "";
     this.isWorkerPoolPaused = true;
   }
 
@@ -140,7 +144,7 @@ class EffShuffleManager {
         }
       );
 
-      worker.onmessage = this.updateStoredBoard.bind(this);
+      worker.onmessage = this.handleMessageReceived.bind(this);
 
       worker.onerror = (error) => {
         if (!hasReportedWorkerError) {
@@ -183,6 +187,7 @@ class EffShuffleManager {
     }
 
     this.sendUpdateFirstClickIfNeeded();
+    this.sendUpdateImplementationIfNeeded();
 
     const boardKey = `${this.refs.boardWidth.value}-${this.refs.boardHeight.value}-${this.refs.boardMines.value}-${this.refs.minimumEff.value}`;
 
@@ -255,11 +260,6 @@ class EffShuffleManager {
       return;
     }
 
-    if (!this.isWorkerPoolPaused) {
-      //Note - ok to return here as unpausing requires calling sendWorkersCurrentTask which also calls this
-      return;
-    }
-
     if (this.workerPoolCurrentFirstClickType === this.refs.effFirstClickType.value) {
       //worker is already using correct first click
       return;
@@ -273,6 +273,34 @@ class EffShuffleManager {
     );
 
     this.workerPoolCurrentFirstClickType = this.refs.effFirstClickType.value;
+  }
+
+  sendUpdateImplementationIfNeeded() {
+    if (!this.isWorkerPoolInitialised) {
+      return;
+    }
+
+    if (this.workerPoolCurrentImplementationType === this.refs.effBoardsImplementation.value) {
+      //worker is already using correct implementation
+      return;
+    }
+
+    this.workerPool.forEach((worker) =>
+      worker.postMessage({
+        command: "updateImplementationType",
+        implementationType: this.refs.effBoardsImplementation.value,
+      })
+    );
+
+    this.workerPoolCurrentImplementationType = this.refs.effBoardsImplementation.value;
+  }
+
+  handleMessageReceived(event) {
+    if (event.data.message === "foundBoards") {
+      this.updateStoredBoard(event);
+    } else if (event.data.message === "benchmarkResults") {
+      this.handleBenchmarkResults(event);
+    }
   }
 
   updateStoredBoard(event) {
@@ -311,6 +339,33 @@ class EffShuffleManager {
       ) {
         this.sendWorkersPauseCommand();
       }
+    }
+  }
+
+  handleBenchmarkResults(event) {
+    let width = event.data.width;
+    let height = event.data.height;
+    let mineCount = event.data.mineCount;
+    let targetEff = event.data.targetEff;
+    let iterations = event.data.iterations;
+
+    let jsTime = event.data.jsTime;
+    let wasmSmallTime = event.data.wasmSmallTime;
+    let wasmLargeTime = event.data.wasmLargeTime;
+
+    Dialog.create({
+      title: "Alert",
+      message: `Benchmarking run complete. <br>
+      Tested ${iterations} iterations of ${width}x${height}/${mineCount} at ${targetEff}%. <br>
+      JS time: ${jsTime.toFixed(5)}s <br>
+      WASM small time: ${wasmSmallTime.toFixed(5)}s <br>
+      WASM large time: ${wasmLargeTime.toFixed(5)}s`,
+      html: true,
+      persistent: true,
+    });
+
+    if (this.refs.generateEffBoardsInBackground.value) {
+      this.sendWorkersCurrentTaskDebounced(); //Restart workers after. Slightly sketchy because maybe we navigated away but whatever.
     }
   }
 
@@ -428,6 +483,27 @@ class EffShuffleManager {
 
     this.deactivateBackgroundGeneration();
     this.activateBackgroundGeneration();
+  }
+
+  doBenchmarkingRun({
+    width,
+    height,
+    mineCount,
+    targetEff,
+    iterations
+  }) {
+    this.initWorkerPoolIfNotAlreadyInited();
+    this.sendWorkersPauseCommand();
+
+    //Only one worker should do the benchmarking run.
+    this.workerPool[0].postMessage({
+      command: "benchmark",
+      width: width,
+      height: height,
+      mineCount: mineCount,
+      targetEff: targetEff,
+      iterations: iterations
+    });
   }
 }
 
