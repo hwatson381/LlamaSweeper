@@ -853,7 +853,7 @@ mod tests {
             println!("\nScore: {:.3}, 3BV: {}, ZINI: {}, Threshold: {}", score, board.info.bbbv, board.info.zini, threshold);
             // println!("Threshold Success: {}", result);
             println!("Final ZINI: {}", z);
-            println!("Generated PTTACG: https://llamasweeper.com/#/game/zini-explorer{}", board.generate_pttacg());
+            println!("Final: https://llamasweeper.com/#/game/zini-explorer{}", board.generate_pttacg());
             },
             Err(e) => println!("Error calculating ZINI: {}", e),
         }

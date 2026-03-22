@@ -10,7 +10,7 @@ const MAX_WIDTH: usize = 128;
 const MAX_HEIGHT: usize = 128;
 const ZINI_NF_THRESHOLD: i8 = 0;   /* threshold for zini premium to determine to NF click or not */
 const ZINI_MIN_PREMIUM: i8 = -9;
-const ULTRA_THRESHOLD: usize = 4;   // starting with 4 to see what happens
+const ULTRA_THRESHOLD: usize = 5;   // starting with 4 to see what happens.  trying out 5 next.
 
 const EIGHT_WAY: [(bool, bool, bool); 8] = [
     (false, false, false),  // 0b000
@@ -2103,7 +2103,7 @@ impl Board {
         println!("\nInitial Board:\nhttps://llamasweeper.com/#/game/zini-explorer{}", self.generate_pttacg());
         println!("Initial ZINI: {}\nInitial 3BV: {}\nInitial Efficiency: {:.2}%\n", initial_zini, self.info.bbbv, initial_eff);
 
-        let max_attempts =  1_000u32;   // 1_000_000u32;
+        let max_attempts =  10_000u32;   // 1_000_000u32;
         let mut current_attempt  = 0u32;
 
         let mut best_board: Board = Board::new(self.width, self.height, self.mine_count, Profiler::build())?;
