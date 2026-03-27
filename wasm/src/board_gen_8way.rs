@@ -10,7 +10,6 @@ const MAX_WIDTH: usize = 128;
 const MAX_HEIGHT: usize = 128;
 const ZINI_NF_THRESHOLD: i8 = 0;   /* threshold for zini premium to determine to NF click or not */
 const ZINI_MIN_PREMIUM: i8 = -9;
-const ULTRA_THRESHOLD: usize = 5;   // starting with 4 to see what happens.  trying out 5 next.
 
 const EIGHT_WAY: [(bool, bool, bool); 8] = [
     (false, false, false),  // 0b000
@@ -2101,9 +2100,9 @@ impl Board {
         let initial_zini = self.calculate_zini_8way_small(false)?;
         let initial_eff = (self.info.bbbv as f32 / (initial_zini as f32)) * 100.0;
         println!("\nInitial Board:\nhttps://llamasweeper.com/#/game/zini-explorer{}", self.generate_pttacg());
-        println!("Initial ZINI: {}\nInitial 3BV: {}\nInitial Efficiency: {:.2}%\n", initial_zini, self.info.bbbv, initial_eff);
+        println!("Initial 3BV: {}\nInitial Zini: {}\nInitial Efficiency: {:.2}%\n", self.info.bbbv, initial_zini, initial_eff);
 
-        let max_attempts =  10_000u32;   // 1_000_000u32;
+        let max_attempts =  2_000_000u32; // 25_000u32;   // 1_000_000u32;
         let mut current_attempt  = 0u32;
 
         let mut best_board: Board = Board::new(self.width, self.height, self.mine_count, Profiler::build())?;
@@ -2176,7 +2175,7 @@ impl Board {
     /// # Ultra Take Mine
     /// Take away a mine, with the goal that we "should" find a mine that moving somewhere else will help improve the efficiency score
     pub fn ultra_take_mine(&mut self) -> Result<(), String> {
-        // get all the numbers (adjacent mine count)
+        // get the numbers (adjacent mine count)
         let mut numbers: Vec<Vec<(usize, usize)>> = vec![vec![]; 9];
         for row in 0..self.height {
             for col in 0..self.width {
@@ -2196,25 +2195,27 @@ impl Board {
             .map(|(num, _squares)| num)
             .collect();
 
-        let high_numbers: Vec<usize> = possible_numbers.iter()
-            .filter(|num| **num >= ULTRA_THRESHOLD)
-            .copied()
-            .collect();
-
-        let highest_num = possible_numbers.iter().max().expect("(highest num) there should be at least one possible number");
+        let highest_num = possible_numbers.iter().max().expect("(highest num) there must be at least one possible number");
 
         // choose randomly which mine we are going to take
         // we want to prefer numbers above the threshold, but it's possible that there may not be any
         let mut rng = rand::rng();
-        let chosen_number: &usize;
-        if highest_num < &ULTRA_THRESHOLD {
-            chosen_number = possible_numbers.choose(&mut rng).expect("(chosen number) there should be at least one possible number");
+        let mut chosen_number: &usize;
+        if highest_num == &8usize {
+            chosen_number = &8usize;
         } else {
-            chosen_number = high_numbers.choose(&mut rng).expect("(chosen number) there should be at least one possible number");
+            if possible_numbers.len() == 1 {    // handle edge case that is (probably) not possible on standard size boards (all numbers are the same value)
+                chosen_number = &possible_numbers[0];
+            } else {
+                chosen_number = possible_numbers.choose(&mut rng).expect("(chosen number) there must be at least one possible number");
+                while chosen_number == &1usize {  // avoid taking a mine from a 1 because it would create a new opening
+                    chosen_number = possible_numbers.choose(&mut rng).expect("(chosen number) there must be at least one possible number");
+                }
+            }
         }
 
         // after a number is chosen randomly, we take one of the squares with that number randomly
-        let chosen_square = numbers[*chosen_number].choose(&mut rng).expect("there should be at least one square with the chosen number");
+        let chosen_square = numbers[*chosen_number].choose(&mut rng).expect("there must be at least one square with the chosen number");
 
         let best_mine = self.ultra_find_best_mine(chosen_square.0, chosen_square.1)?;
 
@@ -2236,10 +2237,10 @@ impl Board {
         }
 
         if mines.is_empty() {
-            return Err(format!("There should be at least one adjacent mine to the chosen square: {}, {}", row + 1, col + 1));
+            return Err(format!("There must be at least one adjacent mine to the chosen square: {}, {}", row + 1, col + 1));
         }
 
-        // the highest sum means that removing this mine will reduce the most numbers
+        // the highest sum means that this mine touches a lot of high numbers
         let mut mine_sums: Vec<Vec<(usize, usize)>> = vec![vec![]; 50]; // 50 "should" be higher than any possible sum "i think"
         for mine in mines {
             let mut sum: usize = 0;
@@ -2290,6 +2291,7 @@ impl Board {
     /// * opening: guarantee an opening
     pub fn ultra_place_mine(&mut self, use_first_click: bool,safe_row: usize, safe_col: usize, opening: bool) {
 
+        // TODO: if we ever succeed in coming up with a good alg, we can optimize this by storing the safe squares instead creating it every time
         let mut safe_squares = FxHashSet::with_capacity_and_hasher(9, Default::default());
 
         if use_first_click {
@@ -2305,7 +2307,7 @@ impl Board {
         let mut new_row = rng.random_range(0..self.height);
         let mut new_col = rng.random_range(0..self.width);
 
-        let max_attempts = 50u32;
+        let max_attempts = 50u32;   // 50 seems reasonable? not chosen for any specific reason, just "probably good enough"
         let mut current_attempt = 0u32;
         let mut found_new_place = false;
         while !found_new_place {
@@ -2341,7 +2343,7 @@ impl Board {
             highest_num = highest_num.max(adj_square.adjacent_mines as usize);
         }
 
-        if highest_num > ULTRA_THRESHOLD {
+        if highest_num > 6 {
             return false;
         }
 

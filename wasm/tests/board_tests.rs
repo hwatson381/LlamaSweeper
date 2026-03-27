@@ -835,7 +835,7 @@ mod tests {
         let width = 30;
         let height = 16;
         let mines = 99;
-        let threshold = 1.9;
+        let threshold = 2.5;
 
         let mut board = Board::new(width, height, mines, Profiler::build())?;
 
@@ -859,9 +859,6 @@ mod tests {
         }
 
         Ok(())
-
-        // Verify mines were placed
-        // assert_eq!(board.mine_locations.len(), mines);
     }
 
 }
