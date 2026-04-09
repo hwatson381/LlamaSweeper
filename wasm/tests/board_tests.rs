@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use chrono::Utc;
-    use llamasweeper_rust::board_gen_8way::{Board, Profiler, SquareType, swapper};
+    use llamasweeper_rust::board_gen_8way::{Board, SquareType, swapper};
     use std::io::{self, Write};
 
     #[test]
@@ -10,7 +10,7 @@ mod tests {
         let height = 16;
         let mines = 99;
 
-        let board = Board::new(width, height, mines, Profiler::build());
+        let board = Board::new(width, height, mines);
         assert!(board.is_ok(), "Board creation should succeed");
 
         let board = board.unwrap();
@@ -25,7 +25,7 @@ mod tests {
         let height = 9;
         let mines = 10;
 
-        let mut board = Board::new(width, height, mines, Profiler::build())
+        let mut board = Board::new(width, height, mines)
             .expect("Failed to create board");
 
         // Just test that these methods run without panicking
@@ -43,7 +43,7 @@ mod tests {
         let mines = 10;
         let threshold = 1.0;
 
-        let mut board = Board::new(width, height, mines, Profiler::build())
+        let mut board = Board::new(width, height, mines)
             .expect("Failed to create board");
 
         let result = board.generate_eff_board(threshold, false, 0, 0, false);
@@ -62,19 +62,19 @@ mod tests {
     #[test]
     fn test_board_creation_invalid_dimensions() {
         // Test width too large
-        assert!(Board::new(200, 16, 99, Profiler::build()).is_err());
+        assert!(Board::new(200, 16, 99).is_err());
 
         // Test width zero
-        assert!(Board::new(0, 16, 99, Profiler::build()).is_err());
+        assert!(Board::new(0, 16, 99).is_err());
 
         // Test height zero
-        assert!(Board::new(30, 0, 99, Profiler::build()).is_err());
+        assert!(Board::new(30, 0, 99).is_err());
 
         // Test too many mines
-        assert!(Board::new(30, 16, 480, Profiler::build()).is_err());
+        assert!(Board::new(30, 16, 480).is_err());
 
         // Test zero mines
-        assert!(Board::new(30, 16, 0, Profiler::build()).is_err());
+        assert!(Board::new(30, 16, 0).is_err());
     }
 
     #[test]
@@ -84,7 +84,7 @@ mod tests {
         let mines = 10;
         let threshold = 1.5;
 
-        let mut board = Board::new(width, height, mines, Profiler::build())?;
+        let mut board = Board::new(width, height, mines)?;
 
         let result = board.generate_eff_board(threshold, false, 0, 0, false)?;
 
@@ -118,7 +118,7 @@ mod tests {
         let target = 20;
 
         for _ in 0..max_attempts {
-            let mut board = Board::new(width, height, mines, Profiler::build())
+            let mut board = Board::new(width, height, mines)
                 .expect("Failed to create board");
 
             match board.generate_eff_board(threshold, false, 0, 0, false) {
@@ -170,7 +170,7 @@ mod tests {
         ];
         let use_openings = true;
 
-        let mut board = Board::new(width, height, mines, Profiler::build())
+        let mut board = Board::new(width, height, mines)
             .expect("Failed to create board");
 
         let result = board.generate_eff_board(threshold, true, first_click_row, first_click_col, use_openings);
@@ -195,7 +195,7 @@ mod tests {
         let mines = 99;
         let threshold = 1.5;
 
-        let mut board = Board::new(width, height, mines, Profiler::build())
+        let mut board = Board::new(width, height, mines)
             .expect("Failed to create board");
 
         board.generate_eff_board(threshold, false, 0, 0, false)
@@ -228,7 +228,7 @@ mod tests {
 
         // that default zip syntax is a bit awkward haha
         for (((w, h), m), l) in widths.iter().zip(heights.iter()).zip(mines.iter()).zip(levels.iter()) {
-          let mut board = Board::new(*w, *h, *m, Profiler::build())
+          let mut board = Board::new(*w, *h, *m)
               .expect("Failed to create board");
           board.generate_eff_board(threshold, false, 0, 0, false)
               .expect("Failed to generate board");
@@ -277,7 +277,7 @@ mod tests {
         let start = Utc::now();
 
         for i in 0..max_attempts {
-            let mut board = Board::new(width, height, mines, Profiler::build())
+            let mut board = Board::new(width, height, mines)
                 .expect("Failed to create board");
 
             if let Ok(meets_threshold) = board.generate_eff_board(threshold, false, 0, 0, false) {
@@ -328,7 +328,7 @@ mod tests {
                 io::stdout().flush().unwrap();
             }
 
-            let mut test_board = Board::new(w, h, m, Profiler::build())
+            let mut test_board = Board::new(w, h, m)
                 .expect("Error creating fresh board");
 
             if let Ok(meets_threshold) = test_board.generate_eff_board(threshold, false, 0, 0, false) {
@@ -368,7 +368,7 @@ mod tests {
                 io::stdout().flush().unwrap();
             }
 
-            let mut test_board = Board::new(w, h, m, Profiler::build())
+            let mut test_board = Board::new(w, h, m)
                 .expect("Error creating fresh board");
 
             if let Ok(meets_threshold) = test_board.generate_eff_board(threshold, false, 0, 0, false) {
@@ -399,7 +399,7 @@ mod tests {
         let m = 10usize;
         let threshold = 1.5f32;
 
-        let mut test_board = Board::new(w, h, m, Profiler::build())
+        let mut test_board = Board::new(w, h, m)
             .expect("Error creating fresh board");
 
         let result = test_board.generate_eff_board(threshold, false, 0, 0, false);
@@ -426,7 +426,7 @@ mod tests {
         let m = 40usize;
         let threshold = 1.7f32;
 
-        let mut test_board = Board::new(w, h, m, Profiler::build())
+        let mut test_board = Board::new(w, h, m)
             .expect("Error creating fresh board");
 
         let result = test_board.generate_eff_board(threshold, false, 0, 0, false);
@@ -460,7 +460,7 @@ mod tests {
         let first_row = 8usize;
         let first_col = 15usize;
 
-        let mut test_board = Board::new(w, h, m, Profiler::build())
+        let mut test_board = Board::new(w, h, m)
             .expect("Error creating fresh board");
 
         let result = test_board.generate_eff_board(threshold, true, first_row, first_col, false);
@@ -489,7 +489,7 @@ mod tests {
         println!("\n\nGenerating {} boards with threshold {}...", count, threshold);
 
         for i in 0..count {
-            let mut test_board = Board::new(w, h, m, Profiler::build())
+            let mut test_board = Board::new(w, h, m)
                 .expect("Error creating fresh board");
 
             if let Ok(_) = test_board.generate_eff_board(threshold, false, 0, 0, false) {
@@ -616,7 +616,7 @@ mod tests {
                 test_board = Board::load_board_pttacg(load_pttacg.clone())
                     .expect("Error creating fresh board");
             } else {
-                test_board = Board::new(w, h, m, Profiler::build())
+                test_board = Board::new(w, h, m)
                 .expect("Error creating fresh board");
                 test_board.add_mines();
             }
@@ -782,7 +782,7 @@ mod tests {
             //     io::stdout().flush().unwrap();
             // }
 
-            let mut og_board = Board::new(width, height, mines, Profiler::build())
+            let mut og_board = Board::new(width, height, mines)
               .expect("Failed to create board");
             og_board.add_mines();
             og_board.move_mine(first_click_row, first_click_col, false);
@@ -794,7 +794,7 @@ mod tests {
                 };
             }
 
-            let mut alt_board = Board::new(width, height, mines, Profiler::build())
+            let mut alt_board = Board::new(width, height, mines)
               .expect("Failed to create board");
             alt_board.add_mines_skip_style(first_click_row, first_click_col);
             alt_board.initialize_squares();
@@ -837,7 +837,7 @@ mod tests {
         let mines = 99;
         let threshold = 2.5;
 
-        let mut board = Board::new(width, height, mines, Profiler::build())?;
+        let mut board = Board::new(width, height, mines)?;
 
         let result = board.generate_ultra_board(threshold, false, 0, 0, false);
         if result.is_err() {

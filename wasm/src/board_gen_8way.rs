@@ -301,14 +301,13 @@ pub struct Board {
     pub openings_locations: Vec<Opening>,
     pub openings_ids: Vec<Vec<usize>>,
     pub all_adjacents: Vec<Vec<Vec<(usize, usize)>>>,
-    pub profiler: Profiler
 }
 
 /// Main Section
 impl Board {
     /// # New Board
     /// Creates empty, uninitialized board
-    pub fn new(width: usize, height: usize, mine_count: usize, profiler: Profiler) -> Result<Self, String> {
+    pub fn new(width: usize, height: usize, mine_count: usize) -> Result<Self, String> {
         // input validation
         if width == 0 || width > MAX_WIDTH {
             return Err(format!("Bad Width {width}"));
@@ -349,7 +348,6 @@ impl Board {
             openings_locations: Vec::new(),
             openings_ids,
             all_adjacents,
-            profiler
         })
     }
 
@@ -380,8 +378,7 @@ impl Board {
             return Err(format!("Mine count mismatch:\nmine count: {mine_count}\nconfirm count: {confirm_count}"));
         }
 
-        let profiler = Profiler::build();
-        let mut board = Board::new(*width as usize, *height as usize, mine_count as usize, profiler)?;
+        let mut board = Board::new(*width as usize, *height as usize, mine_count as usize)?;
 
         // the rest of the data is (x, y) coordinates of mines, which is why the total byte count must be even
         for bytes in data[4..].chunks(2) {
@@ -455,8 +452,7 @@ impl Board {
         }
 
         // create board and add mines
-        let profiler = Profiler::build();
-        let mut board = Board::new(width, height, mine_count, profiler)?;
+        let mut board = Board::new(width, height, mine_count)?;
 
         for (index, has_mine) in mine_locations_vec.iter().enumerate() {
             if *has_mine {
@@ -2054,7 +2050,7 @@ impl Board {
         let max_attempts =  2_000_000u32; // 25_000u32;   // 1_000_000u32;
         let mut current_attempt  = 0u32;
 
-        let mut best_board: Board = Board::new(self.width, self.height, self.mine_count, Profiler::build())?;
+        let mut best_board: Board = Board::new(self.width, self.height, self.mine_count)?;
         let mut current_eff_score: f32 = 0.0;
         let mut best_eff_score: f32 = 0.0;
         let mut bbbv: f32;
