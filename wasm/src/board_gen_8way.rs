@@ -2,7 +2,6 @@ use std::{fmt, vec};
 use std::collections::{VecDeque, BTreeSet};
 use rustc_hash::{{FxHashMap, FxHashSet}};
 use std::cmp::{min, max};
-use std::hash::Hash;
 use rand::prelude::*;
 use std::time::Instant;
 
@@ -264,8 +263,6 @@ impl Ord for Square {
 /// # Board Info
 /// * `bbbv`: 3bv
 /// * `zini`: zini score
-/// * `openings_count`: number of openings
-/// * `islands_count`: number of islands
 pub struct BoardInfo {
     pub bbbv: u16,      // all the boys say hey bb, hey bv, hey
     pub zini: u16
@@ -289,7 +286,7 @@ impl BoardInfo {
 ///
 /// * `squares`: main grid
 /// * `width`, `height`, `mine_count`: self-explanatory
-/// * `info`: 3bv, zini, openings count, islands count
+/// * `info`: 3bv, zini
 /// * `mine_locations`: set of (row, col) for all mine locations
 /// * `openings_locations`: vector of openings
 /// * `openings_ids`: grid of `[row][col]` -> index in `openings_locations`, in order to look up a square's opening. `usize::MAX` means no opening.
@@ -917,10 +914,6 @@ impl Board {
     pub fn zini(&mut self, swap_r: bool, swap_c: bool, swap_r_c: bool) -> Result<(u16, Vec<ClickInfo>), String> {
         // TODO: add check if board initialized
 
-        // TODO: change to time-based emergency brake
-        let mut emergency_break = 0u32;
-        const EMERGENCY_BREAK_LIMIT: u32 = 10_000;      /* u32 max: 4_294_967_296 */
-
         let mut current_board: Vec<Vec<Square>> = self.squares.clone();  // duplicating to keep the original unchanged for future iterations
         let mut zini_score = 0u16;
         let mut path: Vec<ClickInfo> = Vec::new();
@@ -955,21 +948,6 @@ impl Board {
 
             self.zini_update_premium(&mut premiums, &current_board, &changed_squares, swap_r, swap_c, swap_r_c)?;
             changed_squares.clear();
-
-            if emergency_break > EMERGENCY_BREAK_LIMIT {
-                eprintln!("Emergency break triggered!\n");
-
-                self.error_printer(current_board[r][c], zini_score, "Emergency break triggered!");
-                println!("Final Path:");
-                self.path_printer(&path);
-                println!("\n\n");
-                println!("\n\nOriginal State:");
-                self.zini_premium_printer(&self.squares);
-                println!("\n\nFinal State:");
-                self.zini_premium_printer(&current_board);
-                return Err(format!("Emergency break triggered!\n{} clicks\n", zini_score));
-            }
-            emergency_break += 1;
         }
 
         if zini_score == 0 {
@@ -1126,7 +1104,7 @@ impl Board {
             path.push(ClickInfo {
                 number: *click_count,
                 square: *current_square,
-                c_type: ClickType::NF,  /* TODO: better way to handle islands/openings in NF clicks? */
+                c_type: ClickType::NF,  
             });
             match self.zini_reveal_or_flag(zini_board, row, col, remaining, changed_squares) {
                 Ok(()) => {},
@@ -1238,7 +1216,7 @@ impl Board {
         }
 
         let current_square = &mut zini_board[row][col];
-        changed_squares.entry((row, col)).or_insert(current_square.premium);  // TODO: for removal from premiums
+        changed_squares.entry((row, col)).or_insert(current_square.premium); 
         current_square.square_status = SquareStatus::Clicked;
         current_square.premium = ZINI_MIN_PREMIUM;
 
@@ -1300,7 +1278,7 @@ impl Board {
             // Mines don't affect remaining squares as they get flagged
             // Openings do affect remaining squares, but are accounted for later
             *remaining -= 1;
-            changed_squares.entry((row, col)).or_insert(current_square.premium);  // TODO: changed squares tracking
+            changed_squares.entry((row, col)).or_insert(current_square.premium);  
         }
 
         // handle individual cases
@@ -1312,7 +1290,7 @@ impl Board {
                         continue;
                     }
                     changed_squares.entry((adj_row, adj_col)).or_insert(adj_square.premium);
-                    adj_square.premium += 1;  // TODO: changed squares tracking
+                    adj_square.premium += 1;  
                 }
             },
 
@@ -1326,7 +1304,7 @@ impl Board {
                         continue;
                     }
                     changed_squares.entry((adj_row, adj_col)).or_insert(adj_square.premium);
-                    adj_square.premium -= 1;  // TODO: changed squares tracking
+                    adj_square.premium -= 1;  
                 }
             },
 
@@ -1397,21 +1375,12 @@ impl Board {
         Ok(())
     }
 
-    /*
-    TODO for zini_small
-    Change "remaining" to just be a number instead of a set
-    */
-
     /// # ZINI Algorithm for small boards.
     /// * this uses a full table scan to find the highest premium instead of btree's etc
     /// * tie_break_direction is based on the combination of swaps.
     /// * standard zini (top left) is (false, false, false)
     pub fn zini_small(&mut self, swap_r: bool, swap_c: bool, swap_r_c: bool) -> Result<(u16, Vec<ClickInfo>), String> {
         // TODO: add check if board initialized
-
-        // TODO: change to time-based emergency brake
-        let mut emergency_break = 0u32;
-        const EMERGENCY_BREAK_LIMIT: u32 = 10_000;      /* u32 max: 4_294_967_296 */
 
         let mut current_board: Vec<Vec<Square>> = self.squares.clone();  // duplicating to keep the original unchanged for future iterations
         let mut zini_score = 0u16;
@@ -1428,8 +1397,6 @@ impl Board {
             match self.zini_click_small(&mut current_board, r, c, &mut remaining, &mut zini_score, &mut path) {
                 Ok(()) => {},
                 Err(e) => {
-                    // commented out cos remaining changed type
-                    // self.error_printer(remaining, current_square, zini_score, &e);
                     println!("Final Path:");
                     self.path_printer(&path);
                     println!("\n\n");
@@ -1440,30 +1407,12 @@ impl Board {
                     return Err(format!("ZINI click failed: {}\nClick Count:{:#?}\n", e, zini_score));
                 }
             }
-
-            if emergency_break > EMERGENCY_BREAK_LIMIT {
-                eprintln!("Emergency break triggered!\n");
-
-                // commented out cos remaining changed type
-                // self.error_printer(remaining, current_board[r][c], zini_score, "Emergency break triggered!");
-                println!("Final Path:");
-                self.path_printer(&path);
-                println!("\n\n");
-                println!("\n\nOriginal State:");
-                self.zini_premium_printer(&self.squares);
-                println!("\n\nFinal State:");
-                self.zini_premium_printer(&current_board);
-                return Err(format!("Emergency break triggered!\n{} clicks\n", zini_score));
-            }
-            emergency_break += 1;
         }
 
         if zini_score == 0 {
             eprintln!("\n******************\nZINI final score zero!");
 
             // fake last click, but its good enough
-            // commented out cos remaining changed type
-            // self.error_printer(remaining, current_board[0][0], zini_score, "ZINI final score zero!");
             println!("Final Path:");
             self.path_printer(&path);
             println!("\n\n");
@@ -1753,7 +1702,7 @@ impl Board {
                     if adj_square.square_type == SquareType::Mine {
                         continue;
                     }
-                    adj_square.premium += 1;  // TODO: changed squares tracking
+                    adj_square.premium += 1;  
                 }
             },
 
@@ -1766,7 +1715,7 @@ impl Board {
                     if adj_square.square_type == SquareType::Mine {
                         continue;
                     }
-                    adj_square.premium -= 1;  // TODO: changed squares tracking
+                    adj_square.premium -= 1;  
                 }
             },
 

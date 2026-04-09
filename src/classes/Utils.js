@@ -11,6 +11,21 @@ class Utils {
     return regex.test(navigator.userAgent);
   }
 
+  //Detect Wasm support
+  static isWasmSupported() {
+    //See https://stackoverflow.com/questions/47879864/how-can-i-check-if-a-browser-supports-webassembly
+    try {
+      if (typeof WebAssembly === "object"
+        && typeof WebAssembly.instantiate === "function") {
+        const module = new WebAssembly.Module(Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00));
+        if (module instanceof WebAssembly.Module)
+          return new WebAssembly.Instance(module) instanceof WebAssembly.Instance;
+      }
+    } catch (e) {
+    }
+    return false;
+  }
+
   static deleteValueFromArray(array, itemToRemove) {
     let idx = array.indexOf(itemToRemove);
     if (idx !== -1) {

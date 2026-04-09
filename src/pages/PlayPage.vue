@@ -2956,7 +2956,7 @@ let effWebWorkerCount = ref(1);
 let browserSupportsWebWorkers = window.Worker ? true : false;
 let browserSupportsConcurrency =
   browserSupportsWebWorkers && window.navigator.hardwareConcurrency > 2;
-let effBoardsImplementation = ref("wasm");
+let effBoardsImplementation = ref(Utils.isWasmSupported() ? "wasm" : "js");
 let effBoardsBenchmarkIterations = ref(1000);
 let effBoardsBenchmarkModal = ref(false);
 let effBoardsStoredDisplayCount = ref(0);
