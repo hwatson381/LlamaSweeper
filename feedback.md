@@ -1,6 +1,6 @@
 Dark skin for the board
 
-is there already a legend somehwere that defines what the highlighted cells are. I could deduce what the yellow and blue are but as a efficiency/zini noob it would be nice to have that defined somewhere
+is there already a legend somewhere that defines what the highlighted cells are. I could deduce what the yellow and blue are but as a efficiency/zini noob it would be nice to have that defined somewhere
 middle click to reset board?
 
 I also think it would be nice to see information about how many boards its generating per second while finding eff boards
@@ -85,3 +85,7 @@ and implement camera movement or content drag inside a fixed <div> using transfo
 
 That way, your game never fights the browser’s inertial scroll.
 ```
+
+i wish i could change the size of a board on llamasweeper without erasing the entire board
+
+Have a setting on eff boards for auto-opening all 4 corners?

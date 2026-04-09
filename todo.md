@@ -572,3 +572,20 @@ Add stuff from ms-toolib? ng algorithm?
 https://github.com/eee555/ms-toollib/blob/372399b8ab8af9600d6e20a42e70a5b2e70bf5e9/demos/vue3_ts/src/App.vue#L27C1
 https://discord.com/channels/814801005195558953/1443384765020508181/1457329988196892682
 built in probability calculator? This could also auto-display hint on blast, so slightly strong than wom
+
+random idea (prob won't do): have a mode where you can't fail. It auto-replays when you blast, but each time you blast it rolls you back, say, 5 clicks (or 5 3bv rounding up to nearest chord?). And in order to replay, you need to move your mouse to the square it was on 5 clicks ago. So that you can replay from exactly the same place, but with a chance to go the correct route.
+
+Have a setting for an audio timer? It's easy to not look at the timer. So there could be a voice that says the time every 10 seconds? Note - this is similar to the arbiter setting that plays a noise when you are slower than PB.
+Could also experiment with audio signals for pace (e.g. estimated 3bv/s etc, although maybe too non-cheaty)
+
+Have scroll on zeros/interior have a setting for a delay before squares become scrollable (maybe 100ms) to prevent scrolls from accidental double taps
+
+Add https://github.com/napero/multiminesweeper to external resources
+Add better minesweeper to external resources
+
+parallelise deepchain?
+
+8way somehow differs from make_board? Why is this?
+https://llamasweeper.com/#/game/zini-explorer?b=3&m=00g59800n01b280005241ig40a2ho0f51g810g2m4g20104q023o40g4840082g68625j100001300o444000c0g1q0040a1
+
+It's probably just because reflect() in make_board is a no-op...

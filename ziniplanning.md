@@ -161,3 +161,24 @@ Chord A dominates Chord B if:
 - Lazy way and expensive way - play both chords and compare board states, to see if one is better than the other
 
 Alternate idea - performance improvement could come from recalculating "deep premium" less often for squares with very negative premium? Or maybe recalculate based on location of recent changes? Or treat enclosed areas separately? Or figure out "never-chords" and "never-flags" and split up board based on that.
+
+Could deepchain be adapted based on beam search? (see below)
+
+Beam search
+Maintain the top-B best partial solutions at each step. At each step, expand all B solutions by all possible next actions, keep the top B results. This explores a much wider space than pure greedy while remaining polynomial.
+
+#Code:
+
+```
+beam_width = 32 or 64
+states = [(initial_board, 0 clicks)]
+while any state has remaining cells:
+    next_states = []
+    for each state in states:
+        for each possible action:
+            next_states.append(apply(state, action))
+    states = top_B(next_states, by=clicks + lower_bound_remaining)
+return min(states)
+```
+
+Complexity: O(B · n² · k) — very fast, and in practice finds near-optimal or optimal solutions.

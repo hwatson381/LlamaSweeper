@@ -202,7 +202,7 @@ let variantList = [
     "tags": [
       "game"
     ],
-    "rating": 3.9,
+    "rating": 4.1,
     "popularity": 1
   },
   {
