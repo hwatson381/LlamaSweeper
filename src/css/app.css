@@ -11,6 +11,13 @@
   color: #1976d2;
 }
 
+.q-page .fake-link,
+.q-dialog .fake-link {
+  color: #1976d2;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 .q-page a:visited,
 .q-dialog a:visited {
   color: #c019d2;
@@ -20,6 +27,14 @@ body.body--dark .q-page a:link,
 body.body--dark .q-dialog a:link {
   color: #52a8ff;
 }
+
+body.body--dark .q-page .fake-link,
+body.body--dark .q-dialog .fake-link {
+  color: #52a8ff;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
 body.body--dark .q-page a:visited,
 body.body--dark .q-dialog a:visited {
   color: #e788f1;

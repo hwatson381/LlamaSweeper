@@ -26,7 +26,7 @@
         class="margin-centreable"
       >
         <span>Random dev stuff box</span><br />
-        <button @click="bulkrun7">Bulk run</button>
+        <button @click="bulkrun8">Bulk run</button>
         Iterations: <input v-model.number="bulkIterations" type="text" />
         <button @click="dialogTest">QDialog</button>
         <button @click="playSound('dig')">Play sound</button>
@@ -1191,6 +1191,42 @@
                 setting at time of generation and will ignore the "Mouse" option
               </div>
             </div>
+            <div class="flex q-mb-sm" v-if="generateEffBoardsInBackground">
+              <q-select
+                class="q-mx-md q-mb-md"
+                outlined
+                options-dense
+                dense
+                transition-duration="100"
+                input-debounce="0"
+                v-model="effBoardsImplementation"
+                @update:model-value="
+                  effShuffleManager.sendUpdateImplementationIfNeeded()
+                "
+                style="width: 175px; flex-shrink: 0"
+                :options="[
+                  { label: 'Wasm (fastest)', value: 'wasm' },
+                  {
+                    label: 'Javascript (slow)',
+                    value: 'js',
+                  },
+                  { label: 'Wasm small', value: 'wasm_small' },
+                  { label: 'Wasm large', value: 'wasm_large' },
+                ]"
+                emit-value
+                map-options
+                stack-label
+                label="8-way implementation"
+              ></q-select>
+              <div class="text-info" style="flex: 1 1 215px">
+                Implementation of 8-way ZiNi used for generating eff boards in
+                the background. It's recommended to leave this on the default
+                option.
+                <span @click="effBoardsBenchmarkModal = true" class="fake-link"
+                  >Run benchmarks</span
+                >
+              </div>
+            </div>
           </q-card-section>
         </q-card>
       </div>
@@ -2192,6 +2228,68 @@
     </q-card>
   </q-dialog>
 
+  <q-dialog v-model="effBoardsBenchmarkModal">
+    <q-card style="min-width: 350px">
+      <q-card-section>
+        <div class="text-h6">Benchmark eff boards</div>
+      </q-card-section>
+
+      <q-card-section class="q-pt-none">
+        <p>
+          Eff boards has two different implementations of the 8-way ZiNi
+          algorithm. They are exactly the same in result. But the WebAssembly
+          version should be much faster than the JavaScript version with no
+          downsides. This dialogue lets you run a benchmark to see the
+          difference. The benchmark runs on a single background worker.
+        </p>
+        <p>
+          The webAssembly version is further split into "Wasm Small" and "Wasm
+          Large" which are optimised for performance on small and large boards
+          respectively. By default the "Wasm" option switches from Wasm Small to
+          Wasm Large for boards over 1000 squares.
+        </p>
+        <p>
+          Board to run benchmark on: {{ boardWidth }}x{{ boardHeight }}/{{
+            boardMines
+          }}
+          at {{ minimumEff }}%.
+        </p>
+        <q-input
+          v-model.number="effBoardsBenchmarkIterations"
+          class="q-mb-sm"
+          debounce="50"
+          type="number"
+          label="Total Iterations"
+          dense
+          min="1"
+          max="1000000"
+          style="width: 110px"
+        />
+      </q-card-section>
+
+      <q-card-actions align="between" class="text-primary">
+        <q-btn label="Close" v-close-popup color="negative" />
+        <q-btn
+          @click="
+            //Benchmarking run for zini algs
+            () => {
+              effShuffleManager.doBenchmarkingRun({
+                width: boardWidth,
+                height: boardHeight,
+                mineCount: boardMines,
+                targetEff: minimumEff,
+                iterations: effBoardsBenchmarkIterations,
+              });
+            }
+          "
+          color="positive"
+          v-close-popup
+          label="Run Benchmark"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
   <div
     v-if="mobileModeEnabled && !replayIsShown"
     :class="[
@@ -2858,6 +2956,9 @@ let effWebWorkerCount = ref(1);
 let browserSupportsWebWorkers = window.Worker ? true : false;
 let browserSupportsConcurrency =
   browserSupportsWebWorkers && window.navigator.hardwareConcurrency > 2;
+let effBoardsImplementation = ref(Utils.isWasmSupported() ? "wasm" : "js");
+let effBoardsBenchmarkIterations = ref(1000);
+let effBoardsBenchmarkModal = ref(false);
 let effBoardsStoredDisplayCount = ref(0);
 let effBoardsStoredFirstClickDisplay = ref("random");
 let effFirstClickType = ref("same");
@@ -2934,7 +3035,7 @@ let excellentEff = computed(() => {
     case "int":
       return statsObject.value.eff >= 220;
     case "exp":
-      statsObject.value.eff >= 175;
+      return statsObject.value.eff >= 175;
     case "custom":
       return false;
     default:
@@ -3617,6 +3718,17 @@ function bulkrun7() {
 
   console.log(csv);
   console.log(`ziniSum: ${ziniSum}`);
+}
+
+function bulkrun8() {
+  //Benchmarking run for zini algs
+  effShuffleManager.doBenchmarkingRun({
+    width: boardWidth.value,
+    height: boardHeight.value,
+    mineCount: boardMines.value,
+    targetEff: minimumEff.value,
+    iterations: bulkIterations.value,
+  });
 }
 
 function dialogTest() {
@@ -8480,6 +8592,7 @@ var effShuffleManager = new EffShuffleManager(
     effBoardsStoredFirstClickDisplay,
     effFirstClickType,
     effWebWorkerCount,
+    effBoardsImplementation,
     boardWidth,
     boardHeight,
     boardMines,

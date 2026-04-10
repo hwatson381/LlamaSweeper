@@ -6,11 +6,15 @@
   "author": "llama",
   "private": true,
   "scripts": {
+    "build:wasm": "cd wasm && wasm-pack build --target web",
+    "dev:wasm": "cd wasm && wasm-pack build --target web",
+    "dev:js": "quasar dev",
+    "build:js": "quasar build && cp CNAME dist/spa",
     "lint": "eslint --ext .js,.vue ./",
     "format": "prettier --write \"**/*.{js,vue,css,html,md,json}\" --ignore-path .gitignore",
     "test": "echo \"No test specified\" && exit 0",
-    "dev": "quasar dev",
-    "build": "quasar build && cp CNAME dist/spa",
+    "dev": "npm run dev:wasm && quasar dev",
+    "build": "npm run build:wasm && quasar build && cp CNAME dist/spa",
     "deploy": "push-dir --dir=dist/spa --remote=gh-pages --branch=main"
   },
   "dependencies": {
@@ -19,7 +23,8 @@
     "quasar": "^2.16.0",
     "seedrandom": "^3.0.5",
     "vue": "^3.4.18",
-    "vue-router": "^4.0.12"
+    "vue-router": "^4.0.12",
+    "wasm-pack": "^0.13.1"
   },
   "devDependencies": {
     "@quasar/app-vite": "^1.9.0",

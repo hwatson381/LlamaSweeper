@@ -1064,6 +1064,72 @@ class Algorithms {
     return minesArray;
   }
 
+  /*
+    Does the same steps as effBoardShuffle,
+    but times how long it takes to run a certain number of iterations,
+    rather than actually finding a board
+  */
+  static effBoardShuffleBenchmarkRun(
+    width,
+    height,
+    mineCount,
+    firstClick,
+    targetEff,
+    iterations //How many iterations we should time
+  ) {
+    const startTime = performance.now();
+
+    for (let i = 0; i < iterations; i++) {
+      let candidateMinesArray = this.basicShuffle(
+        width,
+        height,
+        mineCount,
+        firstClick,
+        true //First click is an opening
+      );
+
+      //Needed for performance as this is used by both 3bv and zini, but is expensive to calculate
+      let preprocessedData =
+        this.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
+          candidateMinesArray
+        );
+
+      const bbbv = this.calc3bv(
+        candidateMinesArray,
+        false,
+        preprocessedData
+      ).bbbv;
+
+      const oneWayZini = this.calcBasicZini(
+        candidateMinesArray,
+        false, //one-way
+        preprocessedData
+      ).total;
+
+      //Same checks as effBoardShuffle
+
+      let oldCheck = bbbv / (bbbv - (bbbv - oneWayZini) * 1.15 - 2) >= targetEff / 100;
+
+      let newCheck = bbbv / (oneWayZini - this.get99thPercentileSubzini(width, height, mineCount, bbbv, oneWayZini)) >= targetEff / 100;
+
+      if (
+        oldCheck
+      ) {
+        //Keep the same as effBoardShuffle, so we still need to only run 8way after passing the first check
+        const eightWayZini = this.calcBasicZini(
+          candidateMinesArray,
+          true, //eight-way
+          preprocessedData
+        ).total;
+      }
+    }
+
+    const endTime = performance.now();
+
+    const totalTime = (endTime - startTime) / 1000; //in seconds
+    return totalTime;
+  }
+
   static get99thPercentileSubzini(width, height, mineCount, bbbv, oneWayZini) {
     //For "normal" boards, this is based on data from bulkrun2, otherwise it's a guess
 
