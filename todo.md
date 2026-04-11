@@ -49,9 +49,6 @@ remove unused comments and spammy console.logs
 
 move code in paintObviousSquares into algorithms, so we have option of doing basic hint/logic type stuff in the future
 
-consider asking qqwref for minesweeper c++ library to speed up eff boards generation (wasm)
-Or find someone in the community discord willing to code a wasm zini?
-
 Do random zinis actually vary that much? They probably always do all the 1 chords first which are disjoint.
 
 During inclusion-exclusion zini, try profile how much each chord affects the global solution (e.g. Which squares need to be recomputed depending on it's inclusion?)
@@ -295,8 +292,6 @@ https://minesweeper.online/game/4311671757 (passed)
 
 Probably not worth doing - have equivalent to safeNeighbours property which also excludes zeros
 
-Show mine density next to custom size picker?
-
 Should ChainZini.convertClickPathToChainInput also give other output such as chainSquareInfo
 
 Minimum and average both need tiebreaks
@@ -453,8 +448,6 @@ For mscoach export -
 See here https://github.com/DavidNHill/JSMinesweeper/blob/master/Minesweeper/client/Board.js#L745
 In particular, the "isSolverFoundBomb" part
 
-Get help on wasm gen for eff boards?
-
 Allow specifying squares (or flags) to start open in board editor. Also make it possible to link to this (and go straight to play screen to prevent spoilers)
 
 Make it possible to send to zini explorer with path from particular timestamp via replay?
@@ -585,3 +578,12 @@ parallelise deepchain?
 https://llamasweeper.com/#/game/zini-explorer?b=3&m=00g59800n01b280005241ig40a2ho0f51g810g2m4g20104q023o40g4840082g68625j100001300o444000c0g1q0040a1
 
 It's probably just because reflect() in make_board is a no-op...
+
+NEXT STEPS:
+Mobile scroll protection delay thingy
+parallelise deepchain (really big task...)
+nf eff guide?
+zini quality of life stuff (given that wom links to it now...). This is mainly just highlighting squares DURING the replay
+make use of ms-toollib for no guess... Also auto-display hint on blast
+mbf import
+Simplify waffle on variants page

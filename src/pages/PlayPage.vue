@@ -116,7 +116,7 @@
       >
         <div
           class="flex flex-centreable q-px-md"
-          style="gap: 10px; margin: 5px"
+          style="gap: 10px; margin: 5px; align-items: center"
         >
           <q-input
             debounce="100"
@@ -148,6 +148,13 @@
             max="2500"
             @update:model-value="game.reset()"
           />
+          <div>
+            <q-badge outline color="info"
+              >{{
+                ((customMines / (customWidth * customHeight)) * 100).toFixed(2)
+              }}%</q-badge
+            >
+          </div>
         </div>
         <p class="text-centreable q-px-md">{{ customWarning }}</p>
       </template>

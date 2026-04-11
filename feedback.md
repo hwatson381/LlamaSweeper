@@ -1,5 +1,3 @@
-Dark skin for the board
-
 is there already a legend somewhere that defines what the highlighted cells are. I could deduce what the yellow and blue are but as a efficiency/zini noob it would be nice to have that defined somewhere
 middle click to reset board?
 
@@ -17,8 +15,6 @@ Option for advanced logic to be calculated in Quick paint, everything derivable
 Have images in quickpaint help modal.
 
 Do too many zini stats get shown by default? E.g. 8-way, 100chain, wom zini. People have to hunt to find minimum
-
-Have setting for starting deepChain automatically when board finishes
 
 Probably won't do - if I decrease my custom eff, it should continue to store any that are already there as they are guaranteed to be higher still, similarly with increasing eff
 
@@ -38,13 +34,11 @@ Probably won't do - you could make a variation where you blast whenever you make
 
 In the board editor, could we get a setting to toggle live stats when editing so you don't have to click play and fail for it to display them?
 
-Should there me slight edge around board with touch-action: manipulation?
+Should there be slight edge around board with touch-action: manipulation?
 
 Basically harmless bug - when board is horizontally large, it touches right edge instead of having a small amount of padding as buffer
 
 Replaying from timestamp is REALLY important
-
-Do L+R chord
 
 Toggle flag mode on opening (problematic as no semi-transparent flags)
 
