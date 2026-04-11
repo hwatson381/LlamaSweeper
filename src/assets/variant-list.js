@@ -607,6 +607,39 @@ let variantList = [
     ],
     "rating": 3.4,
     "popularity": 2
+  },
+  {
+    "name": "BroomSweeper",
+    "url": "https://store.steampowered.com/app/3473250/BroomSweeper/",
+    "desc": "A rogue-like minesweeper game with a pixel arty style. You progress through offices which get increasingly difficult and have hazards which make the game harder (allowing multiple mines per square, some tiles not giving information or lying to you and much more). There are also many items that can be obtained throughout the game to make things easier (e.g. providing more tiles at the start or boosting hp). It's very creative game with many interesting mechanics and a sense of humour. That said it does take a while to understand everything at the start, and requires reading a lot of descriptions of the items, so if you want something simple it might not be for you. It costs $25 which may be a bit steep, although understandable as the game was made by an individual developer.",
+    "image": "/img/variants/broomsweeper.png",
+    "tags": [
+      "game"
+    ],
+    "rating": 3.9,
+    "popularity": 3
+  },
+  {
+    "name": "Multi-Minesweeper",
+    "url": "https://napero.github.io/multiminesweeper",
+    "desc": "A minesweeper website with some very unique settings for how the mines and cells behave. There are settings for negative mines and multiple mines per cell. There are also settings to change the cells to be hexagonal, triangular, irregular rectangle and random polygons. This is the only minesweeper version I know of that allows you to play on irregular rectangle or random polygon grids.",
+    "image": "/img/variants/multi-minesweeper.png",
+    "tags": [
+      "game"
+    ],
+    "rating": 3.8,
+    "popularity": 1
+  },
+  {
+    "name": "Better Minesweeper",
+    "url": "https://minesweep.ing/",
+    "desc": "Better Minesweeper is a modern minesweeper game with a plethora of settings and features for customisation. As of writing, it is currently under active development, so may change a lot and will have some bugs. It has many different features. It has a lot of statistics that can be enabled (including the ability to export games to the llamasweeper ZiNi explorer!); no guess mode; custom game modes such as \"aim trainer\" and \"last square search\" (similar to square finder); replays; steam leaderboards; and lastly it has extensive customisation.",
+    "image": "/img/variants/better-ms.png",
+    "tags": [
+      "game"
+    ],
+    "rating": 4.3,
+    "popularity": 2
   }
 ]
 

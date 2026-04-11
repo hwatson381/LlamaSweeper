@@ -549,7 +549,6 @@ Should deepchain zini run from beginning when in edit tab?
 Add to external resources page:
 hexcells
 tametsi
-broomsweeper
 blindsweeper/fadesweeper/spotsweeper - see here https://discord.com/channels/814801005195558953/814801005195558956/1463320873619685450
 
 Write up zini algorithms?
@@ -579,9 +578,6 @@ Have a setting for an audio timer? It's easy to not look at the timer. So there 
 Could also experiment with audio signals for pace (e.g. estimated 3bv/s etc, although maybe too non-cheaty)
 
 Have scroll on zeros/interior have a setting for a delay before squares become scrollable (maybe 100ms) to prevent scrolls from accidental double taps
-
-Add https://github.com/napero/multiminesweeper to external resources
-Add better minesweeper to external resources
 
 parallelise deepchain?
 
