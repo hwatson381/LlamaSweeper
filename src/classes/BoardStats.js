@@ -437,8 +437,8 @@ class BoardStats {
   addMeanMines(meanMineStates) {
     this.meanMineStates = structuredClone(meanMineStates);
 
-    //Reset activiness of mines (defensive)
-    this.meanMineStates.forEach((c) => c.forEach((c.isActive = false)));
+    //Reset activeness of mines (defensive)
+    this.meanMineStates.forEach((c) => c.forEach(cell => cell.isActive = false));
   }
 }
 

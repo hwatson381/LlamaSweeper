@@ -8,11 +8,9 @@
         class="margin-centreable text-centreable q-px-md"
         style="max-width: 700px"
       >
-        This page has several minesweeper variants/tools I've made. Variants can
-        be changed with the "variant" dropdown below. This is a work in
-        progress, so there may be bugs. Feedback is very welcome, although I
-        can't promise that any suggestions will be added. Use the "variants
-        info" button below to see what each variant does.
+        This page has a collection of minesweeper variants/tools. Variants can
+        be changed with the "variant" dropdown below. The "variants info" button
+        provides a brief description of how each variant works.
       </p>
       <div
         v-if="devMode"
@@ -1412,267 +1410,301 @@
                     Dig/chord/flag sounds provided by Minesweeper Go
                   </div>
                 </div>
-                <q-checkbox
-                  v-model="mobileModeEnabled"
-                  label="Use Mobile Mode"
-                /><br />
-                <q-select
-                  class="q-mx-md q-mb-md"
-                  outlined
-                  options-dense
-                  dense
-                  transition-duration="100"
-                  input-debounce="0"
-                  v-model="mobileScrollSetting"
-                  style="width: 175px; flex-shrink: 0"
-                  :options="[
-                    { label: 'Enable scroll', value: 'enable' },
-                    { label: 'Disable scroll', value: 'disable' },
-                    {
-                      label: 'Scroll on zeros',
-                      value: 'zero',
-                    },
-                    {
-                      label: 'Scroll on interior (flag version)',
-                      value: 'enclosed flag',
-                    },
-                    {
-                      label: 'Scroll on interior (nf version)',
-                      value: 'enclosed nf',
-                    },
-                  ]"
-                  emit-value
-                  map-options
-                  stack-label
-                  label="Touch Scroll Behaviour"
-                ></q-select>
-                <div
-                  v-if="
-                    mobileScrollSetting === 'enclosed nf' ||
-                    mobileScrollSetting === 'enclosed flag'
-                  "
-                  class="flex q-mb-sm"
-                >
+                <div class="flex q-mb-sm">
                   <q-checkbox
-                    v-model="mobileEnclosedScrollLetThrough"
-                    label="Let interior clicks through"
-                    style="flex-shrink: 0"
+                    v-model="mobileModeEnabled"
                     class="q-mr-md"
+                    style="flex-shrink: 0"
+                    label="Use Mobile Mode"
                   />
                   <div
-                    v-if="!mobileEnclosedScrollLetThrough"
-                    class="text-negative"
-                    style="flex: 1 1 240px"
+                    v-if="!mobileModeEnabled"
+                    class="text-info"
+                    style="flex: 1 1 290px"
                   >
-                    <span v-if="mobileScrollSetting === 'enclosed nf'"
-                      ><b>Danger:</b> having this unticked will cause problems
-                      if you play using flags.</span
-                    >
-                    <span v-if="mobileScrollSetting === 'enclosed flag'"
-                      ><b>Warning:</b> having this unticked will stop you from
-                      placing deeply interior flags. You will still be able to
-                      minecount using QuickPaint.</span
-                    >
+                    Strongly recommended for touchscreen devices. Enables mobile
+                    optimised touch handling and shows additional touch
+                    settings.
                   </div>
                 </div>
-                <br v-else />
-                <q-select
-                  class="q-mx-md q-mb-md"
-                  outlined
-                  options-dense
-                  dense
-                  transition-duration="100"
-                  input-debounce="0"
-                  v-model="touchRevealLocation"
-                  style="width: 175px; flex-shrink: 0"
-                  :options="[
-                    {
-                      label: 'Touch Start',
-                      value: 'start',
-                    },
-                    { label: 'Touch End', value: 'end' },
-                    { label: 'Block If Changed', value: 'block' },
-                  ]"
-                  emit-value
-                  map-options
-                  stack-label
-                  label="Touch Reveal Location"
-                ></q-select
-                ><br />
-                <q-select
-                  class="q-mx-md q-mb-md"
-                  outlined
-                  options-dense
-                  dense
-                  transition-duration="100"
-                  input-debounce="0"
-                  v-model="touchRevealTiming"
-                  style="width: 175px; flex-shrink: 0"
-                  :options="[
-                    {
-                      label: 'Start of touch',
-                      value: 'start',
-                    },
-                    { label: 'End of touch', value: 'end' },
-                  ]"
-                  emit-value
-                  map-options
-                  stack-label
-                  label="Touch Reveal Timing"
-                ></q-select
-                ><br />
-                <q-input
-                  debounce="100"
-                  v-model.number="touchLongPressTime"
-                  label="Long press time (80-400ms)"
-                  type="number"
-                  dense
-                  min="80"
-                  max="400"
-                  style="width: 150px"
-                /><br />
-                <q-checkbox
-                  v-model="touchLongPressDisabled"
-                  label="Disable long press"
-                  style="flex-shrink: 0"
-                /><br />
-                <q-input
-                  debounce="100"
-                  v-model.number="touchMaxTime"
-                  label="Max touch time (300-1500ms)"
-                  type="number"
-                  dense
-                  min="300"
-                  max="1500"
-                  style="width: 150px"
-                /><br />
-                <q-input
-                  debounce="100"
-                  v-model.number="touchScrollDistance"
-                  label="Max tiles moved for touch (2-5)"
-                  type="number"
-                  dense
-                  min="2"
-                  max="5"
-                  style="width: 150px"
-                /><br />
-                <q-select
-                  class="q-mx-md q-mb-md"
-                  outlined
-                  options-dense
-                  dense
-                  transition-duration="100"
-                  input-debounce="0"
-                  v-model="flagToggleLocationClass"
-                  style="width: 175px; flex-shrink: 0"
-                  :options="[
-                    {
-                      label: 'Bottom Right',
-                      value: 'toggle-bot-right',
-                    },
-                    {
-                      label: 'Bottom Left',
-                      value: 'toggle-bot-left',
-                    },
-                    {
-                      label: 'Hidden',
-                      value: 'toggle-hidden',
-                    },
-                    {
-                      label: 'Show Reset Only',
-                      value: 'toggle-hidden-reset',
-                    },
-                  ]"
-                  emit-value
-                  map-options
-                  stack-label
-                  label="Mode toggle location"
-                />
-                <br />
-                <q-select
-                  class="q-mx-md q-mb-md"
-                  outlined
-                  options-dense
-                  dense
-                  transition-duration="100"
-                  input-debounce="0"
-                  v-model="flagToggleSizeClass"
-                  style="width: 175px; flex-shrink: 0"
-                  :options="[
-                    {
-                      label: 'Normal',
-                      value: 'toggle-normal',
-                    },
-                    {
-                      label: 'Large',
-                      value: 'toggle-large',
-                    },
-                    {
-                      label: 'Small',
-                      value: 'toggle-small',
-                    },
-                  ]"
-                  emit-value
-                  map-options
-                  stack-label
-                  label="Mode toggle size"
-                />
+                <template v-if="mobileModeEnabled">
+                  <q-select
+                    class="q-mx-md q-mb-md"
+                    outlined
+                    options-dense
+                    dense
+                    transition-duration="100"
+                    input-debounce="0"
+                    v-model="mobileScrollSetting"
+                    style="width: 175px; flex-shrink: 0"
+                    :options="[
+                      { label: 'Enable scroll', value: 'enable' },
+                      { label: 'Disable scroll', value: 'disable' },
+                      {
+                        label: 'Scroll on zeros',
+                        value: 'zero',
+                      },
+                      {
+                        label: 'Scroll on interior (flag version)',
+                        value: 'enclosed flag',
+                      },
+                      {
+                        label: 'Scroll on interior (nf version)',
+                        value: 'enclosed nf',
+                      },
+                    ]"
+                    emit-value
+                    map-options
+                    stack-label
+                    label="Touch Scroll Behaviour"
+                  ></q-select>
+                  <div
+                    v-if="
+                      mobileScrollSetting === 'enclosed nf' ||
+                      mobileScrollSetting === 'enclosed flag'
+                    "
+                    class="flex q-mb-sm"
+                  >
+                    <q-checkbox
+                      v-model="mobileEnclosedScrollLetThrough"
+                      label="Let interior clicks through"
+                      style="flex-shrink: 0"
+                      class="q-mr-md"
+                    />
+                    <div
+                      v-if="!mobileEnclosedScrollLetThrough"
+                      class="text-negative"
+                      style="flex: 1 1 240px"
+                    >
+                      <span v-if="mobileScrollSetting === 'enclosed nf'"
+                        ><b>Danger:</b> having this unticked will cause problems
+                        if you play using flags.</span
+                      >
+                      <span v-if="mobileScrollSetting === 'enclosed flag'"
+                        ><b>Warning:</b> having this unticked will stop you from
+                        placing deeply interior flags. You will still be able to
+                        minecount using QuickPaint.</span
+                      >
+                    </div>
+                  </div>
+                  <br v-else />
+                  <div
+                    v-if="
+                      mobileScrollSetting === 'enclosed nf' ||
+                      mobileScrollSetting === 'enclosed flag' ||
+                      mobileScrollSetting === 'zero'
+                    "
+                    class="flex q-mb-sm"
+                  >
+                    <q-input
+                      debounce="100"
+                      v-model.number="mobileDelayForEnableScroll"
+                      label="Enabling Scroll Delay (0-500ms)"
+                      type="number"
+                      dense
+                      min="0"
+                      max="500"
+                      style="width: 170px"
+                    />
+                  </div>
+                  <q-select
+                    class="q-mx-md q-mb-md"
+                    outlined
+                    options-dense
+                    dense
+                    transition-duration="100"
+                    input-debounce="0"
+                    v-model="touchRevealLocation"
+                    style="width: 175px; flex-shrink: 0"
+                    :options="[
+                      {
+                        label: 'Touch Start',
+                        value: 'start',
+                      },
+                      { label: 'Touch End', value: 'end' },
+                      { label: 'Block If Changed', value: 'block' },
+                    ]"
+                    emit-value
+                    map-options
+                    stack-label
+                    label="Touch Reveal Location"
+                  ></q-select
+                  ><br />
+                  <q-select
+                    class="q-mx-md q-mb-md"
+                    outlined
+                    options-dense
+                    dense
+                    transition-duration="100"
+                    input-debounce="0"
+                    v-model="touchRevealTiming"
+                    style="width: 175px; flex-shrink: 0"
+                    :options="[
+                      {
+                        label: 'Start of touch',
+                        value: 'start',
+                      },
+                      { label: 'End of touch', value: 'end' },
+                    ]"
+                    emit-value
+                    map-options
+                    stack-label
+                    label="Touch Reveal Timing"
+                  ></q-select
+                  ><br />
+                  <q-input
+                    debounce="100"
+                    v-model.number="touchLongPressTime"
+                    label="Long press time (80-400ms)"
+                    type="number"
+                    dense
+                    min="80"
+                    max="400"
+                    style="width: 150px"
+                  /><br />
+                  <q-checkbox
+                    v-model="touchLongPressDisabled"
+                    label="Disable long press"
+                    style="flex-shrink: 0"
+                  /><br />
+                  <q-input
+                    debounce="100"
+                    v-model.number="touchMaxTime"
+                    label="Max touch time (300-1500ms)"
+                    type="number"
+                    dense
+                    min="300"
+                    max="1500"
+                    style="width: 150px"
+                  /><br />
+                  <q-input
+                    debounce="100"
+                    v-model.number="touchScrollDistance"
+                    label="Max tiles moved for touch (2-5)"
+                    type="number"
+                    dense
+                    min="2"
+                    max="5"
+                    style="width: 150px"
+                  /><br />
+                  <q-select
+                    class="q-mx-md q-mb-md"
+                    outlined
+                    options-dense
+                    dense
+                    transition-duration="100"
+                    input-debounce="0"
+                    v-model="flagToggleLocationClass"
+                    style="width: 175px; flex-shrink: 0"
+                    :options="[
+                      {
+                        label: 'Bottom Right',
+                        value: 'toggle-bot-right',
+                      },
+                      {
+                        label: 'Bottom Left',
+                        value: 'toggle-bot-left',
+                      },
+                      {
+                        label: 'Hidden',
+                        value: 'toggle-hidden',
+                      },
+                      {
+                        label: 'Show Reset Only',
+                        value: 'toggle-hidden-reset',
+                      },
+                    ]"
+                    emit-value
+                    map-options
+                    stack-label
+                    label="Mode toggle location"
+                  />
+                  <br />
+                  <q-select
+                    class="q-mx-md q-mb-md"
+                    outlined
+                    options-dense
+                    dense
+                    transition-duration="100"
+                    input-debounce="0"
+                    v-model="flagToggleSizeClass"
+                    style="width: 175px; flex-shrink: 0"
+                    :options="[
+                      {
+                        label: 'Normal',
+                        value: 'toggle-normal',
+                      },
+                      {
+                        label: 'Large',
+                        value: 'toggle-large',
+                      },
+                      {
+                        label: 'Small',
+                        value: 'toggle-small',
+                      },
+                    ]"
+                    emit-value
+                    map-options
+                    stack-label
+                    label="Mode toggle size"
+                  />
+                  <q-select
+                    class="q-mx-md q-mb-md"
+                    outlined
+                    options-dense
+                    dense
+                    transition-duration="100"
+                    input-debounce="0"
+                    v-model="touchActionOverride"
+                    style="width: 220px; flex-shrink: 0"
+                    :options="[
+                      {
+                        label: 'Use other settings (recommended)',
+                        value: 'ignore',
+                      },
+                      {
+                        label: 'pan-x',
+                        value: 'pan-x',
+                      },
+                      {
+                        label: 'pan-y',
+                        value: 'pan-y',
+                      },
+                      {
+                        label: 'pinch-zoom',
+                        value: 'pinch-zoom',
+                      },
+                      {
+                        label: 'pan-x pan-y',
+                        value: 'pan-x pan-y',
+                      },
+                      {
+                        label: 'pan-x pinch-zoom',
+                        value: 'pan-x pinch-zoom',
+                      },
+                      {
+                        label: 'pan-y pinch-zoom',
+                        value: 'pan-y pinch-zoom',
+                      },
+                      {
+                        label: 'pan-x pan-y pinch-zoom',
+                        value: 'pan-x pan-y pinch-zoom',
+                      },
+                      {
+                        label: 'none',
+                        value: 'none',
+                      },
+                    ]"
+                    emit-value
+                    map-options
+                    stack-label
+                    label="[advanced] Touch action override"
+                  />
+                </template>
                 <q-checkbox
                   v-model="verticalExpert"
                   label="Make expert boards portrait"
                 /><br />
-                <q-select
-                  class="q-mx-md q-mb-md"
-                  outlined
-                  options-dense
-                  dense
-                  transition-duration="100"
-                  input-debounce="0"
-                  v-model="touchActionOverride"
-                  style="width: 220px; flex-shrink: 0"
-                  :options="[
-                    {
-                      label: 'Use other settings (recommended)',
-                      value: 'ignore',
-                    },
-                    {
-                      label: 'pan-x',
-                      value: 'pan-x',
-                    },
-                    {
-                      label: 'pan-y',
-                      value: 'pan-y',
-                    },
-                    {
-                      label: 'pinch-zoom',
-                      value: 'pinch-zoom',
-                    },
-                    {
-                      label: 'pan-x pan-y',
-                      value: 'pan-x pan-y',
-                    },
-                    {
-                      label: 'pan-x pinch-zoom',
-                      value: 'pan-x pinch-zoom',
-                    },
-                    {
-                      label: 'pan-y pinch-zoom',
-                      value: 'pan-y pinch-zoom',
-                    },
-                    {
-                      label: 'pan-x pan-y pinch-zoom',
-                      value: 'pan-x pan-y pinch-zoom',
-                    },
-                    {
-                      label: 'none',
-                      value: 'none',
-                    },
-                  ]"
-                  emit-value
-                  map-options
-                  stack-label
-                  label="[advanced] Touch action override"
-                />
                 <q-checkbox v-model="showQuickStats" label="Show Quick Stats" />
                 <q-select
                   v-if="showQuickStats"
@@ -3048,8 +3080,6 @@ let excellentEff = computed(() => {
     default:
       throw new Error("Disallowed preset");
   }
-
-  return false;
 });
 let effWebWorkerCountOptions = [];
 if (typeof window.navigator.hardwareConcurrency === "number") {
@@ -3123,6 +3153,10 @@ let scrollLetThroughActive = computed(
       mobileScrollSetting.value === "enclosed flag") &&
     mobileEnclosedScrollLetThrough.value
 );
+let mobileDelayForEnableScroll = useLocalStorage(
+  "ls_mobileDelayForEnableScroll",
+  300
+); //Delay on zero/interior settings after squares get revealed before scroll is enabled. Meant to stop accidental scrolls from revealing surprise openings.
 let touchRevealLocation = useLocalStorage("ls_touchRevealLocation", "start"); //Whether we use the location of the touch at the start of it or the end of it
 let touchRevealTiming = useLocalStorage("ls_touchRevealTiming", "end"); //Does it reveal the tile on finger up or finger down
 let touchLongPressTime = useLocalStorage("ls_touchLongPressTime", 250); //When does long press = flag (or dig) get triggered
@@ -3470,7 +3504,6 @@ function bulkrun3() {
     newCheckTriggered && newTriggeredTimes++;
 
     let wasTargetHit = bbbv / eightZini >= minimumEff.value / 100;
-    wasTargetHit && targetHitCount++;
 
     if (wasTargetHit) {
       targetHitCount++;
@@ -4105,8 +4138,8 @@ class Board {
     mainCanvas.value.height = mainCanvasHeight;
 
     //Also set height in style (needed for flex layout to work)
-    mainCanvas.value.style.width = `${mainCanvasWidth} px`;
-    mainCanvas.value.style.height = `${mainCanvasHeight} px`;
+    mainCanvas.value.style.width = `${mainCanvasWidth}px`;
+    mainCanvas.value.style.height = `${mainCanvasHeight}px`;
 
     //Figure out what left padding should be in order to centre the board
     let gameContainerWidth =
@@ -4577,7 +4610,7 @@ class Board {
         mobileScrollSetting.value === "enclosed flag") &&
       this.gameStage === "running"
     ) {
-      //If zero, we assume that the scroll gets prevented, but then stop if coniditons are met
+      //If zero, we assume that the scroll gets prevented, but then stop if conditions are met
       shouldPreventDefault = true;
     }
 
@@ -4595,9 +4628,16 @@ class Board {
       let isScrollingTouch = false;
       if (
         mobileScrollSetting.value === "zero" &&
-        this.tilesArray[flooredCoords.tileX]?.[flooredCoords.tileY]?.state === 0
+        this.gameStage === "running" &&
+        this.tilesArray[flooredCoords.tileX]?.[flooredCoords.tileY]?.state ===
+          0 &&
+        this.canTilebeUsedForMobileScrollConditions(
+          flooredCoords.tileX,
+          flooredCoords.tileY
+        )
       ) {
         //If we have the scroll on zeros setting then this touch gets blocked, and we let the touch through
+        //We also check the timestamp incase there is a delay that must pass before the tile becomes scrollable
         isScrollingTouch = true;
         shouldPreventDefault = false;
       }
@@ -4655,7 +4695,7 @@ class Board {
 
       this.ongoingTouches.set(touchIdentifier, {
         startTime: event.timeStamp,
-        startCoordsData: structuredClone(coordsData), //Ugly, but just in case it gets changed in handePointerInput function.
+        startCoordsData: structuredClone(coordsData), //Ugly, but just in case it gets changed in handlePointerInput function.
         startScreenCoords: screenCoords,
         active: true, //Changes to false if the touch is cancelled (e.g. it moved more than x distance or lasted more than y seconds)
         isScrollingTouch: isScrollingTouch,
@@ -4706,7 +4746,7 @@ class Board {
         mobileScrollSetting.value === "enclosed flag") &&
       this.gameStage === "running"
     ) {
-      //If zero, we assume that the scroll gets prevented, but then stop if coniditons are met
+      //If zero, we assume that the scroll gets prevented, but then stop if conditions are met
       shouldPreventDefault = true;
     }
 
@@ -6009,6 +6049,18 @@ class Board {
       hasSoundEffect && soundEffectsEnabled.value && playSound("dig");
       const number = this.getNumberSurroundingMines(x, y);
       this.tilesArray[x][y].state = number;
+      if (
+        mobileModeEnabled.value &&
+        (mobileScrollSetting.value === "enclosed nf" ||
+          mobileScrollSetting.value === "enclosed flag" ||
+          mobileScrollSetting.value === "zero") &&
+        mobileDelayForEnableScroll.value !== 0
+      ) {
+        //Track timestamp of when a tile was revealed as they only become scrollable after a delay for the relevant mobile settings
+        //We probably don't need all these if conditions, but I've left them in for clarity as to when this applies.
+        this.tilesArray[x][y].revealedTimeForMobileScrollBehaviour =
+          this.getTime();
+      }
       this.openedTiles++;
 
       if (number === 0) {
@@ -6405,7 +6457,7 @@ class Board {
     this.gameStage = "lost";
     this.stats.addEndTime(finalTime, false);
     this.stats.makeRepeatFlagsWasted();
-    if (this.gameStage === "mean openings") {
+    if (this.variant === "mean openings") {
       this.stats.addMeanMines(this.meanMineStates);
     }
     this.clearAllDepressedSquares();
@@ -6456,7 +6508,7 @@ class Board {
     this.gameStage = "won";
     this.stats.addEndTime(finalTime, true);
     this.stats.makeRepeatFlagsWasted();
-    if (this.gameStage === "mean openings") {
+    if (this.variant === "mean openings") {
       this.stats.addMeanMines(this.meanMineStates);
     }
     this.clearAllDepressedSquares();
@@ -6756,16 +6808,18 @@ class Board {
         const isNormalOrMeanMine = this.mines[x][y] || isMeanMine;
 
         if (
-          typeof this.tilesArray[x][y].state !== "number" &&
+          (typeof this.tilesArray[x][y].state !== "number" ||
+            !this.canTilebeUsedForMobileScrollConditions(x, y)) &&
           !isNormalOrMeanMine
         ) {
-          //Found square in 3x3 block that is unrevealed and safe. So return false as the centre square is not enclosed by known mines
+          //Found square in 3x3 block that is unrevealed (see next comment) and safe. So return false as the centre square is not enclosed by known mines
+          //We also count squares that were revealed very recently (within mobile scroll delay) as unrevealed
           return false;
         }
       }
     }
 
-    //In the more complicate case, we need to work out which squares surrounding the centre tile are obvious mines
+    //In the more complicated case, we need to work out which squares surrounding the centre tile are obvious mines
     //Look at the 5x5 block of numbers, and collect the list of mines which are confirmed by these
 
     //Confirmed mines: {x: number, y: number} coord pairs of squares known to be mines
@@ -6779,6 +6833,9 @@ class Board {
           continue;
         }
         if (typeof this.tilesArray[x][y].state !== "number") {
+          continue;
+        }
+        if (!this.canTilebeUsedForMobileScrollConditions(x, y)) {
           continue;
         }
 
@@ -6877,11 +6934,13 @@ class Board {
           //Neighbour is a mine. If the centre square turns out to be maxed out then this mine is proven
           potentiallyConfirmedMines.push({ x, y });
         } else if (
-          typeof this.tilesArray[x][y].state !== "number" &&
+          (typeof this.tilesArray[x][y].state !== "number" ||
+            !this.canTilebeUsedForMobileScrollConditions(x, y)) &&
           !isNormalOrMeanMine
         ) {
           //Neighbour is unrevealed and safe. Therefore the centre square is NOT maxed out
           //So we cannot deduce any of the mines used basic "max out" logic
+          //Note we treat squares that have been revealed very recently (within mobile scroll delay) as unrevealed
           return [];
         } else {
           //Neighbour is revealed and safe, do nothing
@@ -6890,6 +6949,22 @@ class Board {
     }
 
     return potentiallyConfirmedMines;
+  }
+
+  //Check if tile was revealed a while ago
+  canTilebeUsedForMobileScrollConditions(tileX, tileY) {
+    if (!this.checkCoordsInBounds(tileX, tileY)) {
+      return false; //Defensive
+    }
+
+    let tileRevealedSufficientlyLongAgo =
+      this.tilesArray[tileX][tileY]?.revealedTimeForMobileScrollBehaviour ===
+        null ||
+      this.getTime() -
+        this.tilesArray[tileX][tileY]?.revealedTimeForMobileScrollBehaviour >=
+        mobileDelayForEnableScroll.value / 1000;
+
+    return tileRevealedSufficientlyLongAgo;
   }
 
   calculateAndDisplayStats(isWin) {
@@ -8191,7 +8266,7 @@ class Board {
     //Track info about state we need to return to if exiting replay
     if (replayToInit !== "zini-explore-replay" && this.gameStage !== "replay") {
       this.stateBeforeReplay = {
-        gameStage: this.gameState,
+        gameStage: this.gameStage,
         integerTimer: this.integerTimer,
         unflagged: this.unflagged,
         tilesArray: this.cloneTilesArray(),

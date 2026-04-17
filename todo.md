@@ -579,11 +579,21 @@ https://llamasweeper.com/#/game/zini-explorer?b=3&m=00g59800n01b280005241ig40a2h
 
 It's probably just because reflect() in make_board is a no-op...
 
+Add copy as image button to llamasweeper? Maybe only if it can be pasted into discord? Although this might just be worse than opengraph for screenshots (but needs server)
+
+Time how long touch handling/click handling takes to check for performance issues
+(devtools performance tab kinda gives this, drawTiles seems to be a bottleneck)
+Llamasweeper takes 10ms to process a mouse input, whereas WoM seems to take around 1ms. Could this be noticeable? (cheap win is to cache context instead of calling getContext("2d") all the time. More complicated would be to only redraw stuff that changes. Idea to look into could be requestAnimationFrame batching)
+
 NEXT STEPS:
-Mobile scroll protection delay thingy
+[done] Mobile scroll protection delay thingy
 parallelise deepchain (really big task...)
 nf eff guide?
 zini quality of life stuff (given that wom links to it now...). This is mainly just highlighting squares DURING the replay
 make use of ms-toollib for no guess... Also auto-display hint on blast
 mbf import
-Simplify waffle on variants page
+[done] Simplify waffle on variants page
+Add (i) to 20/20 (click: random) on eff boards to explain why the boards start in a different place to where someone clicked
+Have a setting for how the flag toggle starts on mobile (e.g. start it as the same, start dig, start flag, change after first click etc)
+
+Ask LLM to look for bugs in all the files in classes folder

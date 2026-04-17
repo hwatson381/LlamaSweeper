@@ -11,6 +11,8 @@ class Tile {
     this.paintDots = 0; //values can be 0, 1, 2
     this.unrevealedState = null; //State to draw instead of UNREVEALED (e.g. for drawing transparent tiles)
 
+    this.revealedTimeForMobileScrollBehaviour = null; //The time that this tile was revealed, for use in mobile scroll behaviour
+
     this.ziniDelta = {
       loss: false,
       gain: false
@@ -498,6 +500,8 @@ class Tile {
     newTile.unrevealedState = this.unrevealedState;
     newTile.ziniDelta = { ...this.ziniDelta };
     newTile.explore = { ...this.explore };
+
+    //Note: We deliberately don't copy across this.revealedTimeForMobileScrollBehaviour
 
     return newTile;
   }
