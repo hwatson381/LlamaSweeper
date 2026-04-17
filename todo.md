@@ -594,6 +594,6 @@ make use of ms-toollib for no guess... Also auto-display hint on blast
 mbf import
 [done] Simplify waffle on variants page
 Add (i) to 20/20 (click: random) on eff boards to explain why the boards start in a different place to where someone clicked
-Have a setting for how the flag toggle starts on mobile (e.g. start it as the same, start dig, start flag, change after first click etc)
+[done] Have a setting for how the flag toggle starts on mobile (e.g. start it as the same, start dig, start flag, change after first click etc)
 
 Ask LLM to look for bugs in all the files in classes folder

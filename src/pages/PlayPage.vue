@@ -1648,6 +1648,10 @@
                     stack-label
                     label="Mode toggle size"
                   />
+                  <q-checkbox
+                    v-model="flagToggleSwitchAfterStart"
+                    label="Switch to flag mode after start"
+                  /><br />
                   <q-select
                     class="q-mx-md q-mb-md"
                     outlined
@@ -3137,6 +3141,10 @@ let flagToggleLocationClass = useLocalStorage(
 let flagToggleSizeClass = useLocalStorage(
   "ls_flagToggleSizeClass",
   "toggle-normal"
+);
+let flagToggleSwitchAfterStart = useLocalStorage(
+  "ls_flagToggleSwitchAfterStart",
+  false
 );
 let mobileModeEnabled = useLocalStorage(
   "ls_mobileModeEnabled",
@@ -5365,6 +5373,9 @@ class Board {
           //unflooredCoords as these are what attemptChordOrDig uses.
           unflooredCoords.tileX = generationResult.rewrittenFirstClick.x;
           unflooredCoords.tileY = generationResult.rewrittenFirstClick.y;
+        }
+        if (mobileModeEnabled.value && flagToggleSwitchAfterStart.value) {
+          flagToggleActive.value = true;
         }
       } else {
         this.updateDepressedSquares(
