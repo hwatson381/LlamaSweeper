@@ -218,11 +218,24 @@
                   "
                 />
               </q-btn-group>
-              <q-btn
+              <q-btn-dropdown
                 @click="pttaImportModal = true"
                 color="secondary"
                 label="ptt import"
-              />
+                split
+              >
+                <q-list>
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="mbfImportModal = true"
+                  >
+                    <q-item-section>
+                      <q-item-label>MBF Import</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-btn-dropdown>
             </div>
             <div class="flex" style="gap: 15px">
               <q-btn
@@ -2099,7 +2112,7 @@
           dense
           v-model="pttaUrl"
           label="PTT URL"
-          v-focus
+          autofocus
           @keyup.enter="game.board.importPttaBoard()"
         /><br />
         <q-btn @click="game.board.importPttaBoard()" color="primary"
@@ -2107,6 +2120,55 @@
         >
         <br /><br />Importing from minesweeper.online? Try enable the
         <RouterLink to="/wom-setting">Llamasweeper ZiNi setting</RouterLink>.
+      </q-card-section>
+
+      <q-card-actions align="right" class="text-primary">
+        <q-btn flat label="Close" v-close-popup />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
+  <q-dialog v-model="mbfImportModal">
+    <q-card style="min-width: 350px">
+      <q-card-section>
+        <div class="text-h6">MBF Import</div>
+      </q-card-section>
+
+      <q-card-section class="q-pt-none">
+        <p>
+          This dialogue can be used to copy boards from
+          <a target="_blank" href="https://mzrg.com/js/mine/make_board.html"
+            >make_board</a
+          >. Simply copy the hex string that appears below the board on
+          make_board and paste in the text box and then click load. If instead
+          you have an .mbf or .abf file, you can import this using the file
+          picker instead.
+        </p>
+        <q-input
+          dense
+          v-model="mbfStringToImport"
+          label="MBF Hex String"
+          autofocus
+          @update:model-value="mbfFileToImport = null"
+          @keyup.enter="game.board.importMbfBoard()"
+        /><br />
+        <q-file
+          outlined
+          clearable
+          dense
+          label="MBF or ABF File"
+          accept=".mbf, .abf"
+          input-style="text-overflow: ellipsis; white-space: nowrap; overflow: hidden;"
+          v-model="mbfFileToImport"
+          @update:model-value="mbfStringToImport = ''"
+          style="max-width: 300px"
+        >
+          <template v-slot:prepend>
+            <q-icon name="folder_open" />
+          </template>
+        </q-file>
+        <br />
+        <q-btn @click="game.board.importMbfBoard()" color="primary">Load</q-btn>
       </q-card-section>
 
       <q-card-actions align="right" class="text-primary">
@@ -2887,6 +2949,8 @@ let topPanelHeight = computed(() => {
 });
 
 let pttaUrl = ref("");
+let mbfStringToImport = ref("");
+let mbfFileToImport = ref(null);
 let boardSizePreset = ref("beg"); //beg/int/exp. Mainly just used for showing correct thing in dropdown
 let customWidth = useLocalStorage("ls_customWidth", 8);
 let customHeight = useLocalStorage("ls_customHeight", 8);
@@ -3144,6 +3208,7 @@ let quickPaintHelpModal = ref(false);
 let editBoardUnappliedWidth = ref(9);
 let editBoardUnappliedHeight = ref(9);
 let pttaImportModal = ref(false);
+let mbfImportModal = ref(false);
 let isCurrentlyEditModeDisplay = ref(true); //Lines up with game.board.gameStage = 'edit' - consider making ...gameStage a ref instead.
 
 let flagToggleActive = ref(false); //Whether to swap left and right mouse buttons
@@ -3293,6 +3358,7 @@ let keyboardClickDigKey = useLocalStorage("ls_keyboardClickDigKey", "z");
 let keyboardClickFlagKey = useLocalStorage("ls_keyboardClickFlagKey", "x");
 
 const vFocus = {
+  //directive for focussing an element when mounted, currently unused, because we use autofocus prop for q-input instead
   mounted: (el) => el.focus(),
 };
 
@@ -7657,6 +7723,42 @@ class Board {
 
     pttaImportModal.value = false;
     pttaUrl.value = "";
+  }
+
+  async importMbfBoard() {
+    if (this.variant !== "board editor" && this.variant !== "zini explorer") {
+      return;
+    }
+
+    let mbfMines;
+
+    if (mbfStringToImport.value.trim() !== "") {
+      mbfMines = BoardGenerator.readFromMbfString(mbfStringToImport.value);
+    } else if (mbfFileToImport.value) {
+      mbfMines = await BoardGenerator.readFromMbfFile(mbfFileToImport.value);
+    } else {
+      $q.dialog({
+        title: "Alert",
+        message: "Please provide either a MBF Hex string or file to import",
+      });
+      return;
+    }
+
+    if (this.variant === "board editor") {
+      this.boardEditorMines = mbfMines;
+    } else if (this.variant === "zini explorer") {
+      this.ziniExplore.killDeepChainZiniRunner(); //just in case
+      this.ziniExplorerMines = mbfMines;
+      this.ziniExplore.clearCurrentPath();
+    }
+
+    this.revertUnappliedWidthHeightSetting();
+
+    this.switchToEditMode();
+
+    mbfImportModal.value = false;
+    mbfStringToImport.value = "";
+    mbfFileToImport.value = null;
   }
 
   switchToEditMode() {

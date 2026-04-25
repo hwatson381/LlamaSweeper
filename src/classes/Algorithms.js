@@ -1594,6 +1594,62 @@ class Algorithms {
 
     return hexString;
   }
+
+  static readFromMbfBinaryData(mbfData) {
+    /*
+      mbf structure:
+      first two bytes - width, height
+      next two bytes - mine count (goes up to 65535 mines)
+      rest - coords of mines. Each coord is 2 bytes, first byte is x, second byte is y.
+    */
+
+    if (mbfData.length < 4) {
+      throw new Error("MBF data is too short to contain header information");
+    }
+
+    if (mbfData.length % 2 !== 0) {
+      throw new Error("MBF data has odd length which is invalid");
+    }
+
+    const width = mbfData[0];
+    const height = mbfData[1];
+    const mineCount = (mbfData[2] << 8) | mbfData[3];
+
+    const mines = new Array(width).fill(0).map(() => new Array(height).fill(false));
+
+    for (let i = 4; i < mbfData.length; i += 2) {
+      let x = mbfData[i];
+      let y = mbfData[i + 1];
+
+      if (x >= width || y >= height) {
+        throw new Error(`Coordinates found outside board when parsing MBF. Board size is ${width}x${height}, but mine found at (${x},${y})`);
+      }
+
+      mines[x][y] = true;
+    }
+
+    //validate mines are correct
+    const calculatedMineCount = mines.flat().filter(val => val).length;
+    if (calculatedMineCount !== mineCount) {
+      throw new Error(`Mine count mismatch when reading MBF string. Expected ${mineCount}, got ${calculatedMineCount}`);
+    }
+
+    return mines;
+  }
+
+  static readFromMbfString(mbfString) {
+    //Remove spaces and convert from hex string to Uint8Array
+    const hexString = mbfString.replace(/\s/g, '');
+
+    if (!/^(?:[a-f0-9]{2})+$/i.test(hexString)) {
+      throw new Error("Hex string contains invalid characters or has odd length");
+    }
+
+    //Convert string to Uint8Array. Could switch to https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array/fromHex when it's more widely supported
+    const mbfData = Uint8Array.from(hexString.match(/[a-f0-9]{2}/gi).map(byte => parseInt(byte, 16)));
+
+    return this.readFromMbfBinaryData(mbfData);
+  }
 }
 
 class BitPacker {

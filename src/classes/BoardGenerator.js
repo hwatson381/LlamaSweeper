@@ -134,7 +134,7 @@ class BoardGenerator {
       width < 1 ||
       width > 100 ||
       height < 1 ||
-      width > 100
+      height > 100
     ) {
       if (suppressDialogsAndErrors) {
         return false;
@@ -162,7 +162,7 @@ class BoardGenerator {
         }
 
         //$scope.mines += tempN & 1;
-        if (tempN & (1 === 1)) {
+        if ((tempN & 1) === 1) {
           minesArray[j % width][Math.floor(j / width)] = true;
         }
         tempN >>= 1;
@@ -170,6 +170,57 @@ class BoardGenerator {
     }
 
     return minesArray;
+  }
+
+  static readFromMbfString(mbfString) {
+    if (mbfString === "") {
+      Dialog.create({
+        title: "Alert",
+        message: "Please provide a MBF hex string",
+      });
+      throw new Error("MBF STRING NOT SET");
+    }
+
+    if (!/^(?:[a-f0-9][a-f0-9]\s*)+$/i.test(mbfString)) {
+      Dialog.create({
+        title: "Alert",
+        message: "MBF string can only contain hex characters (0-9, a-f)",
+      });
+      throw new Error("MBF STRING BAD FORMAT");
+    }
+
+    let mines;
+
+    try {
+      mines = Algorithms.readFromMbfString(mbfString);
+    } catch (e) {
+      Dialog.create({
+        title: "Alert",
+        message: "Error processing MBF string. Please make sure it's in the correct format",
+      });
+      throw e;
+    }
+
+    return mines;
+  }
+
+  static async readFromMbfFile(file) {
+    if (!file || !(file instanceof File)) {
+      throw new Error("MBF file not provided or invalid");
+    }
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const mbfData = new Uint8Array(buffer);
+      const mines = Algorithms.readFromMbfBinaryData(mbfData);
+      return mines;
+    } catch (e) {
+      Dialog.create({
+        title: "Alert",
+        message: "Error processing MBF file. Please make sure it's in the correct format",
+      });
+      throw e;
+    }
   }
 
   static fisherYatesArrayShuffle(arr) {

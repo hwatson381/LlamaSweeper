@@ -591,10 +591,13 @@ parallelise deepchain (really big task...)
 nf eff guide?
 zini quality of life stuff (given that wom links to it now...). This is mainly just highlighting squares DURING the replay
 make use of ms-toollib for no guess... Also auto-display hint on blast
-mbf import
+[done] mbf import
 [done] Simplify waffle on variants page
 [done] Add (i) to 20/20 (click: random) on eff boards to explain why the boards start in a different place to where someone clicked
 [done] Have a setting for how the flag toggle starts on mobile (e.g. start it as the same, start dig, start flag, change after first click etc)
 selection tool for board editor/zini explorer (and safe resizing). Also drag clicking?
 
 Ask LLM to look for bugs in all the files in classes folder
+
+To continue from:
+implement readFromMbfString and make sure to relate it to pre-existing code that parses MBF. We also have a file picker that similarly needs implementing
