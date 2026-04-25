@@ -81,5 +81,8 @@ That way, your game never fights the browser’s inertial scroll.
 ```
 
 i wish i could change the size of a board on llamasweeper without erasing the entire board
+i wish there was an easier way to like 'move things around' in llamasweeper
+like grab a whole section and move it to the left or something or change the board size and keep the structure
+Drag clicking to place multiple mines?
 
 Have a setting on eff boards for auto-opening all 4 corners?
