@@ -9,7 +9,13 @@ const routes = [
       { path: 'about', component: () => import('pages/AboutPage.vue') },
       { path: 'data-entry', component: () => import('pages/DataEntryPage.vue') },
       { path: 'bookmark', component: () => import('pages/BookmarkletPage.vue') },
-      { path: 'wom-setting', component: () => import('pages/WomSettingPage.vue') }
+      { path: 'wom-setting', component: () => import('pages/WomSettingPage.vue') },
+      {
+        path: 'articles', children: [
+          { path: '', component: () => import('pages/ArticlesPage.vue') },
+          { path: 'example-article', component: () => import('pages/articles/ExampleArticle.vue') }
+        ]
+      }
     ]
   },
 
