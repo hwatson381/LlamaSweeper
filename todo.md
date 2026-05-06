@@ -599,24 +599,3 @@ selection tool for board editor/zini explorer (and safe resizing). Also drag cli
 send to strangedust replay analyzer option?
 
 Ask LLM to look for bugs in all the files in classes folder
-
-NF Eff guide -
-Do articles section. Think about setup - e.g. how can we make use of components and structure everything.
-Is there a way to write articles once and auto-feed info into the articles index?
-We should specify article length on the artcles page? Cos NF Eff guide is REALLY long.
-
-Boilerplate per article — each new article requires: a new .vue file, a new route entry, and a new card in ArticlesPage.vue. That's 3 touch points. At 10/year it's manageable but easy to forget one. You might consider keeping the article metadata (title, date, author, slug, excerpt) in a single JS array and generating the cards and routes from it, rather than duplicating that info across files.
-
-Route registration — right now every article needs a manual entry in routes.js. A simple alternative: use a wildcard route under /articles/:slug and a metadata map, so you only add the .vue file and update one array.
-
----
-
-ArticlesPage.vue
-Card hover effect — add a CSS transition on box-shadow or transform: translateY(-2px) so cards lift slightly on hover. Makes the list feel interactive.
-
-Tags/category chips — add q-chip elements (e.g. "Guide", "Analysis") below the subtitle. Breaks up the text and adds colour.
-
-Estimated read time — a small q-badge or muted text line like "5 min read" next to the date adds context cheaply.
-
-ExampleArticle.vue
-Author chip/avatar row — instead of plain text-subtitle2, use a small q-avatar (letter avatar or icon) + chip next to the date. Quasar's q-item layout works cleanly for this.

@@ -1,3 +1,10 @@
+import articleList from 'src/assets/article-list';
+
+let articlesPaths = articleList.map(a => ({
+  path: a.slug,
+  component: a.component
+}));
+
 const routes = [
   {
     path: '/',
@@ -11,9 +18,14 @@ const routes = [
       { path: 'bookmark', component: () => import('pages/BookmarkletPage.vue') },
       { path: 'wom-setting', component: () => import('pages/WomSettingPage.vue') },
       {
-        path: 'articles', children: [
+        path: 'articles',
+        children: [
           { path: '', component: () => import('pages/ArticlesPage.vue') },
-          { path: 'example-article', component: () => import('pages/articles/ExampleArticle.vue') }
+          {
+            path: '',  // no extra path segment, just a layout wrapper
+            component: () => import('layouts/ArticleLayout.vue'),
+            children: articlesPaths  // these each have their own slug paths
+          }
         ]
       }
     ]
