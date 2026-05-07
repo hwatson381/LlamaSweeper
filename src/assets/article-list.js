@@ -25,6 +25,16 @@ let articleList = [
     date: '2024-06-01',
     author: 'Llama',
     readLength: 3
+  },
+  {
+    articleId: 'nfEffGuide',
+    component: () => import('pages/articles/NfEffGuideArticle.vue'),
+    title: 'No Flag expert 100% efficiency game review/semi-guide',
+    slug: 'nf-eff-guide',
+    excerptHtml: `A really long guide about the advanced concept of no flag efficiency.`,
+    date: '2026-05-07',
+    author: 'Llama',
+    readLength: 5
   }
 ];
 
