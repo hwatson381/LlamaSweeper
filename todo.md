@@ -599,3 +599,14 @@ selection tool for board editor/zini explorer (and safe resizing). Also drag cli
 send to strangedust replay analyzer option?
 
 Ask LLM to look for bugs in all the files in classes folder
+
+NF eff guide issues:
+Some lists are broken
+Images have wrong sizes
+Images are out of order
+h4s possibly have too much margin (do class="text-h4" on p tag instead?)
+Is it worth adding q-section after headers?
+tables need fixing (make evenly spaced columns, adjust images inside)
+everything needs converting to quasar formatting to make it look nicer?
+Need to add foreword
+Check images in correct order (especially in tables)

@@ -1619,7 +1619,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image56.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image16.png" class="base-img" />
 
   <p></p>
   <p>
@@ -1658,10 +1658,10 @@ Conversion notes:
       </tr>
       <tr>
         <td>
-          <img src="/img/articles/nf-eff-guide/image57.png" class="base-img" />
+          <img src="/img/articles/nf-eff-guide/image56.png" class="base-img" />
         </td>
         <td>
-          <img src="/img/articles/nf-eff-guide/image58.png" class="base-img" />
+          <img src="/img/articles/nf-eff-guide/image57.png" class="base-img" />
         </td>
       </tr>
       <tr>
@@ -1678,7 +1678,7 @@ Conversion notes:
       <tr>
         <td></td>
         <td>
-          <img src="/img/articles/nf-eff-guide/image59.png" class="base-img" />
+          <img src="/img/articles/nf-eff-guide/image58.png" class="base-img" />
         </td>
       </tr>
       <tr>
@@ -1714,10 +1714,10 @@ Conversion notes:
       </tr>
       <tr>
         <td>
-          <img src="/img/articles/nf-eff-guide/image60.png" class="base-img" />
+          <img src="/img/articles/nf-eff-guide/image59.png" class="base-img" />
         </td>
         <td>
-          <img src="/img/articles/nf-eff-guide/image61.png" class="base-img" />
+          <img src="/img/articles/nf-eff-guide/image60.png" class="base-img" />
         </td>
       </tr>
       <tr>
@@ -1730,7 +1730,7 @@ Conversion notes:
       <tr>
         <td></td>
         <td>
-          <img src="/img/articles/nf-eff-guide/image62.png" class="base-img" />
+          <img src="/img/articles/nf-eff-guide/image61.png" class="base-img" />
         </td>
       </tr>
       <tr>
@@ -1751,7 +1751,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image63.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image16.png" class="base-img" />
 
   <p></p>
   <p>
@@ -1789,7 +1789,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image64.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image62.png" class="base-img" />
 
   <p></p>
   <p style="text-align: center">
@@ -1825,7 +1825,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image65.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image63.png" class="base-img" />
 
   <p></p>
   <p style="text-align: center">
@@ -1857,7 +1857,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image66.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image64.png" class="base-img" />
 
   <p></p>
   <p style="text-align: center">
@@ -1883,9 +1883,9 @@ Conversion notes:
     <br />
   </p>
 
-  <img src="/img/articles/nf-eff-guide/image1.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image65.png" class="base-img" />
 
-  <img src="/img/articles/nf-eff-guide/image1.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image66.png" class="base-img" />
 
   <p></p>
   <p>
