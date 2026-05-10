@@ -909,31 +909,29 @@ Conversion notes:
     numbers given in the table will still differ from their true values.
   </p>
 
-  <table>
+  <q-markup-table flat bordered wrap-cells separator="cell" dense>
+    <colgroup>
+      <col style="width: 33.33%" />
+      <col style="width: 33.33%" />
+      <col style="width: 33.33%" />
+    </colgroup>
+    <thead>
+      <tr>
+        <th><strong>20% density</strong></th>
+        <th><strong>25% density</strong></th>
+        <th><strong>30% density</strong></th>
+      </tr>
+    </thead>
     <tbody>
       <tr>
-        <td><strong>20% density</strong></td>
-        <td><strong>25% density</strong></td>
-        <td><strong>30% density</strong></td>
-      </tr>
-      <tr>
         <td>
-          <img
-            src="/img/articles/nf-eff-guide/image30.png"
-            class="base-img img-todo"
-          />
+          <img src="/img/articles/nf-eff-guide/image30.png" class="base-img" />
         </td>
         <td>
-          <img
-            src="/img/articles/nf-eff-guide/image31.png"
-            class="base-img img-todo"
-          />
+          <img src="/img/articles/nf-eff-guide/image31.png" class="base-img" />
         </td>
         <td>
-          <img
-            src="/img/articles/nf-eff-guide/image32.png"
-            class="base-img img-todo"
-          />
+          <img src="/img/articles/nf-eff-guide/image32.png" class="base-img" />
         </td>
       </tr>
       <tr>
@@ -1007,7 +1005,7 @@ Conversion notes:
         </td>
       </tr>
     </tbody>
-  </table>
+  </q-markup-table>
 
   <p>
     I will give some general tips about high density before returning to the
@@ -1713,24 +1711,24 @@ Conversion notes:
     shows the main risks that apply to green but not cyan and vice versa
   </p>
 
-  <table>
+  <q-markup-table flat bordered wrap-cells separator="cell" dense>
+    <colgroup>
+      <col style="width: 50%" />
+      <col style="width: 50%" />
+    </colgroup>
+    <thead>
+      <tr>
+        <th><strong>Green Guess</strong></th>
+        <th><strong>Cyan Guess</strong></th>
+      </tr>
+    </thead>
     <tbody>
       <tr>
-        <td><strong>Green Guess</strong></td>
-        <td><strong>Cyan Guess</strong></td>
-      </tr>
-      <tr>
         <td>
-          <img
-            src="/img/articles/nf-eff-guide/image56.png"
-            class="base-img img-todo"
-          />
+          <img src="/img/articles/nf-eff-guide/image56.png" class="base-img" />
         </td>
         <td>
-          <img
-            src="/img/articles/nf-eff-guide/image57.png"
-            class="base-img img-todo"
-          />
+          <img src="/img/articles/nf-eff-guide/image57.png" class="base-img" />
         </td>
       </tr>
       <tr>
@@ -1747,10 +1745,7 @@ Conversion notes:
       <tr>
         <td></td>
         <td>
-          <img
-            src="/img/articles/nf-eff-guide/image58.png"
-            class="base-img img-todo"
-          />
+          <img src="/img/articles/nf-eff-guide/image58.png" class="base-img" />
         </td>
       </tr>
       <tr>
@@ -1762,7 +1757,7 @@ Conversion notes:
         </td>
       </tr>
     </tbody>
-  </table>
+  </q-markup-table>
 
   <p>
     Take a moment to think about which of these initial risks is more likely to
@@ -1778,24 +1773,24 @@ Conversion notes:
     green or cyan.
   </p>
 
-  <table>
+  <q-markup-table flat bordered wrap-cells separator="cell" dense>
+    <colgroup>
+      <col style="width: 50%" />
+      <col style="width: 50%" />
+    </colgroup>
+    <thead>
+      <tr>
+        <th><strong>Green Guess</strong></th>
+        <th><strong>Cyan Guess</strong></th>
+      </tr>
+    </thead>
     <tbody>
       <tr>
-        <td><strong>Green Guess</strong></td>
-        <td><strong>Cyan Guess</strong></td>
-      </tr>
-      <tr>
         <td>
-          <img
-            src="/img/articles/nf-eff-guide/image59.png"
-            class="base-img img-todo"
-          />
+          <img src="/img/articles/nf-eff-guide/image59.png" class="base-img" />
         </td>
         <td>
-          <img
-            src="/img/articles/nf-eff-guide/image60.png"
-            class="base-img img-todo"
-          />
+          <img src="/img/articles/nf-eff-guide/image60.png" class="base-img" />
         </td>
       </tr>
       <tr>
@@ -1808,10 +1803,7 @@ Conversion notes:
       <tr>
         <td></td>
         <td>
-          <img
-            src="/img/articles/nf-eff-guide/image61.png"
-            class="base-img img-todo"
-          />
+          <img src="/img/articles/nf-eff-guide/image61.png" class="base-img" />
         </td>
       </tr>
       <tr>
@@ -1822,7 +1814,7 @@ Conversion notes:
         </td>
       </tr>
     </tbody>
-  </table>
+  </q-markup-table>
 
   <p>
     Now that we have some idea of which factors affect each guess, it’s worth
@@ -2019,6 +2011,20 @@ Conversion notes:
 </template>
 
 <style scoped>
+:deep(.q-markup-table) {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+:deep(.q-markup-table table) {
+  width: 100%;
+  table-layout: fixed;
+}
+
+:deep(.q-markup-table tbody td) {
+  vertical-align: top;
+}
+
 .base-img {
   max-width: 100%;
   height: auto;
