@@ -125,7 +125,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image1.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image1.png" class="base-img img-300" />
 
   <p></p>
   <p>
@@ -145,7 +145,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image2.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image2.png" class="base-img img-400" />
 
   <p></p>
   <p>
@@ -174,7 +174,10 @@ Conversion notes:
 
       <p style="text-align: center"></p>
 
-      <img src="/img/articles/nf-eff-guide/image3.png" class="base-img" />
+      <img
+        src="/img/articles/nf-eff-guide/image3.png"
+        class="base-img img-200"
+      />
 
       <p></p>
     </li>
@@ -192,7 +195,10 @@ Conversion notes:
 
       <p style="text-align: center"></p>
 
-      <img src="/img/articles/nf-eff-guide/image4.png" class="base-img" />
+      <img
+        src="/img/articles/nf-eff-guide/image4.png"
+        class="base-img img-200"
+      />
 
       <p></p>
     </li>
@@ -210,7 +216,10 @@ Conversion notes:
 
       <p style="text-align: center"></p>
 
-      <img src="/img/articles/nf-eff-guide/image5.png" class="base-img" />
+      <img
+        src="/img/articles/nf-eff-guide/image5.png"
+        class="base-img img-200"
+      />
 
       <p></p>
     </li>
@@ -231,7 +240,10 @@ Conversion notes:
 
       <p style="text-align: center"></p>
 
-      <img src="/img/articles/nf-eff-guide/image6.png" class="base-img" />
+      <img
+        src="/img/articles/nf-eff-guide/image6.png"
+        class="base-img img-600"
+      />
 
       <p></p>
     </li>
@@ -262,7 +274,10 @@ Conversion notes:
 
       <p style="text-align: center"></p>
 
-      <img src="/img/articles/nf-eff-guide/image7.png" class="base-img" />
+      <img
+        src="/img/articles/nf-eff-guide/image7.png"
+        class="base-img img-400"
+      />
 
       <p></p>
     </li>
@@ -275,7 +290,7 @@ Conversion notes:
   </ol>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image8.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image8.png" class="base-img img-300" />
 
   <p></p>
   <p>
@@ -293,7 +308,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image9.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image9.png" class="base-img img-600" />
 
   <p></p>
   <p class="text-h5">The mindset</p>
@@ -360,12 +375,12 @@ Conversion notes:
     <br />
   </p>
 
-  <img src="/img/articles/nf-eff-guide/image10.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image10.png" class="base-img img-300" />
 
   <p></p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image11.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image11.png" class="base-img img-600" />
 
   <p></p>
   <p>
@@ -398,7 +413,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image12.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image12.png" class="base-img img-600" />
 
   <p></p>
   <p>
@@ -409,7 +424,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image13.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image13.png" class="base-img img-400" />
 
   <p></p>
   <p>
@@ -443,7 +458,7 @@ Conversion notes:
   </ol>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image14.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image14.png" class="base-img img-400" />
 
   <p></p>
   <p>
@@ -455,7 +470,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image15.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image15.png" class="base-img img-500" />
 
   <p></p>
   <p>
@@ -476,7 +491,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image16.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image16.png" class="base-img img-300" />
 
   <p></p>
   <p>
@@ -570,7 +585,7 @@ Conversion notes:
 
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image17.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image17.png" class="base-img img-600" />
 
   <p></p>
   <p>
@@ -590,7 +605,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image18.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image18.png" class="base-img img-500" />
 
   <p></p>
   <p>
@@ -616,7 +631,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image19.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image19.png" class="base-img img-600" />
 
   <p></p>
   <p>
@@ -660,7 +675,7 @@ Conversion notes:
 
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image20.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image20.png" class="base-img img-200" />
 
   <p></p>
   <p>
@@ -679,9 +694,15 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image21.png" class="base-img" />
+  <img
+    src="/img/articles/nf-eff-guide/image21.png"
+    class="base-img img-200 img-todo"
+  />
 
-  <img src="/img/articles/nf-eff-guide/image22.png" class="base-img" />
+  <img
+    src="/img/articles/nf-eff-guide/image22.png"
+    class="base-img img-200 img-todo"
+  />
 
   <p></p>
   <p>
@@ -714,7 +735,7 @@ Conversion notes:
 
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image23.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image23.png" class="base-img img-400" />
 
   <p></p>
   <p>Here I would judge the guesses as follows:</p>
@@ -736,9 +757,15 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image24.png" class="base-img" />
+  <img
+    src="/img/articles/nf-eff-guide/image24.png"
+    class="base-img img-200 img-todo"
+  />
 
-  <img src="/img/articles/nf-eff-guide/image25.png" class="base-img" />
+  <img
+    src="/img/articles/nf-eff-guide/image25.png"
+    class="base-img img-200 img-todo"
+  />
 
   <p></p>
   <p>
@@ -758,7 +785,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image26.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image26.png" class="base-img img-400" />
 
   <p></p>
   <p>
@@ -792,7 +819,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image27.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image27.png" class="base-img img-400" />
 
   <p></p>
   <p>
@@ -816,7 +843,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image28.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image28.png" class="base-img img-300" />
 
   <p></p>
   <p>The requirement for there to be a bad opening (white) is as follows:</p>
@@ -843,7 +870,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image29.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image29.png" class="base-img img-300" />
 
   <p></p>
   <p>
@@ -887,13 +914,22 @@ Conversion notes:
       </tr>
       <tr>
         <td>
-          <img src="/img/articles/nf-eff-guide/image30.png" class="base-img" />
+          <img
+            src="/img/articles/nf-eff-guide/image30.png"
+            class="base-img img-todo"
+          />
         </td>
         <td>
-          <img src="/img/articles/nf-eff-guide/image31.png" class="base-img" />
+          <img
+            src="/img/articles/nf-eff-guide/image31.png"
+            class="base-img img-todo"
+          />
         </td>
         <td>
-          <img src="/img/articles/nf-eff-guide/image32.png" class="base-img" />
+          <img
+            src="/img/articles/nf-eff-guide/image32.png"
+            class="base-img img-todo"
+          />
         </td>
       </tr>
       <tr>
@@ -1019,7 +1055,7 @@ Conversion notes:
   </ul>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image33.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image33.png" class="base-img img-300" />
 
   <p></p>
   <p>
@@ -1035,7 +1071,7 @@ Conversion notes:
 
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image34.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image34.png" class="base-img img-600" />
 
   <p></p>
   <p>
@@ -1052,7 +1088,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image35.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image35.png" class="base-img img-400" />
 
   <p></p>
   <p>There are 4 moves worth considering here.</p>
@@ -1127,7 +1163,10 @@ Conversion notes:
       <p>In terms of density this is: (1 - (1 - d)^2) * (1 - d) * 1/2</p>
       <p></p>
 
-      <img src="/img/articles/nf-eff-guide/image36.png" class="base-img" />
+      <img
+        src="/img/articles/nf-eff-guide/image36.png"
+        class="base-img img-200"
+      />
 
       <p></p>
     </li>
@@ -1151,7 +1190,10 @@ Conversion notes:
       </p>
       <p></p>
 
-      <img src="/img/articles/nf-eff-guide/image37.png" class="base-img" />
+      <img
+        src="/img/articles/nf-eff-guide/image37.png"
+        class="base-img img-200"
+      />
 
       <p></p>
     </li>
@@ -1192,7 +1234,10 @@ Conversion notes:
       <p>P(purple loses click) = P (yellow all safe) = (1 - d)^6</p>
       <p></p>
 
-      <img src="/img/articles/nf-eff-guide/image38.png" class="base-img" />
+      <img
+        src="/img/articles/nf-eff-guide/image38.png"
+        class="base-img img-300"
+      />
 
       <p></p>
     </li>
@@ -1206,7 +1251,7 @@ Conversion notes:
   <p>So, we pick green and end up with the below.</p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image39.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image39.png" class="base-img img-400" />
 
   <p></p>
   <p>
@@ -1224,7 +1269,7 @@ Conversion notes:
   <p>My favourite pattern for NF Efficiency is the below</p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image40.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image40.png" class="base-img img-400" />
 
   <p></p>
   <p>
@@ -1235,9 +1280,15 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image41.png" class="base-img" />
+  <img
+    src="/img/articles/nf-eff-guide/image41.png"
+    class="base-img img-300 img-todo"
+  />
 
-  <img src="/img/articles/nf-eff-guide/image42.png" class="base-img" />
+  <img
+    src="/img/articles/nf-eff-guide/image42.png"
+    class="base-img img-300 img-todo"
+  />
 
   <p></p>
   <p>
@@ -1251,7 +1302,7 @@ Conversion notes:
 
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image43.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image43.png" class="base-img img-300" />
 
   <p></p>
   <p>
@@ -1262,7 +1313,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image44.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image44.png" class="base-img img-300" />
 
   <p></p>
   <p>
@@ -1280,7 +1331,7 @@ Conversion notes:
 
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image45.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image45.png" class="base-img img-400" />
 
   <p></p>
   <p>
@@ -1291,7 +1342,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image46.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image46.png" class="base-img img-300" />
 
   <p></p>
   <p>
@@ -1303,7 +1354,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image47.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image47.png" class="base-img img-600" />
 
   <p></p>
   <p>
@@ -1336,7 +1387,7 @@ Conversion notes:
   </ol>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image48.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image48.png" class="base-img img-600" />
 
   <p></p>
   <p>
@@ -1365,7 +1416,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image49.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image49.png" class="base-img img-400" />
 
   <p></p>
   <p>
@@ -1399,7 +1450,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image50.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image50.png" class="base-img img-400" />
 
   <p></p>
   <p>
@@ -1411,7 +1462,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image51.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image51.png" class="base-img img-400" />
 
   <p></p>
   <p>
@@ -1420,12 +1471,12 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image52.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image52.png" class="base-img img-400" />
 
   <p></p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image53.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image53.png" class="base-img img-400" />
 
   <p></p>
   <p>
@@ -1438,9 +1489,15 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image54.png" class="base-img" />
+  <img
+    src="/img/articles/nf-eff-guide/image54.png"
+    class="base-img img-500 img-todo"
+  />
 
-  <img src="/img/articles/nf-eff-guide/image55.png" class="base-img" />
+  <img
+    src="/img/articles/nf-eff-guide/image55.png"
+    class="base-img img-600 img-todo"
+  />
 
   <p></p>
   <p class="text-h5">Some miscellaneous tips</p>
@@ -1615,7 +1672,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image16.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image16.png" class="base-img img-300" />
 
   <p></p>
   <p>
@@ -1654,10 +1711,16 @@ Conversion notes:
       </tr>
       <tr>
         <td>
-          <img src="/img/articles/nf-eff-guide/image56.png" class="base-img" />
+          <img
+            src="/img/articles/nf-eff-guide/image56.png"
+            class="base-img img-todo"
+          />
         </td>
         <td>
-          <img src="/img/articles/nf-eff-guide/image57.png" class="base-img" />
+          <img
+            src="/img/articles/nf-eff-guide/image57.png"
+            class="base-img img-todo"
+          />
         </td>
       </tr>
       <tr>
@@ -1674,7 +1737,10 @@ Conversion notes:
       <tr>
         <td></td>
         <td>
-          <img src="/img/articles/nf-eff-guide/image58.png" class="base-img" />
+          <img
+            src="/img/articles/nf-eff-guide/image58.png"
+            class="base-img img-todo"
+          />
         </td>
       </tr>
       <tr>
@@ -1710,10 +1776,16 @@ Conversion notes:
       </tr>
       <tr>
         <td>
-          <img src="/img/articles/nf-eff-guide/image59.png" class="base-img" />
+          <img
+            src="/img/articles/nf-eff-guide/image59.png"
+            class="base-img img-todo"
+          />
         </td>
         <td>
-          <img src="/img/articles/nf-eff-guide/image60.png" class="base-img" />
+          <img
+            src="/img/articles/nf-eff-guide/image60.png"
+            class="base-img img-todo"
+          />
         </td>
       </tr>
       <tr>
@@ -1726,7 +1798,10 @@ Conversion notes:
       <tr>
         <td></td>
         <td>
-          <img src="/img/articles/nf-eff-guide/image61.png" class="base-img" />
+          <img
+            src="/img/articles/nf-eff-guide/image61.png"
+            class="base-img img-todo"
+          />
         </td>
       </tr>
       <tr>
@@ -1747,7 +1822,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image16.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image16.png" class="base-img img-300" />
 
   <p></p>
   <p>
@@ -1785,7 +1860,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image62.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image62.png" class="base-img img-600" />
 
   <p></p>
   <p style="text-align: center">
@@ -1821,7 +1896,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image63.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image63.png" class="base-img img-600" />
 
   <p></p>
   <p style="text-align: center">
@@ -1853,7 +1928,7 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image64.png" class="base-img" />
+  <img src="/img/articles/nf-eff-guide/image64.png" class="base-img img-600" />
 
   <p></p>
   <p style="text-align: center">
@@ -1879,9 +1954,15 @@ Conversion notes:
     <br />
   </p>
 
-  <img src="/img/articles/nf-eff-guide/image65.png" class="base-img" />
+  <img
+    src="/img/articles/nf-eff-guide/image65.png"
+    class="base-img img-300 img-todo"
+  />
 
-  <img src="/img/articles/nf-eff-guide/image66.png" class="base-img" />
+  <img
+    src="/img/articles/nf-eff-guide/image66.png"
+    class="base-img img-300 img-todo"
+  />
 
   <p></p>
   <p>
