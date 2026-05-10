@@ -64,7 +64,7 @@ Conversion notes:
     will skip over some of the theory that is already covered in those. I will
     assume a basic-to-intermediate understanding of NF efficiency.
   </p>
-  <h4>Other guides</h4>
+  <p class="text-h5">Other guides</p>
 
   <p>
     Scar and PTTACGFans have made great guides for introducing NF efficiency
@@ -95,7 +95,7 @@ Conversion notes:
     </a>
     (translated to English)
   </p>
-  <h4>Core NF Eff strategy</h4>
+  <p class="text-h5">Core NF Eff strategy</p>
 
   <p>
     Before I start the game review, I want to first go over some core strategy
@@ -171,14 +171,13 @@ Conversion notes:
       to be safe in order for it to be an opening whereas cyan requires
       <strong>6 squares</strong>
       to be safe for this.
+
+      <p style="text-align: center"></p>
+
+      <img src="/img/articles/nf-eff-guide/image3.png" class="base-img" />
+
+      <p></p>
     </li>
-  </ol>
-  <p style="text-align: center"></p>
-
-  <img src="/img/articles/nf-eff-guide/image3.png" class="base-img" />
-
-  <p></p>
-  <ol>
     <li>
       <strong
         >It is preferable to go for openings where the square you are clicking
@@ -190,14 +189,13 @@ Conversion notes:
       an acceptable risk since the chance of this happening is less than [mine
       density]% since even if orange is a mine, you may still be saved if there
       are mines above it that prevent the opening.
+
+      <p style="text-align: center"></p>
+
+      <img src="/img/articles/nf-eff-guide/image4.png" class="base-img" />
+
+      <p></p>
     </li>
-  </ol>
-  <p style="text-align: center"></p>
-
-  <img src="/img/articles/nf-eff-guide/image4.png" class="base-img" />
-
-  <p></p>
-  <ol>
     <li>
       <strong
         >It is preferable to go for moves that can be “pulled” towards solved
@@ -209,14 +207,13 @@ Conversion notes:
       that are blocking the opening, whereas cyan would just let you uncover the
       brown square, which isn’t as useful. I will discuss “pulling” more later
       on in the document.
+
+      <p style="text-align: center"></p>
+
+      <img src="/img/articles/nf-eff-guide/image5.png" class="base-img" />
+
+      <p></p>
     </li>
-  </ol>
-  <p style="text-align: center"></p>
-
-  <img src="/img/articles/nf-eff-guide/image5.png" class="base-img" />
-
-  <p></p>
-  <ol>
     <li>
       <strong
         >Compare moves by thinking about where the mines and openings could be
@@ -231,14 +228,13 @@ Conversion notes:
       is an opening. For the cyan prediction, there are 4 (orange) squares that
       could lose a click if they have a mine. So, I would judge green to be
       better than cyan as there are more ways that cyan can waste a click.
+
+      <p style="text-align: center"></p>
+
+      <img src="/img/articles/nf-eff-guide/image6.png" class="base-img" />
+
+      <p></p>
     </li>
-  </ol>
-  <p style="text-align: center"></p>
-
-  <img src="/img/articles/nf-eff-guide/image6.png" class="base-img" />
-
-  <p></p>
-  <ol>
     <li>
       <strong>Try to close down the board.</strong>
       This is quite a general principle, so I don’t have a screenshot to go
@@ -263,14 +259,13 @@ Conversion notes:
       guess, think about how it improves the state of the board - will it help
       solve an important area of the board? Is it likely to lead to lots of
       progress or is it in a closed off area that is better left for minecount?
+
+      <p style="text-align: center"></p>
+
+      <img src="/img/articles/nf-eff-guide/image7.png" class="base-img" />
+
+      <p></p>
     </li>
-  </ol>
-  <p style="text-align: center"></p>
-
-  <img src="/img/articles/nf-eff-guide/image7.png" class="base-img" />
-
-  <p></p>
-  <ol>
     <li>
       <strong>Don’t forget about the edge of the board.</strong>
       In particular, I mean moves like in the screenshot below, it’s easy to
@@ -301,7 +296,7 @@ Conversion notes:
   <img src="/img/articles/nf-eff-guide/image9.png" class="base-img" />
 
   <p></p>
-  <h4>The mindset</h4>
+  <p class="text-h5">The mindset</p>
 
   <p>
     The mindset of no flag efficiency depends on what your goal is. If you are
@@ -345,7 +340,7 @@ Conversion notes:
     >
     !
   </p>
-  <h4>Start of the review</h4>
+  <p class="text-h5">Start of the review</p>
 
   <p>As a reminder, we will be reviewing this game</p>
   <p>
@@ -472,7 +467,7 @@ Conversion notes:
     the end and have a high number of mines remaining, then we will want to play
     safe rather than going for cyan.
   </p>
-  <h4>Preparation guesses</h4>
+  <p class="text-h5">Preparation guesses</p>
 
   <p>
     Sometimes, in NF efficiency, there will be times where you may want to get
@@ -571,7 +566,7 @@ Conversion notes:
     a large amount of information, but be wary of the fact that you are taking
     an additional risk that may lead to no real progress.
   </p>
-  <h4>Back to the review</h4>
+  <p class="text-h5">Back to the review</p>
 
   <p style="text-align: center"></p>
 
@@ -659,7 +654,9 @@ Conversion notes:
     For reasons I can’t remember, but most likely because I was playing fast, I
     went for guess A, which gave a nice opening.
   </p>
-  <h4>Pulling and the rule of treating clicked squares as mines</h4>
+  <p class="text-h5">
+    Pulling and the rule of treating clicked squares as mines
+  </p>
 
   <p style="text-align: center"></p>
 
@@ -713,7 +710,7 @@ Conversion notes:
     clicked square (purple) so we were never going to get 100% on this board
     anyway.
   </p>
-  <h4>Back to the review</h4>
+  <p class="text-h5">Back to the review</p>
 
   <p style="text-align: center"></p>
 
@@ -862,7 +859,7 @@ Conversion notes:
     T will also be safe, but T doesn’t have the risk of losing a click to an
     opening.
   </p>
-  <h4>High density strategy</h4>
+  <p class="text-h5">High density strategy</p>
 
   <p>
     As you approach the end of the board, it is often sensible to work out what
@@ -1034,7 +1031,7 @@ Conversion notes:
     very likely that the opening will expand to also include the “3” which means
     that a click was wasted.
   </p>
-  <h4>Back to the review</h4>
+  <p class="text-h5">Back to the review</p>
 
   <p style="text-align: center"></p>
 
@@ -1218,7 +1215,7 @@ Conversion notes:
     some clicks to an opening. I’d suggest staring at it a bit and thinking
     about how you would play it.
   </p>
-  <h4>A favourite pattern</h4>
+  <p class="text-h5">A favourite pattern</p>
 
   <p>
     Can you really call yourself a minesweeper player if you don’t have a
@@ -1250,7 +1247,7 @@ Conversion notes:
     section, before I get back to the review, which I promise will be more
     relevant.
   </p>
-  <h4>Virtual mines</h4>
+  <p class="text-h5">Virtual mines</p>
 
   <p style="text-align: center"></p>
 
@@ -1279,7 +1276,7 @@ Conversion notes:
     these cases, the green square will be protected. So, it is safe to click the
     green square.
   </p>
-  <h4>Back to the review</h4>
+  <p class="text-h5">Back to the review</p>
 
   <p style="text-align: center"></p>
 
@@ -1446,7 +1443,7 @@ Conversion notes:
   <img src="/img/articles/nf-eff-guide/image55.png" class="base-img" />
 
   <p></p>
-  <h4>Some miscellaneous tips</h4>
+  <p class="text-h5">Some miscellaneous tips</p>
 
   <p>
     I have a few tips to mention here which I couldn’t fit in any other part of
@@ -1487,7 +1484,7 @@ Conversion notes:
     also recommend a similar strategy for other categories in minesweeper such
     as when trying to improve a time PB.
   </p>
-  <h4>Conclusion</h4>
+  <p class="text-h5">Conclusion</p>
 
   <p>
     I hope that I have succeeded in my goal of shedding some light on the more
@@ -1528,8 +1525,7 @@ Conversion notes:
     <li>
       Hard NF 100% - the easier relative of expert. No-guess makes this a fun
       mode to play as it gives more friendly boards, and the start can be less
-      frustrating due to the initial free opening. As of writing, the only
-      person to have achieved this is
+      frustrating due to the initial free opening. This was first achieved by
       <a href="https://minesweeper.online/player/2677763">PTTACGfans</a>
       with this
       <a href="https://minesweeper.online/game/1139262670">game</a>
@@ -1600,7 +1596,7 @@ Conversion notes:
       board sizes/densities that can occur and learn when to skip a bad board.
     </li>
   </ul>
-  <h4>Appendix: Preparation guess analysis</h4>
+  <p class="text-h5">Appendix: Preparation guess analysis</p>
 
   <p>
     Here I go a bit deeper into the theory behind preparation guesses at
@@ -1935,6 +1931,35 @@ Conversion notes:
   height: auto;
   display: block;
   margin: 0 auto;
+}
+
+.img-100 {
+  width: 100px;
+}
+.img-200 {
+  width: 200px;
+}
+.img-300 {
+  width: 300px;
+}
+.img-400 {
+  width: 400px;
+}
+.img-500 {
+  width: 500px;
+}
+.img-600 {
+  width: 600px;
+}
+.img-700 {
+  width: 700px;
+}
+.img-800 {
+  width: 800px;
+}
+
+.img-todo {
+  border: 4px solid red;
 }
 </style>
 
