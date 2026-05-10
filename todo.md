@@ -601,8 +601,8 @@ send to strangedust replay analyzer option?
 Ask LLM to look for bugs in all the files in classes folder
 
 NF eff guide issues:
-Some lists are broken
-Images have wrong sizes
+[done] Some lists are broken
+[mostly done] Images have wrong sizes
 [done] Images are out of order
 [done] h4s possibly have too much margin (do class="text-h4" on p tag instead?)
 [skip] Is it worth adding q-section after headers?
@@ -611,3 +611,4 @@ everything needs converting to quasar formatting to make it look nicer?
 Need to add foreword
 Check images in correct order (especially in tables)
 Some intentional space (e.g. above images) has been lost
+Make images lazy load with qimg?

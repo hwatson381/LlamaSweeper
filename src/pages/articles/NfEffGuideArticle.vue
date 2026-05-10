@@ -694,15 +694,17 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img
-    src="/img/articles/nf-eff-guide/image21.png"
-    class="base-img img-200 img-todo"
-  />
+  <div class="row justify-center no-wrap" style="gap: 15px">
+    <img
+      src="/img/articles/nf-eff-guide/image21.png"
+      class="img-simple img-200 col-shrink"
+    />
 
-  <img
-    src="/img/articles/nf-eff-guide/image22.png"
-    class="base-img img-200 img-todo"
-  />
+    <img
+      src="/img/articles/nf-eff-guide/image22.png"
+      class="img-simple img-200 col-shrink"
+    />
+  </div>
 
   <p></p>
   <p>
@@ -757,15 +759,17 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img
-    src="/img/articles/nf-eff-guide/image24.png"
-    class="base-img img-200 img-todo"
-  />
+  <div class="row justify-center no-wrap" style="gap: 15px">
+    <img
+      src="/img/articles/nf-eff-guide/image24.png"
+      class="img-simple img-200 col-shrink"
+    />
 
-  <img
-    src="/img/articles/nf-eff-guide/image25.png"
-    class="base-img img-200 img-todo"
-  />
+    <img
+      src="/img/articles/nf-eff-guide/image25.png"
+      class="img-simple img-200 col-shrink"
+    />
+  </div>
 
   <p></p>
   <p>
@@ -1280,15 +1284,17 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img
-    src="/img/articles/nf-eff-guide/image41.png"
-    class="base-img img-300 img-todo"
-  />
+  <div class="row justify-center no-wrap" style="gap: 15px">
+    <img
+      src="/img/articles/nf-eff-guide/image41.png"
+      class="img-simple img-300 col-shrink"
+    />
 
-  <img
-    src="/img/articles/nf-eff-guide/image42.png"
-    class="base-img img-300 img-todo"
-  />
+    <img
+      src="/img/articles/nf-eff-guide/image42.png"
+      class="img-simple img-300 col-shrink"
+    />
+  </div>
 
   <p></p>
   <p>
@@ -1489,15 +1495,19 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img
-    src="/img/articles/nf-eff-guide/image54.png"
-    class="base-img img-500 img-todo"
-  />
+  <div class="row justify-center no-wrap" style="gap: 15px">
+    <img
+      src="/img/articles/nf-eff-guide/image54.png"
+      class="img-simple col-shrink"
+      style="width: 256px"
+    />
 
-  <img
-    src="/img/articles/nf-eff-guide/image55.png"
-    class="base-img img-600 img-todo"
-  />
+    <img
+      src="/img/articles/nf-eff-guide/image55.png"
+      class="img-simple col-shrink"
+      style="width: 310px"
+    />
+  </div>
 
   <p></p>
   <p class="text-h5">Some miscellaneous tips</p>
@@ -1954,15 +1964,17 @@ Conversion notes:
     <br />
   </p>
 
-  <img
-    src="/img/articles/nf-eff-guide/image65.png"
-    class="base-img img-300 img-todo"
-  />
+  <div class="row justify-center no-wrap" style="gap: 15px">
+    <img
+      src="/img/articles/nf-eff-guide/image65.png"
+      class="img-simple img-300 col-shrink"
+    />
 
-  <img
-    src="/img/articles/nf-eff-guide/image66.png"
-    class="base-img img-300 img-todo"
-  />
+    <img
+      src="/img/articles/nf-eff-guide/image66.png"
+      class="img-simple img-300 col-shrink"
+    />
+  </div>
 
   <p></p>
   <p>
@@ -2012,6 +2024,11 @@ Conversion notes:
   height: auto;
   display: block;
   margin: 0 auto;
+}
+
+.img-simple {
+  height: auto;
+  display: block;
 }
 
 .img-100 {
