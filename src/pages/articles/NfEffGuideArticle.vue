@@ -909,7 +909,14 @@ Conversion notes:
     numbers given in the table will still differ from their true values.
   </p>
 
-  <q-markup-table flat bordered wrap-cells separator="cell" dense>
+  <q-markup-table
+    flat
+    bordered
+    wrap-cells
+    separator="cell"
+    dense
+    class="q-my-lg article-table"
+  >
     <colgroup>
       <col style="width: 33.33%" />
       <col style="width: 33.33%" />
@@ -925,13 +932,22 @@ Conversion notes:
     <tbody>
       <tr>
         <td>
-          <img src="/img/articles/nf-eff-guide/image30.png" class="base-img" />
+          <img
+            src="/img/articles/nf-eff-guide/image30.png"
+            class="base-img img-200"
+          />
         </td>
         <td>
-          <img src="/img/articles/nf-eff-guide/image31.png" class="base-img" />
+          <img
+            src="/img/articles/nf-eff-guide/image31.png"
+            class="base-img img-200"
+          />
         </td>
         <td>
-          <img src="/img/articles/nf-eff-guide/image32.png" class="base-img" />
+          <img
+            src="/img/articles/nf-eff-guide/image32.png"
+            class="base-img img-200"
+          />
         </td>
       </tr>
       <tr>
@@ -1711,7 +1727,14 @@ Conversion notes:
     shows the main risks that apply to green but not cyan and vice versa
   </p>
 
-  <q-markup-table flat bordered wrap-cells separator="cell" dense>
+  <q-markup-table
+    flat
+    bordered
+    wrap-cells
+    separator="cell"
+    dense
+    class="q-my-lg article-table"
+  >
     <colgroup>
       <col style="width: 50%" />
       <col style="width: 50%" />
@@ -1725,10 +1748,16 @@ Conversion notes:
     <tbody>
       <tr>
         <td>
-          <img src="/img/articles/nf-eff-guide/image56.png" class="base-img" />
+          <img
+            src="/img/articles/nf-eff-guide/image56.png"
+            class="base-img img-200"
+          />
         </td>
         <td>
-          <img src="/img/articles/nf-eff-guide/image57.png" class="base-img" />
+          <img
+            src="/img/articles/nf-eff-guide/image57.png"
+            class="base-img img-100"
+          />
         </td>
       </tr>
       <tr>
@@ -1745,7 +1774,10 @@ Conversion notes:
       <tr>
         <td></td>
         <td>
-          <img src="/img/articles/nf-eff-guide/image58.png" class="base-img" />
+          <img
+            src="/img/articles/nf-eff-guide/image58.png"
+            class="base-img img-200"
+          />
         </td>
       </tr>
       <tr>
@@ -1773,7 +1805,14 @@ Conversion notes:
     green or cyan.
   </p>
 
-  <q-markup-table flat bordered wrap-cells separator="cell" dense>
+  <q-markup-table
+    flat
+    bordered
+    wrap-cells
+    separator="cell"
+    dense
+    class="q-my-lg article-table"
+  >
     <colgroup>
       <col style="width: 50%" />
       <col style="width: 50%" />
@@ -1787,10 +1826,16 @@ Conversion notes:
     <tbody>
       <tr>
         <td>
-          <img src="/img/articles/nf-eff-guide/image59.png" class="base-img" />
+          <img
+            src="/img/articles/nf-eff-guide/image59.png"
+            class="base-img img-200"
+          />
         </td>
         <td>
-          <img src="/img/articles/nf-eff-guide/image60.png" class="base-img" />
+          <img
+            src="/img/articles/nf-eff-guide/image60.png"
+            class="base-img img-200"
+          />
         </td>
       </tr>
       <tr>
@@ -1803,7 +1848,10 @@ Conversion notes:
       <tr>
         <td></td>
         <td>
-          <img src="/img/articles/nf-eff-guide/image61.png" class="base-img" />
+          <img
+            src="/img/articles/nf-eff-guide/image61.png"
+            class="base-img img-200"
+          />
         </td>
       </tr>
       <tr>
@@ -2011,17 +2059,12 @@ Conversion notes:
 </template>
 
 <style scoped>
-:deep(.q-markup-table) {
-  width: 100%;
-  overflow-x: hidden;
-}
-
-:deep(.q-markup-table table) {
+.article-table :deep(.q-table) {
   width: 100%;
   table-layout: fixed;
 }
 
-:deep(.q-markup-table tbody td) {
+.article-table :deep(tbody td) {
   vertical-align: top;
 }
 
