@@ -1,54 +1,4 @@
 <template>
-  <!-----
-
-You have some errors, warnings, or alerts. If you are using reckless mode, turn it off to see inline alerts.
-* ERRORs: 0
-* WARNINGs: 0
-* ALERTS: 68
-
-Conversion time: 23.512 seconds.
-
-
-Using this HTML file:
-
-1. Paste this output into your source file.
-2. See the notes and action items below regarding this conversion run.
-3. Check the rendered output (headings, lists, code blocks, tables) for proper
-   formatting and use a linkchecker before you publish this page.
-
-Conversion notes:
-
-* Docs™ to Markdown version 2.0β2
-* Thu May 07 2026 14:40:08 GMT-0700 (Pacific Daylight Time)
-* Source doc: No Flag Expert 100% efficiency game review/semi-guide
-* Tables are currently converted to HTML tables.
-* This document has images: check for >>>>>  gd2md-html alert:  inline image link in generated source and store images to your server. NOTE: Images in exported zip file from Google Docs may not appear in  the same order as they do in your doc. Please check the images!
-
------>
-
-  <p style="color: red; font-weight: bold">
-    &gt;&gt;&gt;&gt;&gt; gd2md-html alert: ERRORs: 0; WARNINGs: 0; ALERTS: 68.
-  </p>
-  <ul style="color: red; font-weight: bold">
-    <li>See top comment block for details on ERRORs and WARNINGs.</li>
-    <li>
-      In the converted Markdown or HTML, search for inline alerts that start
-      with &gt;&gt;&gt;&gt;&gt; gd2md-html alert: for specific instances that
-      need correction.
-    </li>
-  </ul>
-
-  <p style="color: red; font-weight: bold">
-    Links to alert messages: (removed)
-  </p>
-
-  <p style="color: red; font-weight: bold">
-    &gt;&gt;&gt;&gt;&gt; PLEASE check and correct alert issues and delete this
-    message and the inline alerts.
-  </p>
-  <hr />
-  <p></p>
-
   <p>
     I’m Llama, a UK minesweeper player who has a lot of experience with no flag
     efficiency.
@@ -125,7 +75,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image1.png" class="base-img img-300" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image1.png"
+    class="base-img img-300"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -145,7 +99,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image2.png" class="base-img img-400" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image2.png"
+    class="base-img img-400"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -174,9 +132,10 @@ Conversion notes:
 
       <p style="text-align: center"></p>
 
-      <img
+      <q-img
         src="/img/articles/nf-eff-guide/image3.png"
         class="base-img img-200"
+        loading="lazy"
       />
 
       <p></p>
@@ -195,9 +154,10 @@ Conversion notes:
 
       <p style="text-align: center"></p>
 
-      <img
+      <q-img
         src="/img/articles/nf-eff-guide/image4.png"
         class="base-img img-200"
+        loading="lazy"
       />
 
       <p></p>
@@ -216,9 +176,10 @@ Conversion notes:
 
       <p style="text-align: center"></p>
 
-      <img
+      <q-img
         src="/img/articles/nf-eff-guide/image5.png"
         class="base-img img-200"
+        loading="lazy"
       />
 
       <p></p>
@@ -240,9 +201,10 @@ Conversion notes:
 
       <p style="text-align: center"></p>
 
-      <img
+      <q-img
         src="/img/articles/nf-eff-guide/image6.png"
         class="base-img img-600"
+        loading="lazy"
       />
 
       <p></p>
@@ -274,9 +236,10 @@ Conversion notes:
 
       <p style="text-align: center"></p>
 
-      <img
+      <q-img
         src="/img/articles/nf-eff-guide/image7.png"
         class="base-img img-400"
+        loading="lazy"
       />
 
       <p></p>
@@ -290,7 +253,11 @@ Conversion notes:
   </ol>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image8.png" class="base-img img-300" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image8.png"
+    class="base-img img-300"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -308,7 +275,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image9.png" class="base-img img-600" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image9.png"
+    class="base-img img-600"
+    loading="lazy"
+  />
 
   <p></p>
   <p class="text-h5">The mindset</p>
@@ -375,12 +346,20 @@ Conversion notes:
     <br />
   </p>
 
-  <img src="/img/articles/nf-eff-guide/image10.png" class="base-img img-300" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image10.png"
+    class="base-img img-300"
+    loading="lazy"
+  />
 
   <p></p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image11.png" class="base-img img-600" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image11.png"
+    class="base-img img-600"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -413,7 +392,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image12.png" class="base-img img-600" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image12.png"
+    class="base-img img-600"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -424,7 +407,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image13.png" class="base-img img-400" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image13.png"
+    class="base-img img-400"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -458,7 +445,11 @@ Conversion notes:
   </ol>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image14.png" class="base-img img-400" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image14.png"
+    class="base-img img-400"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -470,7 +461,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image15.png" class="base-img img-500" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image15.png"
+    class="base-img img-500"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -491,7 +486,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image16.png" class="base-img img-300" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image16.png"
+    class="base-img img-300"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -585,7 +584,11 @@ Conversion notes:
 
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image17.png" class="base-img img-600" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image17.png"
+    class="base-img img-600"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -605,7 +608,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image18.png" class="base-img img-500" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image18.png"
+    class="base-img img-500"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -631,7 +638,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image19.png" class="base-img img-600" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image19.png"
+    class="base-img img-600"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -675,7 +686,11 @@ Conversion notes:
 
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image20.png" class="base-img img-200" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image20.png"
+    class="base-img img-200"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -695,14 +710,16 @@ Conversion notes:
   <p style="text-align: center"></p>
 
   <div class="row justify-center no-wrap" style="gap: 15px">
-    <img
+    <q-img
       src="/img/articles/nf-eff-guide/image21.png"
       class="img-simple img-200 col-shrink"
+      loading="lazy"
     />
 
-    <img
+    <q-img
       src="/img/articles/nf-eff-guide/image22.png"
       class="img-simple img-200 col-shrink"
+      loading="lazy"
     />
   </div>
 
@@ -737,7 +754,11 @@ Conversion notes:
 
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image23.png" class="base-img img-400" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image23.png"
+    class="base-img img-400"
+    loading="lazy"
+  />
 
   <p></p>
   <p>Here I would judge the guesses as follows:</p>
@@ -760,14 +781,16 @@ Conversion notes:
   <p style="text-align: center"></p>
 
   <div class="row justify-center no-wrap" style="gap: 15px">
-    <img
+    <q-img
       src="/img/articles/nf-eff-guide/image24.png"
       class="img-simple img-200 col-shrink"
+      loading="lazy"
     />
 
-    <img
+    <q-img
       src="/img/articles/nf-eff-guide/image25.png"
       class="img-simple img-200 col-shrink"
+      loading="lazy"
     />
   </div>
 
@@ -789,7 +812,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image26.png" class="base-img img-400" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image26.png"
+    class="base-img img-400"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -823,7 +850,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image27.png" class="base-img img-400" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image27.png"
+    class="base-img img-400"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -847,7 +878,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image28.png" class="base-img img-300" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image28.png"
+    class="base-img img-300"
+    loading="lazy"
+  />
 
   <p></p>
   <p>The requirement for there to be a bad opening (white) is as follows:</p>
@@ -874,7 +909,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image29.png" class="base-img img-300" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image29.png"
+    class="base-img img-300"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -932,21 +971,24 @@ Conversion notes:
     <tbody>
       <tr>
         <td>
-          <img
+          <q-img
             src="/img/articles/nf-eff-guide/image30.png"
             class="base-img img-200"
+            loading="lazy"
           />
         </td>
         <td>
-          <img
+          <q-img
             src="/img/articles/nf-eff-guide/image31.png"
             class="base-img img-200"
+            loading="lazy"
           />
         </td>
         <td>
-          <img
+          <q-img
             src="/img/articles/nf-eff-guide/image32.png"
             class="base-img img-200"
+            loading="lazy"
           />
         </td>
       </tr>
@@ -1073,7 +1115,11 @@ Conversion notes:
   </ul>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image33.png" class="base-img img-300" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image33.png"
+    class="base-img img-300"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -1089,7 +1135,11 @@ Conversion notes:
 
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image34.png" class="base-img img-600" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image34.png"
+    class="base-img img-600"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -1106,7 +1156,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image35.png" class="base-img img-400" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image35.png"
+    class="base-img img-400"
+    loading="lazy"
+  />
 
   <p></p>
   <p>There are 4 moves worth considering here.</p>
@@ -1181,9 +1235,10 @@ Conversion notes:
       <p>In terms of density this is: (1 - (1 - d)^2) * (1 - d) * 1/2</p>
       <p></p>
 
-      <img
+      <q-img
         src="/img/articles/nf-eff-guide/image36.png"
         class="base-img img-200"
+        loading="lazy"
       />
 
       <p></p>
@@ -1208,9 +1263,10 @@ Conversion notes:
       </p>
       <p></p>
 
-      <img
+      <q-img
         src="/img/articles/nf-eff-guide/image37.png"
         class="base-img img-200"
+        loading="lazy"
       />
 
       <p></p>
@@ -1252,9 +1308,10 @@ Conversion notes:
       <p>P(purple loses click) = P (yellow all safe) = (1 - d)^6</p>
       <p></p>
 
-      <img
+      <q-img
         src="/img/articles/nf-eff-guide/image38.png"
         class="base-img img-300"
+        loading="lazy"
       />
 
       <p></p>
@@ -1269,7 +1326,11 @@ Conversion notes:
   <p>So, we pick green and end up with the below.</p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image39.png" class="base-img img-400" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image39.png"
+    class="base-img img-400"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -1287,7 +1348,11 @@ Conversion notes:
   <p>My favourite pattern for NF Efficiency is the below</p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image40.png" class="base-img img-400" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image40.png"
+    class="base-img img-400"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -1299,14 +1364,16 @@ Conversion notes:
   <p style="text-align: center"></p>
 
   <div class="row justify-center no-wrap" style="gap: 15px">
-    <img
+    <q-img
       src="/img/articles/nf-eff-guide/image41.png"
       class="img-simple img-300 col-shrink"
+      loading="lazy"
     />
 
-    <img
+    <q-img
       src="/img/articles/nf-eff-guide/image42.png"
       class="img-simple img-300 col-shrink"
+      loading="lazy"
     />
   </div>
 
@@ -1322,7 +1389,11 @@ Conversion notes:
 
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image43.png" class="base-img img-300" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image43.png"
+    class="base-img img-300"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -1333,7 +1404,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image44.png" class="base-img img-300" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image44.png"
+    class="base-img img-300"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -1351,7 +1426,11 @@ Conversion notes:
 
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image45.png" class="base-img img-400" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image45.png"
+    class="base-img img-400"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -1362,7 +1441,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image46.png" class="base-img img-300" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image46.png"
+    class="base-img img-300"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -1374,7 +1457,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image47.png" class="base-img img-600" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image47.png"
+    class="base-img img-600"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -1407,7 +1494,11 @@ Conversion notes:
   </ol>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image48.png" class="base-img img-600" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image48.png"
+    class="base-img img-600"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -1436,7 +1527,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image49.png" class="base-img img-400" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image49.png"
+    class="base-img img-400"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -1470,7 +1565,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image50.png" class="base-img img-400" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image50.png"
+    class="base-img img-400"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -1482,7 +1581,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image51.png" class="base-img img-400" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image51.png"
+    class="base-img img-400"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -1491,12 +1594,20 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image52.png" class="base-img img-400" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image52.png"
+    class="base-img img-400"
+    loading="lazy"
+  />
 
   <p></p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image53.png" class="base-img img-400" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image53.png"
+    class="base-img img-400"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -1510,16 +1621,18 @@ Conversion notes:
   <p style="text-align: center"></p>
 
   <div class="row justify-center no-wrap" style="gap: 15px">
-    <img
+    <q-img
       src="/img/articles/nf-eff-guide/image54.png"
       class="img-simple col-shrink"
       style="width: 256px"
+      loading="lazy"
     />
 
-    <img
+    <q-img
       src="/img/articles/nf-eff-guide/image55.png"
       class="img-simple col-shrink"
       style="width: 310px"
+      loading="lazy"
     />
   </div>
 
@@ -1696,7 +1809,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image16.png" class="base-img img-300" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image16.png"
+    class="base-img img-300"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -1748,15 +1865,17 @@ Conversion notes:
     <tbody>
       <tr>
         <td>
-          <img
+          <q-img
             src="/img/articles/nf-eff-guide/image56.png"
             class="base-img img-200"
+            loading="lazy"
           />
         </td>
         <td>
-          <img
+          <q-img
             src="/img/articles/nf-eff-guide/image57.png"
             class="base-img img-100"
+            loading="lazy"
           />
         </td>
       </tr>
@@ -1774,9 +1893,10 @@ Conversion notes:
       <tr>
         <td></td>
         <td>
-          <img
+          <q-img
             src="/img/articles/nf-eff-guide/image58.png"
             class="base-img img-200"
+            loading="lazy"
           />
         </td>
       </tr>
@@ -1826,15 +1946,17 @@ Conversion notes:
     <tbody>
       <tr>
         <td>
-          <img
+          <q-img
             src="/img/articles/nf-eff-guide/image59.png"
             class="base-img img-200"
+            loading="lazy"
           />
         </td>
         <td>
-          <img
+          <q-img
             src="/img/articles/nf-eff-guide/image60.png"
             class="base-img img-200"
+            loading="lazy"
           />
         </td>
       </tr>
@@ -1848,9 +1970,10 @@ Conversion notes:
       <tr>
         <td></td>
         <td>
-          <img
+          <q-img
             src="/img/articles/nf-eff-guide/image61.png"
             class="base-img img-200"
+            loading="lazy"
           />
         </td>
       </tr>
@@ -1872,7 +1995,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image16.png" class="base-img img-300" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image16.png"
+    class="base-img img-300"
+    loading="lazy"
+  />
 
   <p></p>
   <p>
@@ -1910,7 +2037,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image62.png" class="base-img img-600" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image62.png"
+    class="base-img img-600"
+    loading="lazy"
+  />
 
   <p></p>
   <p style="text-align: center">
@@ -1946,7 +2077,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image63.png" class="base-img img-600" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image63.png"
+    class="base-img img-600"
+    loading="lazy"
+  />
 
   <p></p>
   <p style="text-align: center">
@@ -1978,7 +2113,11 @@ Conversion notes:
   </p>
   <p style="text-align: center"></p>
 
-  <img src="/img/articles/nf-eff-guide/image64.png" class="base-img img-600" />
+  <q-img
+    src="/img/articles/nf-eff-guide/image64.png"
+    class="base-img img-600"
+    loading="lazy"
+  />
 
   <p></p>
   <p style="text-align: center">
@@ -2005,14 +2144,16 @@ Conversion notes:
   </p>
 
   <div class="row justify-center no-wrap" style="gap: 15px">
-    <img
+    <q-img
       src="/img/articles/nf-eff-guide/image65.png"
       class="img-simple img-300 col-shrink"
+      loading="lazy"
     />
 
-    <img
+    <q-img
       src="/img/articles/nf-eff-guide/image66.png"
       class="img-simple img-300 col-shrink"
+      loading="lazy"
     />
   </div>
 
