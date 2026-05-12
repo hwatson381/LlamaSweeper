@@ -602,13 +602,13 @@ Ask LLM to look for bugs in all the files in classes folder
 
 NF eff guide issues:
 [done] Some lists are broken
-[mostly done] Images have wrong sizes
+[done] Images have wrong sizes
 [done] Images are out of order
 [done] h4s possibly have too much margin (do class="text-h4" on p tag instead?)
 [skip] Is it worth adding q-section after headers?
-tables need fixing (make evenly spaced columns, adjust images inside)
-everything needs converting to quasar formatting to make it look nicer?
+[done] tables need fixing (make evenly spaced columns, adjust images inside)
+[done] everything needs converting to quasar formatting to make it look nicer?
 Need to add foreword
 Check images in correct order (especially in tables)
 Some intentional space (e.g. above images) has been lost
-Make images lazy load with qimg?
+[done] Make images lazy load with qimg?

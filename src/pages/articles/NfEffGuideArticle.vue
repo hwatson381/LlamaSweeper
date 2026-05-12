@@ -394,7 +394,7 @@
 
   <q-img
     src="/img/articles/nf-eff-guide/image12.png"
-    class="base-img img-600"
+    class="base-img img-600 top-space"
     loading="lazy"
   />
 
@@ -409,7 +409,7 @@
 
   <q-img
     src="/img/articles/nf-eff-guide/image13.png"
-    class="base-img img-400"
+    class="base-img img-400 top-space"
     loading="lazy"
   />
 
@@ -447,7 +447,7 @@
 
   <q-img
     src="/img/articles/nf-eff-guide/image14.png"
-    class="base-img img-400"
+    class="base-img img-400 top-space"
     loading="lazy"
   />
 
@@ -463,7 +463,7 @@
 
   <q-img
     src="/img/articles/nf-eff-guide/image15.png"
-    class="base-img img-500"
+    class="base-img img-500 top-space"
     loading="lazy"
   />
 
@@ -524,6 +524,8 @@
     be safe, whereas in the good case for cyan (that is where cyan reveals a 1)
     we only need 4 squares to be safe to give an opening.
   </p>
+  <br />
+  <br />
   <p>
     I like to call guesses such as cyan “preparation guesses” because you are
     taking an additional risk in order to (hopefully) improve another guessing
@@ -610,7 +612,7 @@
 
   <q-img
     src="/img/articles/nf-eff-guide/image18.png"
-    class="base-img img-500"
+    class="base-img img-500 top-space"
     loading="lazy"
   />
 
@@ -640,7 +642,7 @@
 
   <q-img
     src="/img/articles/nf-eff-guide/image19.png"
-    class="base-img img-600"
+    class="base-img img-600 top-space"
     loading="lazy"
   />
 
@@ -814,7 +816,7 @@
 
   <q-img
     src="/img/articles/nf-eff-guide/image26.png"
-    class="base-img img-400"
+    class="base-img img-400 top-space"
     loading="lazy"
   />
 
@@ -852,7 +854,7 @@
 
   <q-img
     src="/img/articles/nf-eff-guide/image27.png"
-    class="base-img img-400"
+    class="base-img img-400 top-space"
     loading="lazy"
   />
 
@@ -1459,7 +1461,7 @@
 
   <q-img
     src="/img/articles/nf-eff-guide/image47.png"
-    class="base-img img-600"
+    class="base-img img-600 top-space"
     loading="lazy"
   />
 
@@ -2016,6 +2018,7 @@
     opening)
   </p>
   <p>Risk of green = d + (1 - d) * (1 - (1 - d)^2) * (1 - d)^5</p>
+  <br />
   <p>
     Risk of cyan = chance cyan is a mine
     <em>or</em>
@@ -2248,6 +2251,10 @@
 
 .img-todo {
   border: 4px solid red;
+}
+
+.top-space {
+  margin-top: 6em;
 }
 </style>
 
