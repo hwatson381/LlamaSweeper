@@ -610,5 +610,5 @@ NF eff guide issues:
 [done] everything needs converting to quasar formatting to make it look nicer?
 Need to add foreword
 Check images in correct order (especially in tables)
-Some intentional space (e.g. above images) has been lost
+[mostly done?] Some intentional space (e.g. above images) has been lost
 [done] Make images lazy load with qimg?

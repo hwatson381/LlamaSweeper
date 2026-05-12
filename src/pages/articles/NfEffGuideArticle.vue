@@ -5,7 +5,9 @@
   </p>
   <p>
     In this document, I will be reviewing
-    <a href="https://minesweeper.online/game/3192155452">this game</a>
+    <a href="https://minesweeper.online/game/3192155452" target="_blank"
+      >this game</a
+    >
     which is an 100% NF efficiency expert game I got during the March 2024
     minesweeper.online championship. I hope to provide some insight into the
     decision making that goes on during an NF eff game. I’ve included
@@ -20,7 +22,7 @@
     Scar and PTTACGFans have made great guides for introducing NF efficiency
   </p>
   <p>
-    <a href="https://minesweeper.online/player/401436"
+    <a href="https://minesweeper.online/player/401436" target="_blank"
       >Basic No Flag Efficiency Guide</a
     >
     - Scar
@@ -32,6 +34,7 @@
   <p>
     <a
       href="https://docs.google.com/document/d/1NdMOCclwA6D_CSDV2T89OdxetuFYvwrqAVTkg8Pvds4/edit"
+      target="_blank"
     >
       No Flag Efficiency guide
     </a>
@@ -40,6 +43,7 @@
   <p>
     <a
       href="https://docs.google.com/document/d/e/2PACX-1vRYT4eWK-bguktLx4aokAhmcS7PNk1zsR8DPEwZNh5DNsthAmXLhlwTsNom8xQzl87YVPO3DIS9N30k/pub"
+      target="_blank"
     >
       Minesweeper tutorial for 100% NF efficiency
     </a>
@@ -265,7 +269,9 @@
   </p>
   <p>
     I stole this table from a Dard
-    <a href="https://youtu.be/jKRydA5zqzI?si=JItkJZ_i84LhWluw&amp;t=369"
+    <a
+      href="https://youtu.be/jKRydA5zqzI?si=JItkJZ_i84LhWluw&amp;t=369"
+      target="_blank"
       >video</a
     >
     . It shows how likely it is for an opening to occur. So, if 3 cells are
@@ -315,13 +321,15 @@
     MSCoach has run some simulations with his solver on expert NF 100% Eff. He
     found that it won around 1 in 4,444 games using a 4-corner start (more info
     can be found on his
-    <a href="https://minesweeper.online/player/567348">profile</a>
+    <a href="https://minesweeper.online/player/567348" target="_blank"
+      >profile</a
+    >
     ).
   </p>
   <p>
     To give a comparison with intermediate - I can get 100% around 1 in every 7
     games on intermediate when playing as carefully as possible. I once did this
-    <a href="https://minesweeper.online/winstreak/1611609033"
+    <a href="https://minesweeper.online/winstreak/1611609033" target="_blank"
       >6 times in a row</a
     >
     !
@@ -330,7 +338,7 @@
 
   <p>As a reminder, we will be reviewing this game</p>
   <p>
-    <a href="https://minesweeper.online/game/3192155452"
+    <a href="https://minesweeper.online/game/3192155452" target="_blank"
       >https://minesweeper.online/game/3192155452</a
     >
     <br />
@@ -367,7 +375,7 @@
     MSCoach’s simulations suggest that aiming to get an opening in the middle
     before clicking the corners is better in the long run, at the cost of having
     to reset more often. In my other 100%
-    <a href="https://minesweeper.online/game/801705135">game</a>
+    <a href="https://minesweeper.online/game/801705135" target="_blank">game</a>
     , I used this middle-opening-then-corners strategy.
   </p>
   <p>
@@ -504,7 +512,9 @@
   <p>
     Cyan is a guess with a [mine density]% chance of blasting (if you want to
     know why this is the case, you should watch Mine Buoy’s
-    <a href="https://www.youtube.com/watch?v=At8Kloh4KY4">video</a>
+    <a href="https://www.youtube.com/watch?v=At8Kloh4KY4" target="_blank"
+      >video</a
+    >
     on probability). The idea behind cyan is that it gives information on
     whether any of the grey squares contain a mine. If cyan reveals a 1, you can
     then click green (hoping for an opening), and if it reveals a 2 or 3 you
@@ -1615,9 +1625,13 @@
   <p>
     We are rewarded for our efforts with a shiny NF-Topaz and 4,500 shards for
     coming 2nd in the March 2024 championship (congratulations go to
-    <a href="https://minesweeper.online/player/6836079">Mikan</a>
+    <a href="https://minesweeper.online/player/6836079" target="_blank"
+      >Mikan</a
+    >
     for coming first and also earning an NF-Topaz with his much faster game
-    <a href="https://minesweeper.online/game/3193873310">here</a>
+    <a href="https://minesweeper.online/game/3193873310" target="_blank"
+      >here</a
+    >
     ).
   </p>
   <p style="text-align: center"></p>
@@ -1689,7 +1703,7 @@
     know what the objectively best move is. If you feel that there are things I
     have got incorrect in the guide or have other feedback then feel free to let
     me know on WoM (
-    <a href="https://minesweeper.online/player/733893">llama</a>
+    <a href="https://minesweeper.online/player/733893" target="_blank">llama</a>
     ) or on Discord (username llama7). If you found my guide helpful, I’d
     appreciate it if you give it a ❤ on the guides page. Special thanks go to
     janitor2 for giving me some very useful feedback when I was writing this
@@ -1711,10 +1725,14 @@
     <li>
       Expert NF 100% - the subject of this guide. I was the first person to
       achieve this back in
-      <a href="https://minesweeper.online/game/801705135">2021</a>
+      <a href="https://minesweeper.online/game/801705135" target="_blank"
+        >2021</a
+      >
       . As of writing this guide, 14 other people have got it. A special mention
       goes to
-      <a href="https://minesweeper.online/player/15420315">Yermak</a>
+      <a href="https://minesweeper.online/player/15420315" target="_blank"
+        >Yermak</a
+      >
       who achieved it 3 separate times during the April 2026 championship.
     </li>
 
@@ -1722,9 +1740,13 @@
       Hard NF 100% - the easier relative of expert. No-guess makes this a fun
       mode to play as it gives more friendly boards, and the start can be less
       frustrating due to the initial free opening. This was first achieved by
-      <a href="https://minesweeper.online/player/2677763">PTTACGfans</a>
+      <a href="https://minesweeper.online/player/2677763" target="_blank"
+        >PTTACGfans</a
+      >
       with this
-      <a href="https://minesweeper.online/game/1139262670">game</a>
+      <a href="https://minesweeper.online/game/1139262670" target="_blank"
+        >game</a
+      >
       . I’ve come close with a 99% game that lost a single click at the end.
     </li>
 
@@ -1736,9 +1758,13 @@
       expert which can lead to a slightly different playstyle. I initially
       started this guide with the intention of motivating people to play Evil NF
       Eff, before I ended up getting it myself on
-      <a href="https://minesweeper.online/game/3439056000">June 9th 2024</a>
+      <a href="https://minesweeper.online/game/3439056000" target="_blank"
+        >June 9th 2024</a
+      >
       . I did a video review of my Evil NF 100% game
-      <a href="https://www.youtube.com/watch?v=wFJEG_dzr8g">here</a>
+      <a href="https://www.youtube.com/watch?v=wFJEG_dzr8g" target="_blank"
+        >here</a
+      >
       (small warning - it is quite long and a bit rambly).
     </li>
 
@@ -1747,9 +1773,13 @@
       nice challenge as it allows a mix of playing fast and also slow +
       thoughtfully once a streak gets going. I played this when there were
       bounties running for Beginner and Intermediate. My record for beginner is
-      <a href="https://minesweeper.online/winstreak/1517772914">21</a>
+      <a href="https://minesweeper.online/winstreak/1517772914" target="_blank"
+        >21</a
+      >
       . My record for intermediate is
-      <a href="https://minesweeper.online/winstreak/1611609033">6</a>
+      <a href="https://minesweeper.online/winstreak/1611609033" target="_blank"
+        >6</a
+      >
       , which is possibly one of my hardest NF Eff achievements to beat due to
       the luck required.
     </li>
@@ -1758,14 +1788,19 @@
       Mastery - this is not super popular, but there has previously been a
       <a
         href="https://docs.google.com/spreadsheets/d/1TyWG9TAMAzhkmtmUrbbl2f_qfbP0xfePlGtRrpTmRr4/edit?gid=550494028#gid=550494028"
+        target="_blank"
       >
         competition
       </a>
       for winning the most 100% NF Eff intermediate games out of 100. My record
       is
-      <a href="https://minesweeper.online/mastery/4538607293">21</a>
+      <a href="https://minesweeper.online/mastery/4538607293" target="_blank"
+        >21</a
+      >
       (shows as 22 because one game was &lt; 100%). There is a bounty by
-      <a href="https://minesweeper.online/player/9412864">SandCrawl</a>
+      <a href="https://minesweeper.online/player/9412864" target="_blank"
+        >SandCrawl</a
+      >
       for getting 22 mastery, which I think has been a bit overlooked and could
       be a good but achievable challenge for anyone with a solid understanding
       of NF efficiency.
@@ -1782,12 +1817,17 @@
       spreadsheet
       <a
         href="https://docs.google.com/spreadsheets/d/1n0YfTQMpTSjUb6KD_ABr8RkUeNEzooAVSFu4w20zQKI/edit"
+        target="_blank"
         >here</a
       >
       ). The current best is L5 which was first achieved by
-      <a href="https://minesweeper.online/player/6836079">Mikan</a>
+      <a href="https://minesweeper.online/player/6836079" target="_blank"
+        >Mikan</a
+      >
       with this
-      <a href="https://minesweeper.online/arena/3210932">arena</a>
+      <a href="https://minesweeper.online/arena/3210932" target="_blank"
+        >arena</a
+      >
       . My advice for NF Eff arena is to familiarise yourself with the different
       board sizes/densities that can occur and learn when to skip a bad board.
     </li>
@@ -2048,7 +2088,7 @@
 
   <p></p>
   <p style="text-align: center">
-    <a href="https://www.desmos.com/calculator/dl0yjsafmf"
+    <a href="https://www.desmos.com/calculator/dl0yjsafmf" target="_blank"
       >initial risk graph</a
     >
   </p>
@@ -2088,7 +2128,7 @@
 
   <p></p>
   <p style="text-align: center">
-    <a href="https://www.desmos.com/calculator/mapherwcrl"
+    <a href="https://www.desmos.com/calculator/mapherwcrl" target="_blank"
       >opening chance graph</a
     >
   </p>
@@ -2124,7 +2164,7 @@
 
   <p></p>
   <p style="text-align: center">
-    <a href="https://www.desmos.com/calculator/eagwjtum0o"
+    <a href="https://www.desmos.com/calculator/eagwjtum0o" target="_blank"
       >opening/risk ratio graph</a
     >
   </p>
