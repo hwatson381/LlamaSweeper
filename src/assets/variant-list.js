@@ -544,7 +544,7 @@ let variantList = [
   {
     "name": "minesweepe.rs",
     "url": "https://minesweepe.rs/",
-    "desc": "A simple, but responsive minesweeper website that works extremely well on mobile. It is one of very few minesweeper website that support multi-touch on mobile (llamasweeper also has this) and has really good touch responsiveness. minesweepe.rs has clean graphics, and also resizes to take up the maximum amount of screen space. ",
+    "desc": "A simple, but responsive minesweeper website that works extremely well on mobile. It is one of very few minesweeper website that support multi-touch on mobile (LlamaSweeper also has this) and has really good touch responsiveness. minesweepe.rs has clean graphics, and also resizes to take up the maximum amount of screen space. ",
     "image": "/img/variants/minesweepe_rs.png",
     "tags": [
       "mobile",
@@ -633,7 +633,7 @@ let variantList = [
   {
     "name": "Better Minesweeper",
     "url": "https://minesweep.ing/",
-    "desc": "Better Minesweeper is a modern minesweeper game with a plethora of settings and features for customisation. As of writing, it is currently under active development, so may change a lot and will have some bugs. It has many different features. It has a lot of statistics that can be enabled (including the ability to export games to the llamasweeper ZiNi explorer!); no guess mode; custom game modes such as \"aim trainer\" and \"last square search\" (similar to square finder); replays; steam leaderboards; and lastly it has extensive customisation.",
+    "desc": "Better Minesweeper is a modern minesweeper game with a plethora of settings and features for customisation. As of writing, it is currently under active development, so may change a lot and will have some bugs. It has many different features. It has a lot of statistics that can be enabled (including the ability to export games to the LlamaSweeper ZiNi explorer!); no guess mode; custom game modes such as \"aim trainer\" and \"last square search\" (similar to square finder); replays; steam leaderboards; and lastly it has extensive customisation.",
     "image": "/img/variants/better-ms.png",
     "tags": [
       "game"

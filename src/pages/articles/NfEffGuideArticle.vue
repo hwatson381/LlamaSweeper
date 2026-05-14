@@ -1,4 +1,35 @@
 <template>
+  <div class="foreword">
+    <p class="foreword-title">FOREWORD</p>
+    <p>
+      Welcome to the first article on my website. This article is very long and
+      is intended for advanced minesweeper players. I'd suggest that players who
+      are not already familiar with the concept of efficiency or who have not
+      won a no flag expert game may want to skip this article. I haven't yet
+      decided what other articles I will make in the future, but I can guarantee
+      they will be a lot shorter than this one, and will assume less prior
+      knowledge.
+    </p>
+    <br />
+    <p>
+      This guide was originally written with the intention of it being on the
+      <a href="https://minesweeper.online/help/guides" target="_blank"
+        >Minesweeper Online Guides</a
+      >
+      page, although I shelved it at 95% complete and only finished it off 1.5
+      years later when I revived it to use as a first article for LlamaSweeper.
+      It started out as a
+      <a
+        href="https://docs.google.com/document/d/1jTvFGb6XWyB-CaWb1EOri0I6LJ56m8NjcES2OfiLWjU"
+        target="_blank"
+        >google doc</a
+      >
+      which I've converted to a webpage. The formatting will different, but I've
+      kept the wording exactly the same, so it should be read with this context
+      in mind.
+    </p>
+  </div>
+
   <p>
     I’m Llama, a UK minesweeper player who has a lot of experience with no flag
     efficiency.
@@ -2048,6 +2079,7 @@
     The formulas below are for the initial risk of each guess (either blasting
     or losing a click). I’m using the letter d to represent density.
   </p>
+  <br />
   <p>
     Risk of green = chance green is a mine
     <em>or</em>
@@ -2074,6 +2106,7 @@
     Risk of cyan = d + (1 - d) * [ (1 - d)^2 * d + (1 - (1 - d)^2) * { d + (1 -
     d) * (1 - (1 - d)^2) * (1 - d)^5 } ]
   </p>
+  <br />
   <p>
     I’ve plotted the initial risks below. The risk for the green guess is shown
     by the green line, and the risk of the cyan guess is shown by the blue line.
@@ -2100,8 +2133,10 @@
     and the border guess on higher density.
   </p>
   <p>Lets now do the same for the chance of each guess giving an opening</p>
+  <br />
   <p>Chance of green opening = P(green is safe) * P(green is opening)</p>
   <p>Chance of green opening = (1 - d) * (1 - d)^5</p>
+  <br />
   <p>
     Chance of cyan opening = chance cyan is safe and we get an opening after
     (either from green or from a backup guess depending on what cyan reveals)
@@ -2114,6 +2149,7 @@
     Chance of cyan opening = (1 - d) * [(1 - d)^2 * (1 - d)^4 + (1 - (1 - d)^2)
     * (1 - d)^6]
   </p>
+  <br />
   <p>
     I’ve plotted these below. The chance that green is an opening is given by
     the green line and the chance for cyan is shown by the blue line.
@@ -2295,6 +2331,90 @@
 
 .top-space {
   margin-top: 6em;
+}
+
+.inline-math1s {
+  display: inline-block;
+  font-family: "Courier New", Courier, monospace;
+  background-color: #f0f0f0;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.inline-maths {
+  border: 1px solid #00000040;
+  border-radius: 2px;
+  padding: 3px;
+  margin-left: 2px;
+  margin-right: 2px;
+  background-color: #e0e0e0;
+}
+
+.body--dark .inline-maths {
+  border: 1px solid #ffffff40;
+  border-radius: 2px;
+  padding: 3px;
+  margin-left: 2px;
+  margin-right: 2px;
+  background-color: #424242;
+}
+
+.block-maths {
+  display: block;
+  border: 1px solid #00000040;
+  border-radius: 4px;
+  padding: 10px;
+  margin-left: 2px;
+  margin-right: 2px;
+  background-color: #e0e0e0;
+}
+
+.body--dark .block-maths {
+  display: block;
+  border: 1px solid #ffffff40;
+  border-radius: 4px;
+  padding: 10px;
+  margin-left: 2px;
+  margin-right: 2px;
+  background-color: #424242;
+}
+
+.body--dark .foreword {
+  background-color: #051c0a;
+  border-color: #21ba45;
+  border-style: solid;
+  border-width: 1px;
+  border-radius: 4px;
+  margin: 16px 0;
+  padding: 16px;
+}
+
+.body--dark .foreword-title {
+  color: #21ba45;
+  letter-spacing: 0.7px;
+  padding-bottom: 8px;
+  font-weight: 700;
+}
+
+.foreword {
+  background-color: #daf8e1;
+  border-color: #21ba45;
+  border-style: solid;
+  border-width: 1px;
+  border-radius: 4px;
+  margin: 16px 0;
+  padding: 16px;
+}
+
+.foreword-title {
+  color: #147029;
+  letter-spacing: 0.7px;
+  padding-bottom: 8px;
+  font-weight: 700;
+}
+
+.foreword > p {
+  margin-bottom: 0;
 }
 </style>
 

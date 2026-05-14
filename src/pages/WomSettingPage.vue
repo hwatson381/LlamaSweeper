@@ -47,7 +47,7 @@
         <li>Play a game on any size</li>
         <li>
           After completing any game on minesweeper.online, click the "LL" symbol
-          next to the zini stat to send the game to Llamasweeper <br />
+          next to the zini stat to send the game to LlamaSweeper <br />
           <q-img
             src="/img/supporting/wom_setting_4.png"
             style="max-width: 400px"

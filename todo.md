@@ -608,7 +608,8 @@ NF eff guide issues:
 [skip] Is it worth adding q-section after headers?
 [done] tables need fixing (make evenly spaced columns, adjust images inside)
 [done] everything needs converting to quasar formatting to make it look nicer?
-Need to add foreword
+[done] Need to add foreword
 Check images in correct order (especially in tables)
 [mostly done?] Some intentional space (e.g. above images) has been lost
 [done] Make images lazy load with qimg?
+code block/inline code styling for formula?

@@ -2119,7 +2119,7 @@
           >Load</q-btn
         >
         <br /><br />Importing from minesweeper.online? Try enable the
-        <RouterLink to="/wom-setting">Llamasweeper ZiNi setting</RouterLink>.
+        <RouterLink to="/wom-setting">LlamaSweeper ZiNi setting</RouterLink>.
       </q-card-section>
 
       <q-card-actions align="right" class="text-primary">
