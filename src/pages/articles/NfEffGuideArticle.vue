@@ -929,18 +929,29 @@
 
   <p></p>
   <p>The requirement for there to be a bad opening (white) is as follows:</p>
-  <p>The top mine should be in orange (½ chance)</p>
-  <p>The mines touching the 4 should be in orange (⅓ chance)</p>
   <p>
-    Four floating cells should be safe (1 - [mine density] chance per safe
-    cell).
+    The top mine should be in orange (<span class="inline-maths">½</span>
+    chance)
   </p>
   <p>
-    So the chance of this is ½ * ⅓ * (1 - [mine density])^4. We can either
-    manually minecount to get the mine density, or assume it is somewhere around
-    1 in 5 (20.625% on expert to be precise). Long story short, it is unlikely
-    for green to lose a click to an opening (around 7% chance assuming normal
-    density).
+    The mines touching the 4 should be in orange (<span class="inline-maths"
+      >⅓</span
+    >
+    chance)
+  </p>
+  <p>
+    Four floating cells should be safe (<span class="inline-maths"
+      >1 - [mine density]</span
+    >
+    chance per safe cell).
+  </p>
+  <p>
+    So the chance of this is
+    <span class="inline-maths">½ * ⅓ * (1 - [mine density])^4</span>. We can
+    either manually minecount to get the mine density, or assume it is somewhere
+    around 1 in 5 (20.625% on expert to be precise). Long story short, it is
+    unlikely for green to lose a click to an opening (around 7% chance assuming
+    normal density).
   </p>
   <p>
     So that should be the end of it, right? Green is equally as likely as the
@@ -1259,7 +1270,8 @@
         >The chance of being an opening (assuming it is safe) is 0.33</strong
       >
       <p>
-        This comes from the following expression where d is density: (1 - d)^3
+        This comes from the following expression where d is density:
+        <span class="inline-maths">(1 - d)^3</span>
       </p>
     </li>
 
@@ -1272,10 +1284,15 @@
         This comes from the below calculation (colours based on diagram below)
       </p>
       <p>
-        P(loses click given cyan is safe) = P(at least one mine in orange) *
-        P(yellow safe) * P(red mine)
+        <span class="inline-maths"
+          >P(loses click given cyan is safe) = P(at least one mine in orange) *
+          P(yellow safe) * P(red mine)</span
+        >
       </p>
-      <p>In terms of density this is: (1 - (1 - d)^2) * (1 - d) * 1/2</p>
+      <p>
+        In terms of density this is:
+        <span class="inline-maths">(1 - (1 - d)^2) * (1 - d) * 1/2</span>
+      </p>
       <p></p>
 
       <q-img
@@ -1295,14 +1312,17 @@
 
     <li>
       <strong>The chance of it being an opening is 0.24</strong>
-      <p>This comes from (1 - d)^2 * ½.</p>
+      <p>This comes from <span class="inline-maths">(1 - d)^2 * ½</span>.</p>
     </li>
 
     <li>
       <strong>The chance of it losing a click to an opening is 0.12</strong>
       <p>This comes from the below (colours based on diagram below)</p>
       <p>
-        P(green loses click) = P(yellow all safe) * P(red mine) = (1 - d)^4 * ½
+        <span class="inline-maths"
+          >P(green loses click) = P(yellow all safe) * P(red mine) = (1 - d)^4 *
+          ½</span
+        >
       </p>
       <p></p>
 
@@ -1326,9 +1346,11 @@
     stated that the chance of cyan being an opening is 0.33, this was
     conditional on cyan being safe. It would be better to look at the chance of
     cyan being an opening without necessarily assuming it is safe. When viewing
-    it this way, the chance of cyan being an opening is P(cyan safe) * P(cyan is
-    an opening given it is safe) =
-    <strong>0.23</strong>
+    it this way, the chance of cyan being an opening is
+    <span class="inline-maths"
+      >P(cyan safe) * P(cyan is an opening given it is safe) =
+      <strong>0.23</strong></span
+    >
     . We had the equivalent figure of green being
     <strong>0.24</strong>
     , so green is very slightly more likely to produce an opening than cyan.
@@ -1347,8 +1369,12 @@
 
     <li>
       <strong>The chance of it losing a click to an opening is 0.11</strong>
-      <p>This comes from the diagram below</p>
-      <p>P(purple loses click) = P (yellow all safe) = (1 - d)^6</p>
+      <p>This comes from the calculation below</p>
+      <p>
+        <span class="inline-maths"
+          >P(purple loses click) = P (yellow all safe) = (1 - d)^6</span
+        >
+      </p>
       <p></p>
 
       <q-img
@@ -1585,12 +1611,12 @@
   <p>
     A quick sanity check confirms that green is a low risk option. The naive
     calculation would be as follows: green loses clicks if the 6 orange squares
-    are safe, and the density is 26.7%, so the chance of it losing clicks is (1
-    - 0.267)^6 = 15%. This calculation is wrong. Each extra square required to
-    be safe further increases the remaining density so the true chance of green
-    losing clicks is only 9% (this can be worked out with combinatorics). With
-    this calculation, we can see that green is much safer than taking a 26.7%
-    chance on a floating square.
+    are safe, and the density is 26.7%, so the chance of it losing clicks is
+    <span class="inline-maths">(1 - 0.267)^6 = 15%</span>. This calculation is
+    wrong. Each extra square required to be safe further increases the remaining
+    density so the true chance of green losing clicks is only 9% (this can be
+    worked out with combinatorics). With this calculation, we can see that green
+    is much safer than taking a 26.7% chance on a floating square.
   </p>
   <p>
     Usually most of the risks I take are from opening predictions as they tend
@@ -2079,33 +2105,26 @@
     The formulas below are for the initial risk of each guess (either blasting
     or losing a click). I’m using the letter d to represent density.
   </p>
-  <br />
-  <p>
+  <div class="block-maths">
     Risk of green = chance green is a mine
     <em>or</em>
-    it is safe but loses a click to an opening
-  </p>
-  <p>
+    it is safe but loses a click to an opening<br />
     Risk of green = P(green is mine) + P(green is safe) * P(green touches
-    opening)
-  </p>
-  <p>Risk of green = d + (1 - d) * (1 - (1 - d)^2) * (1 - d)^5</p>
+    opening)<br />
+    Risk of green = d + (1 - d) * (1 - (1 - d)^2) * (1 - d)^5
+  </div>
   <br />
-  <p>
+  <div class="block-maths">
     Risk of cyan = chance cyan is a mine
     <em>or</em>
     it is safe but the next move blasts/touches opening (the next move is either
-    green or going for a backup guess)
-  </p>
-  <p>
+    green or going for a backup guess)<br />
     Risk of cyan = P(cyan is mine) + P(cyan is safe) * [P(Grey is empty) *
     P(Green is mine) + P(Grey not empty) * P(square to left of green is mine or
-    loses click to opening)]
-  </p>
-  <p>
+    loses click to opening)]<br />
     Risk of cyan = d + (1 - d) * [ (1 - d)^2 * d + (1 - (1 - d)^2) * { d + (1 -
     d) * (1 - (1 - d)^2) * (1 - d)^5 } ]
-  </p>
+  </div>
   <br />
   <p>
     I’ve plotted the initial risks below. The risk for the green guess is shown
@@ -2133,22 +2152,21 @@
     and the border guess on higher density.
   </p>
   <p>Lets now do the same for the chance of each guess giving an opening</p>
+  <div class="block-maths">
+    Chance of green opening = P(green is safe) * P(green is opening)<br />
+    Chance of green opening = (1 - d) * (1 - d)^5
+  </div>
   <br />
-  <p>Chance of green opening = P(green is safe) * P(green is opening)</p>
-  <p>Chance of green opening = (1 - d) * (1 - d)^5</p>
-  <br />
-  <p>
+  <div class="block-maths">
     Chance of cyan opening = chance cyan is safe and we get an opening after
     (either from green or from a backup guess depending on what cyan reveals)
-  </p>
-  <p>
+    <br />
     Chance of cyan opening = P(cyan is safe) * [P(Grey is empty) * P(Green is
     opening) + P(Grey not empty) * P(square to left of green is opening)]
-  </p>
-  <p>
+    <br />
     Chance of cyan opening = (1 - d) * [(1 - d)^2 * (1 - d)^4 + (1 - (1 - d)^2)
     * (1 - d)^6]
-  </p>
+  </div>
   <br />
   <p>
     I’ve plotted these below. The chance that green is an opening is given by
@@ -2333,50 +2351,50 @@
   margin-top: 6em;
 }
 
-.inline-math1s {
-  display: inline-block;
-  font-family: "Courier New", Courier, monospace;
-  background-color: #f0f0f0;
-  padding: 2px 4px;
-  border-radius: 4px;
-}
-
 .inline-maths {
-  border: 1px solid #00000040;
+  border: 1px solid #e3e3e3;
   border-radius: 2px;
   padding: 3px;
   margin-left: 2px;
   margin-right: 2px;
-  background-color: #e0e0e0;
+  background-color: #f5f5f5;
+  font-family: math;
+  box-shadow: inset 0 1px 1px rgb(0 0 0 / 5%);
 }
 
 .body--dark .inline-maths {
-  border: 1px solid #ffffff40;
+  border: 1px solid #5c6e70;
   border-radius: 2px;
   padding: 3px;
   margin-left: 2px;
   margin-right: 2px;
-  background-color: #424242;
+  background-color: #1c2122;
+  font-family: math;
+  box-shadow: inset 0 1px 1px rgb(0 0 0 / 20%);
 }
 
 .block-maths {
   display: block;
-  border: 1px solid #00000040;
+  border: 1px solid #e3e3e3;
   border-radius: 4px;
   padding: 10px;
   margin-left: 2px;
   margin-right: 2px;
-  background-color: #e0e0e0;
+  background-color: #f5f5f5;
+  font-family: math;
+  box-shadow: inset 0 1px 1px rgb(0 0 0 / 5%);
 }
 
 .body--dark .block-maths {
   display: block;
-  border: 1px solid #ffffff40;
+  border: 1px solid #5c6e70;
   border-radius: 4px;
   padding: 10px;
   margin-left: 2px;
   margin-right: 2px;
-  background-color: #424242;
+  background-color: #1c2122;
+  font-family: math;
+  box-shadow: inset 0 1px 1px rgb(0 0 0 / 20%);
 }
 
 .body--dark .foreword {
