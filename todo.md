@@ -609,7 +609,8 @@ NF eff guide issues:
 [done] tables need fixing (make evenly spaced columns, adjust images inside)
 [done] everything needs converting to quasar formatting to make it look nicer?
 [done] Need to add foreword
-Check images in correct order (especially in tables)
-[mostly done?] Some intentional space (e.g. above images) has been lost
+[done] Check images in correct order (especially in tables)
+[done] Some intentional space (e.g. above images) has been lost
 [done] Make images lazy load with qimg?
-code block/inline code styling for formula?
+[done] code block/inline code styling for formula?
+review it?

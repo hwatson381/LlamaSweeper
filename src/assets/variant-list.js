@@ -640,6 +640,17 @@ let variantList = [
     ],
     "rating": 4.3,
     "popularity": 2
+  },
+  {
+    "name": "INT Minesweeper",
+    "url": "https://t6970.github.io/INT-Minesweeper/",
+    "desc": "A minesweeper site under development. Currently the only variant is minesweeper based on Hensel notation ( https://conwaylife.com/wiki/Hensel_notation ). Hensel notation is a way of describing adjacent tiles with letters (e.g. k means the mines are a knights move from eachother, t means they are in a T shape). I'd recommend this for logic players who want to re-experience the feeling of learning something similar to minesweeper for the first time.",
+    "image": "/img/variants/int-ms.png",
+    "tags": [
+      "game"
+    ],
+    "rating": 2.8,
+    "popularity": 1
   }
 ]
 
