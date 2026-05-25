@@ -24,6 +24,12 @@ class Tile {
       premium: null,
       highlight: false
     }
+
+    this.hint = {
+      probability: null,
+      colourScale: null,
+      render: "skip" //can be skip/floating/safe/frontier/onflag/onmine/onblastmine
+    };
   }
 
   draw(rawX, rawY, size) {
@@ -132,6 +138,66 @@ class Tile {
     }
   }
 
+  drawHint(rawX, rawY, size) {
+    if (this.hint.probability === null) {
+      return;
+    }
+
+    if (this.hint.render === "skip") {
+      return;
+    }
+
+    const ctx = this.refs.mainCanvas.value.getContext("2d");
+
+    if (this.hint.render === "safe") {
+      //Do a green background
+      ctx.fillStyle = 'rgba(0, 255, 0, 0.25)';
+      ctx.fillRect(rawX, rawY, size, size);
+    } else if (this.hint.render === "onflag") {
+      //Do a grey background for readability
+      // ctx.fillStyle = 'rgba(128, 128, 128, 0.25)';
+      // ctx.fillRect(rawX, rawY, size, size);
+    } else if (this.hint.render === "onmine") {
+      //Do ligher grey background for readability
+      // ctx.fillStyle = 'rgba(128, 128, 128, 0.10)';
+      // ctx.fillRect(rawX, rawY, size, size);
+    } else if (this.hint.render === "onblastmine") {
+      //Do darker grey background for readability
+      // ctx.fillStyle = 'rgba(128, 128, 128, 0.3)';
+      // ctx.fillRect(rawX, rawY, size, size);
+    }
+
+    const textScale = 0.4 * size;
+    const maxWidth = 1.7 * textScale;
+    let xText = rawX + size * 0.5;
+    let yText = rawY + size * 0.5 + textScale * 0.1; //Text nudged slighty down so it looks more visually centred
+
+    const isFloating = this.hint.render === "floating";
+    const hintColour = this.skinManager.getHintColour(this.hint.colourScale, isFloating);
+
+    let percent = this.hint.probability * 100;
+    let text;
+    if (percent === 0) {
+      text = "0";
+    } else if (percent < 1) {
+      text = percent.toFixed(1);
+    } else {
+      text = Math.round(percent);
+    }
+
+    ctx.fillStyle = hintColour;
+    //ctx.font = `${textScale}px monospace`;
+    ctx.font = `bold ${textScale}px "Roboto", "-apple-system", "Helvetica Neue", Helvetica, Arial, sans-serif`;
+
+    if (window.fontOverride) {
+      ctx.font = window.fontOverride;
+    }
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, xText, yText, maxWidth);
+  }
+
   drawZiniDelta(rawX, rawY, size) {
     //Red or green outline for click loss/gain
     //If we add more analysis stuff, we may instead want to call this method "drawAnalysis"
@@ -194,56 +260,6 @@ class Tile {
     }
   }
 
-  /* DELETE ME
-  drawExploreAnalysis(rawX, rawY, size) {
-    // Dark grey outline for dig, blue out for chord
-
-    if (!this.explore.classicDig && !this.explore.classicChord) {
-      return;
-    }
-
-    const ctx = this.refs.mainCanvas.value.getContext("2d");
-    const classicDigColour = this.skinManager.getClassicDigColour();
-    const classicChordColour = this.skinManager.getClassicChordColour();
-
-    const thickness = 0.07 * size;
-
-    if (this.explore.classicChord && this.explore.classicDig) {
-      //Draw both
-      ctx.lineWidth = thickness / 2;
-
-      //inner grey (dig)
-      ctx.strokeStyle = classicDigColour;
-      ctx.strokeRect(rawX + thickness * 3 / 4, rawY + thickness * 3 / 4, size - thickness * 3 / 2, size - thickness * 3 / 2);
-
-      //outer blue (chord)
-      ctx.strokeStyle = classicChordColour;
-      ctx.strokeRect(rawX + thickness * 1 / 4, rawY + thickness * 1 / 4, size - thickness * 1 / 2, size - thickness * 1 / 2);
-      return;
-    }
-
-    if (this.explore.classicChord && !this.explore.classicDig) {
-      //Draw chord only
-      ctx.lineWidth = thickness;
-
-      //blue
-      ctx.strokeStyle = classicChordColour;
-      ctx.strokeRect(rawX + thickness * 1 / 2, rawY + thickness * 1 / 2, size - thickness, size - thickness);
-      return;
-    }
-
-    if (!this.explore.classicChord && this.explore.classicDig) {
-      //Draw dig only
-      ctx.lineWidth = thickness;
-
-      //grey
-      ctx.strokeStyle = classicDigColour;
-      ctx.strokeRect(rawX + thickness * 1 / 2, rawY + thickness * 1 / 2, size - thickness, size - thickness);
-      return;
-    }
-  }
-  */
-
   drawIncludingAnalysis(rawX, rawY, size) {
     //This both draws the tile state, and also draws anything needed by zini explorer
 
@@ -269,56 +285,6 @@ class Tile {
     if (this.explore.highlight) {
       this.drawHighlight(rawX, rawY, size);
     }
-
-    /*DELETE ME
-    ctx.drawImage(this.skinManager.getImage('raw_base'), rawX, rawY, size, size);
-    */
-
-    /*DELETE ME
-    //downsize slightly
-    const downsizeFactor = 0.94; //Note that the square for opened tiles are slightly offset
-    const shiftFactor = 0.06;
-    const squareX = rawX + size * shiftFactor;
-    const squareY = rawY + size * shiftFactor;
-    const squareSize = size * downsizeFactor;
-    */
-
-    /*DELETE ME
-    //Draw both
-
-    //blue (chord) - triangle in bottom right
-    ctx.fillStyle = classicChordColour;
-    ctx.fillRect(squareX, squareY, squareSize, squareSize);
-
-    //yellow (dig) - triangle in top left
-    ctx.fillStyle = classicDigColour;
-    ctx.beginPath();
-    ctx.moveTo(squareX, squareY);
-    ctx.lineTo(squareX + squareSize, squareY);
-    ctx.lineTo(squareX, squareY + squareSize);
-    ctx.closePath();
-    ctx.fill();
-    */
-
-    /*DELETE ME
-    //Draw chord only
-
-    //blue
-    ctx.fillStyle = classicChordColour;
-    ctx.fillRect(squareX, squareY, squareSize, squareSize);
-    */
-
-    /*DELETE ME
-      //Draw dig only
-
-      //yellow
-      ctx.fillStyle = classicDigColour;
-      ctx.fillRect(squareX, squareY, squareSize, squareSize);
-    */
-
-    /*DELETE ME
-    ctx.drawImage(this.skinManager.getImage('raw_' + this.state), rawX, rawY, size, size);
-    */
   }
 
   //Click loss/gain or clicks/chords in zini explorer that need a background colour behind the number
@@ -500,6 +466,7 @@ class Tile {
     newTile.unrevealedState = this.unrevealedState;
     newTile.ziniDelta = { ...this.ziniDelta };
     newTile.explore = { ...this.explore };
+    newTile.hint = { ...this.hint };
 
     //Note: We deliberately don't copy across this.revealedTimeForMobileScrollBehaviour
 

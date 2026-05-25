@@ -614,3 +614,78 @@ NF eff guide issues:
 [done] Make images lazy load with qimg?
 [done] code block/inline code styling for formula?
 review it?
+
+How do we implement NG?
+In generateBoard we have
+
+a few different ways to make the board depending on gamemode
+
+BoardGenerator.effBoardShuffle (used for effBoards)
+
+BoardGenerator.basicShuffle (used for mean openings and normal)
+
+note:
+for eff board there is a consideration -
+Do we generate every board NG and then test against eff
+Or do we generate every board non-ng and test against eff
+if generating all NG, then it's slower by factor of (time to generate ng + test eff)/(time to generate not ng + test eff)
+if testing after then it's slower by 1/(chance of random board ng)
+
+make sure ng can't be toggled mid game?
+indicate somehow that a board is ng (e.g. text on the board)
+
+How about change the colour of the time stat? And this could also be done for when hints are used?
+
+Show probability after game based on criteria? Like on all blasts or only after 10% progress or 10s playtime etc
+
+Need to hide hint on click...
+
+Time how long hints take to run (slower than 100chain?)
+
+Can floating tiles be shown less vibrantly in the hint?
+
+Maybe even hide mines when showing the end of game hint?
+
+Change hint font and make it bolder
+
+"Roboto", "-apple-system", "Helvetica Neue", Helvetica, Arial, sans-serif
+
+Candidate font for topbar
+window.fontOverride2 = 'bold {textSize}px "Roboto", "-apple-system", "Helvetica Neue", Helvetica, Arial, sans-serif';
+Or maybe even without bold?
+
+Although maybe I need to keep monospace so time jumps less?
+
+Weight etc is good, but maybe choose a more "gamey" font?
+
+ctrl+f for window.fontOverride and remove
+
+.probability ->
+.textColour (set based on percentile?)
+.isFloating
+.otherContext (e.g. is on top of mine or wrong flag or 0% tile?)
+
+Treat floating as one guess when ranking everything?
+
+Bug on auto hint - need to roll back board when blasting on a chord as otherwise probabilities displayed will take into account cells revealed by the chord? Possibly? Need to confirm, maybe need to have another render category for showing a hint over a number revealed by the blast chord... (and potentially blast chord reveals an opening...)
+
+Maybe auto-hints should be more transparent?
+
+Yeah overall more transparency is really good
+
+Or could we show blast-hint with white box bg in top left (similar to premium experiment?)
+
+Remove lag on blast by making prob and zini run in web worker?
+
+Have option to only use auto hint on standard?
+
+Maybe on hintblast, only show blasted mine and not others?
+
+wom highlights lowest probability rather than just zeros...
+
+Also maybe change floating to grey?
+
+ideas to try:
+have small white box in top left
+or just show probs without showing any blasted mines
+try having the bombs underneath show using the "very transparent" texture?

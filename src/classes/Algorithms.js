@@ -1,6 +1,7 @@
 import OrganisedPremiums from "src/classes/OrganisedPremiums.js";
 import WomZini from "./WomZini";
 import CONSTANTS from "src/includes/Constants";
+import * as ms from "ms-toollib";
 
 class Algorithms {
   constructor() {
@@ -984,6 +985,36 @@ class Algorithms {
     return minesArray;
   }
 
+  static ngShuffle(
+    width,
+    height,
+    mineCount,
+    safeCoord, //For now assume this is provided
+    maxAttempts
+  ) {
+    let boardSolvable = ms.laymine_solvable(width, height, mineCount, safeCoord.x, safeCoord.y, maxAttempts);
+
+    if (boardSolvable[1] === false) {
+      alert('failed to generate board in time, try again');
+      throw new Error("ngShuffle failed to generate board in time");
+      return false;
+    }
+
+    //Generate width x height 2D array
+    const minesArray = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(false));
+
+    //transpose and convert board data into mines array
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        minesArray[x][y] = boardSolvable[0][x][y] === -1;
+      }
+    }
+
+    return minesArray;
+  }
+
   static effBoardShuffle(
     width,
     height,
@@ -1649,6 +1680,49 @@ class Algorithms {
     const mbfData = Uint8Array.from(hexString.match(/[a-f0-9]{2}/gi).map(byte => parseInt(byte, 16)));
 
     return this.readFromMbfBinaryData(mbfData);
+  }
+
+  static calcBoardProbability(tilesArray, mineCount) {
+    const width = tilesArray.length;
+    const height = tilesArray[0].length;
+
+    //Create board structure needed by mstoollib
+    /*
+      https://docs.rs/ms_toollib/latest/ms_toollib/index.html
+      
+      numbers (translated)
+      0   Represents empty
+      1   to 8represent the numbers 1 to 8
+      10  This indicates that the page is not open.
+      11  This represents either what the algorithm considers a mine (100% correct), or what the player marks as a mine in the game (the player believes it's a mine, but the player might be wrong).
+      12  This means the algorithm has determined that the location is not a mine, but the player hasn't activated it yet, so it still appears as if it's not activated.
+      14  This indicates a mine that was marked with an "X" after you stepped on it and lost the game.
+      15  Stepping on a landmine means the game is lost; the corresponding color is red.
+      16  This indicates a white mine with an opaque background; other mines will be displayed after a failure.
+      18  This indicates that in the game, cells that appear to be 0 due to double-click highlighting are highlighted.
+    */
+
+    const msBoard = [];
+
+    for (let x = 0; x < width; x++) {
+      msBoard[x] = [];
+      for (let y = 0; y < height; y++) {
+        const cellState = tilesArray[x][y].state;
+        if (typeof cellState === 'number') {
+          msBoard[x][y] = cellState;
+        } else if (cellState === CONSTANTS.UNREVEALED) {
+          msBoard[x][y] = 10;
+        } else if (cellState === CONSTANTS.FLAG) {
+          msBoard[x][y] = 11;
+        } else {
+          msBoard[x][y] = 10; //Everything else can just be treated as unrevealed
+        }
+      }
+    }
+
+    let result = ms.cal_probability_onboard(msBoard, mineCount);
+
+    return result[0];
   }
 }
 

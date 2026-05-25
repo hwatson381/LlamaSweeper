@@ -516,8 +516,8 @@ let variantList = [
       "informational",
       "game"
     ],
-    "rating": 4.0,
-    "popularity": 1
+    "rating": 4.3,
+    "popularity": 2
   },
   {
     "name": "Minesweeper fandom wiki",

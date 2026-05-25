@@ -207,6 +207,20 @@ class SkinManager {
       classicChord: '#A3D1FF', //light blue
       premium: 'black',
       highlight: '#2FEF00',
+      hint: {
+        safe: {
+          hue: 120,
+          saturation: 90,
+          lightness: 50,
+        },
+        mine: {
+          hue: 0,
+          saturation: 90,
+          lightness: 50,
+        },
+        defaultAlpha: 1,
+        floatingAlpha: 0.3,
+      }
     };
 
     this.colours.dark = {
@@ -225,6 +239,20 @@ class SkinManager {
       classicChord: '#0056ac', //light blue (closer to purple for dark scheme)
       premium: 'white',
       highlight: '#2FEF00',
+      hint: {
+        safe: {
+          hue: 120,
+          saturation: 90,
+          lightness: 50,
+        },
+        mine: {
+          hue: 0,
+          saturation: 90,
+          lightness: 50,
+        },
+        defaultAlpha: 1,
+        floatingAlpha: 0.2,
+      }
     }
 
     window.darkscheme = this.colours.dark;
@@ -371,6 +399,19 @@ class SkinManager {
 
   getHighlightColour() {
     return this.colours[this.refs.boardSkin.value].highlight;
+  }
+
+  getHintColour(colourScale, isFloating) {
+    //lerp between safe and mine hint colours based on the colourScale (0 to 1)
+
+    const hintSkin = this.colours[this.refs.boardSkin.value].hint;
+
+    const hue = (1 - colourScale) * hintSkin.safe.hue + colourScale * hintSkin.mine.hue;
+    const saturation = (1 - colourScale) * hintSkin.safe.saturation + colourScale * hintSkin.mine.saturation;
+    const lightness = (1 - colourScale) * hintSkin.safe.lightness + colourScale * hintSkin.mine.lightness;
+    const alpha = isFloating ? hintSkin.floatingAlpha : hintSkin.defaultAlpha;
+
+    return `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
   }
 }
 

@@ -19,6 +19,19 @@ class BoardGenerator {
     );
   }
 
+  static ngShuffle(width, height, mineCount, safeCoord, maxAttempts) {
+    let ngShuffleResult = Algorithms.ngShuffle(width, height, mineCount, safeCoord, maxAttempts);
+
+    if (!ngShuffleResult) {
+      Dialog.create({
+        title: "Alert",
+        message: "Failed to generate board. Consider increasing no guessing max attempts setting, or reducing the number of mines.",
+      });
+    }
+
+    return ngShuffleResult;
+  }
+
   static effBoardShuffle(width, height, mineCount, firstClick, effShuffleManager) {
     let effBoard = effShuffleManager.provideEffBoard(
       width,

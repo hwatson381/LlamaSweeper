@@ -9,6 +9,15 @@ class BoardStats {
     this.moves = []; //Mouse movements, use separate array as this can get quite large
     this.isWin = null;
     this.refs = refs;
+    this.attributes = {
+      //Other data that we should track related to the game
+      //but doesn't fit neatly elsewhere.
+      //Would we want to include fully details of the settings here?
+      //Such as the variant and any variant specific settings?
+      //Or maybe that goes elsewhere when we start looking at storing replays?
+      noGuess: false,
+      hintsUsed: false,
+    };
   }
 
   addLeft(x, y, xRaw, yRaw, time) {
@@ -102,6 +111,14 @@ class BoardStats {
       yRaw,
       time,
     });
+  }
+
+  addHintUsed() {
+    this.attributes.hintsUsed = true;
+  }
+
+  addNoGuessAttribute() {
+    this.attributes.noGuess = true;
   }
 
   makeRepeatFlagsWasted() {
@@ -340,6 +357,11 @@ class BoardStats {
       this.refs.statsObject.value.rqp = rqp.toFixed(3);
       this.refs.statsObject.value.corr = corr.toFixed(3);
     }
+
+    this.refs.statsObject.value.attributes = {
+      noGuess: this.attributes.noGuess,
+      hintsUsed: this.attributes.hintsUsed,
+    };
   }
 
   lateCalcForceZinis() {

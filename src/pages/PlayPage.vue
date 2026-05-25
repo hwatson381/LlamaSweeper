@@ -104,6 +104,12 @@
           label="Custom"
           @update:model-value="game.resetAndUnfocus()"
         />
+        <q-badge
+          rounded
+          color="pink"
+          label="No Guess"
+          v-if="noGuessing && variant !== 'eff boards'"
+        />
       </div>
       <template
         v-if="
@@ -434,6 +440,30 @@
           class="side-panel"
         >
           <q-card-section style="font-family: monospace">
+            <div
+              style="
+                font-family: 'Roboto', '-apple-system', 'Helvetica Neue',
+                  Helvetica, Arial, sans-serif;
+              "
+            >
+              <q-badge
+                rounded
+                color="pink"
+                label="NG"
+                v-if="statsObject.attributes.noGuess"
+              >
+                <q-tooltip> No Guess</q-tooltip>
+              </q-badge>
+              <q-badge
+                rounded
+                color="amber"
+                label="H"
+                v-if="statsObject.attributes.hintsUsed"
+                class="q-mr-xs"
+              >
+                <q-tooltip> Hints used </q-tooltip>
+              </q-badge>
+            </div>
             <div>Time: {{ statsObject.time }}s</div>
             <div v-if="!statsObject.isWonGame">
               Est. Time: {{ statsObject.estTime }}s
@@ -1015,8 +1045,17 @@
         v-if="variant !== 'zini explorer'"
       >
         <q-btn
+          @click="game.board.toggleHint()"
+          color="secondary"
+          icon="percent"
+          label="Hint (H)"
+          :disabled="variant === 'board editor' && isCurrentlyEditModeDisplay"
+        >
+        </q-btn>
+        <q-btn
           @click="game.board.toggleQuickPaint()"
           color="secondary"
+          icon="brush"
           label="QuickPaint (Q)"
           :disabled="variant === 'board editor' && isCurrentlyEditModeDisplay"
         >
@@ -1293,6 +1332,54 @@
                 ></q-select>
                 <q-checkbox v-model="zeroStart" label="Zero Start" />
                 <br />
+                <q-checkbox v-model="noGuessing" label="No Guessing" />
+                <br />
+                <template v-if="noGuessing">
+                  <q-input
+                    debounce="100"
+                    v-model.number="noGuessingMaxAttempts"
+                    label="No guessing iterations"
+                    type="number"
+                    dense
+                    min="100"
+                    max="10000000"
+                    style="width: 150px"
+                  /><br />
+                </template>
+                <q-select
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="autoHintCriteria"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    {
+                      label: 'Always',
+                      value: 'always',
+                    },
+                    { label: 'Never', value: 'never' },
+                    { label: 'Time Condition', value: 'time' },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Show hint after loss"
+                ></q-select>
+                <template v-if="autoHintCriteria === 'time'">
+                  <q-input
+                    debounce="100"
+                    v-model.number="autoHintTime"
+                    label="Hint min game time (seconds)"
+                    type="number"
+                    dense
+                    min="0"
+                    max="500"
+                    style="width: 150px"
+                  /><br />
+                </template>
                 <q-select
                   class="q-mx-md q-mb-md"
                   outlined
@@ -1514,7 +1601,6 @@
                       >
                     </div>
                   </div>
-                  <br v-else />
                   <div
                     v-if="
                       mobileScrollSetting === 'enclosed nf' ||
@@ -1555,8 +1641,7 @@
                     map-options
                     stack-label
                     label="Touch Reveal Location"
-                  ></q-select
-                  ><br />
+                  ></q-select>
                   <q-select
                     class="q-mx-md q-mb-md"
                     outlined
@@ -1577,8 +1662,7 @@
                     map-options
                     stack-label
                     label="Touch Reveal Timing"
-                  ></q-select
-                  ><br />
+                  ></q-select>
                   <q-input
                     debounce="100"
                     v-model.number="touchLongPressTime"
@@ -1646,7 +1730,6 @@
                     stack-label
                     label="Mode toggle location"
                   />
-                  <br />
                   <q-select
                     class="q-mx-md q-mb-md"
                     outlined
@@ -2774,6 +2857,12 @@ function handleKeyDown(event) {
     }
     game.reset();
   }
+  if (event.key === "h") {
+    if (!checkFocusForKeyPress(event)) {
+      return;
+    }
+    game.board.toggleHint();
+  }
   if (event.key === "q") {
     if (!checkFocusForKeyPress(event)) {
       return;
@@ -2895,6 +2984,11 @@ let statsObject = ref({
   thrp: null,
   rqp: null,
   corr: null,
+  attributes: {
+    //Maybe another name would work for this or maybe need to restructure it?
+    noGuess: false,
+    hintsUsed: false,
+  },
 });
 let showStatsClicksTable = ref(false);
 let statsShow8Way = useLocalStorage("ls_statsShow8Way", true);
@@ -3058,6 +3152,10 @@ watch(
 
 let chordingButtons = useLocalStorage("ls_chordingButtons", "l");
 let zeroStart = useLocalStorage("ls_zeroStart", true);
+let noGuessing = useLocalStorage("ls_noGuessing", false);
+let noGuessingMaxAttempts = useLocalStorage("ls_noGuessingMaxAttempts", 10000);
+let autoHintCriteria = useLocalStorage("ls_autoHintCriteria", "time"); //never|always|time. Criteria for when to automatically use a hint on lost games
+let autoHintTime = useLocalStorage("ls_autoHintTime", 10);
 
 let begEffPreset = ref(200);
 let begEffOptions = Object.freeze([200, 210, 225, "custom"]);
@@ -4188,6 +4286,8 @@ class Board {
     this.orangeCount = 0;
     this.dotCount = 0;
     this.whiteOrangeCount = 0; //orange + white
+
+    this.hintActive = false;
 
     this.updateBoardPixelDimensions();
 
@@ -5645,21 +5745,50 @@ class Board {
         })
       );
       this.unprocessedMeanZeros = []; //List of recently opened coords that need processing to check if they can have a mean mine.
-      this.mines = BoardGenerator.basicShuffle(
-        this.width,
-        this.height,
-        this.mineCount,
-        firstClick,
-        zeroStart.value
-      );
+
+      if (noGuessing.value) {
+        const ngResult = BoardGenerator.ngShuffle(
+          this.width,
+          this.height,
+          this.mineCount,
+          firstClick,
+          noGuessingMaxAttempts.value
+        );
+        if (ngResult === false) {
+          return { success: false }; //Failed to generate eff board
+        }
+        this.mines = ngResult;
+      } else {
+        this.mines = BoardGenerator.basicShuffle(
+          this.width,
+          this.height,
+          this.mineCount,
+          firstClick,
+          zeroStart.value
+        );
+      }
     } else {
-      this.mines = BoardGenerator.basicShuffle(
-        this.width,
-        this.height,
-        this.mineCount,
-        firstClick,
-        zeroStart.value
-      );
+      if (noGuessing.value) {
+        const ngResult = BoardGenerator.ngShuffle(
+          this.width,
+          this.height,
+          this.mineCount,
+          firstClick,
+          noGuessingMaxAttempts.value
+        );
+        if (ngResult === false) {
+          return { success: false }; //Failed to generate eff board
+        }
+        this.mines = ngResult;
+      } else {
+        this.mines = BoardGenerator.basicShuffle(
+          this.width,
+          this.height,
+          this.mineCount,
+          firstClick,
+          zeroStart.value
+        );
+      }
     }
 
     //Refresh tiles
@@ -5677,6 +5806,9 @@ class Board {
       ziniRunnerIterationsDisplay,
       ziniRunnerPercentageProgress,
     });
+    if (noGuessing.value && this.variant !== "eff boards") {
+      this.stats.addNoGuessAttribute();
+    }
     this.boardStartTime = performance.now();
     this.clearTimerTimeout(); //defensive as it should already be disabled since we reset board.
     this.updateTimerSetTimeoutHandle = setTimeout(
@@ -6563,6 +6695,7 @@ class Board {
       game.board.stats.lateCalcDeepChainZini();
     }
     flagToggleShowReset.value = true;
+    this.showAutoHintIfNeeded();
   }
 
   blast() {
@@ -7135,6 +7268,8 @@ class Board {
     if (this.quickPaintActive) {
       this.clearAllDepressedSquares();
 
+      this.hideHint(true); //hide probabilities as otherwise they visually compete
+
       if (this.isFirstQuickPaint) {
         this.quickPaintMode = "guess";
         quickPaintModeDisplay.value = "Guess";
@@ -7661,6 +7796,218 @@ class Board {
     );
   }
 
+  toggleHint() {
+    if (!["running", "lost", "won", "replay"].includes(this.gameStage)) {
+      window.alert("Hints can't be used at this stage of the game");
+      return;
+    }
+
+    if (!this.hintActive) {
+      this.showHint();
+    } else {
+      this.hideHint();
+    }
+  }
+
+  showHint() {
+    //Computes hint and updates tiles
+    this.hintActive = true;
+
+    this.quickPaintActive = false; //hide quickpaint at the same time as otherwise they visually compete
+    showQuickPaintOptions.value = false;
+
+    this.clearAllDepressedSquares();
+
+    let totalMines;
+    if (this.variant === "mean openings") {
+      //mines will differ from starting mine count so need to figure out total mines
+      totalMines = 0;
+
+      //count placed flags
+      for (let x = 0; x < this.width; x++) {
+        for (let y = 0; y < this.height; y++) {
+          if (
+            this.tilesArray[x][y].state === CONSTANTS.FLAG ||
+            this.tilesArray[x][y].state === CONSTANTS.MINEWRONG
+          ) {
+            totalMines++;
+          }
+        }
+      }
+
+      //add unflagged
+      totalMines += this.unflagged;
+    } else {
+      totalMines = this.mineCount;
+    }
+
+    let probabilityGrid = Algorithms.calcBoardProbability(
+      this.tilesArray,
+      totalMines
+    );
+
+    if (0 === 1) {
+      throw new Error("unimplemented");
+      /*
+        outline:
+        need to assign colourscale (based on idk percentiles or something)
+        also need to assign render type
+        like tracker whether floating etc or safe/mine/on top of flag all sorts
+        can floating be a midpoint?
+        or maybe even take average probability and adapt scale based on that?
+        ohhhh I like that.
+        maybe some exponential scale based on that? Like e.g. 20% density means 0.8%-4%-20%-100%
+      */
+    }
+
+    //figure out what to do with colourScale stuff...
+    let probabilityScale = []; //All "meaningful" probabilities in order, used to figure out colour scale.
+    let addedSingleFloatingToScale = false; //Tracker for whether we've added the single floating probability to the scale
+
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        this.tilesArray[x][y].hint.probability = probabilityGrid[x][y];
+
+        let render = "skip"; //fallback of skipping rendering prob.
+
+        if (typeof this.tilesArray[x][y].state === "number") {
+          render = "skip";
+        } else if (probabilityGrid[x][y] === 0) {
+          render = "safe";
+        } else if (
+          this.tilesArray[x][y].state === CONSTANTS.FLAG &&
+          probabilityGrid[x][y] === 1
+        ) {
+          render = "skip";
+        } else if (
+          this.tilesArray[x][y].state === CONSTANTS.FLAG &&
+          probabilityGrid[x][y] < 1
+        ) {
+          render = "onflag";
+        } else if (this.tilesArray[x][y].state === CONSTANTS.MINEWRONG) {
+          render = "onflag";
+        } else if (this.tilesArray[x][y].state === CONSTANTS.MINERED) {
+          render = "onblastmine";
+        } else {
+          //check if it neighbours a number or not (to determine if floating or not)
+          let hasNumberNeighbour = false;
+          for (let i = x - 1; i <= x + 1; i++) {
+            if (hasNumberNeighbour) {
+              break;
+            }
+            for (let j = y - 1; j <= y + 1; j++) {
+              if (!this.checkCoordsInBounds(i, j)) {
+                continue;
+              }
+
+              if (typeof this.tilesArray[i][j].state === "number") {
+                hasNumberNeighbour = true;
+                break;
+              }
+            }
+          }
+
+          if (hasNumberNeighbour) {
+            if (this.tilesArray[x][y].state === CONSTANTS.MINE) {
+              render = "onmine"; //set onmine here so that it isn't set for mines in floating squares
+            } else {
+              render = "frontier";
+            }
+          } else {
+            render = "floating";
+          }
+        }
+
+        this.tilesArray[x][y].hint.render = render;
+
+        if (
+          render !== "skip" &&
+          probabilityGrid[x][y] !== 0 &&
+          probabilityGrid[x][y] !== 1
+        ) {
+          if (render !== "floating") {
+            probabilityScale.push(probabilityGrid[x][y]);
+          } else if (render === "floating" && !addedSingleFloatingToScale) {
+            probabilityScale.push(probabilityGrid[x][y]);
+            addedSingleFloatingToScale = true;
+          }
+        }
+      }
+    }
+
+    //Sort probability scale so we can set up the colourScale property for each tile
+    probabilityScale.sort((a, b) => a - b);
+
+    //Set colourScales
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        if (this.tilesArray[x][y].hint.render === "skip") {
+          this.tilesArray[x][y].hint.colourScale = 0;
+          continue;
+        }
+        if (this.tilesArray[x][y].hint.probability === 0) {
+          this.tilesArray[x][y].hint.colourScale = 0;
+          continue;
+        }
+        if (this.tilesArray[x][y].hint.probability === 1) {
+          this.tilesArray[x][y].hint.colourScale = 1;
+          continue;
+        }
+
+        let scaleIndex = probabilityScale.indexOf(
+          this.tilesArray[x][y].hint.probability
+        );
+        let colourScale = scaleIndex / probabilityScale.length;
+        //shift it to be between 0.1 and 0.9 to separate from the safe/mine colours
+        colourScale = colourScale * 0.8 + 0.1;
+
+        this.tilesArray[x][y].hint.colourScale = colourScale;
+      }
+    }
+
+    if (this.gameStage === "running") {
+      this.stats.addHintUsed();
+    }
+
+    //Update tiles to have this info
+    this.draw();
+  }
+
+  hideHint(suppressDraw = false) {
+    if (!this.hintActive) {
+      //already hidden, do nothing
+      return;
+    }
+
+    this.hintActive = false;
+
+    //Not really needed as setting hintActive is sufficient to hide, but just in case.
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        this.tilesArray[x][y].hint = {
+          probability: null,
+          colourScale: null,
+          render: "skip",
+        };
+      }
+    }
+
+    if (!suppressDraw) {
+      this.draw();
+    }
+  }
+
+  showAutoHintIfNeeded() {
+    const meetsTimeCriteria =
+      autoHintCriteria.value === "time" &&
+      typeof this.stats.endTime === "number" &&
+      this.stats.endTime > autoHintTime.value;
+
+    if (autoHintCriteria.value === "always" || meetsTimeCriteria) {
+      this.showHint();
+    }
+  }
+
   handleEditClick(tileX, tileY) {
     //Click on the edit board - typically will toggle a mine
     if (!this.checkCoordsInBounds(tileX, tileY)) {
@@ -7833,6 +8180,9 @@ class Board {
     if (this.quickPaintActive) {
       this.drawTilesPaint();
     }
+    if (this.hintActive) {
+      this.drawTilesHint();
+    }
     this.drawBorders();
     this.drawCoords();
     this.drawTopBar();
@@ -7841,12 +8191,6 @@ class Board {
       //this.drawTilesZiniDelta();
       this.drawCursor();
     }
-
-    /* DELETE ME
-    if (this.gameStage === "analyse") {
-      this.drawTilesExploreAnalysis();
-    }
-    */
   }
 
   drawTiles() {
@@ -7865,6 +8209,18 @@ class Board {
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
         this.tilesArray[x][y].drawPaint(
+          x * this.tileSize + boardHorizontalPadding.value,
+          y * this.tileSize + boardTopPadding.value,
+          this.tileSize
+        );
+      }
+    }
+  }
+
+  drawTilesHint() {
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        this.tilesArray[x][y].drawHint(
           x * this.tileSize + boardHorizontalPadding.value,
           y * this.tileSize + boardTopPadding.value,
           this.tileSize
@@ -8109,6 +8465,10 @@ class Board {
     //Set up font for mine/timer text
     ctx.textBaseline = "middle";
     ctx.font = `${this.tileSize}px monospace`;
+    if (window.fontOverride2) {
+      ctx.font = window.fontOverride2;
+    }
+
     ctx.fillStyle = skinManager.getMineTimerTextColour();
 
     //Draw mine counter
@@ -8187,6 +8547,9 @@ class Board {
     //Set up font for counter text
     ctx.textBaseline = "middle";
     ctx.font = `${this.tileSize}px monospace`;
+    if (window.fontOverride2) {
+      ctx.font = window.fontOverride2;
+    }
 
     //Draw red counter
     ctx.fillStyle = skinManager.getRedCounterTextColour();
