@@ -220,6 +220,7 @@ class SkinManager {
         },
         defaultAlpha: 1,
         floatingAlpha: 0.3,
+        floating: '#707070'
       }
     };
 
@@ -252,6 +253,7 @@ class SkinManager {
         },
         defaultAlpha: 1,
         floatingAlpha: 0.2,
+        floating: '#99a1a8'
       }
     }
 
@@ -405,6 +407,10 @@ class SkinManager {
     //lerp between safe and mine hint colours based on the colourScale (0 to 1)
 
     const hintSkin = this.colours[this.refs.boardSkin.value].hint;
+
+    if (isFloating) {
+      return hintSkin.floating;
+    }
 
     const hue = (1 - colourScale) * hintSkin.safe.hue + colourScale * hintSkin.mine.hue;
     const saturation = (1 - colourScale) * hintSkin.safe.saturation + colourScale * hintSkin.mine.saturation;

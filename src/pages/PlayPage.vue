@@ -4288,6 +4288,7 @@ class Board {
     this.whiteOrangeCount = 0; //orange + white
 
     this.hintActive = false;
+    this.lastSquaresChangedForAutoHint = [];
 
     this.updateBoardPixelDimensions();
 
@@ -5360,6 +5361,8 @@ class Board {
     let unflooredCoords = coordsData.unflooredCoords;
     let canvasCoords = coordsData.canvasCoords;
 
+    this.lastSquaresChangedForAutoHint = [];
+
     if (touchIdentifier === "mouse" && chordingButtons.value === "l+r") {
       //Update states for l+r chord
       if (isDigInput) {
@@ -6292,6 +6295,8 @@ class Board {
         }
         this.chord(x, y, false);
       }
+
+      this.lastSquaresChangedForAutoHint.push({ x, y });
     }
   }
 
@@ -7809,7 +7814,7 @@ class Board {
     }
   }
 
-  showHint() {
+  showHint(isLossHint = false) {
     //Computes hint and updates tiles
     this.hintActive = true;
 
@@ -7817,6 +7822,100 @@ class Board {
     showQuickPaintOptions.value = false;
 
     this.clearAllDepressedSquares();
+
+    let probCalcBoard = [];
+    for (let x = 0; x < this.width; x++) {
+      probCalcBoard[x] = [];
+      for (let y = 0; y < this.height; y++) {
+        const cellState = this.tilesArray[x][y].state;
+        if (typeof cellState === "number") {
+          probCalcBoard[x][y] = cellState;
+        } else if (cellState === CONSTANTS.UNREVEALED) {
+          probCalcBoard[x][y] = 10;
+        } else if (cellState === CONSTANTS.FLAG) {
+          probCalcBoard[x][y] = 11;
+        } else {
+          probCalcBoard[x][y] = 10; //Everything else can just be treated as unrevealed
+        }
+      }
+    }
+
+    let meanMinesRemovedTotal = 0;
+    if (isLossHint && this.lastSquaresChangedForAutoHint.length > 0) {
+      let meanMineAdjustments = new Map(); //Track how much numbers need to be adjusted by for removing newly revealed mean mines
+
+      //Do a pass to calculate effect of mean mines we need to remove
+      for (let changedSquare of this.lastSquaresChangedForAutoHint) {
+        const isMeanMine =
+          this.variant === "mean openings" &&
+          this.meanMineStates[changedSquare.x][changedSquare.y].isMine &&
+          this.meanMineStates[changedSquare.x][changedSquare.y].isActive;
+
+        if (!isMeanMine) {
+          continue;
+        }
+
+        for (let i = changedSquare.x - 1; i <= changedSquare.x + 1; i++) {
+          for (let j = changedSquare.y - 1; j <= changedSquare.y + 1; j++) {
+            if (!this.checkCoordsInBounds(i, j)) {
+              continue;
+            }
+
+            let val = meanMineAdjustments.get(`${i}-${j}`) || 0;
+            val -= 1;
+            meanMineAdjustments.set(`${i}-${j}`, val);
+          }
+        }
+
+        if (isMeanMine) {
+          meanMinesRemovedTotal++;
+        }
+      }
+
+      //Reverse the result of the last move (if there was one)
+      for (let changedSquare of this.lastSquaresChangedForAutoHint) {
+        //Any changed squares from the last move (e.g. a wrong chord) should be changed as follows:
+        // Make any numbers revealed transparent
+        // Exclude any numbers revealed from affecting the probability calculation
+        // reverse the effects of any mean mines revealed from last move
+
+        const thisTile = this.tilesArray[changedSquare.x][changedSquare.y];
+
+        const isMeanMine =
+          this.variant === "mean openings" &&
+          this.meanMineStates[changedSquare.x][changedSquare.y].isMine &&
+          this.meanMineStates[changedSquare.x][changedSquare.y].isActive;
+
+        //Squares revealed by final chord shouldn't influence the probability calculation
+        probCalcBoard[changedSquare.x][changedSquare.y] = 10;
+
+        if (typeof thisTile.state === "number") {
+          //Make tiles revealed on blast chord transparent
+          const adjustment =
+            meanMineAdjustments.get(`${changedSquare.x}-${changedSquare.y}`) ||
+            0;
+          thisTile.hint.hintTexture = "tr2_" + (thisTile.state + adjustment);
+        } else if (isMeanMine) {
+          thisTile.hint.hintTexture = "tr2_0";
+        }
+      }
+
+      //Also apply any adjustments for mean mines to cells outside the ones that changed from last move
+      for (let [key, adjustment] of meanMineAdjustments.entries()) {
+        const [i, j] = key.split("-").map(Number);
+        const thisTile = this.tilesArray[i][j];
+        if (
+          !this.lastSquaresChangedForAutoHint.some(
+            (sq) => sq.x === i && sq.y === j
+          ) &&
+          typeof thisTile.state === "number"
+        ) {
+          thisTile.hint.render = "textureonly";
+          thisTile.hint.hintTexture = thisTile.state + adjustment;
+          probCalcBoard[i][j] = thisTile.state + adjustment;
+        }
+      }
+    }
 
     let totalMines;
     if (this.variant === "mean openings") {
@@ -7837,12 +7936,15 @@ class Board {
 
       //add unflagged
       totalMines += this.unflagged;
+
+      //adjust for mean mines removed earlier
+      totalMines -= meanMinesRemovedTotal;
     } else {
       totalMines = this.mineCount;
     }
 
     let probabilityGrid = Algorithms.calcBoardProbability(
-      this.tilesArray,
+      probCalcBoard,
       totalMines
     );
 
@@ -7870,21 +7972,20 @@ class Board {
 
         let render = "skip"; //fallback of skipping rendering prob.
 
-        if (typeof this.tilesArray[x][y].state === "number") {
+        if (this.tilesArray[x][y].hint.render === "textureonly") {
+          //Special case for when mean mines changes an already revealed number
+          render = "textureonly";
+        } else if (probCalcBoard[x][y] < 10) {
+          //This is a revealed number (as opposed to unopened/bomb/flag etc), so doesn't need a hint
+          //Use probCalcBoard here as it has last move removed in case of loss hint.
           render = "skip";
         } else if (probabilityGrid[x][y] === 0) {
           render = "safe";
-        } else if (
-          this.tilesArray[x][y].state === CONSTANTS.FLAG &&
-          probabilityGrid[x][y] === 1
-        ) {
+        } else if (probCalcBoard[x][y] === 11 && probabilityGrid[x][y] === 1) {
+          //Player marked as flag and it's 100% a mine
           render = "skip";
-        } else if (
-          this.tilesArray[x][y].state === CONSTANTS.FLAG &&
-          probabilityGrid[x][y] < 1
-        ) {
-          render = "onflag";
-        } else if (this.tilesArray[x][y].state === CONSTANTS.MINEWRONG) {
+        } else if (probCalcBoard[x][y] === 11 && probabilityGrid[x][y] < 1) {
+          //Player marked as flag and this is only probabilistic, so still need to show probability
           render = "onflag";
         } else if (this.tilesArray[x][y].state === CONSTANTS.MINERED) {
           render = "onblastmine";
@@ -7900,7 +8001,8 @@ class Board {
                 continue;
               }
 
-              if (typeof this.tilesArray[i][j].state === "number") {
+              if (probCalcBoard[i][j] < 10) {
+                //Neighbour is a revealed number, so this isn't floating
                 hasNumberNeighbour = true;
                 break;
               }
@@ -7915,6 +8017,15 @@ class Board {
             }
           } else {
             render = "floating";
+          }
+        }
+
+        //Show different textures for hints
+        if (this.tilesArray[x][y].hint.hintTexture === null) {
+          if (this.tilesArray[x][y].state === CONSTANTS.MINE) {
+            this.tilesArray[x][y].hint.hintTexture = "tr2_mine";
+          } else if (this.tilesArray[x][y].state === CONSTANTS.UNREVEALED) {
+            this.tilesArray[x][y].hint.hintTexture = CONSTANTS.UNREVEALED; //Needed in case this is a replay and we need to suppress the "show hidden tiles setting"
           }
         }
 
@@ -7988,6 +8099,7 @@ class Board {
           probability: null,
           colourScale: null,
           render: "skip",
+          hintTexture: null,
         };
       }
     }
@@ -8004,7 +8116,7 @@ class Board {
       this.stats.endTime > autoHintTime.value;
 
     if (autoHintCriteria.value === "always" || meetsTimeCriteria) {
-      this.showHint();
+      this.showHint(true);
     }
   }
 

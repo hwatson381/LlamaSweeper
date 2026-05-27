@@ -689,3 +689,24 @@ ideas to try:
 have small white box in top left
 or just show probs without showing any blasted mines
 try having the bombs underneath show using the "very transparent" texture?
+
+Consider changing highlight to use outline? (similar to best move highlight on zini)
+
+Huge conflict when hinting on a replay with unrevealedStates...
+
+Can't tell if floating = grey is better or worse...
+It does blend in with mines too much on light skin. Need to tweak colours a lot
+
+Disable hints if no wasm support?
+
+==========
+
+turn off hint on board state change
+
+also add dropdown or something to restrict what autohint shows on?
+
+fix colours (esp for light skin)
+
+and update highlight safest...
+
+Scale hint colours based on mines/(width\*height)?

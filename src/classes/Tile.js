@@ -28,7 +28,8 @@ class Tile {
     this.hint = {
       probability: null,
       colourScale: null,
-      render: "skip" //can be skip/floating/safe/frontier/onflag/onmine/onblastmine
+      render: "skip", //can be skip/floating/safe/frontier/onflag/onmine/onblastmine/textureonly
+      hintTexture: null //change texture of tile used for hint (e.g. using transparent bomb texture for readability)
     };
   }
 
@@ -148,6 +149,16 @@ class Tile {
     }
 
     const ctx = this.refs.mainCanvas.value.getContext("2d");
+
+    if (this.hint.hintTexture !== null) {
+      //Note - we are drawing directly on top of the normal tile texture
+      //this is a bit inefficient, but seemed easier for organising code and allows possiblity of transparency
+      ctx.drawImage(this.skinManager.getImage(this.hint.hintTexture), rawX, rawY, size, size);
+
+      if (this.hint.render === "textureonly") {
+        return;
+      }
+    }
 
     if (this.hint.render === "safe") {
       //Do a green background

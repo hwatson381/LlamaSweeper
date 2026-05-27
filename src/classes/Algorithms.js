@@ -1682,9 +1682,11 @@ class Algorithms {
     return this.readFromMbfBinaryData(mbfData);
   }
 
-  static calcBoardProbability(tilesArray, mineCount) {
+  static calcBoardProbability(probCalcBoard, mineCount) {
+    /* OK TO DELETE
     const width = tilesArray.length;
     const height = tilesArray[0].length;
+    */
 
     //Create board structure needed by mstoollib
     /*
@@ -1702,6 +1704,7 @@ class Algorithms {
       18  This indicates that in the game, cells that appear to be 0 due to double-click highlighting are highlighted.
     */
 
+    /* OK TO DELETE
     const msBoard = [];
 
     for (let x = 0; x < width; x++) {
@@ -1719,8 +1722,9 @@ class Algorithms {
         }
       }
     }
+    */
 
-    let result = ms.cal_probability_onboard(msBoard, mineCount);
+    let result = ms.cal_probability_onboard(probCalcBoard, mineCount);
 
     return result[0];
   }
