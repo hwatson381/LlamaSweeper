@@ -1381,6 +1381,74 @@
                   /><br />
                 </template>
                 <q-select
+                  v-if="autoHintCriteria !== 'never'"
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="autoHintVariants"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    {
+                      label: 'All',
+                      value: 'all',
+                    },
+                    { label: 'All but Eff Boards', value: 'not eff boards' },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Loss hint gamemodes"
+                ></q-select>
+                <q-select
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="autoHintBackdrop"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    {
+                      label: 'Blast numbers',
+                      value: 'numbers',
+                    },
+                    { label: 'Mines', value: 'mines' },
+                    { label: 'No mines', value: 'no mines' },
+                    { label: 'No highlight', value: 'minimal' },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Loss hint backdrop"
+                ></q-select>
+                <q-select
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="tempHintScale"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    {
+                      label: 'current',
+                      value: 'current',
+                    },
+                    { label: 'merged', value: 'merged' },
+                    { label: 'piecewise', value: 'piecewise' },
+                    { label: 'normal', value: 'normal' },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Temp hint scale"
+                ></q-select>
+                <q-select
                   class="q-mx-md q-mb-md"
                   outlined
                   options-dense
@@ -1402,6 +1470,57 @@
                   stack-label
                   label="Face Hitbox"
                 ></q-select>
+                <div class="flex" style="gap: 15px">
+                  <q-input
+                    dense
+                    rounded
+                    outlined
+                    style="width: 120px"
+                    @keydown.prevent="
+                      (event) => (keyboardClickDigKey = event.key.toLowerCase())
+                    "
+                    v-model="keyboardClickDigKey"
+                    label="Keyboard Dig Key"
+                    input-style="text-align: center"
+                  />
+                  <q-input
+                    dense
+                    rounded
+                    outlined
+                    style="width: 120px"
+                    @keydown.prevent="
+                      (event) =>
+                        (keyboardClickFlagKey = event.key.toLowerCase())
+                    "
+                    v-model="keyboardClickFlagKey"
+                    label="Keyboard Flag Key"
+                    input-style="text-align: center"
+                  />
+                </div>
+                <q-checkbox
+                  v-model="keyboardClickOpenOnKeyDown"
+                  label="Keyboard Click Reveal On Key Down"
+                /><br /><br />
+                <q-btn
+                  @click="
+                    scrollToBoard();
+                    settingsModal = true;
+                  "
+                  color="secondary"
+                  label="display settings (scale etc.)"
+                />
+              </q-card-section>
+            </q-card>
+          </q-expansion-item>
+
+          <q-expansion-item
+            expand-separator
+            icon="sym_o_bar_chart_4_bars"
+            label="Game stat settings"
+            group="settings"
+          >
+            <q-card>
+              <q-card-section>
                 <q-checkbox v-model="statsShow8Way" label="Show 8-way ZiNi" />
                 <br />
                 <q-checkbox
@@ -1462,45 +1581,6 @@
                 <q-checkbox v-model="statsShowRqp" label="Show RQP" />
                 <br />
                 <q-checkbox v-model="statsShowCorr" label="Show Correctness" />
-                <div class="flex" style="gap: 15px">
-                  <q-input
-                    dense
-                    rounded
-                    outlined
-                    style="width: 120px"
-                    @keydown.prevent="
-                      (event) => (keyboardClickDigKey = event.key.toLowerCase())
-                    "
-                    v-model="keyboardClickDigKey"
-                    label="Keyboard Dig Key"
-                    input-style="text-align: center"
-                  />
-                  <q-input
-                    dense
-                    rounded
-                    outlined
-                    style="width: 120px"
-                    @keydown.prevent="
-                      (event) =>
-                        (keyboardClickFlagKey = event.key.toLowerCase())
-                    "
-                    v-model="keyboardClickFlagKey"
-                    label="Keyboard Flag Key"
-                    input-style="text-align: center"
-                  />
-                </div>
-                <q-checkbox
-                  v-model="keyboardClickOpenOnKeyDown"
-                  label="Keyboard Click Reveal On Key Down"
-                /><br /><br />
-                <q-btn
-                  @click="
-                    scrollToBoard();
-                    settingsModal = true;
-                  "
-                  color="secondary"
-                  label="display settings (scale etc.)"
-                />
               </q-card-section>
             </q-card>
           </q-expansion-item>
@@ -3156,6 +3236,9 @@ let noGuessing = useLocalStorage("ls_noGuessing", false);
 let noGuessingMaxAttempts = useLocalStorage("ls_noGuessingMaxAttempts", 10000);
 let autoHintCriteria = useLocalStorage("ls_autoHintCriteria", "time"); //never|always|time. Criteria for when to automatically use a hint on lost games
 let autoHintTime = useLocalStorage("ls_autoHintTime", 10);
+let autoHintVariants = useLocalStorage("ls_autoHintVariants", "not eff boards");
+let autoHintBackdrop = useLocalStorage("ls_autoHintBackdrop", "mines"); //numbers, mines, no mines, minimal
+let tempHintScale = ref("current");
 
 let begEffPreset = ref(200);
 let begEffOptions = Object.freeze([200, 210, 225, "custom"]);
@@ -5947,6 +6030,11 @@ class Board {
             time
           );
       }
+
+      if (this.hintActive) {
+        const suppressDraw = true;
+        this.hideHint(suppressDraw);
+      }
     } else if (this.tilesArray[tileX][tileY].state === CONSTANTS.FLAG) {
       //Unflag a square
       hasSoundEffect && soundEffectsEnabled.value && playSound("flag");
@@ -5960,6 +6048,11 @@ class Board {
           unflooredTileY,
           time
         );
+
+      if (this.hintActive) {
+        const suppressDraw = true;
+        this.hideHint(suppressDraw);
+      }
     } else {
       //Wasted flag input
       includeInStats &&
@@ -6296,7 +6389,14 @@ class Board {
         this.chord(x, y, false);
       }
 
-      this.lastSquaresChangedForAutoHint.push({ x, y });
+      if (this.gameStage === "running") {
+        this.lastSquaresChangedForAutoHint.push({ x, y });
+      }
+    }
+
+    if (this.hintActive) {
+      const suppressDraw = true;
+      this.hideHint(suppressDraw);
     }
   }
 
@@ -7815,6 +7915,8 @@ class Board {
   }
 
   showHint(isLossHint = false) {
+    let hintStartTime = performance.now();
+
     //Computes hint and updates tiles
     this.hintActive = true;
 
@@ -7891,10 +7993,15 @@ class Board {
 
         if (typeof thisTile.state === "number") {
           //Make tiles revealed on blast chord transparent
-          const adjustment =
-            meanMineAdjustments.get(`${changedSquare.x}-${changedSquare.y}`) ||
-            0;
-          thisTile.hint.hintTexture = "tr2_" + (thisTile.state + adjustment);
+          if (autoHintBackdrop.value === "numbers") {
+            const adjustment =
+              meanMineAdjustments.get(
+                `${changedSquare.x}-${changedSquare.y}`
+              ) || 0;
+            thisTile.hint.hintTexture = "tr2_" + (thisTile.state + adjustment);
+          } else {
+            thisTile.hint.hintTexture = CONSTANTS.UNREVEALED;
+          }
         } else if (isMeanMine) {
           thisTile.hint.hintTexture = "tr2_0";
         }
@@ -7943,28 +8050,23 @@ class Board {
       totalMines = this.mineCount;
     }
 
+    let rawProbabilityStartTime = performance.now();
+
     let probabilityGrid = Algorithms.calcBoardProbability(
       probCalcBoard,
       totalMines
     );
 
-    if (0 === 1) {
-      throw new Error("unimplemented");
-      /*
-        outline:
-        need to assign colourscale (based on idk percentiles or something)
-        also need to assign render type
-        like tracker whether floating etc or safe/mine/on top of flag all sorts
-        can floating be a midpoint?
-        or maybe even take average probability and adapt scale based on that?
-        ohhhh I like that.
-        maybe some exponential scale based on that? Like e.g. 20% density means 0.8%-4%-20%-100%
-      */
-    }
+    console.log(
+      `Probability calculation took ${
+        performance.now() - rawProbabilityStartTime
+      }ms`
+    );
 
     //figure out what to do with colourScale stuff...
     let probabilityScale = []; //All "meaningful" probabilities in order, used to figure out colour scale.
     let addedSingleFloatingToScale = false; //Tracker for whether we've added the single floating probability to the scale
+    let addSingleSafeToScale = false; //Simlar to above, hacky.
 
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
@@ -7979,8 +8081,6 @@ class Board {
           //This is a revealed number (as opposed to unopened/bomb/flag etc), so doesn't need a hint
           //Use probCalcBoard here as it has last move removed in case of loss hint.
           render = "skip";
-        } else if (probabilityGrid[x][y] === 0) {
-          render = "safe";
         } else if (probCalcBoard[x][y] === 11 && probabilityGrid[x][y] === 1) {
           //Player marked as flag and it's 100% a mine
           render = "skip";
@@ -7989,41 +8089,36 @@ class Board {
           render = "onflag";
         } else if (this.tilesArray[x][y].state === CONSTANTS.MINERED) {
           render = "onblastmine";
+        } else if (this.tilesArray[x][y].state === CONSTANTS.MINE) {
+          render = "onmine";
         } else {
-          //check if it neighbours a number or not (to determine if floating or not)
-          let hasNumberNeighbour = false;
-          for (let i = x - 1; i <= x + 1; i++) {
-            if (hasNumberNeighbour) {
-              break;
-            }
-            for (let j = y - 1; j <= y + 1; j++) {
-              if (!this.checkCoordsInBounds(i, j)) {
-                continue;
-              }
+          render = "frontier"; //Set all other squares to frontier, but later we may change some of these to floating
+        }
 
-              if (probCalcBoard[i][j] < 10) {
-                //Neighbour is a revealed number, so this isn't floating
-                hasNumberNeighbour = true;
-                break;
-              }
-            }
-          }
-
-          if (hasNumberNeighbour) {
-            if (this.tilesArray[x][y].state === CONSTANTS.MINE) {
-              render = "onmine"; //set onmine here so that it isn't set for mines in floating squares
-            } else {
-              render = "frontier";
-            }
-          } else {
-            render = "floating";
-          }
+        if (
+          render !== "skip" &&
+          render !== "textureonly" &&
+          probabilityGrid[x][y] === 0 &&
+          !addSingleSafeToScale
+        ) {
+          probabilityScale.push(0);
+          addSingleSafeToScale = true;
         }
 
         //Show different textures for hints
-        if (this.tilesArray[x][y].hint.hintTexture === null) {
+        if (
+          this.tilesArray[x][y].hint.hintTexture === null &&
+          this.gameStage !== "running"
+        ) {
           if (this.tilesArray[x][y].state === CONSTANTS.MINE) {
-            this.tilesArray[x][y].hint.hintTexture = "tr2_mine";
+            if (
+              autoHintBackdrop.value === "numbers" ||
+              autoHintBackdrop.value === "mines"
+            ) {
+              this.tilesArray[x][y].hint.hintTexture = "tr2_mine";
+            } else {
+              this.tilesArray[x][y].hint.hintTexture = CONSTANTS.UNREVEALED;
+            }
           } else if (this.tilesArray[x][y].state === CONSTANTS.UNREVEALED) {
             this.tilesArray[x][y].hint.hintTexture = CONSTANTS.UNREVEALED; //Needed in case this is a replay and we need to suppress the "show hidden tiles setting"
           }
@@ -8033,12 +8128,18 @@ class Board {
 
         if (
           render !== "skip" &&
+          render !== "textureonly" &&
           probabilityGrid[x][y] !== 0 &&
           probabilityGrid[x][y] !== 1
         ) {
-          if (render !== "floating") {
+          const isFloating = !this.hasNumberNeighbourProbCalcBoardVersion(
+            probCalcBoard,
+            x,
+            y
+          );
+          if (!isFloating) {
             probabilityScale.push(probabilityGrid[x][y]);
-          } else if (render === "floating" && !addedSingleFloatingToScale) {
+          } else if (isFloating && !addedSingleFloatingToScale) {
             probabilityScale.push(probabilityGrid[x][y]);
             addedSingleFloatingToScale = true;
           }
@@ -8046,33 +8147,81 @@ class Board {
       }
     }
 
+    if (tempHintScale.value === "merged") {
+      probabilityScale = Array.from(new Set(probabilityScale));
+    }
+
     //Sort probability scale so we can set up the colourScale property for each tile
     probabilityScale.sort((a, b) => a - b);
 
-    //Set colourScales
+    let safestProbability = probabilityScale?.[0];
+    let safestTilesCount = 0;
+    let notSafestTilesCount = 0;
+    let safestTiles = [];
+
+    //Set colourScales, also change render method for floating
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
-        if (this.tilesArray[x][y].hint.render === "skip") {
-          this.tilesArray[x][y].hint.colourScale = 0;
-          continue;
-        }
-        if (this.tilesArray[x][y].hint.probability === 0) {
-          this.tilesArray[x][y].hint.colourScale = 0;
-          continue;
-        }
-        if (this.tilesArray[x][y].hint.probability === 1) {
-          this.tilesArray[x][y].hint.colourScale = 1;
+        const thisTileHint = this.tilesArray[x][y].hint;
+
+        if (
+          thisTileHint.render === "skip" ||
+          thisTileHint.render === "textureonly"
+        ) {
+          thisTileHint.colourScale = 0;
           continue;
         }
 
-        let scaleIndex = probabilityScale.indexOf(
-          this.tilesArray[x][y].hint.probability
-        );
+        if (thisTileHint.probability === safestProbability) {
+          safestTiles.push({ x, y });
+          safestTilesCount++;
+        } else if (thisTileHint.probability !== 1) {
+          notSafestTilesCount++;
+        }
+
+        //All floating cells should be grey unless they are the safest move
+        if (
+          thisTileHint.probability !== safestProbability &&
+          !this.hasNumberNeighbourProbCalcBoardVersion(probCalcBoard, x, y)
+        ) {
+          thisTileHint.render = "floating";
+        }
+
+        if (thisTileHint.probability === 0) {
+          thisTileHint.colourScale = 0;
+          continue;
+        }
+        if (thisTileHint.probability === 1) {
+          thisTileHint.colourScale = 1;
+          continue;
+        }
+
+        let scaleIndex = probabilityScale.indexOf(thisTileHint.probability);
         let colourScale = scaleIndex / probabilityScale.length;
         //shift it to be between 0.1 and 0.9 to separate from the safe/mine colours
         colourScale = colourScale * 0.8 + 0.1;
 
-        this.tilesArray[x][y].hint.colourScale = colourScale;
+        thisTileHint.colourScale = colourScale;
+
+        if (tempHintScale.value === "piecewise") {
+          thisTileHint.colourScale = this.hintProbabilityToScalePiecewise(
+            thisTileHint.probability
+          );
+        } else if (tempHintScale.value === "normal") {
+          thisTileHint.colourScale = this.hintProbabilityToScaleNormalCdf(
+            thisTileHint.probability
+          );
+        }
+      }
+    }
+
+    //Only set highlight if fewer than 1/3 of tiles are safest or fewer than 10
+    if (
+      safestTilesCount / (safestTilesCount + notSafestTilesCount) < 1 / 3 ||
+      safestTilesCount < 10
+    ) {
+      for (const tile of safestTiles) {
+        this.tilesArray[tile.x][tile.y].hint.highlight = true;
       }
     }
 
@@ -8082,6 +8231,12 @@ class Board {
 
     //Update tiles to have this info
     this.draw();
+
+    console.log(
+      `ShowHint calculated in ${Math.round(
+        performance.now() - hintStartTime
+      )}ms`
+    );
   }
 
   hideHint(suppressDraw = false) {
@@ -8100,6 +8255,7 @@ class Board {
           colourScale: null,
           render: "skip",
           hintTexture: null,
+          highlight: false,
         };
       }
     }
@@ -8115,9 +8271,85 @@ class Board {
       typeof this.stats.endTime === "number" &&
       this.stats.endTime > autoHintTime.value;
 
-    if (autoHintCriteria.value === "always" || meetsTimeCriteria) {
+    const meetsModeCriteria =
+      autoHintVariants.value === "all" ||
+      (autoHintVariants.value === "not eff boards" &&
+        this.variant !== "eff boards");
+
+    if (
+      meetsModeCriteria &&
+      (autoHintCriteria.value === "always" || meetsTimeCriteria)
+    ) {
       this.showHint(true);
     }
+  }
+
+  hasNumberNeighbourProbCalcBoardVersion(probCalcBoard, x, y) {
+    //Used for hints to check whether a square is floating
+    for (let i = x - 1; i <= x + 1; i++) {
+      for (let j = y - 1; j <= y + 1; j++) {
+        if (!this.checkCoordsInBounds(i, j)) {
+          continue;
+        }
+
+        if (probCalcBoard[i][j] < 10) {
+          //Neighbour is a revealed number, so this isn't floating
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  hintProbabilityToScalePiecewise(probability) {
+    const boardDensity = this.mineCount / (this.width * this.height);
+    const greenBias = 0.15 * (1 - boardDensity);
+    const greenPoint = boardDensity + greenBias;
+
+    let scale = probability;
+
+    if (probability <= boardDensity) {
+      scale = (probability / boardDensity) * greenPoint;
+    } else {
+      scale =
+        greenPoint +
+        ((probability - boardDensity) / (1 - boardDensity)) * (1 - greenPoint);
+    }
+
+    //shift it to be between 0.1 and 0.9 to separate from the safe/mine colours
+    scale = scale * 0.8 + 0.1;
+
+    return scale;
+  }
+
+  hintProbabilityToScaleNormalCdf(probability) {
+    /*
+      This was written by an llm so unverified.
+      The idea is that the probabilities we see on a minesweeper board might follow a beta distribution
+      (Think like a binomial distribution where the base probability is the board density)
+      We approximate a beta distribution with a normal distribution and get the cdf (which uses polynomial approximation)
+    */
+    const d = this.mineCount / (this.width * this.height);
+    const greenBias = 0.1 * (1 - d); // fades to 0 as density → 1
+    const mu = d + greenBias;
+    const sigma = (window.sigmaScale ?? 0.5) * Math.sqrt(d * (1 - d)); // spread; tune this based on how varied probs are
+
+    // erf approximation (Abramowitz & Stegun)
+    const erf = (x) => {
+      const t = 1 / (1 + 0.3275911 * Math.abs(x));
+      const poly =
+        t *
+        (0.254829592 +
+          t *
+            (-0.284496736 +
+              t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
+      const result = 1 - poly * Math.exp(-x * x);
+      return x >= 0 ? result : -result;
+    };
+
+    const scale = 0.5 * (1 + erf((probability - mu) / (sigma * Math.sqrt(2))));
+    return Math.max(0.05, Math.min(0.95, scale)); // clamp to avoid touching 0/1 endpoints
   }
 
   handleEditClick(tileX, tileY) {
@@ -8330,12 +8562,19 @@ class Board {
   }
 
   drawTilesHint() {
+    const suppressHighlight = autoHintBackdrop.value === "minimal";
+    const boostMineVisibility =
+      autoHintBackdrop.value === "numbers" ||
+      autoHintBackdrop.value === "mines";
+
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
         this.tilesArray[x][y].drawHint(
           x * this.tileSize + boardHorizontalPadding.value,
           y * this.tileSize + boardTopPadding.value,
-          this.tileSize
+          this.tileSize,
+          suppressHighlight,
+          boostMineVisibility
         );
       }
     }
@@ -8884,6 +9123,10 @@ class Board {
 
     if (ziniRunnerActive.value) {
       this.stats.killDeepChainZiniRunner();
+    }
+
+    if (this.hintActive) {
+      this.hideHint(true);
     }
 
     let refs = {

@@ -1724,9 +1724,12 @@ class Algorithms {
     }
     */
 
-    let result = ms.cal_probability_onboard(probCalcBoard, mineCount);
+    let [probabilities, mineCountInfo] = ms.cal_probability_onboard(probCalcBoard, mineCount);
 
-    return result[0];
+    //Round probabilities to 12 decimal places to avoid floating point issues
+    probabilities = probabilities.map(col => col.map(p => Math.round(p * 10 ** 12) / 10 ** 12));
+
+    return probabilities;
   }
 }
 

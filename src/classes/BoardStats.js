@@ -236,7 +236,13 @@ class BoardStats {
 
     const estTime = bbbv / bbbvs;
 
+    let zinisStartTime = performance.now();
     this.calcZinis(bbbv < 500);
+    console.log(
+      `Zini calculations took ${performance.now() - zinisStartTime
+      }ms`
+    );
+
     const eightZini = this.eightZini;
     const chainZini = this.chainZini;
     const womZini = this.womZini;

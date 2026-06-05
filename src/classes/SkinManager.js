@@ -210,17 +210,22 @@ class SkinManager {
       hint: {
         safe: {
           hue: 120,
-          saturation: 90,
-          lightness: 50,
+          saturation: 100,
+          lightness: 25,
         },
         mine: {
           hue: 0,
-          saturation: 90,
-          lightness: 50,
+          saturation: 100,
+          lightness: 40,
         },
         defaultAlpha: 1,
         floatingAlpha: 0.3,
-        floating: '#707070'
+        floating: '#eaeaea',
+        readabilityBackground: {
+          onflag: '#ffffff44',
+          onmine: '#ffffff44',
+          onblastmine: '#ffffff44',
+        }
       }
     };
 
@@ -243,21 +248,28 @@ class SkinManager {
       hint: {
         safe: {
           hue: 120,
-          saturation: 90,
+          saturation: 100,
           lightness: 50,
         },
         mine: {
           hue: 0,
-          saturation: 90,
+          saturation: 100,
           lightness: 50,
         },
         defaultAlpha: 1,
         floatingAlpha: 0.2,
-        floating: '#99a1a8'
+        floating: '#898F93',
+        readabilityBackground: {
+          onflag: '#00000044',
+          onmine: '#00000000',
+          onblastmine: '#00000000',
+        }
       }
     }
 
+    //Expose globally for testing purposes
     window.darkscheme = this.colours.dark;
+    window.lightscheme = this.colours.light;
   }
 
   addImage(key, src, parentObject = false, isPriority = false) {
@@ -414,10 +426,24 @@ class SkinManager {
 
     const hue = (1 - colourScale) * hintSkin.safe.hue + colourScale * hintSkin.mine.hue;
     const saturation = (1 - colourScale) * hintSkin.safe.saturation + colourScale * hintSkin.mine.saturation;
-    const lightness = (1 - colourScale) * hintSkin.safe.lightness + colourScale * hintSkin.mine.lightness;
+    let lightness = (1 - colourScale) * hintSkin.safe.lightness + colourScale * hintSkin.mine.lightness;
     const alpha = isFloating ? hintSkin.floatingAlpha : hintSkin.defaultAlpha;
 
     return `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
+  }
+
+  getHintReadabilityBackground(type) {
+    const hintSkin = this.colours[this.refs.boardSkin.value].hint;
+    switch (type) {
+      case "onflag":
+        return hintSkin.readabilityBackground.onflag;
+      case "onmine":
+        return hintSkin.readabilityBackground.onmine;
+      case "onblastmine":
+        return hintSkin.readabilityBackground.onblastmine;
+      default:
+        throw new Error("Invalid hint readability background type");
+    }
   }
 }
 

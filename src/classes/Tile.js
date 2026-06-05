@@ -28,8 +28,9 @@ class Tile {
     this.hint = {
       probability: null,
       colourScale: null,
-      render: "skip", //can be skip/floating/safe/frontier/onflag/onmine/onblastmine/textureonly
-      hintTexture: null //change texture of tile used for hint (e.g. using transparent bomb texture for readability)
+      render: "skip", //can be skip/floating/frontier/onflag/onmine/onblastmine/textureonly
+      hintTexture: null, //change texture of tile used for hint (e.g. using transparent bomb texture for readability)
+      highlight: false
     };
   }
 
@@ -139,7 +140,7 @@ class Tile {
     }
   }
 
-  drawHint(rawX, rawY, size) {
+  drawHint(rawX, rawY, size, suppressHighlight, boostMineVisibility) {
     if (this.hint.probability === null) {
       return;
     }
@@ -160,22 +161,37 @@ class Tile {
       }
     }
 
-    if (this.hint.render === "safe") {
-      //Do a green background
+    if (this.hint.render === "onflag") {
+      //Do a grey background for readability
+      ctx.fillStyle = this.skinManager.getHintReadabilityBackground("onflag");
+      ctx.fillRect(rawX, rawY, size, size);
+    } else if (this.hint.render === "onmine" && boostMineVisibility) {
+      //Do ligher grey background for readability
+      ctx.fillStyle = this.skinManager.getHintReadabilityBackground("onmine");
+      ctx.fillRect(rawX, rawY, size, size);
+    } else if (this.hint.render === "onblastmine" && boostMineVisibility) {
+      //Do darker grey background for readability
+      ctx.fillStyle = this.skinManager.getHintReadabilityBackground("onblastmine");
+      ctx.fillRect(rawX, rawY, size, size);
+    }
+
+    if (this.hint.highlight && !suppressHighlight) {
+      //Do a green highlight
+
+      /* OK TO DELETE (old highlight, transparent green background)
       ctx.fillStyle = 'rgba(0, 255, 0, 0.25)';
       ctx.fillRect(rawX, rawY, size, size);
-    } else if (this.hint.render === "onflag") {
-      //Do a grey background for readability
-      // ctx.fillStyle = 'rgba(128, 128, 128, 0.25)';
-      // ctx.fillRect(rawX, rawY, size, size);
-    } else if (this.hint.render === "onmine") {
-      //Do ligher grey background for readability
-      // ctx.fillStyle = 'rgba(128, 128, 128, 0.10)';
-      // ctx.fillRect(rawX, rawY, size, size);
-    } else if (this.hint.render === "onblastmine") {
-      //Do darker grey background for readability
-      // ctx.fillStyle = 'rgba(128, 128, 128, 0.3)';
-      // ctx.fillRect(rawX, rawY, size, size);
+      */
+
+      const highlightColour = this.skinManager.getHighlightColour();
+
+      const thickness = 0.08 * size;
+
+      //green
+      ctx.lineWidth = thickness;
+      ctx.strokeStyle = highlightColour;
+      ctx.strokeRect(rawX + thickness * 1 / 2, rawY + thickness * 1 / 2, size - thickness, size - thickness);
+
     }
 
     const textScale = 0.4 * size;
@@ -187,6 +203,11 @@ class Tile {
     const hintColour = this.skinManager.getHintColour(this.hint.colourScale, isFloating);
 
     let percent = this.hint.probability * 100;
+
+    if (window.drawScaleInstead) {
+      percent = this.hint.colourScale * 100;
+    }
+
     let text;
     if (percent === 0) {
       text = "0";

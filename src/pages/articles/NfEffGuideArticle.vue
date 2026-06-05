@@ -24,9 +24,9 @@
         target="_blank"
         >google doc</a
       >
-      which I've converted to a webpage. The formatting will different, but I've
-      kept the wording exactly the same, so it should be read with this context
-      in mind.
+      which I've converted to a webpage. The formatting will be different, but
+      I've kept the wording exactly the same, so it should be read with this
+      context in mind.
     </p>
   </div>
 
@@ -2195,7 +2195,7 @@
   </p>
   <p>
     So a key question is how to weigh this up. How much is it worth taking extra
-    risk (blasting/losing a click) for a higher chance of an opening. We do know
+    risk (blasting/losing a click) for a higher chance of an opening? We do know
     that openings are incredibly valuable in NF Eff, as they are one of the best
     ways to make progress on a board.
   </p>

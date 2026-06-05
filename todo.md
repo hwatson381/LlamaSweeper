@@ -615,27 +615,6 @@ NF eff guide issues:
 [done] code block/inline code styling for formula?
 review it?
 
-How do we implement NG?
-In generateBoard we have
-
-a few different ways to make the board depending on gamemode
-
-BoardGenerator.effBoardShuffle (used for effBoards)
-
-BoardGenerator.basicShuffle (used for mean openings and normal)
-
-note:
-for eff board there is a consideration -
-Do we generate every board NG and then test against eff
-Or do we generate every board non-ng and test against eff
-if generating all NG, then it's slower by factor of (time to generate ng + test eff)/(time to generate not ng + test eff)
-if testing after then it's slower by 1/(chance of random board ng)
-
-make sure ng can't be toggled mid game?
-indicate somehow that a board is ng (e.g. text on the board)
-
-How about change the colour of the time stat? And this could also be done for when hints are used?
-
 Show probability after game based on criteria? Like on all blasts or only after 10% progress or 10s playtime etc
 
 Need to hide hint on click...
@@ -643,8 +622,6 @@ Need to hide hint on click...
 Time how long hints take to run (slower than 100chain?)
 
 Can floating tiles be shown less vibrantly in the hint?
-
-Maybe even hide mines when showing the end of game hint?
 
 Change hint font and make it bolder
 
@@ -667,19 +644,9 @@ ctrl+f for window.fontOverride and remove
 
 Treat floating as one guess when ranking everything?
 
-Bug on auto hint - need to roll back board when blasting on a chord as otherwise probabilities displayed will take into account cells revealed by the chord? Possibly? Need to confirm, maybe need to have another render category for showing a hint over a number revealed by the blast chord... (and potentially blast chord reveals an opening...)
-
-Maybe auto-hints should be more transparent?
-
-Yeah overall more transparency is really good
-
 Or could we show blast-hint with white box bg in top left (similar to premium experiment?)
 
 Remove lag on blast by making prob and zini run in web worker?
-
-Have option to only use auto hint on standard?
-
-Maybe on hintblast, only show blasted mine and not others?
 
 wom highlights lowest probability rather than just zeros...
 
@@ -692,10 +659,10 @@ try having the bombs underneath show using the "very transparent" texture?
 
 Consider changing highlight to use outline? (similar to best move highlight on zini)
 
-Huge conflict when hinting on a replay with unrevealedStates...
-
 Can't tell if floating = grey is better or worse...
 It does blend in with mines too much on light skin. Need to tweak colours a lot
+
+remove floatingAlpha property if we decide
 
 Disable hints if no wasm support?
 
@@ -703,10 +670,68 @@ Disable hints if no wasm support?
 
 turn off hint on board state change
 
-also add dropdown or something to restrict what autohint shows on?
-
 fix colours (esp for light skin)
 
 and update highlight safest...
 
 Scale hint colours based on mines/(width\*height)?
+
+Some colours are impossible to see when on top of a mine (especially in light mode).
+Consider having a different colour for these?
+
+============ plan =================
+
+tweak colours
+
+[done?] shift settings? (make stats option?)
+
+time how long hint takes to run
+
+hide hint on board click...
+
+tweak "safe" to be highlight and then make it apply only to lowest
+Maybe keep render category and call it safest?
+
+tweak lightmode so hint colours visible even when on top of mine...
+
+We now exclude 0 from showing on safest......
+
+Maybe just ignore and allow 0 and 1 to be pushed to probability scales?
+Or make every distinct number unique?
+But tbh just with to m/wh based colourings...
+
+Somehow make hints more visible when on top of mine/flag in light theme
+
+adjustment shouldn't apply if a square is on a mine?
+
+Some tests for colourscale:
+window.dedupeScale - remove dupe entries from colour scale
+
+make hints autohide when clicking on board (should also work for replay??)
+
+Do we allow depressing a square? Maybe?
+
+Added ref and select box for tempHintScale. Remember to remove
+
+Remove window.drawScaleInstead
+
+Also window.sigmaScale
+
+All floating safe is an eyesore...
+Maybe don't highlight if >= 1/3 of squares are highlighted
+
+Test out lossHint on mobile a bunch
+
+======= what is left? =======
+
+timing stuff
+
+checking wasm support
+
+figuring out colourscale and testing on mobile
+
+general cleanup
+
+running losshint and 100chain in webworker?
+
+refactoring hint + maybe quickpaint into own class

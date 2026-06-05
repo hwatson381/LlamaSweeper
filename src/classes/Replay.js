@@ -71,6 +71,8 @@ class Replay {
       return;
     }
 
+    const isHintActive = this.board.hintActive;
+
     let clickHead = this.currentClickIndex;
 
     this.currentClickIndex = newClickIndex;
@@ -154,6 +156,10 @@ class Replay {
         !this.isWin && this.board.blast();
       }
       !this.refs.replayIsPanning.value && !this.refs.replayIsInputting.value && this.pause();
+    }
+
+    if (isHintActive) {
+      this.board.showHint();
     }
   }
 
