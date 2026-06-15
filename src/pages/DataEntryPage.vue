@@ -35,6 +35,23 @@
       <button @click="addTag">game</button>
       <button @click="addTag">mobile</button>
       <button @click="addTag">tool</button>
+      <br />
+      <label
+        >rating<br /><input
+          type="number"
+          v-model.number="variantRating"
+          size="5" /></label
+      ><br />
+      <label
+        >knownness<br />
+        <select v-model="variantKnownness">
+          <option :value="1">very low</option>
+          <option :value="2">low</option>
+          <option :value="3">medium</option>
+          <option :value="4">high</option>
+          <option :value="5">very high</option>
+        </select>
+      </label>
       <hr />
       <button @click="addVariant">Add variant</button>
       <hr />
@@ -56,6 +73,8 @@ let variantUrl = ref("");
 let variantDesc = ref("");
 let variantImage = ref("");
 let variantTags = ref(""); //comma separated
+let variantRating = ref(0);
+let variantKnownness = ref(1);
 
 let allVariantsJson = computed(() => {
   return JSON.stringify(allVariants.value, null, 2);
@@ -80,6 +99,8 @@ function addVariant() {
     desc: variantDesc.value,
     image: variantImage.value,
     tags: variantTags.value.split(","),
+    rating: variantRating.value,
+    popularity: variantKnownness.value,
   };
 
   allVariants.value.push(newVariant);
@@ -89,5 +110,7 @@ function addVariant() {
   variantDesc.value = "";
   variantImage.value = "";
   variantTags.value = "";
+  variantRating.value = 0;
+  variantKnownness.value = 1;
 }
 </script>

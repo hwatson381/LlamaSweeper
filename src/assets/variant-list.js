@@ -62,7 +62,7 @@ let variantList = [
   {
     "name": "Minesweeper Community Discord",
     "url": "https://discord.gg/6Qz8zsquKA",
-    "desc": "Created by Kiraa96, this is the largest minesweeper Discord with 1000+ members. Has many of the fastest players, including lots of top players from minesweeper.online. ",
+    "desc": "Created by Kiraa96, this is the largest minesweeper Discord with 5000+ members. Has many of the fastest players, including lots of top players from minesweeper.online. ",
     "image": "/img/variants/discord.png",
     "tags": [
       "community"
@@ -96,12 +96,12 @@ let variantList = [
   {
     "name": "Minesweeper Board Museum",
     "url": "https://mzrg.com/js/mbm/",
-    "desc": "A collection of interesting boards created by qqwref (USA minesweeper player)",
+    "desc": "A collection of unique, interesting and important minesweeper boards curated by qqwref (USA minesweeper player)",
     "image": "/img/variants/mbm.png",
     "tags": [
       "informational"
     ],
-    "rating": 3.5,
+    "rating": 3.6,
     "popularity": 1
   },
   {
@@ -125,7 +125,7 @@ let variantList = [
       "game",
       "tool"
     ],
-    "rating": 3.4,
+    "rating": 3.5,
     "popularity": 2
   },
   {
@@ -153,12 +153,12 @@ let variantList = [
   {
     "name": "14 Minesweeper Variants",
     "url": "https://store.steampowered.com/app/1865060/14_Minesweeper_Variants/",
-    "desc": "Minesweeper but with different creative twists on the rules. For example, in one of the variants, the numbers lie to you and are off by one (but you don't know which way). I haven't played this but the people I know who have speak highly of it. Aliensrock (a popular puzzle gaming youtuber) has made several videos on this. As of writing, it costs $7. It also has a sequel called 14 Minesweeper Variants 2.",
+    "desc": "Minesweeper but with different creative twists on the rules. For example, the numbers could lie to you, or the mines could form a connected path, or have other restrictions on how the mines are placed. Some of the variants are very unique, and not like anything I've seen elsewhere. Every puzzle is procedurally generated to be no-guess and doing a move that cannot be logically deduced leads to a loss. I'd highly recommend it for puzzle gamers, I naively went into it expecting it to be easy because of my minesweeper experience, but this is decidely not the case. Aliensrock (a popular puzzle gaming youtuber) has made several videos on this. As of writing, it costs $7. It also has a sequel called 14 Minesweeper Variants 2.",
     "image": "/img/variants/14ms.png",
     "tags": [
       "game"
     ],
-    "rating": 0,
+    "rating": 4.6,
     "popularity": 4
   },
   {
@@ -202,7 +202,7 @@ let variantList = [
     "tags": [
       "game"
     ],
-    "rating": 4.1,
+    "rating": 4.2,
     "popularity": 1
   },
   {
@@ -224,7 +224,7 @@ let variantList = [
     "tags": [
       "game"
     ],
-    "rating": 3.2,
+    "rating": 3.3,
     "popularity": 1
   },
   {
@@ -241,7 +241,7 @@ let variantList = [
   {
     "name": "carykh knightsweeper",
     "url": "https://htwins.net/minesweeper/",
-    "desc": "Minesweeper, but with different rules for how the neighbouring cells are counted. For example, the numbers could count mines that are a knights move away or that are orthogonally adjacent (no diagonals). There are lots of different rules to choose from. The rules used can be changed by clicking on the box which has the pattern (\"normal\" is the default pattern). This was made by the youtuber carykh.",
+    "desc": "Minesweeper, but with different rules for how the neighbouring cells are counted. For example, the numbers could count mines that are a knight's move away or that are orthogonally adjacent (no diagonals). There are lots of different rules to choose from. The rules used can be changed by clicking on the box which has the pattern (\"normal\" is the default pattern). This was made by the youtuber carykh.",
     "image": "/img/variants/carykh.png",
     "tags": [
       "game"
@@ -279,7 +279,7 @@ let variantList = [
     "tags": [
       "game"
     ],
-    "rating": 3,
+    "rating": 3.1,
     "popularity": 1
   },
   {
@@ -415,7 +415,7 @@ let variantList = [
     "tags": [
       "tool"
     ],
-    "rating": 3.6,
+    "rating": 3.8,
     "popularity": 1
   },
   {
@@ -427,7 +427,7 @@ let variantList = [
       "tool"
     ],
     "rating": 5,
-    "popularity": 3
+    "popularity": 4
   },
   {
     "name": "PTTACGfans ZiNi Calculator",
@@ -448,12 +448,12 @@ let variantList = [
     "tags": [
       "tool"
     ],
-    "rating": 3.1,
+    "rating": 3.3,
     "popularity": 1
   },
   {
     "name": "Inesweeper",
-    "url": "https://inesweeper.vercel.app/",
+    "url": "https://www.inesweeper.com/",
     "desc": "A modern collection of minesweeper variants that take inspiration from 14 minesweeper variants and minesweeper advent calendar as well as some others. As of writing there are 7 variants. Examples include liar where numbers are off by one and contrast where there is a red-blue checkboard pattern and the numbers give the difference between the number of mines in the red and blue squares.",
     "image": "/img/variants/inesweeper.png",
     "tags": [
@@ -485,7 +485,7 @@ let variantList = [
     "popularity": 2
   },
   {
-    "name": "youtube playables minesweeper",
+    "name": "Youtube Playables Minesweeper",
     "url": "https://www.youtube.com/playables/UgkxhpR_EFQxif6EFOQZKOss5-BadJj6TIvQ",
     "desc": "A mobile-web optimised minesweeper game with unusual rules. When you reveal a square it will also reveal the adjacent squares. This means that it is possible to win on higher densities than usual, and the decision making behind guessing is very different. I've included this variant as it may be of interest to mobile no-flag players who like high density + guessing and have a high tolerance for frustration. There are several things wrong with this clone, notably that you have to long-press to flag (even on desktop) and that you have to sit through an animation whenever you lose.",
     "image": "/img/variants/yt-playables.png",
@@ -510,13 +510,13 @@ let variantList = [
   {
     "name": "MineMasters",
     "url": "https://minemasters.pro/",
-    "desc": "A modern community focused website with custom rankings and statistics for Minesweeper Online and the Chord Cup (this is a tournament ran on mnsw.pro). There is also a classic minesweeper implementation with a button for solving basic logic. It was made by JSwole who is a top minesweeper player and streamer.",
+    "desc": "A modern community focused website with custom rankings and statistics for Minesweeper Online and the Chord Cup (this is a tournament ran on mnsw.pro). It was made by JSwole who is a top minesweeper player and streamer. The site can be thought of as a hub for all of his projects and he is constantly coming up with new ideas. More recently he has come up with the boardigami project (a community effort to solve every difficulty 1 board on WoM) and is using the site to support/run multiple different competitions.",
     "image": "/img/variants/mine_masters.png",
     "tags": [
       "informational",
       "game"
     ],
-    "rating": 4.3,
+    "rating": 4.5,
     "popularity": 2
   },
   {
@@ -638,19 +638,42 @@ let variantList = [
     "tags": [
       "game"
     ],
-    "rating": 4.3,
+    "rating": 4.4,
     "popularity": 2
   },
   {
     "name": "INT Minesweeper",
     "url": "https://t6970.github.io/INT-Minesweeper/",
-    "desc": "A minesweeper site under development. Currently the only variant is minesweeper based on Hensel notation ( https://conwaylife.com/wiki/Hensel_notation ). Hensel notation is a way of describing adjacent tiles with letters (e.g. k means the mines are a knights move from eachother, t means they are in a T shape). I'd recommend this for logic players who want to re-experience the feeling of learning something similar to minesweeper for the first time.",
+    "desc": "A minesweeper site under development. Currently the only variant is minesweeper based on Hensel notation ( https://conwaylife.com/wiki/Hensel_notation ). Hensel notation is a way of describing adjacent tiles with letters (e.g. k means the mines are a knight's move from eachother, t means they are in a T shape). I'd recommend this for logic players who want to re-experience the feeling of learning something similar to minesweeper for the first time.",
     "image": "/img/variants/int-ms.png",
     "tags": [
       "game"
     ],
-    "rating": 2.8,
+    "rating": 3,
     "popularity": 1
+  },
+  {
+    "name": "StrangeDust Replay Analyser",
+    "url": "https://strange-dust.github.io/minesweeper-replay-analyzer/",
+    "desc": "More accurately known as RATM (Replay Analysis Tool for Minesweeper). As the name implies, this is a hugely customisable tool for viewing minesweeper replays with an abundance of features. There is a wide range of statistics and graphs, with tools to analyse every aspect of a game including efficiency, mouse movement and probabilities. Replays can be imported from a variety of sources including from recorded games on Minesweeper Online with a bookmarklet that adds real mouse path. See this video for an overview of the tool https://www.youtube.com/watch?v=OXAjc2vfD20",
+    "image": "/img/variants/ratm.png",
+    "tags": [
+      "tool"
+    ],
+    "rating": 4.3,
+    "popularity": 2
+  },
+  {
+    "name": "IMESA",
+    "url": "https://imesa.org/",
+    "desc": "Short for the International Minesweeper E-Sports Association, IMESA is a charitable organisation with the goal of promoting minesweeper as an e-sport and enabling international competitions. As of writing, it is most known for supporting the 2025 World Championship in Madrid, which was a 2 day in person event featuring events run on ViennaSweeper/Scoreganizer, mnsw.pro and minesweeper.online. I was lucky enough to compete in it and it was an amazing experience! I've left this entry unrated as I can't give it a rating without bias, and it will mainly be of interest to competitive players rather than casual players.",
+    "image": "/img/variants/imesa.png",
+    "tags": [
+      "community",
+      "informational"
+    ],
+    "rating": 0,
+    "popularity": 3
   }
 ]
 

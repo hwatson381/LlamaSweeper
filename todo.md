@@ -543,6 +543,7 @@ Add to external resources page:
 hexcells
 tametsi
 blindsweeper/fadesweeper/spotsweeper - see here https://discord.com/channels/814801005195558953/814801005195558956/1463320873619685450
+puzzlelands.net (mkka variant)
 
 Write up zini algorithms?
 Finish NF Eff guide?
