@@ -20,7 +20,7 @@
         <q-route-tab to="/" label="Home" />
         <q-route-tab :to="{ name: 'play' }" label="Variants" :exact="false" />
         <q-route-tab to="/others" label="External Resources" />
-        <q-route-tab to="/articles" label="Articles" />
+        <!--<q-route-tab to="/articles" label="Articles" />-->
         <q-route-tab to="/about" label="About" />
       </q-tabs>
     </q-header>

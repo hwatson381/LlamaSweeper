@@ -204,10 +204,6 @@ class Tile {
 
     let percent = this.hint.probability * 100;
 
-    if (window.drawScaleInstead) {
-      percent = this.hint.colourScale * 100;
-    }
-
     let text;
     if (percent === 0) {
       text = "0";

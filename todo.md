@@ -712,12 +712,6 @@ make hints autohide when clicking on board (should also work for replay??)
 
 Do we allow depressing a square? Maybe?
 
-Added ref and select box for tempHintScale. Remember to remove
-
-Remove window.drawScaleInstead
-
-Also window.sigmaScale
-
 All floating safe is an eyesore...
 Maybe don't highlight if >= 1/3 of squares are highlighted
 
@@ -736,3 +730,8 @@ general cleanup
 running losshint and 100chain in webworker?
 
 refactoring hint + maybe quickpaint into own class
+
+================
+
+How do we run stuff in background?
+Does worker constantly run or only when needed?

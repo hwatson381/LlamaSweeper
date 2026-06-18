@@ -1432,29 +1432,6 @@
                   dense
                   transition-duration="100"
                   input-debounce="0"
-                  v-model="tempHintScale"
-                  style="width: 175px; flex-shrink: 0"
-                  :options="[
-                    {
-                      label: 'current',
-                      value: 'current',
-                    },
-                    { label: 'merged', value: 'merged' },
-                    { label: 'piecewise', value: 'piecewise' },
-                    { label: 'normal', value: 'normal' },
-                  ]"
-                  emit-value
-                  map-options
-                  stack-label
-                  label="Temp hint scale"
-                ></q-select>
-                <q-select
-                  class="q-mx-md q-mb-md"
-                  outlined
-                  options-dense
-                  dense
-                  transition-duration="100"
-                  input-debounce="0"
                   v-model="faceHitbox"
                   style="width: 175px; flex-shrink: 0"
                   :options="[
@@ -2870,6 +2847,7 @@ import Tile from "src/classes/Tile";
 import Utils from "src/classes/Utils";
 import ZiniExplore from "src/classes/ZiniExplore";
 import ChainZini from "src/classes/ChainZini";
+import StatsWorkerManager from "src/classes/StatsWorkerManager";
 
 import ReplayBar from "src/components/ReplayBar.vue";
 
@@ -3238,7 +3216,6 @@ let autoHintCriteria = useLocalStorage("ls_autoHintCriteria", "time"); //never|a
 let autoHintTime = useLocalStorage("ls_autoHintTime", 10);
 let autoHintVariants = useLocalStorage("ls_autoHintVariants", "not eff boards");
 let autoHintBackdrop = useLocalStorage("ls_autoHintBackdrop", "mines"); //numbers, mines, no mines, minimal
-let tempHintScale = ref("current");
 
 let begEffPreset = ref(200);
 let begEffOptions = Object.freeze([200, 210, 225, "custom"]);
@@ -8147,10 +8124,6 @@ class Board {
       }
     }
 
-    if (tempHintScale.value === "merged") {
-      probabilityScale = Array.from(new Set(probabilityScale));
-    }
-
     //Sort probability scale so we can set up the colourScale property for each tile
     probabilityScale.sort((a, b) => a - b);
 
@@ -8196,22 +8169,18 @@ class Board {
           continue;
         }
 
+        /*
         let scaleIndex = probabilityScale.indexOf(thisTileHint.probability);
         let colourScale = scaleIndex / probabilityScale.length;
         //shift it to be between 0.1 and 0.9 to separate from the safe/mine colours
         colourScale = colourScale * 0.8 + 0.1;
 
         thisTileHint.colourScale = colourScale;
+        */
 
-        if (tempHintScale.value === "piecewise") {
-          thisTileHint.colourScale = this.hintProbabilityToScalePiecewise(
-            thisTileHint.probability
-          );
-        } else if (tempHintScale.value === "normal") {
-          thisTileHint.colourScale = this.hintProbabilityToScaleNormalCdf(
-            thisTileHint.probability
-          );
-        }
+        thisTileHint.colourScale = this.hintProbabilityToScaleNormalCdf(
+          thisTileHint.probability
+        );
       }
     }
 
@@ -8333,7 +8302,7 @@ class Board {
     const d = this.mineCount / (this.width * this.height);
     const greenBias = 0.1 * (1 - d); // fades to 0 as density → 1
     const mu = d + greenBias;
-    const sigma = (window.sigmaScale ?? 0.5) * Math.sqrt(d * (1 - d)); // spread; tune this based on how varied probs are
+    const sigma = 0.5 * Math.sqrt(d * (1 - d)); // spread; tune this based on how varied probs are
 
     // erf approximation (Abramowitz & Stegun)
     const erf = (x) => {
@@ -9533,6 +9502,7 @@ var effShuffleManager = new EffShuffleManager(
     expEffSlowGenPoint,
   }
 ); //Needs to be var to stop an access-before-init error
+const statsWorkerManager = new StatsWorkerManager();
 const boardHistory = new BoardHistory();
 var game = new Game(); //Needs to be var to stop an access-before-init error
 </script>
