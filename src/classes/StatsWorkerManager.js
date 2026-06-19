@@ -58,9 +58,6 @@ class StatsWorkerManager {
       return;
     }
 
-
-
-
     if (msg.success) {
       //Double check lock info hasn't changed
       if (

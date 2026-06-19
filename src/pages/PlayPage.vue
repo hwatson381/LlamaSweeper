@@ -501,28 +501,31 @@
             <div v-if="statsShowThrp && statsObject.thrp !== null">
               Thrp: {{ statsObject.thrp }}%
             </div>
-            <div v-if="statsShowMaxEff && statsObject.maxEff !== null">
+            <div v-if="statsShowMaxEff">
               Max Eff:
-              <span
-                :style="{
-                  'text-decoration':
+              <template v-if="statsObject.maxEff !== null">
+                <span
+                  :style="{
+                    'text-decoration':
+                      statsObject.deepMaxEff !== null &&
+                      parseInt(statsObject.deepMaxEff) >
+                        parseInt(statsObject.maxEff)
+                        ? 'line-through'
+                        : 'none',
+                  }"
+                  >{{ statsObject.maxEff }}%</span
+                >
+                <span
+                  v-if="
                     statsObject.deepMaxEff !== null &&
                     parseInt(statsObject.deepMaxEff) >
                       parseInt(statsObject.maxEff)
-                      ? 'line-through'
-                      : 'none',
-                }"
-                >{{ statsObject.maxEff }}%</span
-              >
-              <span
-                v-if="
-                  statsObject.deepMaxEff !== null &&
-                  parseInt(statsObject.deepMaxEff) >
-                    parseInt(statsObject.maxEff)
-                "
-                class="text-info"
-                >&nbsp;{{ statsObject.deepMaxEff }}%</span
-              >
+                  "
+                  class="text-info"
+                  >&nbsp;{{ statsObject.deepMaxEff }}%</span
+                >
+              </template>
+              <span v-else>-</span>
             </div>
             <div>
               Clicks: {{ statsObject.clicks.effective }} +
@@ -596,11 +599,11 @@
             <div v-if="statsShowRqp && statsObject.rqp !== null">
               RQP: {{ statsObject.rqp }}
             </div>
-            <div v-if="statsShow8Way && statsObject.eightZini !== null">
-              ZiNi (8-way): {{ statsObject.eightZini }}
+            <div v-if="statsShow8Way">
+              ZiNi (8-way): {{ statsObject.eightZini ?? "-" }}
             </div>
-            <div v-if="statsShowChain && statsObject.chainZini !== null">
-              ZiNi (100chain): {{ statsObject.chainZini }}
+            <div v-if="statsShowChain">
+              ZiNi (100chain): {{ statsObject.chainZini ?? "-" }}
             </div>
             <div v-if="statsShowWomZini">
               L ZiNi (WoM):
@@ -610,6 +613,7 @@
                   | i: {{ statsObject.cWomZini }}</template
                 >
               </template>
+              <span v-else-if="statsObject.total3bv < 500">-</span>
               <span
                 v-else
                 class="text-info"
@@ -623,6 +627,7 @@
               <template v-if="statsObject.womHzini !== null">
                 {{ statsObject.womHzini }}
               </template>
+              <span v-else-if="statsObject.total3bv < 500">-</span>
               <span
                 v-else
                 class="text-info"
@@ -3035,6 +3040,8 @@ let statsObject = ref({
   chainZini: null,
   womZini: null,
   womHzini: null,
+  cWomZini: null,
+  cWomHzini: null, //not really used
   bestZini: null,
   pttaLink: null,
   deepZini: null,
@@ -3828,7 +3835,7 @@ function bulkrun5() {
       console.log("Found candidate");
       console.log(`EightZini: ${eightZini}`);
 
-      let boardStats = new BoardStats(mines, {});
+      let boardStats = new BoardStats(mines, {}, null);
       let link = boardStats.getPttaLink();
       console.log(`Link:
       ${link}`);
@@ -4323,6 +4330,10 @@ class Board {
     if (this.stats) {
       this.stats.killDeepChainZiniRunner();
     }
+    if (statsWorkerManager) {
+      statsWorkerManager.incrementStatsLock();
+      statsWorkerManager.incrementAutoHintLock();
+    }
     this.stats = null;
     this.unflagged = this.mineCount;
     this.integerTimer = 0;
@@ -4661,7 +4672,7 @@ class Board {
   sendToPttCalculator() {
     if (this.variant === "zini explorer") {
       //Need to compute pttaLink. Kinda hacky for zini explorer...
-      let tempBoardStats = new BoardStats(this.mines, {});
+      let tempBoardStats = new BoardStats(this.mines, {}, null);
       window.open(tempBoardStats.getPttaLink(), "_blank").focus();
     } else {
       window.open(statsObject.value.pttaLink, "_blank").focus();
@@ -5857,18 +5868,22 @@ class Board {
     //Refresh tiles
     this.resetTiles();
 
-    this.stats = new BoardStats(this.mines, {
-      statsObject,
-      statsShow8Way,
-      statsShowChain,
-      statsShowWomZini,
-      statsShowMaxEff,
-      ziniRunnerActive,
-      ziniRunnerExpectedDuration,
-      ziniRunnerExpectedFinishTime,
-      ziniRunnerIterationsDisplay,
-      ziniRunnerPercentageProgress,
-    });
+    this.stats = new BoardStats(
+      this.mines,
+      {
+        statsObject,
+        statsShow8Way,
+        statsShowChain,
+        statsShowWomZini,
+        statsShowMaxEff,
+        ziniRunnerActive,
+        ziniRunnerExpectedDuration,
+        ziniRunnerExpectedFinishTime,
+        ziniRunnerIterationsDisplay,
+        ziniRunnerPercentageProgress,
+      },
+      statsWorkerManager
+    );
     if (noGuessing.value && this.variant !== "eff boards") {
       this.stats.addNoGuessAttribute();
     }
@@ -9502,7 +9517,7 @@ var effShuffleManager = new EffShuffleManager(
     expEffSlowGenPoint,
   }
 ); //Needs to be var to stop an access-before-init error
-const statsWorkerManager = new StatsWorkerManager();
+var statsWorkerManager = new StatsWorkerManager();
 const boardHistory = new BoardHistory();
 var game = new Game(); //Needs to be var to stop an access-before-init error
 </script>

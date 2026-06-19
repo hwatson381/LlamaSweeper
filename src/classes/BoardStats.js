@@ -3,7 +3,7 @@ import ChainZini from "./ChainZini";
 import DeepChainZiniRunner from "./DeepChainZiniRunner";
 
 class BoardStats {
-  constructor(minesArray, refs) {
+  constructor(minesArray, refs, statsWorkerManager) {
     this.mines = structuredClone(minesArray);
     this.clicks = [];
     this.moves = []; //Mouse movements, use separate array as this can get quite large
@@ -18,6 +18,7 @@ class BoardStats {
       noGuess: false,
       hintsUsed: false,
     };
+    this.statsWorkerManager = statsWorkerManager;
   }
 
   addLeft(x, y, xRaw, yRaw, time) {
@@ -149,64 +150,32 @@ class BoardStats {
     this.solved3bv = solved3bv;
   }
 
-  calcZinis(includeWomZiniIfShown, forceAllZinis = false) {
-    if (this.refs.statsShowMaxEff.value || this.refs.statsShow8Way.value || forceAllZinis) {
-      let eightZiniResult = Algorithms.calcEightWayZini(this.mines);
+  lateCalcForceZinis() {
+    let eightZiniResult = Algorithms.calcEightWayZini(this.mines);
+    let chainZiniResult = ChainZini.calcNWayChainZini({
+      mines: this.mines,
+      numberOfIterations: 100,
+      includeClickPath: true
+    });
 
-      this.eightZini = eightZiniResult.total;
-      this.eightZiniPath = eightZiniResult.clicks;
-    } else {
-      this.eightZini = null;
-      this.eightZiniPath = null;
-    }
+    //wom zini without correction
+    let { womZini, womHzini } = Algorithms.calcWomZiniAndHZini(
+      this.mines,
+      false
+    );
+    //wom zini with correction
+    let { womZini: cWomZini, womHzini: cWomHzini } =
+      Algorithms.calcWomZiniAndHZini(this.mines, true);
 
-    if (this.refs.statsShowMaxEff.value || this.refs.statsShowChain.value || forceAllZinis) {
-      let chainZiniResult = ChainZini.calcNWayChainZini({
-        mines: this.mines,
-        numberOfIterations: 100,
-        includeClickPath: true
-      });
-      this.chainZini = chainZiniResult.total;
-      this.chainZiniPath = chainZiniResult.clicks;
-    } else {
-      this.chainZini = null;
-      this.chainZiniPath = null;
-    }
+    let womZiniResult = {
+      womZini,
+      womHzini,
+      cWomZini,
+      cWomHzini
+    };
 
-    //Also do wom zini
-    if (((this.refs.statsShowMaxEff.value || this.refs.statsShowWomZini.value) && includeWomZiniIfShown) || forceAllZinis) {
-      //wom zini without correction
-      let { womZini, womHzini } = Algorithms.calcWomZiniAndHZini(
-        this.mines,
-        false
-      );
-      //wom zini with correction
-      let { womZini: cWomZini, womHzini: cWomHzini } =
-        Algorithms.calcWomZiniAndHZini(this.mines, true);
-
-      this.womZini = womZini.total;
-      this.womZiniPath = womZini.clicks;
-      this.womHzini = womHzini.total;
-      this.womHziniPath = womHzini.clicks;
-
-      this.cWomZini = cWomZini.total;
-      this.cWomZiniPath = cWomZini.clicks;
-      this.cWomHzini = cWomHzini.total;
-      this.cWomHziniPath = cWomHzini.clicks;
-    } else {
-      this.womZini = null;
-      this.womZiniPath = null;
-      this.womHzini = null;
-      this.womHziniPath = null;
-      this.cWomZini = null;
-      this.cWomZiniPath = null;
-      this.cWomHzini = null;
-      this.cWomHziniPath = null;
-    }
-
-    //Set to null just in case. These only get calculated by manually running.
-    this.deepZini = null;
-    this.deepZiniPath = null;
+    this.extractZiniResults(eightZiniResult, chainZiniResult, womZiniResult);
+    this.updateMaxEffAndZiniDisplay();
   }
 
   getPttaLink() {
@@ -236,33 +205,16 @@ class BoardStats {
 
     const estTime = bbbv / bbbvs;
 
-    let zinisStartTime = performance.now();
-    this.calcZinis(bbbv < 500);
-    console.log(
-      `Zini calculations took ${performance.now() - zinisStartTime
-      }ms`
-    );
-
-    const eightZini = this.eightZini;
-    const chainZini = this.chainZini;
-    const womZini = this.womZini;
-    const womHzini = this.womHzini;
-    const cWomZini = this.cWomZini;
-    const cWomHzini = this.cWomHzini;
-
-    let bestZini = chainZini; //Change when I do a better zini
-    if (eightZini !== null && eightZini < bestZini) {
-      bestZini = eightZini;
-    }
-    if (womZini !== null && womZini < bestZini) {
-      bestZini = womZini;
-    }
-    if (cWomZini !== null && cWomZini < bestZini) {
-      bestZini = cWomZini;
-    }
-    if (!this.refs.statsShowMaxEff.value) {
-      bestZini = null;
-    }
+    this.deepZini = null;
+    this.deepZiniPath = null;
+    this.womZini = null;
+    this.womZiniPath = null;
+    this.womHzini = null;
+    this.womHziniPath = null;
+    this.cWomZini = null;
+    this.cWomZiniPath = null;
+    this.cWomHzini = null;
+    this.cWomHziniPath = null;
 
     const totalClicks = this.clicks.length;
     const totalEffectiveClicks = this.clicks.filter(
@@ -290,13 +242,6 @@ class BoardStats {
 
     const eff = (100 * solved3bv) / totalClicks;
 
-    let maxEff;
-    if (bestZini !== null) {
-      maxEff = ((100 * bbbv) / bestZini).toFixed(0);
-    } else {
-      maxEff = null;
-    }
-
     let stnb = null;
 
     stnb = this.calcStnb(time, solved3bv, bbbv);
@@ -322,16 +267,15 @@ class BoardStats {
       this.refs.statsObject.value.total3bv = bbbv;
       this.refs.statsObject.value.bbbvs = bbbvs.toFixed(3);
       this.refs.statsObject.value.eff = Math.round(eff);
-      this.refs.statsObject.value.maxEff = maxEff;
+      this.refs.statsObject.value.maxEff = null;
       this.refs.statsObject.value.deepMaxEff = null;
       this.refs.statsObject.value.clicks = clicksObject;
-      this.refs.statsObject.value.eightZini = eightZini;
-      this.refs.statsObject.value.chainZini = chainZini;
-      this.refs.statsObject.value.womZini = womZini;
-      this.refs.statsObject.value.womHzini = womHzini;
-      this.refs.statsObject.value.cWomZini = cWomZini;
-      this.refs.statsObject.value.cWomHzini = cWomHzini;
-      this.refs.statsObject.value.bestZini = bestZini;
+      this.refs.statsObject.value.eightZini = null;
+      this.refs.statsObject.value.chainZini = null;
+      this.refs.statsObject.value.womZini = null;
+      this.refs.statsObject.value.womHzini = null;
+      this.refs.statsObject.value.cWomZini = null;
+      this.refs.statsObject.value.cWomHzini = null;
       this.refs.statsObject.value.pttaLink = pttaLink;
       this.refs.statsObject.value.deepZini = null;
       this.refs.statsObject.value.stnb = stnb !== null ? stnb.toFixed(3) : null;
@@ -346,16 +290,15 @@ class BoardStats {
       this.refs.statsObject.value.total3bv = bbbv;
       this.refs.statsObject.value.bbbvs = bbbvs.toFixed(3);
       this.refs.statsObject.value.eff = Math.round(eff);
-      this.refs.statsObject.value.maxEff = maxEff;
+      this.refs.statsObject.value.maxEff = null;
       this.refs.statsObject.value.deepMaxEff = null;
       this.refs.statsObject.value.clicks = clicksObject;
-      this.refs.statsObject.value.eightZini = eightZini;
-      this.refs.statsObject.value.chainZini = chainZini;
-      this.refs.statsObject.value.womZini = womZini;
-      this.refs.statsObject.value.womHzini = womHzini;
-      this.refs.statsObject.value.cWomZini = cWomZini;
-      this.refs.statsObject.value.cWomHzini = cWomHzini;
-      this.refs.statsObject.value.bestZini = bestZini;
+      this.refs.statsObject.value.eightZini = null;
+      this.refs.statsObject.value.chainZini = null;
+      this.refs.statsObject.value.womZini = null;
+      this.refs.statsObject.value.womHzini = null;
+      this.refs.statsObject.value.cWomZini = null;
+      this.refs.statsObject.value.cWomHzini = null;
       this.refs.statsObject.value.pttaLink = pttaLink;
       this.refs.statsObject.value.deepZini = null;
       this.refs.statsObject.value.stnb = stnb !== null ? stnb.toFixed(3) : null;
@@ -368,27 +311,8 @@ class BoardStats {
       noGuess: this.attributes.noGuess,
       hintsUsed: this.attributes.hintsUsed,
     };
-  }
 
-  lateCalcForceZinis() {
-    this.calcZinis(true, true);
-    const womZini = this.womZini;
-    const womHzini = this.womHzini;
-    const cWomZini = this.cWomZini;
-    const cWomHzini = this.cWomHzini;
-
-    this.refs.statsObject.value.womZini = womZini;
-    this.refs.statsObject.value.womHzini = womHzini;
-    this.refs.statsObject.value.cWomZini = cWomZini;
-    this.refs.statsObject.value.cWomHzini = cWomHzini;
-
-    const eightZini = this.eightZini;
-    const chainZini = this.chainZini;
-
-    this.refs.statsObject.value.eightZini = eightZini;
-    this.refs.statsObject.value.chainZini = chainZini;
-
-    //Note - we don't recalculate max eff, since that requires knowing 3bv, which isn't worth doing
+    this.calcZinisForStatsPanel();
   }
 
   lateCalcDeepChainZini(completionCallback = false) {
@@ -405,12 +329,10 @@ class BoardStats {
           this.refs.ziniRunnerPercentageProgress.value = `${percent}%`;
         },
         onCompleteRun: (result) => {
-          this.refs.statsObject.value.deepZini = result.total;
           this.deepZini = result.total;
           this.deepZiniPath = result.clicks;
 
-          this.refs.statsObject.value.deepMaxEff = (
-            (100 * this.bbbv) / this.deepZini).toFixed(0);
+          this.updateMaxEffAndZiniDisplay();
 
           if (completionCallback) {
             completionCallback();
@@ -419,6 +341,98 @@ class BoardStats {
       },
       true
     );
+  }
+
+  async calcZinisForStatsPanel() {
+    if (!this.statsWorkerManager) return;
+
+    const includeEightWay = this.refs.statsShowMaxEff.value || this.refs.statsShow8Way.value;
+    const include100Chain = this.refs.statsShowMaxEff.value || this.refs.statsShowChain.value;
+    //Note womzini only shown by default for 3bv < 500, if this threshold changes also remember to update in PlayPage.vue.
+    const includeWomZini = (this.refs.statsShowMaxEff.value || this.refs.statsShowWomZini.value) && this.bbbv < 500;
+
+    let eightZiniResult = null;
+    let chainZiniResult = null;
+    let womZiniResult = null;
+
+    try {
+      //try-catch required because await might throw error if it rejects
+      if (includeEightWay) {
+        eightZiniResult = await this.statsWorkerManager.calc8WayZiniInWorker(this.mines)
+      }
+
+      if (include100Chain) {
+        chainZiniResult = await this.statsWorkerManager.calc100ChainInWorker(this.mines)
+      }
+
+      if (includeWomZini) {
+        womZiniResult = await this.statsWorkerManager.calcWomZinisInWorker(this.mines)
+      }
+
+      this.extractZiniResults(eightZiniResult, chainZiniResult, womZiniResult);
+      this.updateMaxEffAndZiniDisplay();
+    } catch (err) {
+      //Do nothing, probably means that the board changed
+    }
+  }
+
+  extractZiniResults(eightZiniResult, chainZiniResult, womZiniResult) {
+    if (eightZiniResult !== null) {
+      this.eightZini = eightZiniResult.total;
+      this.eightZiniPath = eightZiniResult.clicks;
+    }
+
+    if (chainZiniResult !== null) {
+      this.chainZini = chainZiniResult.total;
+      this.chainZiniPath = chainZiniResult.clicks;
+    }
+
+    if (womZiniResult !== null) {
+      this.womZini = womZiniResult.womZini.total;
+      this.womZiniPath = womZiniResult.womZini.clicks;
+      this.womHzini = womZiniResult.womHzini.total;
+      this.womHziniPath = womZiniResult.womHzini.clicks;
+
+      this.cWomZini = womZiniResult.cWomZini.total;
+      this.cWomZiniPath = womZiniResult.cWomZini.clicks;
+      this.cWomHzini = womZiniResult.cWomHzini.total;
+      this.cWomHziniPath = womZiniResult.cWomHzini.clicks;
+    }
+  }
+
+  updateMaxEffAndZiniDisplay() {
+    //recomputes max eff based on available stats
+    const nonNullZinis = [this.chainZini, this.eightZini, this.womZini, this.cWomZini].filter(z => z !== null);
+    let bestZini;
+    if (nonNullZinis.length !== 0) {
+      bestZini = Math.min(...nonNullZinis);
+    } else {
+      bestZini = null;
+    }
+
+    if (!this.refs.statsShowMaxEff.value) { bestZini = null; }
+
+    let maxEff;
+    if (bestZini !== null) {
+      maxEff = ((100 * this.bbbv) / bestZini).toFixed(0);
+    } else {
+      maxEff = null;
+    }
+
+    this.refs.statsObject.value.eightZini = this.eightZini;
+    this.refs.statsObject.value.chainZini = this.chainZini;
+    this.refs.statsObject.value.womZini = this.womZini;
+    this.refs.statsObject.value.womHzini = this.womHzini;
+    this.refs.statsObject.value.cWomZini = this.cWomZini;
+    this.refs.statsObject.value.cWomHzini = this.cWomHzini;
+    this.refs.statsObject.value.bestZini = bestZini;
+    this.refs.statsObject.value.maxEff = maxEff;
+
+    if (this.deepZini != null) {
+      this.refs.statsObject.value.deepZini = this.deepZini;
+      this.refs.statsObject.value.deepMaxEff = (
+        (100 * this.bbbv) / this.deepZini).toFixed(0);
+    }
   }
 
   calcStnb(time, solved3bv, total3bv) {

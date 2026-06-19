@@ -4,6 +4,12 @@
 import ChainZini from "src/classes/ChainZini";
 import Chain from "src/classes/Chain";
 
+//Tell the main thread we are ready to receive the "begin" message.
+//The onmessage handler above is now registered, so anything posted in response
+//to this is guaranteed to be handled (avoids a startup race that could drop the
+//first message before the module finished loading).
+postMessage({ type: 'worker-ready' });
+
 onmessage = function (event) {
   hydrateParameters(event.data.parameters);
 

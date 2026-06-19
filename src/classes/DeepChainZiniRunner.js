@@ -36,13 +36,15 @@ class DeepChainZiniRunner {
 
     this.worker.onmessage = this.handleMessage.bind(this);
 
-    console.log(inclusionExclusionParameters);
-
-    this.worker.postMessage({
+    //A module worker loads asynchronously. If we post "begin" before the worker
+    //has finished evaluating and registered its onmessage handler, the message can
+    //be silently dropped (intermittently), leaving the run stuck. So we stash the
+    //payload and only send it once the worker posts back "worker-ready".
+    this.beginPayload = {
       command: "begin",
       parameters: inclusionExclusionParameters,
       deepReportProgress: deepReportProgress
-    })
+    };
   }
 
   handleMessage(event) {
@@ -55,6 +57,9 @@ class DeepChainZiniRunner {
       Run complete
     */
     switch (message.type) {
+      case 'worker-ready':
+        this.worker.postMessage(this.beginPayload);
+        break;
       case 'timing-run-done':
         this.timingRunDone(message.timingRun);
         break;
