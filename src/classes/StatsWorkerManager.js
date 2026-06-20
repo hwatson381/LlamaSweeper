@@ -93,7 +93,17 @@ class StatsWorkerManager {
     return jobPromise;
   }
 
+  calcBoardProbabilityInWorker(probCalcBoard, totalMines) {
+    let jobPromise = this.createJobPromise('calc-board-probability', { probCalcBoard, totalMines }, false, true);
+
+    return jobPromise;
+  }
+
   createJobPromise(jobName, params, useStatsLock, useAutoHintLock) {
+    if (this.killed) {
+      return Promise.reject(new Error('Worker killed'));
+    }
+
     let jobPromise = new Promise((resolve, reject) => {
       let jobId = this.nextId++;
       this.jobsMap.set(jobId, { resolve, reject });
@@ -117,6 +127,16 @@ class StatsWorkerManager {
     });
 
     return jobPromise;
+  }
+
+  killWorker() {
+    this.killed = true;
+    this.worker.terminate();
+
+    //Also reject all remaining jobs
+    this.jobsMap.forEach(job => job.reject());
+
+    this.jobsMap.clear();
   }
 }
 

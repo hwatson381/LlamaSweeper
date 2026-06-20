@@ -92,6 +92,9 @@ function processJob() {
       case 'wom-zini-hzini':
         result = computeWomZinis(job.parameters);
         break;
+      case 'calc-board-probability':
+        result = calcBoardProbability(job.parameters);
+        break;
       default:
         throw new Error('invalid jobName');
     }
@@ -158,4 +161,16 @@ function computeWomZinis({
     cWomZini: cWomZini,
     cWomHzini: cWomHzini
   }
+}
+
+function calcBoardProbability({
+  probCalcBoard,
+  totalMines
+}) {
+  let probabilityGrid = Algorithms.calcBoardProbability(
+    probCalcBoard,
+    totalMines
+  );
+
+  return probabilityGrid;
 }

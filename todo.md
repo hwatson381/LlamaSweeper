@@ -733,5 +733,6 @@ refactoring hint + maybe quickpaint into own class
 
 ================
 
-How do we run stuff in background?
-Does worker constantly run or only when needed?
+Check wasm support?
+
+Then do strangedust export?

@@ -1408,6 +1408,33 @@
                   label="Loss hint gamemodes"
                 ></q-select>
                 <q-select
+                  v-if="autoHintCriteria !== 'never'"
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="autoHintDelay"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    {
+                      label: 'Instant',
+                      value: 0,
+                    },
+                    { label: '0.5s', value: 500 },
+                    { label: '0.75s', value: 750 },
+                    { label: '1s', value: 1000 },
+                    { label: '1.5s', value: 1500 },
+                    { label: '2s', value: 2000 },
+                    { label: '3s', value: 3000 },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Loss hint delay"
+                ></q-select>
+                <q-select
                   class="q-mx-md q-mb-md"
                   outlined
                   options-dense
@@ -2896,6 +2923,7 @@ onUnmounted(() => {
   window.removeEventListener("scroll", handlePageScroll);
   game.unmount();
   effShuffleManager.killAllWorkers();
+  statsWorkerManager.killWorker();
   game?.board?.replay?.pause();
 });
 
@@ -3221,6 +3249,7 @@ let noGuessing = useLocalStorage("ls_noGuessing", false);
 let noGuessingMaxAttempts = useLocalStorage("ls_noGuessingMaxAttempts", 10000);
 let autoHintCriteria = useLocalStorage("ls_autoHintCriteria", "time"); //never|always|time. Criteria for when to automatically use a hint on lost games
 let autoHintTime = useLocalStorage("ls_autoHintTime", 10);
+let autoHintDelay = useLocalStorage("ls_autoHintDelay", 750); //ms to linger on mines before showing hint. 0 = instant (sync)
 let autoHintVariants = useLocalStorage("ls_autoHintVariants", "not eff boards");
 let autoHintBackdrop = useLocalStorage("ls_autoHintBackdrop", "mines"); //numbers, mines, no mines, minimal
 
@@ -7900,15 +7929,14 @@ class Board {
     }
 
     if (!this.hintActive) {
-      this.showHint();
+      this.showHintSync();
     } else {
       this.hideHint();
     }
   }
 
-  showHint(isLossHint = false) {
-    let hintStartTime = performance.now();
-
+  /* OK TO DELETE
+  showHintLegacy(isLossHint = false) {
     //Computes hint and updates tiles
     this.hintActive = true;
 
@@ -8184,14 +8212,12 @@ class Board {
           continue;
         }
 
-        /*
-        let scaleIndex = probabilityScale.indexOf(thisTileHint.probability);
-        let colourScale = scaleIndex / probabilityScale.length;
+        // let scaleIndex = probabilityScale.indexOf(thisTileHint.probability);
+        // let colourScale = scaleIndex / probabilityScale.length;
         //shift it to be between 0.1 and 0.9 to separate from the safe/mine colours
-        colourScale = colourScale * 0.8 + 0.1;
+        // colourScale = colourScale * 0.8 + 0.1;
 
-        thisTileHint.colourScale = colourScale;
-        */
+        // thisTileHint.colourScale = colourScale;
 
         thisTileHint.colourScale = this.hintProbabilityToScaleNormalCdf(
           thisTileHint.probability
@@ -8215,15 +8241,435 @@ class Board {
 
     //Update tiles to have this info
     this.draw();
+  }
+  */
 
-    console.log(
-      `ShowHint calculated in ${Math.round(
-        performance.now() - hintStartTime
-      )}ms`
+  async showHintAsync(isLossHint = false, useAutoHintDelay = true) {
+    //This is currently intended to only be used for loss hints
+    //if we expand it to other scenarios then be aware that there may be more race conditions we need to defend against
+
+    if (!statsWorkerManager) {
+      //No worker available, fall back to synchronous hint
+      this.showHintSync(isLossHint);
+      return;
+    }
+
+    let delay;
+    if (useAutoHintDelay) {
+      delay = autoHintDelay.value;
+    } else {
+      delay = 0;
+    }
+
+    statsWorkerManager.incrementAutoHintLock();
+    //Capture the lock so we can detect a board change that happens during the delay
+    //AFTER the worker has already resolved (the worker's own stale-job rejection only
+    //covers changes that happen before it resolves).
+    const myLock = statsWorkerManager.autoHintLock;
+
+    //prepare hint
+    let { probCalcBoard, totalMines, meanMineAdjustments } =
+      this.prepareProbCalcInput(isLossHint);
+
+    //Calculate probability and wait out the configured delay concurrently.
+    //Running both together means the total wait is max(delay, computeTime):
+    //the delay never gets added on top of the compute time, and we never show
+    //the hint sooner than the delay (so the mines stay visible long enough).
+    let probabilityGrid;
+    try {
+      const [grid] = await Promise.all([
+        statsWorkerManager.calcBoardProbabilityInWorker(
+          probCalcBoard,
+          totalMines
+        ),
+        new Promise((resolve) => setTimeout(resolve, delay)),
+      ]);
+      probabilityGrid = grid;
+    } catch (err) {
+      //Do nothing, just return early as hint failed (e.g. board could've changed)
+      return;
+    }
+
+    //The worker may have resolved successfully but the board could have changed
+    //during the remaining delay (e.g. user reset). The lock advancing tells us this.
+    if (statsWorkerManager.autoHintLock !== myLock) {
+      return;
+    }
+
+    //apply hint to board
+    this.hintActive = true;
+    this.quickPaintActive = false; //hide quickpaint at the same time as otherwise they visually compete
+    showQuickPaintOptions.value = false;
+    this.clearAllDepressedSquares();
+
+    this.updateTilesArrayForHint(
+      probCalcBoard,
+      probabilityGrid,
+      meanMineAdjustments
     );
+
+    if (this.gameStage === "running") {
+      this.stats.addHintUsed();
+    }
+
+    this.draw();
+  }
+
+  showHintSync(isLossHint = false) {
+    if (statsWorkerManager) {
+      statsWorkerManager.incrementAutoHintLock();
+    }
+
+    //prepare hint
+    let { probCalcBoard, totalMines, meanMineAdjustments } =
+      this.prepareProbCalcInput(isLossHint);
+
+    //Calculate probability
+    let probabilityGrid = Algorithms.calcBoardProbability(
+      probCalcBoard,
+      totalMines
+    );
+
+    //apply hint to board
+    this.hintActive = true;
+    this.quickPaintActive = false; //hide quickpaint at the same time as otherwise they visually compete
+    showQuickPaintOptions.value = false;
+    this.clearAllDepressedSquares();
+
+    this.updateTilesArrayForHint(
+      probCalcBoard,
+      probabilityGrid,
+      meanMineAdjustments
+    );
+
+    if (this.gameStage === "running") {
+      this.stats.addHintUsed();
+    }
+
+    this.draw();
+  }
+
+  prepareProbCalcInput(isLossHint = false) {
+    //prepare the input that gets sent off to the probability calculation library
+
+    let probCalcBoard = [];
+
+    //Construct 2d array based on which numbers tiles have or whether they are flagged etc
+    for (let x = 0; x < this.width; x++) {
+      probCalcBoard[x] = [];
+      for (let y = 0; y < this.height; y++) {
+        const cellState = this.tilesArray[x][y].state;
+        if (typeof cellState === "number") {
+          probCalcBoard[x][y] = cellState;
+        } else if (cellState === CONSTANTS.UNREVEALED) {
+          probCalcBoard[x][y] = 10;
+        } else if (cellState === CONSTANTS.FLAG) {
+          probCalcBoard[x][y] = 11;
+        } else {
+          probCalcBoard[x][y] = 10; //Everything else can just be treated as unrevealed
+        }
+      }
+    }
+
+    ////////////////////////////////////////
+    ////////////////////////////////////////
+
+    //If this is a hint triggered by losing (e.g. a bad chord that also opens other squares)
+    //Then we need to reverse the effects of this chord, including if the chord revealed any openings
+    //and if any openings had any corresponding mean mines activated (activate may not be correct word)
+
+    let meanMinesRemovedTotal = 0;
+    let meanMineAdjustments = new Map(); //Track how much numbers need to be adjusted by for removing newly revealed mean mines
+
+    if (isLossHint && this.lastSquaresChangedForAutoHint.length > 0) {
+      let reversedMoveData =
+        this.reverseLastMoveForLossHintOnProbCalcBoard(probCalcBoard);
+      meanMinesRemovedTotal = reversedMoveData.meanMinesRemovedTotal;
+      meanMineAdjustments = reversedMoveData.meanMineAdjustments;
+    }
+
+    ////////////////////////////////////////
+    ////////////////////////////////////////
+
+    //Figure out what the minecount should be
+
+    let totalMines;
+    if (this.variant === "mean openings") {
+      //mines will differ from starting mine count so need to figure out total mines
+      totalMines = 0;
+
+      //count placed flags
+      for (let x = 0; x < this.width; x++) {
+        for (let y = 0; y < this.height; y++) {
+          if (
+            this.tilesArray[x][y].state === CONSTANTS.FLAG ||
+            this.tilesArray[x][y].state === CONSTANTS.MINEWRONG
+          ) {
+            totalMines++;
+          }
+        }
+      }
+
+      //add unflagged
+      totalMines += this.unflagged;
+
+      //adjust for mean mines removed earlier
+      totalMines -= meanMinesRemovedTotal;
+    } else {
+      totalMines = this.mineCount;
+    }
+
+    return {
+      probCalcBoard,
+      totalMines,
+      meanMineAdjustments,
+    };
+  }
+
+  reverseLastMoveForLossHintOnProbCalcBoard(probCalcBoard) {
+    //Update probCalcBoard to undo the last move
+    //we don't change hintTextures on the real board here
+    //but we do also output meanMineAdjustments which is used for this
+
+    let meanMinesRemovedTotal = 0;
+    let meanMineAdjustments = new Map(); //Track how much numbers need to be adjusted by for removing newly revealed mean mines
+
+    //Do a pass to calculate effect of mean mines we need to remove
+    //And exclude numbers revealed from affected probability calculation
+    for (let changedSquare of this.lastSquaresChangedForAutoHint) {
+      //Squares revealed by final chord shouldn't influence the probability calculation
+      probCalcBoard[changedSquare.x][changedSquare.y] = 10;
+
+      const isMeanMine =
+        this.variant === "mean openings" &&
+        this.meanMineStates[changedSquare.x][changedSquare.y].isMine &&
+        this.meanMineStates[changedSquare.x][changedSquare.y].isActive;
+
+      if (isMeanMine) {
+        meanMinesRemovedTotal++;
+
+        //track that mean mines removed should subtract from their neighbours
+        for (let i = changedSquare.x - 1; i <= changedSquare.x + 1; i++) {
+          for (let j = changedSquare.y - 1; j <= changedSquare.y + 1; j++) {
+            if (!this.checkCoordsInBounds(i, j)) {
+              continue;
+            }
+
+            //save number subtraction into meanMineAdjustments
+            let val = meanMineAdjustments.get(`${i}-${j}`) || 0;
+            val -= 1;
+            meanMineAdjustments.set(`${i}-${j}`, val);
+
+            //also manually subtract from probCalcBoard in the very special case when a newly
+            //revealed mean mine changes the value of a number that is already on the board
+            if (
+              !this.lastSquaresChangedForAutoHint.some(
+                (sq) => sq.x === i && sq.y === j
+              ) &&
+              typeof this.tilesArray[i][j].state === "number" &&
+              probCalcBoard[i][j] > 0 &&
+              probCalcBoard[i][j] < 9
+            ) {
+              probCalcBoard[i][j]--;
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      meanMinesRemovedTotal,
+      meanMineAdjustments,
+    };
+  }
+
+  updateTilesArrayForHint(probCalcBoard, probabilityGrid, meanMineAdjustments) {
+    //Updating tilesArray with the results of the probability calculation
+
+    ////////////////////////////////////////
+    ////////////////////////////////////////
+
+    //Patch tiles based on undoing the last move in the case that this is a lossHint
+
+    for (let changedSquare of this.lastSquaresChangedForAutoHint) {
+      //Any changed squares from the last move (e.g. a wrong chord) should be changed as follows:
+      // Make any numbers revealed transparent
+      // reverse the effects of any mean mines revealed from last move
+
+      const thisTile = this.tilesArray[changedSquare.x][changedSquare.y];
+
+      const isMeanMine =
+        this.variant === "mean openings" &&
+        this.meanMineStates[changedSquare.x][changedSquare.y].isMine &&
+        this.meanMineStates[changedSquare.x][changedSquare.y].isActive;
+
+      if (typeof thisTile.state === "number") {
+        //Make tiles revealed on blast chord transparent
+        if (autoHintBackdrop.value === "numbers") {
+          const adjustment =
+            meanMineAdjustments.get(`${changedSquare.x}-${changedSquare.y}`) ||
+            0;
+          thisTile.hint.hintTexture = "tr2_" + (thisTile.state + adjustment);
+        } else {
+          thisTile.hint.hintTexture = CONSTANTS.UNREVEALED;
+        }
+      } else if (isMeanMine) {
+        thisTile.hint.hintTexture = "tr2_0";
+      }
+    }
+
+    //Rare edge case:
+    //Apply any adjustments for mean mines to cells outside the ones that changed from last move
+    for (let [key, adjustment] of meanMineAdjustments.entries()) {
+      const [i, j] = key.split("-").map(Number);
+      const thisTile = this.tilesArray[i][j];
+      if (
+        !this.lastSquaresChangedForAutoHint.some(
+          (sq) => sq.x === i && sq.y === j
+        ) &&
+        typeof thisTile.state === "number"
+      ) {
+        thisTile.hint.render = "textureonly";
+        thisTile.hint.hintTexture = thisTile.state + adjustment;
+      }
+    }
+
+    ////////////////////////////////////////
+    ////////////////////////////////////////
+
+    //Set up lots of rendering stuff for tiles
+    //Give tiles probabilities
+    //Set how the hint should render on each tile
+
+    let safestProbability = Infinity;
+
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        this.tilesArray[x][y].hint.probability = probabilityGrid[x][y];
+
+        let render = "skip"; //fallback of skipping rendering prob.
+
+        if (this.tilesArray[x][y].hint.render === "textureonly") {
+          //Special case for when mean mines changes an already revealed number
+          render = "textureonly";
+        } else if (probCalcBoard[x][y] < 10) {
+          //This is a revealed number (as opposed to unopened/bomb/flag etc), so doesn't need a hint
+          //Use probCalcBoard here as it has last move removed in case of loss hint.
+          render = "skip";
+        } else if (probCalcBoard[x][y] === 11 && probabilityGrid[x][y] === 1) {
+          //Player marked as flag and it's 100% a mine
+          render = "skip";
+        } else if (probCalcBoard[x][y] === 11 && probabilityGrid[x][y] < 1) {
+          //Player marked as flag and this is only probabilistic, so still need to show probability
+          render = "onflag";
+        } else if (this.tilesArray[x][y].state === CONSTANTS.MINERED) {
+          render = "onblastmine";
+        } else if (this.tilesArray[x][y].state === CONSTANTS.MINE) {
+          render = "onmine";
+        } else {
+          render = "frontier"; //Set all other squares to frontier, but later we may change some of these to floating
+        }
+
+        //Track safest probability on board
+        if (
+          render !== "skip" &&
+          render !== "textureonly" &&
+          probabilityGrid[x][y] !== 1 &&
+          probabilityGrid[x][y] < safestProbability
+        ) {
+          safestProbability = probabilityGrid[x][y];
+        }
+
+        //Show different textures for hints
+        if (
+          this.tilesArray[x][y].hint.hintTexture === null &&
+          this.gameStage !== "running"
+        ) {
+          if (this.tilesArray[x][y].state === CONSTANTS.MINE) {
+            if (
+              autoHintBackdrop.value === "numbers" ||
+              autoHintBackdrop.value === "mines"
+            ) {
+              this.tilesArray[x][y].hint.hintTexture = "tr2_mine";
+            } else {
+              this.tilesArray[x][y].hint.hintTexture = CONSTANTS.UNREVEALED;
+            }
+          } else if (this.tilesArray[x][y].state === CONSTANTS.UNREVEALED) {
+            this.tilesArray[x][y].hint.hintTexture = CONSTANTS.UNREVEALED; //Needed in case this is a replay and we need to suppress the "show hidden tiles setting"
+          }
+        }
+
+        this.tilesArray[x][y].hint.render = render;
+      }
+    }
+
+    ////////////////////////////////////////
+    ////////////////////////////////////////
+
+    //Set colourScales, also change render method for floating
+
+    let safestTilesCount = 0;
+    let notSafestTilesCount = 0;
+    let safestTiles = [];
+
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
+        const thisTileHint = this.tilesArray[x][y].hint;
+
+        if (
+          thisTileHint.render === "skip" ||
+          thisTileHint.render === "textureonly"
+        ) {
+          thisTileHint.colourScale = 0;
+          continue;
+        }
+
+        if (thisTileHint.probability === safestProbability) {
+          safestTiles.push({ x, y });
+          safestTilesCount++;
+        } else if (thisTileHint.probability !== 1) {
+          notSafestTilesCount++;
+        }
+
+        //All floating cells should be grey unless they are the safest move
+        if (
+          thisTileHint.probability !== safestProbability &&
+          !this.hasNumberNeighbourProbCalcBoardVersion(probCalcBoard, x, y)
+        ) {
+          thisTileHint.render = "floating";
+        }
+
+        if (thisTileHint.probability === 0) {
+          thisTileHint.colourScale = 0;
+          continue;
+        }
+        if (thisTileHint.probability === 1) {
+          thisTileHint.colourScale = 1;
+          continue;
+        }
+
+        thisTileHint.colourScale = this.hintProbabilityToScaleNormalCdf(
+          thisTileHint.probability
+        );
+      }
+    }
+
+    //Only set highlight if fewer than 1/3 of tiles are safest or fewer than 10
+    if (
+      safestTilesCount / (safestTilesCount + notSafestTilesCount) < 1 / 3 ||
+      safestTilesCount < 10
+    ) {
+      for (const tile of safestTiles) {
+        this.tilesArray[tile.x][tile.y].hint.highlight = true;
+      }
+    }
   }
 
   hideHint(suppressDraw = false) {
+    if (statsWorkerManager) {
+      statsWorkerManager.incrementAutoHintLock();
+    }
+
     if (!this.hintActive) {
       //already hidden, do nothing
       return;
@@ -8264,7 +8710,13 @@ class Board {
       meetsModeCriteria &&
       (autoHintCriteria.value === "always" || meetsTimeCriteria)
     ) {
-      this.showHint(true);
+      if (autoHintDelay.value === 0) {
+        //Compute synchronously so that mines don't briefly flash
+        this.showHintSync(true);
+      } else {
+        //showHintAsync has a built in delay so that mine positions can briefly be seen
+        this.showHintAsync(true);
+      }
     }
   }
 
@@ -9111,6 +9563,10 @@ class Board {
 
     if (this.hintActive) {
       this.hideHint(true);
+    }
+
+    if (statsWorkerManager) {
+      statsWorkerManager.incrementAutoHintLock();
     }
 
     let refs = {
