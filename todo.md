@@ -719,20 +719,20 @@ Test out lossHint on mobile a bunch
 
 ======= what is left? =======
 
-timing stuff
-
-checking wasm support
-
-figuring out colourscale and testing on mobile
-
-general cleanup
-
-running losshint and 100chain in webworker?
-
 refactoring hint + maybe quickpaint into own class
 
 ================
 
 Check wasm support?
+Not needed, we're in 2026 so should be supported, we can't really check dynamically because ms-toollib doesn't check this so the import statement breaks everything
 
 Then do strangedust export?
+
+How well will rawvf replay work for mean openings?
+Probably badly...
+
+Can we stuff whatever mode we want into the "mode" option for rawvf
+Alternate idea would be to stuff this into the file name?
+Might as well add starting timestamp to the attributes of BoardStats?
+
+Add mouseDown tracking to llamasweeper so that click timing can be seen in the replay analyser?

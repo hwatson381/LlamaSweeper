@@ -729,6 +729,28 @@
                     <q-item-label>MBF Export</q-item-label>
                   </q-item-section>
                 </q-item>
+
+                <q-item
+                  v-if="variant !== 'mean openings'"
+                  clickable
+                  v-close-popup
+                  @click="game.board.downloadRawVf()"
+                >
+                  <q-item-section>
+                    <q-item-label>RawVF Download</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-item
+                  v-if="variant !== 'mean openings'"
+                  clickable
+                  v-close-popup
+                  @click="game.board.sendToStrangeDust()"
+                >
+                  <q-item-section>
+                    <q-item-label>StrangeDust Analyser</q-item-label>
+                  </q-item-section>
+                </q-item>
               </q-list>
             </q-btn-dropdown>
             <br />
@@ -1358,112 +1380,6 @@
                   dense
                   transition-duration="100"
                   input-debounce="0"
-                  v-model="autoHintCriteria"
-                  style="width: 175px; flex-shrink: 0"
-                  :options="[
-                    {
-                      label: 'Always',
-                      value: 'always',
-                    },
-                    { label: 'Never', value: 'never' },
-                    { label: 'Time Condition', value: 'time' },
-                  ]"
-                  emit-value
-                  map-options
-                  stack-label
-                  label="Show hint after loss"
-                ></q-select>
-                <template v-if="autoHintCriteria === 'time'">
-                  <q-input
-                    debounce="100"
-                    v-model.number="autoHintTime"
-                    label="Hint min game time (seconds)"
-                    type="number"
-                    dense
-                    min="0"
-                    max="500"
-                    style="width: 150px"
-                  /><br />
-                </template>
-                <q-select
-                  v-if="autoHintCriteria !== 'never'"
-                  class="q-mx-md q-mb-md"
-                  outlined
-                  options-dense
-                  dense
-                  transition-duration="100"
-                  input-debounce="0"
-                  v-model="autoHintVariants"
-                  style="width: 175px; flex-shrink: 0"
-                  :options="[
-                    {
-                      label: 'All',
-                      value: 'all',
-                    },
-                    { label: 'All but Eff Boards', value: 'not eff boards' },
-                  ]"
-                  emit-value
-                  map-options
-                  stack-label
-                  label="Loss hint gamemodes"
-                ></q-select>
-                <q-select
-                  v-if="autoHintCriteria !== 'never'"
-                  class="q-mx-md q-mb-md"
-                  outlined
-                  options-dense
-                  dense
-                  transition-duration="100"
-                  input-debounce="0"
-                  v-model="autoHintDelay"
-                  style="width: 175px; flex-shrink: 0"
-                  :options="[
-                    {
-                      label: 'Instant',
-                      value: 0,
-                    },
-                    { label: '0.5s', value: 500 },
-                    { label: '0.75s', value: 750 },
-                    { label: '1s', value: 1000 },
-                    { label: '1.5s', value: 1500 },
-                    { label: '2s', value: 2000 },
-                    { label: '3s', value: 3000 },
-                  ]"
-                  emit-value
-                  map-options
-                  stack-label
-                  label="Loss hint delay"
-                ></q-select>
-                <q-select
-                  class="q-mx-md q-mb-md"
-                  outlined
-                  options-dense
-                  dense
-                  transition-duration="100"
-                  input-debounce="0"
-                  v-model="autoHintBackdrop"
-                  style="width: 175px; flex-shrink: 0"
-                  :options="[
-                    {
-                      label: 'Blast numbers',
-                      value: 'numbers',
-                    },
-                    { label: 'Mines', value: 'mines' },
-                    { label: 'No mines', value: 'no mines' },
-                    { label: 'No highlight', value: 'minimal' },
-                  ]"
-                  emit-value
-                  map-options
-                  stack-label
-                  label="Loss hint backdrop"
-                ></q-select>
-                <q-select
-                  class="q-mx-md q-mb-md"
-                  outlined
-                  options-dense
-                  dense
-                  transition-duration="100"
-                  input-debounce="0"
                   v-model="faceHitbox"
                   style="width: 175px; flex-shrink: 0"
                   :options="[
@@ -1959,6 +1875,124 @@
                   v-model="quickPaintOnlyTrivialLogic"
                   label="QuickPaint only use single number logic (e.g. no 1-2 patterns)"
                 />
+              </q-card-section>
+            </q-card>
+          </q-expansion-item>
+
+          <q-expansion-item
+            expand-separator
+            icon="percent"
+            label="Hint settings"
+            group="settings"
+          >
+            <q-card>
+              <q-card-section>
+                <q-select
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="autoHintCriteria"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    {
+                      label: 'Always',
+                      value: 'always',
+                    },
+                    { label: 'Never', value: 'never' },
+                    { label: 'Time Condition', value: 'time' },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Show hint after loss"
+                ></q-select>
+                <template v-if="autoHintCriteria === 'time'">
+                  <q-input
+                    debounce="100"
+                    v-model.number="autoHintTime"
+                    label="Hint min game time (seconds)"
+                    type="number"
+                    dense
+                    min="0"
+                    max="500"
+                    style="width: 150px"
+                  /><br />
+                </template>
+                <q-select
+                  v-if="autoHintCriteria !== 'never'"
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="autoHintVariants"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    {
+                      label: 'All',
+                      value: 'all',
+                    },
+                    { label: 'All but Eff Boards', value: 'not eff boards' },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Loss hint gamemodes"
+                ></q-select>
+                <q-select
+                  v-if="autoHintCriteria !== 'never'"
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="autoHintDelay"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    {
+                      label: 'Instant',
+                      value: 0,
+                    },
+                    { label: '0.5s', value: 500 },
+                    { label: '0.75s', value: 750 },
+                    { label: '1s', value: 1000 },
+                    { label: '1.5s', value: 1500 },
+                    { label: '2s', value: 2000 },
+                    { label: '3s', value: 3000 },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Loss hint delay"
+                ></q-select>
+                <q-select
+                  class="q-mx-md q-mb-md"
+                  outlined
+                  options-dense
+                  dense
+                  transition-duration="100"
+                  input-debounce="0"
+                  v-model="autoHintBackdrop"
+                  style="width: 175px; flex-shrink: 0"
+                  :options="[
+                    {
+                      label: 'Blast numbers',
+                      value: 'numbers',
+                    },
+                    { label: 'Mines', value: 'mines' },
+                    { label: 'No mines', value: 'no mines' },
+                    { label: 'No highlight', value: 'minimal' },
+                  ]"
+                  emit-value
+                  map-options
+                  stack-label
+                  label="Loss hint backdrop"
+                ></q-select>
               </q-card-section>
             </q-card>
           </q-expansion-item>
@@ -2880,6 +2914,7 @@ import Utils from "src/classes/Utils";
 import ZiniExplore from "src/classes/ZiniExplore";
 import ChainZini from "src/classes/ChainZini";
 import StatsWorkerManager from "src/classes/StatsWorkerManager";
+import RawVF from "src/classes/RawVF";
 
 import ReplayBar from "src/components/ReplayBar.vue";
 
@@ -5916,6 +5951,7 @@ class Board {
     if (noGuessing.value && this.variant !== "eff boards") {
       this.stats.addNoGuessAttribute();
     }
+    this.stats.addVariantAttribute(this.variant);
     this.boardStartTime = performance.now();
     this.clearTimerTimeout(); //defensive as it should already be disabled since we reset board.
     this.updateTimerSetTimeoutHandle = setTimeout(
@@ -9935,6 +9971,24 @@ class Board {
       });
     } else {
       throw new Error("Copying URL not implemented for this variant");
+    }
+  }
+
+  downloadRawVf() {
+    if (this.stats) {
+      $q.dialog({
+        title: "Notice",
+        message:
+          "RawVF output is intended for compatibility with StrangeDust's Replay Analyser and may not work with other viewers. Click OK to begin download.",
+      }).onOk(() => {
+        RawVF.downloadRawVf(this.stats);
+      });
+    }
+  }
+
+  sendToStrangeDust() {
+    if (this.stats) {
+      RawVF.sendToStrangeDust(this.stats);
     }
   }
 }

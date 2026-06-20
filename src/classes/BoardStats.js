@@ -17,6 +17,7 @@ class BoardStats {
       //Or maybe that goes elsewhere when we start looking at storing replays?
       noGuess: false,
       hintsUsed: false,
+      variant: null,
     };
     this.statsWorkerManager = statsWorkerManager;
   }
@@ -120,6 +121,10 @@ class BoardStats {
 
   addNoGuessAttribute() {
     this.attributes.noGuess = true;
+  }
+
+  addVariantAttribute(variantInternalName) {
+    this.attributes.variant = variantInternalName;
   }
 
   makeRepeatFlagsWasted() {
