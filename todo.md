@@ -43,8 +43,6 @@ Which chords have high "weirdness" - this is how often the chords appear in norm
 
 review subzini trick for generating eff boards (is there a better formula? e.g. subzini < 3bv/50 + 2)
 
-option to use thrp instead of eff
-
 remove unused comments and spammy console.logs
 
 move code in paintObviousSquares into algorithms, so we have option of doing basic hint/logic type stuff in the future
@@ -52,8 +50,6 @@ move code in paintObviousSquares into algorithms, so we have option of doing bas
 Do random zinis actually vary that much? They probably always do all the 1 chords first which are disjoint.
 
 During inclusion-exclusion zini, try profile how much each chord affects the global solution (e.g. Which squares need to be recomputed depending on it's inclusion?)
-
-Add freesweeper to others page?
 
 zini idea: Simulated annealing zini where we randomise priorities/premium adjustments to find neighbour solutions
 
@@ -190,8 +186,6 @@ Make a "llamasweeper - best features" video
 
 dumb idea - train neural network to assign premiums for zini?
 
-Have some sort of shield against accidental scrolls? E.g. don't scroll on openings revealed in last 0.5s?
-
 Replay bar is fiddly on mobile. Maybe make multiplier editable as a number (or have dropdown) by clicking the chip (box with 1.00x)
 
 refactoring
@@ -251,12 +245,6 @@ Different idea related to inc-ex zini:
 Maybe once we have a candidate chord, we check all options around it before playing it
 That is - all options where we exclude that chord and force a neighbour
 
-For end of game stats, calc 100chain in worker to reduce endgame lag?
-
-mini-tasks:
-(done) Show chainPremiums in the "show premiums" dropdown on zini explorer
-(done) Make use of 100Chain in click-loss-replay
-
 Try Chrome performance tab profiler
 
 Test stuff by making heavy duty function that checks every premium/rebuilds chainIds/chainMap/chainNeighbourhoodGrid every move?
@@ -267,10 +255,6 @@ Zini Explorer should make it more obvious when algorithm is running
 
 Pregenerating priority grids for n-way chain can cause out-of-memory error
 
-New bug:
-[fixed] Floating smothering doesn't work when there isn't a base chain?
-[fixed] Do we allow floating opening edge unchordedDig to be base chain?
-
 validate against code that checks premium for every single square?
 Also validate by looking for chainNeighbourGrids that don't exist in chainIds (and vice-versa)
 Beware of chainID and chainNeighbourHood grid stuff being set on zero tiles
@@ -278,8 +262,6 @@ Beware of chainID and chainNeighbourHood grid stuff being set on zero tiles
 See if we can find 196% on this game? https://minesweeper.online/game/4415263702
 
 (probably won't do) Click loss replay - deep red if a move loses 2 clicks? Similarly also have deep green for gaining 2?
-
-[done] Do chainNeighbour optimisation
 
 Bug - 100x100/600 hits error with exceeding call stack size
 Bug - DeepChain also fails on this
@@ -336,9 +318,6 @@ Do a pool of AudioBufferSourceNodes?
 Use wavs?
 Do I need to worry about sounds being suspended?
 "If you want near-zero latency (e.g. per-frame sounds), consider using OscillatorNodes or even AudioWorklet (advanced)." (Chatgpt suggestion)
-
-Grace period where recently revealed squares can't scroll
-Option to lock scroll to horizontal or vertical
 
 Improvement for reordering zini:
 Use shortest path alg for showing clicks in an order that makes more sense
@@ -438,15 +417,8 @@ https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=93&m=dc014g
 
 Maybe to do with left side bias?
 
-VERY IMPORTANT:
-Can the board be centred by default?
-
 Path that beats deepChain zini (on real game) - from Potatoes, with improvement from master_hai
 https://minesweeper.online/game/4634307343
-
-For mscoach export -
-See here https://github.com/DavidNHill/JSMinesweeper/blob/master/Minesweeper/client/Board.js#L745
-In particular, the "isSolverFoundBomb" part
 
 Allow specifying squares (or flags) to start open in board editor. Also make it possible to link to this (and go straight to play screen to prevent spoilers)
 
@@ -515,15 +487,8 @@ document.addEventListener("touchend", function (event) {
 Note - illegal values of touch action thingy don't get used
 Can do el.setAttribute("style", "...") but prob still doesn't work
 
-[done] cps stat
-[done] Option to show stats in fixed way on mobile (make this look nice? Like replay bar?)
-[done] Option to hide flag button except when reseting (can be on pre-existing dropdown)
-L+R chord (less important)
-[done] Remove double zoom code idea?
-More stats? STNB?
-Rename eCPS to Ce/s and CPS to Cl/s
-Have settings block entirely for stats?
-Note - STNB is slightly wrong for beginner since it's meant for 8x8
+Have settings block entirely for stats? (future llama - idk what I meant with this, maybe a component?)
+Note - STNB is slightly wrong for beginner since it's meant for 8x8 (future llama - also they changed constants for it - ask Kiraa)
 
 is showStatsBlock the same as flagToggleShowReset?
 
@@ -533,7 +498,6 @@ Improve zini explorer as wom added a link to it:
 
 - Add more replay highlighting
 - Remove feedback waffle text at top
-- [done] Change the "bookmarklet link" under the PTT import to instead go to an instructional page for enabling the setting
 
 Reverse flashlight - radius near mouse can't be seen
 
@@ -546,10 +510,7 @@ blindsweeper/fadesweeper/spotsweeper - see here https://discord.com/channels/814
 puzzlelands.net (mkka variant)
 
 Write up zini algorithms?
-Finish NF Eff guide?
 Find record boards on wom?
-
-mbf/qq make_board export?
 
 Have slight delay before being able to reset board after win with flag toggle button thingy on mobile?
 
@@ -558,8 +519,6 @@ need to stop second click of chord from being wasted?
 wasted clicks are tricky:
 the flag down for a chord can be wasted if on a number (when chord gets triggered by dig up)
 the dig up can also be wasted if on a number (when chord gets triggered by flag up)
-
-Also add mbf import somehow?
 
 Add stuff from ms-toolib? ng algorithm?
 https://github.com/eee555/ms-toollib/blob/372399b8ab8af9600d6e20a42e70a5b2e70bf5e9/demos/vue3_ts/src/App.vue#L27C1
@@ -570,8 +529,6 @@ random idea (prob won't do): have a mode where you can't fail. It auto-replays w
 
 Have a setting for an audio timer? It's easy to not look at the timer. So there could be a voice that says the time every 10 seconds? Note - this is similar to the arbiter setting that plays a noise when you are slower than PB.
 Could also experiment with audio signals for pace (e.g. estimated 3bv/s etc, although maybe too non-cheaty)
-
-Have scroll on zeros/interior have a setting for a delay before squares become scrollable (maybe 100ms) to prevent scrolls from accidental double taps
 
 parallelise deepchain?
 
@@ -589,133 +546,18 @@ Llamasweeper takes 10ms to process a mouse input, whereas WoM seems to take arou
 NEXT STEPS:
 [done] Mobile scroll protection delay thingy
 parallelise deepchain (really big task...)
-nf eff guide?
+[nearly done] nf eff guide?
 zini quality of life stuff (given that wom links to it now...). This is mainly just highlighting squares DURING the replay
-make use of ms-toollib for no guess... Also auto-display hint on blast
+[done] make use of ms-toollib for no guess... Also auto-display hint on blast
 [done] mbf import
 [done] Simplify waffle on variants page
 [done] Add (i) to 20/20 (click: random) on eff boards to explain why the boards start in a different place to where someone clicked
 [done] Have a setting for how the flag toggle starts on mobile (e.g. start it as the same, start dig, start flag, change after first click etc)
 selection tool for board editor/zini explorer (and safe resizing). Also drag clicking?
-send to strangedust replay analyzer option?
+Do we also allow specifying starting squares for board editor with link taking you straight to play screen to avoid spoilers?
+[done] send to strangedust replay analyzer option?
 
 Ask LLM to look for bugs in all the files in classes folder
-
-NF eff guide issues:
-[done] Some lists are broken
-[done] Images have wrong sizes
-[done] Images are out of order
-[done] h4s possibly have too much margin (do class="text-h4" on p tag instead?)
-[skip] Is it worth adding q-section after headers?
-[done] tables need fixing (make evenly spaced columns, adjust images inside)
-[done] everything needs converting to quasar formatting to make it look nicer?
-[done] Need to add foreword
-[done] Check images in correct order (especially in tables)
-[done] Some intentional space (e.g. above images) has been lost
-[done] Make images lazy load with qimg?
-[done] code block/inline code styling for formula?
-review it?
-
-Show probability after game based on criteria? Like on all blasts or only after 10% progress or 10s playtime etc
-
-Need to hide hint on click...
-
-Time how long hints take to run (slower than 100chain?)
-
-Can floating tiles be shown less vibrantly in the hint?
-
-Change hint font and make it bolder
-
-"Roboto", "-apple-system", "Helvetica Neue", Helvetica, Arial, sans-serif
-
-Candidate font for topbar
-window.fontOverride2 = 'bold {textSize}px "Roboto", "-apple-system", "Helvetica Neue", Helvetica, Arial, sans-serif';
-Or maybe even without bold?
-
-Although maybe I need to keep monospace so time jumps less?
-
-Weight etc is good, but maybe choose a more "gamey" font?
-
-ctrl+f for window.fontOverride and remove
-
-.probability ->
-.textColour (set based on percentile?)
-.isFloating
-.otherContext (e.g. is on top of mine or wrong flag or 0% tile?)
-
-Treat floating as one guess when ranking everything?
-
-Or could we show blast-hint with white box bg in top left (similar to premium experiment?)
-
-Remove lag on blast by making prob and zini run in web worker?
-
-wom highlights lowest probability rather than just zeros...
-
-Also maybe change floating to grey?
-
-ideas to try:
-have small white box in top left
-or just show probs without showing any blasted mines
-try having the bombs underneath show using the "very transparent" texture?
-
-Consider changing highlight to use outline? (similar to best move highlight on zini)
-
-Can't tell if floating = grey is better or worse...
-It does blend in with mines too much on light skin. Need to tweak colours a lot
-
-remove floatingAlpha property if we decide
-
-Disable hints if no wasm support?
-
-==========
-
-turn off hint on board state change
-
-fix colours (esp for light skin)
-
-and update highlight safest...
-
-Scale hint colours based on mines/(width\*height)?
-
-Some colours are impossible to see when on top of a mine (especially in light mode).
-Consider having a different colour for these?
-
-============ plan =================
-
-tweak colours
-
-[done?] shift settings? (make stats option?)
-
-time how long hint takes to run
-
-hide hint on board click...
-
-tweak "safe" to be highlight and then make it apply only to lowest
-Maybe keep render category and call it safest?
-
-tweak lightmode so hint colours visible even when on top of mine...
-
-We now exclude 0 from showing on safest......
-
-Maybe just ignore and allow 0 and 1 to be pushed to probability scales?
-Or make every distinct number unique?
-But tbh just with to m/wh based colourings...
-
-Somehow make hints more visible when on top of mine/flag in light theme
-
-adjustment shouldn't apply if a square is on a mine?
-
-Some tests for colourscale:
-window.dedupeScale - remove dupe entries from colour scale
-
-make hints autohide when clicking on board (should also work for replay??)
-
-Do we allow depressing a square? Maybe?
-
-All floating safe is an eyesore...
-Maybe don't highlight if >= 1/3 of squares are highlighted
-
-Test out lossHint on mobile a bunch
 
 ======= what is left? =======
 
@@ -728,11 +570,11 @@ Not needed, we're in 2026 so should be supported, we can't really check dynamica
 
 Then do strangedust export?
 
-How well will rawvf replay work for mean openings?
-Probably badly...
-
 Can we stuff whatever mode we want into the "mode" option for rawvf
 Alternate idea would be to stuff this into the file name?
 Might as well add starting timestamp to the attributes of BoardStats?
 
 Add mouseDown tracking to llamasweeper so that click timing can be seen in the replay analyser?
+
+rework replay/send to menus?
+Strict mode (see ipad notes)

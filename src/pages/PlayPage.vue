@@ -665,189 +665,190 @@
               </div>
             </div>
             <br />
-            <q-btn-dropdown color="primary" label="Send To">
-              <q-list>
-                <q-item
-                  v-if="variant !== 'board editor'"
-                  clickable
-                  v-close-popup
-                  @click="game.board.sendToBoardEditor()"
-                >
-                  <q-item-section>
-                    <q-item-label>Board Editor</q-item-label>
-                  </q-item-section>
-                </q-item>
+            <div class="row justify-center q-mb-md">
+              <q-btn-dropdown color="primary" label="Open In">
+                <q-list>
+                  <q-item
+                    v-if="variant !== 'board editor'"
+                    clickable
+                    v-close-popup
+                    @click="game.board.sendToBoardEditor()"
+                  >
+                    <q-item-section>
+                      <q-item-label>Board Editor</q-item-label>
+                    </q-item-section>
+                  </q-item>
 
-                <q-item
-                  v-if="variant !== 'zini explorer'"
-                  clickable
-                  v-close-popup
-                  @click="game.board.sendToZiniExplorer()"
-                >
-                  <q-item-section>
-                    <q-item-label>Zini Explorer</q-item-label>
-                  </q-item-section>
-                </q-item>
+                  <q-item
+                    v-if="variant !== 'zini explorer'"
+                    clickable
+                    v-close-popup
+                    @click="game.board.sendToZiniExplorer()"
+                  >
+                    <q-item-section>
+                      <q-item-label>Zini Explorer</q-item-label>
+                    </q-item-section>
+                  </q-item>
 
-                <q-item
-                  clickable
-                  v-close-popup
-                  @click="game.board.sendToPttCalculator()"
-                >
-                  <q-item-section>
-                    <q-item-label>PTT ZiNi Calculator</q-item-label>
-                  </q-item-section>
-                </q-item>
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="game.board.sendToPttCalculator()"
+                  >
+                    <q-item-section>
+                      <q-item-label>PTT ZiNi Calculator</q-item-label>
+                    </q-item-section>
+                  </q-item>
 
-                <q-item
-                  clickable
-                  v-close-popup
-                  @click="game.board.sendToMsCoach()"
-                >
-                  <q-item-section>
-                    <q-item-label>MSCoach Solver</q-item-label>
-                  </q-item-section>
-                </q-item>
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="game.board.sendToMsCoach()"
+                  >
+                    <q-item-section>
+                      <q-item-label>MSCoach Solver</q-item-label>
+                    </q-item-section>
+                  </q-item>
 
-                <q-item
-                  v-if="variant === 'board editor'"
-                  clickable
-                  v-close-popup
-                  @click="game.board.copyBoardLink()"
-                >
-                  <q-item-section>
-                    <q-item-label>Copy Board Link</q-item-label>
-                  </q-item-section>
-                </q-item>
+                  <q-item
+                    v-if="variant !== 'mean openings'"
+                    clickable
+                    v-close-popup
+                    @click="game.board.sendToStrangeDust()"
+                  >
+                    <q-item-section>
+                      <q-item-label>StrangeDust Analyser</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-btn-dropdown>
+            </div>
+            <div class="row justify-center q-mb-md">
+              <q-btn-dropdown color="primary" label="Export">
+                <q-list>
+                  <q-item
+                    v-if="variant === 'board editor'"
+                    clickable
+                    v-close-popup
+                    @click="game.board.copyBoardLink()"
+                  >
+                    <q-item-section>
+                      <q-item-label>Copy Board Link</q-item-label>
+                    </q-item-section>
+                  </q-item>
 
-                <q-item
-                  clickable
-                  v-close-popup
-                  @click="game.board.sendToMbfDialogue()"
-                >
-                  <q-item-section>
-                    <q-item-label>MBF Export</q-item-label>
-                  </q-item-section>
-                </q-item>
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="game.board.sendToMbfDialogue()"
+                  >
+                    <q-item-section>
+                      <q-item-label>MBF Export</q-item-label>
+                    </q-item-section>
+                  </q-item>
 
-                <q-item
-                  v-if="variant !== 'mean openings'"
-                  clickable
-                  v-close-popup
-                  @click="game.board.downloadRawVf()"
-                >
-                  <q-item-section>
-                    <q-item-label>RawVF Download</q-item-label>
-                  </q-item-section>
-                </q-item>
+                  <q-item
+                    v-if="variant !== 'mean openings'"
+                    clickable
+                    v-close-popup
+                    @click="game.board.downloadRawVf()"
+                  >
+                    <q-item-section>
+                      <q-item-label>RawVF Download</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-btn-dropdown>
+            </div>
+            <div class="row justify-center">
+              <q-btn-dropdown
+                v-if="variant !== 'mean openings'"
+                color="primary"
+                label="Watch"
+                split
+                @click="game.board.initReplay('replay')"
+              >
+                <q-list>
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="game.board.initReplay('compare')"
+                  >
+                    <q-item-section>
+                      <q-item-label>Click loss/gain</q-item-label>
+                    </q-item-section>
+                  </q-item>
 
-                <q-item
-                  v-if="variant !== 'mean openings'"
-                  clickable
-                  v-close-popup
-                  @click="game.board.sendToStrangeDust()"
-                >
-                  <q-item-section>
-                    <q-item-label>StrangeDust Analyser</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-btn-dropdown>
-            <br />
-            <br />
-            <q-btn-dropdown
-              v-if="variant !== 'mean openings'"
-              color="primary"
-              label="Watch"
-            >
-              <q-list>
-                <q-item
-                  clickable
-                  v-close-popup
-                  @click="game.board.initReplay('replay')"
-                >
-                  <q-item-section>
-                    <q-item-label>Replay</q-item-label>
-                  </q-item-section>
-                </q-item>
+                  <q-separator />
 
-                <q-item
-                  clickable
-                  v-close-popup
-                  @click="game.board.initReplay('8-way')"
-                >
-                  <q-item-section>
-                    <q-item-label>8-way ZiNi</q-item-label>
-                  </q-item-section>
-                </q-item>
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="game.board.initReplay('8-way')"
+                  >
+                    <q-item-section>
+                      <q-item-label>8-way ZiNi</q-item-label>
+                    </q-item-section>
+                  </q-item>
 
-                <q-item
-                  clickable
-                  v-close-popup
-                  @click="game.board.initReplay('womzini')"
-                >
-                  <q-item-section>
-                    <q-item-label>WoM L ZiNi</q-item-label>
-                  </q-item-section>
-                </q-item>
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="game.board.initReplay('womzini')"
+                  >
+                    <q-item-section>
+                      <q-item-label>WoM L ZiNi</q-item-label>
+                    </q-item-section>
+                  </q-item>
 
-                <q-item
-                  clickable
-                  v-close-popup
-                  @click="game.board.initReplay('womzinifix')"
-                >
-                  <q-item-section>
-                    <q-item-label>WoM L ZiNi Improved</q-item-label>
-                  </q-item-section>
-                </q-item>
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="game.board.initReplay('womzinifix')"
+                  >
+                    <q-item-section>
+                      <q-item-label>WoM L ZiNi Improved</q-item-label>
+                    </q-item-section>
+                  </q-item>
 
-                <q-item
-                  clickable
-                  v-close-popup
-                  @click="game.board.initReplay('womhzini')"
-                >
-                  <q-item-section>
-                    <q-item-label>WoM HZiNi</q-item-label>
-                  </q-item-section>
-                </q-item>
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="game.board.initReplay('womhzini')"
+                  >
+                    <q-item-section>
+                      <q-item-label>WoM HZiNi</q-item-label>
+                    </q-item-section>
+                  </q-item>
 
-                <q-item
-                  clickable
-                  v-close-popup
-                  @click="game.board.initReplay('chainzini')"
-                >
-                  <q-item-section>
-                    <q-item-label>100Chain Zini</q-item-label>
-                  </q-item-section>
-                </q-item>
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="game.board.initReplay('chainzini')"
+                  >
+                    <q-item-section>
+                      <q-item-label>100Chain Zini</q-item-label>
+                    </q-item-section>
+                  </q-item>
 
-                <q-item
-                  clickable
-                  v-close-popup
-                  @click="game.board.initOrPrepareDeepChainReplay()"
-                >
-                  <q-item-section>
-                    <q-item-label>DeepChain Zini</q-item-label>
-                  </q-item-section>
-                </q-item>
-
-                <q-item
-                  clickable
-                  v-close-popup
-                  @click="game.board.initReplay('compare')"
-                >
-                  <q-item-section>
-                    <q-item-label>Click loss/gain</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-btn-dropdown>
-            <q-btn
-              v-else
-              color="primary"
-              label="Replay"
-              @click="game.board.initReplay('replay')"
-            ></q-btn>
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="game.board.initOrPrepareDeepChainReplay()"
+                  >
+                    <q-item-section>
+                      <q-item-label>DeepChain Zini</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-btn-dropdown>
+              <q-btn
+                v-else
+                color="primary"
+                label="Watch"
+                @click="game.board.initReplay('replay')"
+              ></q-btn>
+            </div>
           </q-card-section>
         </q-card>
 
@@ -979,7 +980,7 @@
             />
             <br />
             <div class="row justify-center q-mb-md">
-              <q-btn-dropdown color="primary" label="Send To">
+              <q-btn-dropdown color="primary" label="Open In">
                 <q-list>
                   <q-item
                     clickable
@@ -1010,7 +1011,12 @@
                       <q-item-label>MSCoach Solver</q-item-label>
                     </q-item-section>
                   </q-item>
-
+                </q-list>
+              </q-btn-dropdown>
+            </div>
+            <div class="row justify-center q-mb-md">
+              <q-btn-dropdown color="primary" label="Export">
+                <q-list>
                   <q-item
                     clickable
                     v-close-popup
@@ -3383,9 +3389,9 @@ let excellentEff = computed(() => {
     case "beg":
       return statsObject.value.eff >= 300;
     case "int":
-      return statsObject.value.eff >= 220;
+      return statsObject.value.eff >= 215;
     case "exp":
-      return statsObject.value.eff >= 175;
+      return statsObject.value.eff >= 170;
     case "custom":
       return false;
     default:
@@ -9288,9 +9294,6 @@ class Board {
     //Set up font for mine/timer text
     ctx.textBaseline = "middle";
     ctx.font = `${this.tileSize}px monospace`;
-    if (window.fontOverride2) {
-      ctx.font = window.fontOverride2;
-    }
 
     ctx.fillStyle = skinManager.getMineTimerTextColour();
 
@@ -9370,9 +9373,6 @@ class Board {
     //Set up font for counter text
     ctx.textBaseline = "middle";
     ctx.font = `${this.tileSize}px monospace`;
-    if (window.fontOverride2) {
-      ctx.font = window.fontOverride2;
-    }
 
     //Draw red counter
     ctx.fillStyle = skinManager.getRedCounterTextColour();

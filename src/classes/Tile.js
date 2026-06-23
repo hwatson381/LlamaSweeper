@@ -217,10 +217,6 @@ class Tile {
     //ctx.font = `${textScale}px monospace`;
     ctx.font = `bold ${textScale}px "Roboto", "-apple-system", "Helvetica Neue", Helvetica, Arial, sans-serif`;
 
-    if (window.fontOverride) {
-      ctx.font = window.fontOverride;
-    }
-
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(text, xText, yText, maxWidth);
