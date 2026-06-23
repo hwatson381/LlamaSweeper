@@ -3288,11 +3288,16 @@ let chordingButtons = useLocalStorage("ls_chordingButtons", "l");
 let zeroStart = useLocalStorage("ls_zeroStart", true);
 let noGuessing = useLocalStorage("ls_noGuessing", false);
 let noGuessingMaxAttempts = useLocalStorage("ls_noGuessingMaxAttempts", 10000);
-let autoHintCriteria = useLocalStorage("ls_autoHintCriteria", "time"); //never|always|time. Criteria for when to automatically use a hint on lost games
-let autoHintTime = useLocalStorage("ls_autoHintTime", 10);
-let autoHintDelay = useLocalStorage("ls_autoHintDelay", 750); //ms to linger on mines before showing hint. 0 = instant (sync)
-let autoHintVariants = useLocalStorage("ls_autoHintVariants", "not eff boards");
-let autoHintBackdrop = useLocalStorage("ls_autoHintBackdrop", "mines"); //numbers, mines, no mines, minimal
+//let autoHintCriteria = useLocalStorage("ls_autoHintCriteria", "time"); //never|always|time. Criteria for when to automatically use a hint on lost games
+let autoHintCriteria = ref("time"); //never|always|time. Criteria for when to automatically use a hint on lost games
+//let autoHintTime = useLocalStorage("ls_autoHintTime", 10);
+let autoHintTime = ref(10);
+//let autoHintDelay = useLocalStorage("ls_autoHintDelay", 750); //ms to linger on mines before showing hint. 0 = instant (sync)
+let autoHintDelay = ref(750); //ms to linger on mines before showing hint. 0 = instant (sync)
+//let autoHintVariants = useLocalStorage("ls_autoHintVariants", "not eff boards");
+let autoHintVariants = ref("not eff boards");
+//let autoHintBackdrop = useLocalStorage("ls_autoHintBackdrop", "mines"); //numbers, mines, no mines, minimal
+let autoHintBackdrop = ref("mines"); //numbers, mines, no mines, minimal
 
 let begEffPreset = ref(200);
 let begEffOptions = Object.freeze([200, 210, 225, "custom"]);
@@ -4796,7 +4801,20 @@ class Board {
           //Download .mbf file
           const mbfUintArray = Algorithms.getMbfBinaryData(this.mines);
 
-          const status = exportFile("board.mbf", mbfUintArray);
+          const now = new Date();
+
+          //Get current time. Then convert to desired format, hacky way is with ISOString
+          //e.g. 2011-10-05T14:48:00.000Z -> 2011100_144800
+          const exportTimestamp = now
+            .toISOString()
+            .replace("T", "_")
+            .replace(/\.\d{3}Z/, "")
+            .replaceAll(":", "")
+            .replaceAll("-", "");
+
+          const fileName = `board_${this.width}x${this.height}_${this.mineCount}-${exportTimestamp}.mbf`;
+
+          const status = exportFile(fileName, mbfUintArray);
 
           if (status !== true) {
             console.error("Download failed or was prevented:", status);
@@ -9977,12 +9995,11 @@ class Board {
   downloadRawVf() {
     if (this.stats) {
       $q.dialog({
-        title: "Notice",
+        title: "Download Started",
         message:
-          "RawVF output is intended for compatibility with StrangeDust's Replay Analyser and may not work with other viewers. Click OK to begin download.",
-      }).onOk(() => {
-        RawVF.downloadRawVf(this.stats);
+          "Please note that RawVF output is intended for compatibility with StrangeDust's Replay Analyser and may not work with other viewers.",
       });
+      RawVF.downloadRawVf(this.stats);
     }
   }
 

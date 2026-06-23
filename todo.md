@@ -578,3 +578,19 @@ Add mouseDown tracking to llamasweeper so that click timing can be seen in the r
 
 rework replay/send to menus?
 Strict mode (see ipad notes)
+
+choose defaults for hint setting
+relevant code below:
+
+```
+//let autoHintCriteria = useLocalStorage("ls_autoHintCriteria", "time"); //never|always|time. Criteria for when to automatically use a hint on lost games
+let autoHintCriteria = ref("time"); //never|always|time. Criteria for when to automatically use a hint on lost games
+//let autoHintTime = useLocalStorage("ls_autoHintTime", 10);
+let autoHintTime = ref(10);
+//let autoHintDelay = useLocalStorage("ls_autoHintDelay", 750); //ms to linger on mines before showing hint. 0 = instant (sync)
+let autoHintDelay = ref(750); //ms to linger on mines before showing hint. 0 = instant (sync)
+//let autoHintVariants = useLocalStorage("ls_autoHintVariants", "not eff boards");
+let autoHintVariants = ref("not eff boards");
+//let autoHintBackdrop = useLocalStorage("ls_autoHintBackdrop", "mines"); //numbers, mines, no mines, minimal
+let autoHintBackdrop = ref("mines"); //numbers, mines, no mines, minimal
+```
