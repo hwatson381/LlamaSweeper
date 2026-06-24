@@ -31,8 +31,8 @@
         <li>Improve mobile support</li>
         <li>Various bug fixes (better performance on large boards)</li>
         <li>
-          More variants (lots of ideas here, not sure how many I will get around
-          to doing)
+          More variants (lots of ideas here, I'm not sure how many I will get
+          around to doing)
         </li>
       </ul>
     </div>
