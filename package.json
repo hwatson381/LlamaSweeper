@@ -37,6 +37,7 @@
     "prettier": "^2.5.1",
     "push-dir": "^0.4.1",
     "vite-plugin-checker": "^0.8.0",
+    "vite-plugin-top-level-await": "^1.6.0",
     "vite-plugin-wasm": "^3.6.0"
   },
   "engines": {
