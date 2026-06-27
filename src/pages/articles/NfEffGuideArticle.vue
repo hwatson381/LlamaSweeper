@@ -12,21 +12,19 @@
     </p>
     <br />
     <p>
-      This guide was originally written with the intention of it being on the
+      Please be aware that this guide is also available on the
       <a href="https://minesweeper.online/help/guides" target="_blank"
         >Minesweeper Online Guides</a
       >
-      page, although I shelved it at 95% complete and only finished it off 1.5
-      years later when I revived it to use as a first article for LlamaSweeper.
-      It started out as a
+      page as a
       <a
         href="https://docs.google.com/document/d/1jTvFGb6XWyB-CaWb1EOri0I6LJ56m8NjcES2OfiLWjU"
         target="_blank"
-        >google doc</a
-      >
-      which I've converted to a webpage. The formatting will be different, but
-      I've kept the wording exactly the same, so it should be read with this
-      context in mind.
+        >Google Doc</a
+      >. I've kept the wording of the Google Doc and the LlamaSweeper article
+      exactly the same (only making changes to formatting), so please keep this
+      context in mind as some parts may only make sense when read in the context
+      of it being a Minesweeper Online guide.
     </p>
   </div>
 
@@ -1762,9 +1760,10 @@
     me know on WoM (
     <a href="https://minesweeper.online/player/733893" target="_blank">llama</a>
     ) or on Discord (username llama7). If you found my guide helpful, I’d
-    appreciate it if you give it a ❤ on the guides page. Special thanks go to
-    janitor2 for giving me some very useful feedback when I was writing this
-    guide.
+    appreciate it if you give it a ❤ on the
+    <a href="https://minesweeper.online/help/guides" target="_blank">guides</a>
+    page. Special thanks go to janitor2 for giving me some very useful feedback
+    when I was writing this guide.
   </p>
   <p>
     The natural next step is to practise, so I’d like to end this guide with

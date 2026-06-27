@@ -597,3 +597,6 @@ let autoHintBackdrop = ref("mines"); //numbers, mines, no mines, minimal
 
 Also can we use "more" from mstoollib now? Like generating denser boards
 laymine_solvable_adjust can't be used because the boards it creates are uninteresting and it gets stuck in infinite loops too often
+
+Remember to change the date of the nf eff article on the guides page?
+Check how many people won exp eff 100% lmao
