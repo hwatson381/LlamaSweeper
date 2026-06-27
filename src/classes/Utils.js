@@ -13,6 +13,7 @@ class Utils {
 
   //Detect Wasm support
   static isWasmSupported() {
+    //Note - this is not really needed because we now have src/classes/RustWasm.js which work with our particular wasm implementation
     //See https://stackoverflow.com/questions/47879864/how-can-i-check-if-a-browser-supports-webassembly
     try {
       if (typeof WebAssembly === "object"

@@ -1323,6 +1323,12 @@
                 label="8-way implementation"
               ></q-select>
               <div class="text-info" style="flex: 1 1 215px">
+                <div
+                  v-if="!wasmAvailable && effBoardsImplementation !== 'js'"
+                  class="text-negative"
+                >
+                  Wasm unsupported falling back to Javascript.
+                </div>
                 Implementation of 8-way ZiNi used for generating eff boards in
                 the background. It's recommended to leave this on the default
                 option.
@@ -1364,10 +1370,22 @@
                   label="Chording"
                 ></q-select>
                 <q-checkbox v-model="zeroStart" label="Zero Start" />
-                <br />
-                <q-checkbox v-model="noGuessing" label="No Guessing" />
-                <br />
-                <template v-if="noGuessing">
+                <div class="flex q-mb-sm" style="align-items: center">
+                  <q-checkbox
+                    v-model="noGuessing"
+                    label="No Guessing"
+                    :disable="!wasmAvailable"
+                    class="q-mr-md"
+                  />
+                  <div
+                    v-if="!wasmAvailable"
+                    class="text-negative"
+                    style="flex: 1 1 200px"
+                  >
+                    No Guessing needs WebAssembly, which isn't supported.
+                  </div>
+                </div>
+                <template v-if="noGuessing && wasmAvailable">
                   <q-input
                     debounce="100"
                     v-model.number="noGuessingMaxAttempts"
@@ -1377,7 +1395,8 @@
                     min="100"
                     max="10000000"
                     style="width: 150px"
-                  /><br />
+                  />
+                  <br />
                 </template>
                 <q-select
                   class="q-mx-md q-mb-md"
@@ -1893,6 +1912,9 @@
           >
             <q-card>
               <q-card-section>
+                <div v-if="!wasmAvailable" class="text-negative q-mb-md">
+                  Hints disabled due to WebAssembly being unsupported
+                </div>
                 <q-select
                   class="q-mx-md q-mb-md"
                   outlined
@@ -2921,6 +2943,7 @@ import ZiniExplore from "src/classes/ZiniExplore";
 import ChainZini from "src/classes/ChainZini";
 import StatsWorkerManager from "src/classes/StatsWorkerManager";
 import RawVF from "src/classes/RawVF";
+import { isWasmAvailable, wasmReadySettled } from "src/classes/RustWasm";
 
 import ReplayBar from "src/components/ReplayBar.vue";
 
@@ -2938,6 +2961,15 @@ const router = useRouter();
 
 import { useQuasar, copyToClipboard, debounce, exportFile } from "quasar";
 const $q = useQuasar();
+
+//Whether the Rust/WASM module is usable. Authoritative by the time the UI is
+//interactive (the app boot waits for wasm init to settle before mounting), but
+//kept reactive so the no-guess / hint controls can disable themselves and
+//other code paths can handle this situation
+const wasmAvailable = ref(isWasmAvailable());
+wasmReadySettled.then((ok) => {
+  wasmAvailable.value = ok;
+});
 
 defineOptions({
   name: "PlayPage",
@@ -3288,8 +3320,8 @@ let chordingButtons = useLocalStorage("ls_chordingButtons", "l");
 let zeroStart = useLocalStorage("ls_zeroStart", true);
 let noGuessing = useLocalStorage("ls_noGuessing", false);
 let noGuessingMaxAttempts = useLocalStorage("ls_noGuessingMaxAttempts", 10000);
-//let autoHintCriteria = useLocalStorage("ls_autoHintCriteria", "time"); //never|always|time. Criteria for when to automatically use a hint on lost games
-let autoHintCriteria = ref("time"); //never|always|time. Criteria for when to automatically use a hint on lost games
+//let autoHintCriteria = useLocalStorage("ls_autoHintCriteria", "always"); //never|always|time. Criteria for when to automatically use a hint on lost games
+let autoHintCriteria = ref("always"); //never|always|time. Criteria for when to automatically use a hint on lost games
 //let autoHintTime = useLocalStorage("ls_autoHintTime", 10);
 let autoHintTime = ref(10);
 //let autoHintDelay = useLocalStorage("ls_autoHintDelay", 750); //ms to linger on mines before showing hint. 0 = instant (sync)
@@ -7988,6 +8020,14 @@ class Board {
       return;
     }
 
+    if (!wasmAvailable.value) {
+      $q.dialog({
+        title: "Failed",
+        message: "Hints need WebAssembly which isn't supported.",
+      });
+      return;
+    }
+
     if (!this.hintActive) {
       this.showHintSync();
     } else {
@@ -7995,318 +8035,14 @@ class Board {
     }
   }
 
-  /* OK TO DELETE
-  showHintLegacy(isLossHint = false) {
-    //Computes hint and updates tiles
-    this.hintActive = true;
-
-    this.quickPaintActive = false; //hide quickpaint at the same time as otherwise they visually compete
-    showQuickPaintOptions.value = false;
-
-    this.clearAllDepressedSquares();
-
-    let probCalcBoard = [];
-    for (let x = 0; x < this.width; x++) {
-      probCalcBoard[x] = [];
-      for (let y = 0; y < this.height; y++) {
-        const cellState = this.tilesArray[x][y].state;
-        if (typeof cellState === "number") {
-          probCalcBoard[x][y] = cellState;
-        } else if (cellState === CONSTANTS.UNREVEALED) {
-          probCalcBoard[x][y] = 10;
-        } else if (cellState === CONSTANTS.FLAG) {
-          probCalcBoard[x][y] = 11;
-        } else {
-          probCalcBoard[x][y] = 10; //Everything else can just be treated as unrevealed
-        }
-      }
-    }
-
-    let meanMinesRemovedTotal = 0;
-    if (isLossHint && this.lastSquaresChangedForAutoHint.length > 0) {
-      let meanMineAdjustments = new Map(); //Track how much numbers need to be adjusted by for removing newly revealed mean mines
-
-      //Do a pass to calculate effect of mean mines we need to remove
-      for (let changedSquare of this.lastSquaresChangedForAutoHint) {
-        const isMeanMine =
-          this.variant === "mean openings" &&
-          this.meanMineStates[changedSquare.x][changedSquare.y].isMine &&
-          this.meanMineStates[changedSquare.x][changedSquare.y].isActive;
-
-        if (!isMeanMine) {
-          continue;
-        }
-
-        for (let i = changedSquare.x - 1; i <= changedSquare.x + 1; i++) {
-          for (let j = changedSquare.y - 1; j <= changedSquare.y + 1; j++) {
-            if (!this.checkCoordsInBounds(i, j)) {
-              continue;
-            }
-
-            let val = meanMineAdjustments.get(`${i}-${j}`) || 0;
-            val -= 1;
-            meanMineAdjustments.set(`${i}-${j}`, val);
-          }
-        }
-
-        if (isMeanMine) {
-          meanMinesRemovedTotal++;
-        }
-      }
-
-      //Reverse the result of the last move (if there was one)
-      for (let changedSquare of this.lastSquaresChangedForAutoHint) {
-        //Any changed squares from the last move (e.g. a wrong chord) should be changed as follows:
-        // Make any numbers revealed transparent
-        // Exclude any numbers revealed from affecting the probability calculation
-        // reverse the effects of any mean mines revealed from last move
-
-        const thisTile = this.tilesArray[changedSquare.x][changedSquare.y];
-
-        const isMeanMine =
-          this.variant === "mean openings" &&
-          this.meanMineStates[changedSquare.x][changedSquare.y].isMine &&
-          this.meanMineStates[changedSquare.x][changedSquare.y].isActive;
-
-        //Squares revealed by final chord shouldn't influence the probability calculation
-        probCalcBoard[changedSquare.x][changedSquare.y] = 10;
-
-        if (typeof thisTile.state === "number") {
-          //Make tiles revealed on blast chord transparent
-          if (autoHintBackdrop.value === "numbers") {
-            const adjustment =
-              meanMineAdjustments.get(
-                `${changedSquare.x}-${changedSquare.y}`
-              ) || 0;
-            thisTile.hint.hintTexture = "tr2_" + (thisTile.state + adjustment);
-          } else {
-            thisTile.hint.hintTexture = CONSTANTS.UNREVEALED;
-          }
-        } else if (isMeanMine) {
-          thisTile.hint.hintTexture = "tr2_0";
-        }
-      }
-
-      //Also apply any adjustments for mean mines to cells outside the ones that changed from last move
-      for (let [key, adjustment] of meanMineAdjustments.entries()) {
-        const [i, j] = key.split("-").map(Number);
-        const thisTile = this.tilesArray[i][j];
-        if (
-          !this.lastSquaresChangedForAutoHint.some(
-            (sq) => sq.x === i && sq.y === j
-          ) &&
-          typeof thisTile.state === "number"
-        ) {
-          thisTile.hint.render = "textureonly";
-          thisTile.hint.hintTexture = thisTile.state + adjustment;
-          probCalcBoard[i][j] = thisTile.state + adjustment;
-        }
-      }
-    }
-
-    let totalMines;
-    if (this.variant === "mean openings") {
-      //mines will differ from starting mine count so need to figure out total mines
-      totalMines = 0;
-
-      //count placed flags
-      for (let x = 0; x < this.width; x++) {
-        for (let y = 0; y < this.height; y++) {
-          if (
-            this.tilesArray[x][y].state === CONSTANTS.FLAG ||
-            this.tilesArray[x][y].state === CONSTANTS.MINEWRONG
-          ) {
-            totalMines++;
-          }
-        }
-      }
-
-      //add unflagged
-      totalMines += this.unflagged;
-
-      //adjust for mean mines removed earlier
-      totalMines -= meanMinesRemovedTotal;
-    } else {
-      totalMines = this.mineCount;
-    }
-
-    let rawProbabilityStartTime = performance.now();
-
-    let probabilityGrid = Algorithms.calcBoardProbability(
-      probCalcBoard,
-      totalMines
-    );
-
-    console.log(
-      `Probability calculation took ${
-        performance.now() - rawProbabilityStartTime
-      }ms`
-    );
-
-    //figure out what to do with colourScale stuff...
-    let probabilityScale = []; //All "meaningful" probabilities in order, used to figure out colour scale.
-    let addedSingleFloatingToScale = false; //Tracker for whether we've added the single floating probability to the scale
-    let addSingleSafeToScale = false; //Simlar to above, hacky.
-
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
-        this.tilesArray[x][y].hint.probability = probabilityGrid[x][y];
-
-        let render = "skip"; //fallback of skipping rendering prob.
-
-        if (this.tilesArray[x][y].hint.render === "textureonly") {
-          //Special case for when mean mines changes an already revealed number
-          render = "textureonly";
-        } else if (probCalcBoard[x][y] < 10) {
-          //This is a revealed number (as opposed to unopened/bomb/flag etc), so doesn't need a hint
-          //Use probCalcBoard here as it has last move removed in case of loss hint.
-          render = "skip";
-        } else if (probCalcBoard[x][y] === 11 && probabilityGrid[x][y] === 1) {
-          //Player marked as flag and it's 100% a mine
-          render = "skip";
-        } else if (probCalcBoard[x][y] === 11 && probabilityGrid[x][y] < 1) {
-          //Player marked as flag and this is only probabilistic, so still need to show probability
-          render = "onflag";
-        } else if (this.tilesArray[x][y].state === CONSTANTS.MINERED) {
-          render = "onblastmine";
-        } else if (this.tilesArray[x][y].state === CONSTANTS.MINE) {
-          render = "onmine";
-        } else {
-          render = "frontier"; //Set all other squares to frontier, but later we may change some of these to floating
-        }
-
-        if (
-          render !== "skip" &&
-          render !== "textureonly" &&
-          probabilityGrid[x][y] === 0 &&
-          !addSingleSafeToScale
-        ) {
-          probabilityScale.push(0);
-          addSingleSafeToScale = true;
-        }
-
-        //Show different textures for hints
-        if (
-          this.tilesArray[x][y].hint.hintTexture === null &&
-          this.gameStage !== "running"
-        ) {
-          if (this.tilesArray[x][y].state === CONSTANTS.MINE) {
-            if (
-              autoHintBackdrop.value === "numbers" ||
-              autoHintBackdrop.value === "mines"
-            ) {
-              this.tilesArray[x][y].hint.hintTexture = "tr2_mine";
-            } else {
-              this.tilesArray[x][y].hint.hintTexture = CONSTANTS.UNREVEALED;
-            }
-          } else if (this.tilesArray[x][y].state === CONSTANTS.UNREVEALED) {
-            this.tilesArray[x][y].hint.hintTexture = CONSTANTS.UNREVEALED; //Needed in case this is a replay and we need to suppress the "show hidden tiles setting"
-          }
-        }
-
-        this.tilesArray[x][y].hint.render = render;
-
-        if (
-          render !== "skip" &&
-          render !== "textureonly" &&
-          probabilityGrid[x][y] !== 0 &&
-          probabilityGrid[x][y] !== 1
-        ) {
-          const isFloating = !this.hasNumberNeighbourProbCalcBoardVersion(
-            probCalcBoard,
-            x,
-            y
-          );
-          if (!isFloating) {
-            probabilityScale.push(probabilityGrid[x][y]);
-          } else if (isFloating && !addedSingleFloatingToScale) {
-            probabilityScale.push(probabilityGrid[x][y]);
-            addedSingleFloatingToScale = true;
-          }
-        }
-      }
-    }
-
-    //Sort probability scale so we can set up the colourScale property for each tile
-    probabilityScale.sort((a, b) => a - b);
-
-    let safestProbability = probabilityScale?.[0];
-    let safestTilesCount = 0;
-    let notSafestTilesCount = 0;
-    let safestTiles = [];
-
-    //Set colourScales, also change render method for floating
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
-        const thisTileHint = this.tilesArray[x][y].hint;
-
-        if (
-          thisTileHint.render === "skip" ||
-          thisTileHint.render === "textureonly"
-        ) {
-          thisTileHint.colourScale = 0;
-          continue;
-        }
-
-        if (thisTileHint.probability === safestProbability) {
-          safestTiles.push({ x, y });
-          safestTilesCount++;
-        } else if (thisTileHint.probability !== 1) {
-          notSafestTilesCount++;
-        }
-
-        //All floating cells should be grey unless they are the safest move
-        if (
-          thisTileHint.probability !== safestProbability &&
-          !this.hasNumberNeighbourProbCalcBoardVersion(probCalcBoard, x, y)
-        ) {
-          thisTileHint.render = "floating";
-        }
-
-        if (thisTileHint.probability === 0) {
-          thisTileHint.colourScale = 0;
-          continue;
-        }
-        if (thisTileHint.probability === 1) {
-          thisTileHint.colourScale = 1;
-          continue;
-        }
-
-        // let scaleIndex = probabilityScale.indexOf(thisTileHint.probability);
-        // let colourScale = scaleIndex / probabilityScale.length;
-        //shift it to be between 0.1 and 0.9 to separate from the safe/mine colours
-        // colourScale = colourScale * 0.8 + 0.1;
-
-        // thisTileHint.colourScale = colourScale;
-
-        thisTileHint.colourScale = this.hintProbabilityToScaleNormalCdf(
-          thisTileHint.probability
-        );
-      }
-    }
-
-    //Only set highlight if fewer than 1/3 of tiles are safest or fewer than 10
-    if (
-      safestTilesCount / (safestTilesCount + notSafestTilesCount) < 1 / 3 ||
-      safestTilesCount < 10
-    ) {
-      for (const tile of safestTiles) {
-        this.tilesArray[tile.x][tile.y].hint.highlight = true;
-      }
-    }
-
-    if (this.gameStage === "running") {
-      this.stats.addHintUsed();
-    }
-
-    //Update tiles to have this info
-    this.draw();
-  }
-  */
-
   async showHintAsync(isLossHint = false, useAutoHintDelay = true) {
     //This is currently intended to only be used for loss hints
     //if we expand it to other scenarios then be aware that there may be more race conditions we need to defend against
+
+    if (!wasmAvailable.value) {
+      //Probability hints rely on wasm; silently skip when unavailable.
+      return;
+    }
 
     if (!statsWorkerManager) {
       //No worker available, fall back to synchronous hint
@@ -8376,6 +8112,11 @@ class Board {
   }
 
   showHintSync(isLossHint = false) {
+    if (!wasmAvailable.value) {
+      //Probability hints rely on wasm; silently skip when unavailable.
+      return;
+    }
+
     if (statsWorkerManager) {
       statsWorkerManager.incrementAutoHintLock();
     }

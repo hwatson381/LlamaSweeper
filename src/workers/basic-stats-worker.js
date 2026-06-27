@@ -2,6 +2,16 @@
 //without clogging up the main thread
 import Algorithms from "src/classes/Algorithms";
 import ChainZini from "src/classes/ChainZini";
+import { wasmReadySettled } from "src/classes/RustWasm";
+
+//`wasmReadySettled` never rejects, so this resolves whether wasm loaded or not.
+//Tracking "settled" (rather than "initialised") means a failed wasm init can't
+//leave the job queue blocked forever; jobs that need wasm will instead run,
+//throw, and report failure through the try/catch below.
+let wasmSettled = false;
+wasmReadySettled.then(() => {
+  wasmSettled = true;
+});
 
 let statsLock = -1;
 let autoHintLock = -1;
@@ -59,6 +69,14 @@ function processNextJobAsync() {
 
 function processJob() {
   clearTimeout(timeoutHandle); //Stop processJob being spammed because we call it after this job is processed
+
+  if (!wasmSettled) {
+    //The Rust/WASM module (used by the calc-board-probability job) hasn't
+    //finished initialising yet. Wait for it to settle before pulling any job
+    //off the queue so none are lost.
+    wasmReadySettled.then(processNextJobAsync);
+    return;
+  }
 
   let job = jobs.shift();
 

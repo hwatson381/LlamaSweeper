@@ -115,3 +115,29 @@ pub fn eight_way_benchmark(width: usize, height: usize, mine_count: usize, first
 
     Ok(total_time.into())    // return the time it took
 }
+
+/// # No-guess board generation
+/// Thin wrapper around `ms_toollib::laymine_solvable`, replacing the
+/// `ms-toollib` npm dependency.
+///
+/// Returns a JS array `[board, success]` where `board` is a 2D array of i32
+/// (mines are `-1`) and `success` is a bool — matching the previous JS shape.
+#[wasm_bindgen]
+pub fn laymine_solvable(row: usize, column: usize, mine_num: usize, x0: usize, y0: usize, max_times: usize) -> Result<JsValue, JsValue> {
+    let result = ms_toollib::laymine_solvable(row, column, mine_num, x0, y0, max_times);
+    serde_wasm_bindgen::to_value(&result).map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
+/// # On-board mine probabilities
+/// Thin wrapper around `ms_toollib::cal_probability_onboard`, replacing the
+/// `ms-toollib` npm dependency.
+///
+/// Takes a JS 2D array game board and the mine count, and returns a JS array
+/// `[probabilities, [min, current, max]]` — matching the previous JS shape.
+#[wasm_bindgen]
+pub fn cal_probability_onboard(js_board: JsValue, mine_num: f64) -> Result<JsValue, JsValue> {
+    let board: Vec<Vec<i32>> = serde_wasm_bindgen::from_value(js_board).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let result = ms_toollib::cal_probability_onboard(&board, mine_num)
+        .map_err(|code| JsValue::from_str(&format!("cal_probability_onboard failed: {}", code)))?;
+    serde_wasm_bindgen::to_value(&result).map_err(|e| JsValue::from_str(&e.to_string()))
+}

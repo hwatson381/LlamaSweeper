@@ -1,4 +1,5 @@
 import Algorithms from "./Algorithms";
+import { isWasmAvailable } from "./RustWasm";
 import { Dialog } from 'quasar';
 
 //Class for doing different board gen. E.g. generating boards with fisher yates or maybe selecting boards with certain properties
@@ -20,12 +21,21 @@ class BoardGenerator {
   }
 
   static ngShuffle(width, height, mineCount, safeCoord, maxAttempts) {
+    if (!isWasmAvailable()) {
+      Dialog.create({
+        title: "No Guessing unavailable",
+        message:
+          "No Guessing mode needs WebAssembly, which isn't supported.",
+      });
+      return false;
+    }
+
     let ngShuffleResult = Algorithms.ngShuffle(width, height, mineCount, safeCoord, maxAttempts);
 
     if (!ngShuffleResult) {
       Dialog.create({
         title: "Alert",
-        message: "Failed to generate board. Consider increasing no guessing max attempts setting, or reducing the number of mines.",
+        message: "Failed to generate board. Consider increasing No Guessing Iterations setting, or reducing the number of mines.",
       });
     }
 

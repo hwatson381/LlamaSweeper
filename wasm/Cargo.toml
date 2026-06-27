@@ -17,6 +17,16 @@ rand = "0.9.2"
 getrandom = { version = "0.3", features = ["wasm_js"] }
 chrono = { version = "0.4", features = ["wasm-bindgen"] }
 rustc-hash = "2.1.1"
+# Folded in to replace the `ms-toollib` npm package (whose wasm-pack
+# `--target bundler` output breaks inside Vite-bundled web workers). We expose
+# only the two functions we use via thin wrappers in lib.rs. The `js` feature is
+# the crate's wasm/JavaScript target: it drops the `tract-onnx` ONNX runtime
+# (which won't compile to wasm32), avoids `std::time::Instant` (which panics on
+# wasm), and uses web-sys/getrandom for randomness. It's the same config the
+# author publishes to npm, so it's known to compile to wasm32.
+ms_toollib = { version = "1.5.10", default-features = false, features = ["js"] }
+serde = "1"
+serde-wasm-bindgen = "0.6"
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires

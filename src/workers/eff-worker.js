@@ -1,6 +1,6 @@
 //Worker that helps us generate eff boards in the background
 import Algorithms from "src/classes/Algorithms";
-import init, { eight_way, eight_way_benchmark } from "../../wasm/pkg/llamasweeper_rust.js";
+import { wasmReadySettled, eight_way, eight_way_benchmark } from "src/classes/RustWasm";
 
 const characters =
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -8,9 +8,12 @@ let workerId = characters.charAt(Math.floor(Math.random() * characters.length));
 
 console.log(`worker ${workerId} initialised`);
 
-let wasmReady = false;
-init().then(() => {
-  wasmReady = true;
+//`wasmReadySettled` never rejects; it resolves to whether wasm is usable.
+let wasmSettled = false;
+let wasmAvailable = false;
+wasmReadySettled.then((ok) => {
+  wasmSettled = true;
+  wasmAvailable = ok;
 });
 
 let isPaused = true;
@@ -117,9 +120,8 @@ async function doCurrentTask() {
     until it exceeds time limit or finds MAX_BOARDS_TO_FIND_PER_TASK boards
   */
 
-  if (!wasmReady && effBoardsImplementation.startsWith("wasm")) {
-    await init();
-    wasmReady = true;
+  if (!wasmSettled && effBoardsImplementation.startsWith("wasm")) {
+    await wasmReadySettled;
   }
 
   while (true) {
@@ -129,7 +131,9 @@ async function doCurrentTask() {
 
     let minesArray;
 
-    if (effBoardsImplementation.startsWith("wasm")) {
+    //Use wasm only if it's both requested and actually available; otherwise
+    //fall back to the pure-JS implementation so board generation still works.
+    if (effBoardsImplementation.startsWith("wasm") && wasmAvailable) {
       let useSmall;
 
       if (effBoardsImplementation === "wasm_small") {
@@ -215,9 +219,8 @@ async function handleBenchmarkCommand(event) {
   let targetEff = event.data.targetEff;
   let iterations = event.data.iterations;
 
-  if (!wasmReady) {
-    await init();
-    wasmReady = true;
+  if (!wasmSettled) {
+    await wasmReadySettled;
   }
 
   //Do js run
@@ -230,27 +233,31 @@ async function handleBenchmarkCommand(event) {
     iterations //How many iteraitons we should time
   );
 
-  //Do wasm_small run
-  let wasmSmallTime = eight_way_benchmark(
-    width,
-    height,
-    mineCount,
-    firstClickCoords,
-    targetEff,
-    iterations, //How many iteraitons we should time
-    true //use wasm _small algorithm
-  );
+  //Do wasm_small run (Infinity when wasm is unavailable so the benchmark still runs)
+  let wasmSmallTime = wasmAvailable
+    ? eight_way_benchmark(
+      width,
+      height,
+      mineCount,
+      firstClickCoords,
+      targetEff,
+      iterations, //How many iteraitons we should time
+      true //use wasm _small algorithm
+    )
+    : Infinity;
 
-  //Do wasm_large run
-  let wasmLargeTime = eight_way_benchmark(
-    width,
-    height,
-    mineCount,
-    firstClickCoords,
-    targetEff,
-    iterations, //How many iteraitons we should time
-    false //use wasm _large algorithm
-  );
+  //Do wasm_large run (null when wasm is unavailable so the benchmark still runs)
+  let wasmLargeTime = wasmAvailable
+    ? eight_way_benchmark(
+      width,
+      height,
+      mineCount,
+      firstClickCoords,
+      targetEff,
+      iterations, //How many iteraitons we should time
+      false //use wasm _large algorithm
+    )
+    : Infinity;
 
   postMessage({
     message: "benchmarkResults",

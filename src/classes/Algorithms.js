@@ -1,7 +1,7 @@
 import OrganisedPremiums from "src/classes/OrganisedPremiums.js";
 import WomZini from "./WomZini";
 import CONSTANTS from "src/includes/Constants";
-import * as ms from "ms-toollib";
+import { laymine_solvable, cal_probability_onboard, isWasmAvailable } from "./RustWasm";
 
 class Algorithms {
   constructor() {
@@ -992,11 +992,15 @@ class Algorithms {
     safeCoord, //For now assume this is provided
     maxAttempts
   ) {
-    let boardSolvable = ms.laymine_solvable(width, height, mineCount, safeCoord.x, safeCoord.y, maxAttempts);
+    if (!isWasmAvailable()) {
+      //No-guess generation relies on wasm so exit early (defensive)
+      return false;
+    }
+
+    let boardSolvable = laymine_solvable(width, height, mineCount, safeCoord.x, safeCoord.y, maxAttempts);
 
     if (boardSolvable[1] === false) {
-      alert('failed to generate board in time, try again');
-      throw new Error("ngShuffle failed to generate board in time");
+      //Failed to generate board, return false so we can show a message for this
       return false;
     }
 
@@ -1683,10 +1687,10 @@ class Algorithms {
   }
 
   static calcBoardProbability(probCalcBoard, mineCount) {
-    /* OK TO DELETE
-    const width = tilesArray.length;
-    const height = tilesArray[0].length;
-    */
+    if (!isWasmAvailable()) {
+      //Throw a error so callers lack of wasm can be caught elsewhere
+      throw new Error("WebAssembly unavailable: cannot calculate probabilities");
+    }
 
     //Create board structure needed by mstoollib
     /*
@@ -1704,27 +1708,7 @@ class Algorithms {
       18  This indicates that in the game, cells that appear to be 0 due to double-click highlighting are highlighted.
     */
 
-    /* OK TO DELETE
-    const msBoard = [];
-
-    for (let x = 0; x < width; x++) {
-      msBoard[x] = [];
-      for (let y = 0; y < height; y++) {
-        const cellState = tilesArray[x][y].state;
-        if (typeof cellState === 'number') {
-          msBoard[x][y] = cellState;
-        } else if (cellState === CONSTANTS.UNREVEALED) {
-          msBoard[x][y] = 10;
-        } else if (cellState === CONSTANTS.FLAG) {
-          msBoard[x][y] = 11;
-        } else {
-          msBoard[x][y] = 10; //Everything else can just be treated as unrevealed
-        }
-      }
-    }
-    */
-
-    let [probabilities, mineCountInfo] = ms.cal_probability_onboard(probCalcBoard, mineCount);
+    let [probabilities, mineCountInfo] = cal_probability_onboard(probCalcBoard, mineCount);
 
     //Round probabilities to 12 decimal places to avoid floating point issues
     probabilities = probabilities.map(col => col.map(p => Math.round(p * 10 ** 12) / 10 ** 12));

@@ -583,8 +583,8 @@ choose defaults for hint setting
 relevant code below:
 
 ```
-//let autoHintCriteria = useLocalStorage("ls_autoHintCriteria", "time"); //never|always|time. Criteria for when to automatically use a hint on lost games
-let autoHintCriteria = ref("time"); //never|always|time. Criteria for when to automatically use a hint on lost games
+//let autoHintCriteria = useLocalStorage("ls_autoHintCriteria", "always"); //never|always|time. Criteria for when to automatically use a hint on lost games
+let autoHintCriteria = ref("always"); //never|always|time. Criteria for when to automatically use a hint on lost games
 //let autoHintTime = useLocalStorage("ls_autoHintTime", 10);
 let autoHintTime = ref(10);
 //let autoHintDelay = useLocalStorage("ls_autoHintDelay", 750); //ms to linger on mines before showing hint. 0 = instant (sync)
@@ -594,3 +594,6 @@ let autoHintVariants = ref("not eff boards");
 //let autoHintBackdrop = useLocalStorage("ls_autoHintBackdrop", "mines"); //numbers, mines, no mines, minimal
 let autoHintBackdrop = ref("mines"); //numbers, mines, no mines, minimal
 ```
+
+Also can we use "more" from mstoollib now? Like generating denser boards
+laymine_solvable_adjust can't be used because the boards it creates are uninteresting and it gets stuck in infinite loops too often
