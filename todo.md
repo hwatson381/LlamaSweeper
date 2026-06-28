@@ -546,7 +546,7 @@ Llamasweeper takes 10ms to process a mouse input, whereas WoM seems to take arou
 NEXT STEPS:
 [done] Mobile scroll protection delay thingy
 parallelise deepchain (really big task...)
-[nearly done] nf eff guide?
+[done] nf eff guide?
 zini quality of life stuff (given that wom links to it now...). This is mainly just highlighting squares DURING the replay
 [done] make use of ms-toollib for no guess... Also auto-display hint on blast
 [done] mbf import

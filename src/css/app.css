@@ -18,6 +18,11 @@
   text-decoration: underline;
 }
 
+.hidden-link:hover {
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .q-page a:visited,
 .q-dialog a:visited {
   color: #c019d2;

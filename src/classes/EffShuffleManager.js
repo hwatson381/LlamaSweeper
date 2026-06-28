@@ -23,7 +23,6 @@ class EffShuffleManager {
     // which implementation of 8way zini the workers are using
     this.workerPoolCurrentImplementationType = ""; //Values: wasm_small, wasm_large, js
 
-    this.maxStoredBoardsPerSize = 20;
     this.sendWorkerCurrentTaskDebounceTimeoutHandle = null;
 
     //Queue which tracks the most recently played custom games (dimensions and target eff)
@@ -211,7 +210,7 @@ class EffShuffleManager {
 
     if (
       Array.isArray(storedBoard) &&
-      storedBoard.length >= this.maxStoredBoardsPerSize
+      storedBoard.length >= this.refs.effBoardsMaxStoredCount.value
     ) {
       //Already generated enough of this board
       this.sendWorkersPauseCommand();
@@ -319,7 +318,7 @@ class EffShuffleManager {
     }
 
     for (let board of foundBoards) {
-      if (storedBoardArray.length <= this.maxStoredBoardsPerSize - 1) {
+      if (storedBoardArray.length <= this.refs.effBoardsMaxStoredCount.value - 1) {
         storedBoardArray.push(board);
       }
     }
@@ -332,7 +331,7 @@ class EffShuffleManager {
     }
 
     //Pause workers if we have maxed out the number of stored boards for this size
-    if (storedBoardArray.length >= this.maxStoredBoardsPerSize) {
+    if (storedBoardArray.length >= this.refs.effBoardsMaxStoredCount.value) {
       if (
         this.workerPoolCurrentTaskKey === workerBoardKey &&
         !this.isWorkerPoolPaused
@@ -437,6 +436,13 @@ class EffShuffleManager {
       console.log("deleting " + key);
       this.storedBoards.delete(key);
     }
+  }
+
+  clearAllStoredBoards() {
+    this.storedBoards.clear();
+    this.refs.effBoardsStoredFirstClickDisplay.value = this.refs.effFirstClickType.value;
+    this.refs.effBoardsStoredDisplayCount.value = 0;
+    this.sendWorkersCurrentTask(); //just in case as workers may need resuming
   }
 
   addRecentlyPlayedCustom(boardKey) {

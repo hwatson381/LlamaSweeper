@@ -84,7 +84,6 @@ class DeepChainZiniRunner {
   }
 
   timingRunDone(timingRun) {
-    console.log(timingRun);
     this.refs.ziniRunnerExpectedDuration.value = Utils.formatTime(timingRun);
     this.refs.ziniRunnerExpectedFinishTime.value = Utils.timeInFuture(timingRun);
   }
