@@ -218,8 +218,8 @@ class RawVF {
     const typeMap = {
       left: ['lc', 'lr'],
       wasted_left: ['lc', 'lr'],
-      chord: ['lc', 'lr'], //treat all chords as left click chord even though they may not be (as we send replay with SuperClick: On)
-      wasted_chord: ['lc', 'lr'],
+      chord: ['mc', 'mr'], //Use middle click for chords, previously we sent left clicks, but on l+r this meant chord on unrevealed mine would blast
+      wasted_chord: ['mc', 'mr'],
       right: ['rc', 'rr'],
       wasted_right: ['rc', 'rr']
     }
