@@ -386,7 +386,7 @@ let variantList = [
   {
     "name": "League of Minesweeper",
     "url": "http://tapsss.com/",
-    "desc": "An Android only mobile app designed for and by competitive minesweeper players. It has a very active community in China where many of the top players play on it (including JZE, the world record holder). It also features several other games similar to minesweeper such as nonosweeper (similar to picross/nonograms), schulte grid (finding numbers in a grid), sudoku, 2048, 15 puzzle. It has a pvp mode and a (mostly Chinese) community within the app where you can chat with people and see other records. It has a no-guess mode, as well as a mode for playing custom minesweeper puzzles created by other players.",
+    "desc": "An Android only mobile app designed for and by competitive minesweeper players. It has a very active community in China where many of the top players play on it (including JZE, the world record holder). It also features several other games similar to minesweeper such as nonosweeper (similar to picross/nonograms), schulte grid (finding numbers in a grid), sudoku, 2048, 15 puzzle. It has a pvp mode and a (mostly Chinese) community within the app where you can chat with people and see other records. It has a no-guess mode, as well as a mode for playing custom minesweeper puzzles created by other players. It's also available on https://www.taptap.cn/app/138188",
     "image": "/img/variants/lom.png",
     "tags": [
       "game",
@@ -594,7 +594,7 @@ let variantList = [
     "tags": [
       "game"
     ],
-    "rating": 3.3,
+    "rating": 3.4,
     "popularity": 1
   },
   {

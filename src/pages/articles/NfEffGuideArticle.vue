@@ -336,7 +336,7 @@
   <p>
     I would encourage you to minecount towards the end of games whenever there
     is a chance that knowledge of the minecount may lead to making a different
-    decision. I use the paint bucket tool in jspaint for this and I change
+    decision. I use the paint bucket tool in the editor for this and I change
     colour every 10 mines. Remember that expert has 99 mines instead of 100, so
     if you are counting in 10s the last batch will have 9 mines - I’ve made this
     mistake before.
@@ -575,10 +575,16 @@
     primarily depends on the board density.
   </p>
   <p>
-    I’ve done some rough calculations on green and cyan, which inform my
-    following commentary on them. There is a section in the appendix where I go
-    through my calculations and reasoning in depth. As a reminder, intermediate
-    has 15.6% density, and expert has 20.6% density.
+    I’ve done some calculations on preparation guesses which inform the
+    following commentary on them. To keep this section short, I will only give
+    brief explanations here and omit the details. However, I’ve included an
+    appendix where I go over my full analysis of preparation guesses. I will
+    also note that there is a lot of uncertainty in the specific density
+    thresholds I mentioned, as calculations can only go so far without running a
+    full simulation.
+  </p>
+  <p>
+    As a reminder, intermediate has 15.6% density, and expert has 20.6% density.
   </p>
   <p>
     For densities below 15%, you should choose cyan. This is because at lower
@@ -692,7 +698,7 @@
     slightly safer than green when considering immediate risk as there are more
     ways that the green guesses could be on the edge of an opening. However, I
     discounted the cyan guess as it doesn’t have good follow-up moves if it does
-    not reveal an opening.
+    not reveal an opening (due to being too far from other information).
   </p>
   <p>
     Both of the green guesses have good options if they do not reveal an
@@ -806,7 +812,9 @@
   <p>
     Cyan is safer as it is less likely to be touching an opening, but it is a
     bit out of the way and doesn’t have very good follow-up moves if it doesn’t
-    give an opening.
+    give an opening (it could be “pulled” a bit, but it’s hard to escape that
+    pocket of the board, and any follow-up it produces is unlikely to be better
+    than the green guess).
   </p>
   <p>
     Green is a bit riskier as there could be an opening above it or
