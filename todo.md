@@ -595,10 +595,6 @@ Or can we fix the mobile bug
 
 =====
 
-Have enable filters be a checkbox with a settings "fake-link" that appears
-
-coords as letters (does need to be a setting for the maths inclined)
-
 copy board as image? This is a bit ugly as can't be used during a game though? Export menu is looking empty though so makes sense
 
 Only board not decorations? Is that just excluding the mouse?

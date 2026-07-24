@@ -2244,23 +2244,53 @@
           v-model="showMineCount"
           label="Show mine count"
           @update:model-value="game.board.drawTopBar()"
-        /><br />
-        <q-checkbox
-          v-model="showCoords"
-          label="Show coordinates"
-          @update:model-value="
-            game.board.drawBorders();
-            game.board.drawCoords();
-          "
-        /><br />
-        <q-btn
-          @click="
-            filtersModal = true;
-            settingsModal = false;
-          "
-          color="secondary"
-          label="Visual Filters"
         />
+        <div class="flex q-mb-sm" style="align-items: center">
+          <q-checkbox
+            v-model="showCoords"
+            label="Show coordinates"
+            @update:model-value="
+              game.board.drawBorders();
+              game.board.drawCoords();
+            "
+            class="q-pr-md"
+            style="flex-shrink: 0"
+          />
+          <q-btn
+            v-if="showCoords"
+            dense
+            flat
+            color="info"
+            @click="
+              coordsModal = true;
+              settingsModal = false;
+            "
+            label="options"
+            icon="settings"
+          >
+          </q-btn>
+        </div>
+        <div class="flex q-mb-sm" style="align-items: center">
+          <q-checkbox
+            v-model="enableFilters"
+            label="Enable Visual Filters"
+            class="q-pr-md"
+            style="flex-shrink: 0"
+          />
+          <q-btn
+            v-if="enableFilters"
+            dense
+            flat
+            color="info"
+            @click="
+              filtersModal = true;
+              settingsModal = false;
+            "
+            label="options"
+            icon="settings"
+          >
+          </q-btn>
+        </div>
       </q-card-section>
 
       <q-card-actions align="right" class="text-primary">
@@ -2284,172 +2314,165 @@
           having lots of filters active may affect performance. Preview for blur
           filter may be inaccurate as it doesn't take into account Tile Size.
         </p>
-        <q-checkbox
-          v-model="enableFilters"
-          label="Enable Visual Filters"
-        /><br />
-        <template v-if="enableFilters">
-          <q-separator />
-          <div class="row justify-around q-my-md" style="gap: 10px">
-            <img
-              src="/img/supporting/filter_preview_light.png"
-              loading="lazy"
-              :style="{ filter: filterStyleProperty }"
-              class="q-mx-sm"
-            />
-            <img
-              src="/img/supporting/filter_preview_dark.png"
-              loading="lazy"
-              :style="{ filter: filterStyleProperty }"
-              class="q-mx-sm"
+        <div class="row justify-around q-my-md" style="gap: 10px">
+          <img
+            src="/img/supporting/filter_preview_light.png"
+            loading="lazy"
+            :style="{ filter: filterStyleProperty }"
+            class="q-mx-sm"
+          />
+          <img
+            src="/img/supporting/filter_preview_dark.png"
+            loading="lazy"
+            :style="{ filter: filterStyleProperty }"
+            class="q-mx-sm"
+          />
+        </div>
+        <div class="row items-center">
+          <q-checkbox
+            v-model="enableFilterBlur"
+            label="Enable Blur"
+            class="col-5"
+            style="min-width: 160px"
+          />
+          <div class="col-7">
+            <q-input
+              v-if="enableFilterBlur"
+              v-model.number="filterBlurValue"
+              label="Blurriness (pixels)"
+              type="number"
+              dense
+              min="0"
+              max="1000"
+              style="width: 200px"
             />
           </div>
-          <div class="row items-center">
-            <q-checkbox
-              v-model="enableFilterBlur"
-              label="Enable Blur"
-              class="col-5"
-              style="min-width: 160px"
+        </div>
+        <div class="row items-center">
+          <q-checkbox
+            v-model="enableFilterBrightness"
+            label="Enable Brightness"
+            class="col-5"
+            style="min-width: 160px"
+          />
+          <div class="col-7">
+            <q-input
+              v-if="enableFilterBrightness"
+              v-model.number="filterBrightnessValue"
+              label="Brightness (< 1 is darker | > 1 is lighter)"
+              type="number"
+              dense
+              min="0"
+              max="1000"
+              step="0.1"
+              style="width: 200px"
             />
-            <div class="col-7">
-              <q-input
-                v-if="enableFilterBlur"
-                v-model.number="filterBlurValue"
-                label="Blurriness (pixels)"
-                type="number"
-                dense
-                min="0"
-                max="1000"
-                style="width: 200px"
-              />
-            </div>
           </div>
-          <div class="row items-center">
-            <q-checkbox
-              v-model="enableFilterBrightness"
-              label="Enable Brightness"
-              class="col-5"
-              style="min-width: 160px"
+        </div>
+        <div class="row items-center">
+          <q-checkbox
+            v-model="enableFilterContrast"
+            label="Enable Contrast"
+            class="col-5"
+            style="min-width: 160px"
+          />
+          <div class="col-7">
+            <q-input
+              v-if="enableFilterContrast"
+              v-model.number="filterContrastValue"
+              label="Contrast (< 1 is less | > 1 is more)"
+              type="number"
+              dense
+              min="0"
+              max="1000"
+              step="0.1"
+              style="width: 200px"
             />
-            <div class="col-7">
-              <q-input
-                v-if="enableFilterBrightness"
-                v-model.number="filterBrightnessValue"
-                label="Brightness (< 1 is darker | > 1 is lighter)"
-                type="number"
-                dense
-                min="0"
-                max="1000"
-                step="0.1"
-                style="width: 200px"
-              />
-            </div>
           </div>
-          <div class="row items-center">
-            <q-checkbox
-              v-model="enableFilterContrast"
-              label="Enable Contrast"
-              class="col-5"
-              style="min-width: 160px"
+        </div>
+        <div class="row items-center">
+          <q-checkbox
+            v-model="enableFilterGrayscale"
+            label="Enable Grayscale"
+            class="col-5"
+            style="min-width: 160px"
+          />
+          <div class="col-7">
+            <q-input
+              v-if="enableFilterGrayscale"
+              v-model.number="filterGrayscaleValue"
+              label="Grayscale (0 is normal | 1 is full)"
+              type="number"
+              dense
+              min="0"
+              max="1"
+              step="0.1"
+              style="width: 200px"
             />
-            <div class="col-7">
-              <q-input
-                v-if="enableFilterContrast"
-                v-model.number="filterContrastValue"
-                label="Contrast (< 1 is less | > 1 is more)"
-                type="number"
-                dense
-                min="0"
-                max="1000"
-                step="0.1"
-                style="width: 200px"
-              />
-            </div>
           </div>
-          <div class="row items-center">
-            <q-checkbox
-              v-model="enableFilterGrayscale"
-              label="Enable Grayscale"
-              class="col-5"
-              style="min-width: 160px"
+        </div>
+        <div class="row items-center">
+          <q-checkbox
+            v-model="enableFilterHueRotate"
+            label="Enable Hue Rotate"
+            class="col-5"
+            style="min-width: 160px"
+          />
+          <div class="col-7">
+            <q-input
+              v-if="enableFilterHueRotate"
+              v-model.number="filterHueRotateValue"
+              label="Hue Rotate (degrees)"
+              type="number"
+              dense
+              min="0"
+              max="360"
+              style="width: 200px"
             />
-            <div class="col-7">
-              <q-input
-                v-if="enableFilterGrayscale"
-                v-model.number="filterGrayscaleValue"
-                label="Grayscale (0 is normal | 1 is full)"
-                type="number"
-                dense
-                min="0"
-                max="1"
-                step="0.1"
-                style="width: 200px"
-              />
-            </div>
           </div>
-          <div class="row items-center">
-            <q-checkbox
-              v-model="enableFilterHueRotate"
-              label="Enable Hue Rotate"
-              class="col-5"
-              style="min-width: 160px"
+        </div>
+        <div class="row items-center">
+          <q-checkbox
+            v-model="enableFilterInvert"
+            label="Enable Invert"
+            class="col-5"
+            style="min-width: 160px"
+          />
+          <div class="col-7">
+            <q-input
+              v-if="enableFilterInvert"
+              v-model.number="filterInvertValue"
+              label="Invert (0 is normal | 1 is inverted)"
+              type="number"
+              dense
+              min="0"
+              max="1"
+              step="0.1"
+              style="width: 200px"
             />
-            <div class="col-7">
-              <q-input
-                v-if="enableFilterHueRotate"
-                v-model.number="filterHueRotateValue"
-                label="Hue Rotate (degrees)"
-                type="number"
-                dense
-                min="0"
-                max="360"
-                style="width: 200px"
-              />
-            </div>
           </div>
-          <div class="row items-center">
-            <q-checkbox
-              v-model="enableFilterInvert"
-              label="Enable Invert"
-              class="col-5"
-              style="min-width: 160px"
+        </div>
+        <div class="row items-center">
+          <q-checkbox
+            v-model="enableFilterSaturate"
+            label="Enable Saturate"
+            class="col-5"
+            style="min-width: 160px"
+          />
+          <div class="col-7">
+            <q-input
+              v-if="enableFilterSaturate"
+              v-model.number="filterSaturateValue"
+              label="Saturation (< 1 is less | > 1 is more)"
+              type="number"
+              dense
+              min="0"
+              max="10"
+              step="0.1"
+              style="width: 200px"
             />
-            <div class="col-7">
-              <q-input
-                v-if="enableFilterInvert"
-                v-model.number="filterInvertValue"
-                label="Invert (0 is normal | 1 is inverted)"
-                type="number"
-                dense
-                min="0"
-                max="1"
-                step="0.1"
-                style="width: 200px"
-              />
-            </div>
           </div>
-          <div class="row items-center">
-            <q-checkbox
-              v-model="enableFilterSaturate"
-              label="Enable Saturate"
-              class="col-5"
-              style="min-width: 160px"
-            />
-            <div class="col-7">
-              <q-input
-                v-if="enableFilterSaturate"
-                v-model.number="filterSaturateValue"
-                label="Saturation (< 1 is less | > 1 is more)"
-                type="number"
-                dense
-                min="0"
-                max="10"
-                step="0.1"
-                style="width: 200px"
-              />
-            </div>
-          </div>
-        </template>
+        </div>
       </q-card-section>
 
       <q-card-actions align="right" class="text-primary">
@@ -2458,6 +2481,52 @@
           label="Close"
           @click="
             filtersModal = false;
+            settingsModal = true;
+          "
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
+  <q-dialog v-model="coordsModal">
+    <q-card style="min-width: 350px">
+      <q-card-section>
+        <div class="text-h6">Coord Settings</div>
+      </q-card-section>
+
+      <q-card-section class="q-pt-none">
+        <q-checkbox
+          v-model="coordsUseLetters"
+          label="Use letters for x-axis"
+          @update:model-value="
+            game.board.drawBorders();
+            game.board.drawCoords();
+          "
+        /><br />
+        <q-checkbox
+          v-model="coordsUseInvertedY"
+          label="Invert y-axis"
+          @update:model-value="
+            game.board.drawBorders();
+            game.board.drawCoords();
+          "
+        /><br />
+        <q-checkbox
+          v-model="coordsUseZeroIndexing"
+          label="Start from 0"
+          @update:model-value="
+            game.board.drawBorders();
+            game.board.drawCoords();
+          "
+        />
+      </q-card-section>
+
+      <q-card-actions align="right" class="text-primary">
+        <q-btn
+          flat
+          label="Close"
+          @click="
+            coordsModal = false;
             settingsModal = true;
           "
         />
@@ -3511,6 +3580,11 @@ let showTimer = useLocalStorage("ls_showTimer", true);
 let showMineCount = useLocalStorage("ls_showMineCount", true);
 let showCoords = useLocalStorage("ls_showCoords", false);
 let boardSkin = useLocalStorage("ls_boardSkin", "light");
+
+let coordsModal = useLocalStorage("ls_coordsModal", false);
+let coordsUseLetters = useLocalStorage("ls_coordsUseLetters", true);
+let coordsUseInvertedY = useLocalStorage("ls_coordsUseInvertedY", true);
+let coordsUseZeroIndexing = useLocalStorage("ls_coordsUseZeroIndexing", false);
 
 //Dimensions for border
 let boardHorizontalPadding = computed(() => {
@@ -9331,7 +9405,7 @@ class Board {
       const xPos =
         boardHorizontalPadding.value + this.tileSize / 2 + i * this.tileSize;
 
-      ctx.fillText(i + 1, xPos, yPos, maxWidth);
+      ctx.fillText(this.coordIndexToText(i, true), xPos, yPos, maxWidth);
     }
 
     //Vertical coords
@@ -9343,8 +9417,41 @@ class Board {
 
       const xPos = boardHorizontalPadding.value / 2;
 
-      ctx.fillText(i + 1, xPos, yPos, maxWidth);
+      ctx.fillText(this.coordIndexToText(i, false), xPos, yPos, maxWidth);
     }
+  }
+
+  coordIndexToText(index, isHorizontal) {
+    if (isHorizontal && coordsUseLetters.value) {
+      //Horizontal on text mode gives excel style values (A->Z, AA->ZZ etc)
+      const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+      let txt = "";
+
+      while (true) {
+        txt = alphabet.charAt(index % 26) + txt;
+
+        if (index < 26) {
+          break;
+        }
+
+        index = Math.floor(index / 26) - 1;
+      }
+
+      return txt;
+    }
+
+    if (!isHorizontal && !coordsUseInvertedY.value) {
+      //Handle Y axis getting flipped
+      index = this.height - 1 - index;
+    }
+
+    if (!coordsUseZeroIndexing.value) {
+      //Adjust for coords starting from zero
+      index += 1;
+    }
+
+    return index.toString();
   }
 
   drawTopBar() {

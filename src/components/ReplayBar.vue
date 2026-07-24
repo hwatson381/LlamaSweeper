@@ -1,10 +1,12 @@
 <template>
   <div class="replay-bar row q-pa-sm">
-    <q-btn dense color="white" text-color="black">
-      <q-icon
-        :name="replayIsPlaying ? 'pause' : 'play_arrow'"
-        @click="$emit('toggle-play-pause')"
-      ></q-icon>
+    <q-btn
+      dense
+      color="white"
+      text-color="black"
+      @click="$emit('toggle-play-pause')"
+    >
+      <q-icon :name="replayIsPlaying ? 'pause' : 'play_arrow'"></q-icon>
     </q-btn>
     <q-btn
       dense
