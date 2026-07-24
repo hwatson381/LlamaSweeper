@@ -23,7 +23,7 @@ class RawVF {
     description += `Width: ${boardWidth}\n`
     description += `Height: ${boardHeight}\n`
     description += "Marks: Off\n"
-    description += "SuperClick: On\n" //Keep this on for now as we only track chord is a specific input
+    description += "SuperClick: Off\n" //Off since we send chord as middle click even with the left click chord setting.
     description += `SquareSize: ${RAWVF_SQUARE_SIZE}\n` //May differ from real square size
     description += `Time: ${boardStats.endTime.toFixed(3)}\n`
     description += `Status: ${boardStats.isWin ? "won" : "loss"}\n`

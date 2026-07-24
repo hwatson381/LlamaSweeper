@@ -579,24 +579,28 @@ Add mouseDown tracking to llamasweeper so that click timing can be seen in the r
 rework replay/send to menus?
 Strict mode (see ipad notes)
 
-choose defaults for hint setting
-relevant code below:
-
-```
-//let autoHintCriteria = useLocalStorage("ls_autoHintCriteria", "always"); //never|always|time. Criteria for when to automatically use a hint on lost games
-let autoHintCriteria = ref("always"); //never|always|time. Criteria for when to automatically use a hint on lost games
-//let autoHintTime = useLocalStorage("ls_autoHintTime", 10);
-let autoHintTime = ref(10);
-//let autoHintDelay = useLocalStorage("ls_autoHintDelay", 750); //ms to linger on mines before showing hint. 0 = instant (sync)
-let autoHintDelay = ref(750); //ms to linger on mines before showing hint. 0 = instant (sync)
-//let autoHintVariants = useLocalStorage("ls_autoHintVariants", "not eff boards");
-let autoHintVariants = ref("not eff boards");
-//let autoHintBackdrop = useLocalStorage("ls_autoHintBackdrop", "mines"); //numbers, mines, no mines, minimal
-let autoHintBackdrop = ref("mines"); //numbers, mines, no mines, minimal
-```
-
 Also can we use "more" from mstoollib now? Like generating denser boards
 laymine_solvable_adjust can't be used because the boards it creates are uninteresting and it gets stuck in infinite loops too often
 
-Remember to change the date of the nf eff article on the guides page?
-Check how many people won exp eff 100% lmao
+=====
+
+What to do?
+Change default to be instant + no mines.
+
+Small bug - mobile ms sometimes causes tiles to remain depressed if tapped at the same time (e.g. corners at the start)
+
+Then what next? Refactoring? Or maybe small enhancements to the board editor? probably just refactoring tbh...
+Strict mode might be too far away.
+Or can we fix the mobile bug
+
+=====
+
+Have enable filters be a checkbox with a settings "fake-link" that appears
+
+coords as letters (does need to be a setting for the maths inclined)
+
+copy board as image? This is a bit ugly as can't be used during a game though? Export menu is looking empty though so makes sense
+
+Only board not decorations? Is that just excluding the mouse?
+
+Bonus board editor stuff can happen after

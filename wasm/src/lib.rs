@@ -136,7 +136,8 @@ pub fn laymine_solvable(row: usize, column: usize, mine_num: usize, x0: usize, y
 /// `[probabilities, [min, current, max]]` — matching the previous JS shape.
 #[wasm_bindgen]
 pub fn cal_probability_onboard(js_board: JsValue, mine_num: f64) -> Result<JsValue, JsValue> {
-    let board: Vec<Vec<i32>> = serde_wasm_bindgen::from_value(js_board).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let mut board: Vec<Vec<i32>> = serde_wasm_bindgen::from_value(js_board).map_err(|e| JsValue::from_str(&e.to_string()))?;
+    let _ = ms_toollib::mark_board(&mut board, true);
     let result = ms_toollib::cal_probability_onboard(&board, mine_num)
         .map_err(|code| JsValue::from_str(&format!("cal_probability_onboard failed: {}", code)))?;
     serde_wasm_bindgen::to_value(&result).map_err(|e| JsValue::from_str(&e.to_string()))

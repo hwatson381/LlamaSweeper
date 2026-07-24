@@ -414,7 +414,18 @@
         ref="game-container"
         id="game-container"
         class="clearfix q-my-md"
-        :style="{ userSelect: 'none', paddingLeft: gameCalculatedMarginLeft }"
+        :style="{
+          userSelect: 'none',
+          paddingLeft: gameCalculatedMarginLeft,
+          marginTop:
+            gameVerticalPadding === 'custom'
+              ? gameTopPadding + 'px'
+              : gameVerticalPadding,
+          marginBottom:
+            gameVerticalPadding === 'custom'
+              ? gameBottomPadding + 'px'
+              : gameVerticalPadding,
+        }"
       >
         <canvas
           ref="main-canvas"
@@ -437,6 +448,7 @@
                 ? 'none'
                 : 'manipulation',
             marginLeft: 0 /*gameCalculatedMarginLeft*/,
+            filter: filterStyleProperty,
           }"
         >
         </canvas>
@@ -2135,6 +2147,60 @@
             color="light-green"
           />
         </template>
+        <q-select
+          class="q-mx-md q-mb-md"
+          outlined
+          options-dense
+          dense
+          transition-duration="100"
+          input-debounce="0"
+          v-model="gameVerticalPadding"
+          style="width: 200px; flex-shrink: 0"
+          :options="[
+            {
+              label: '16px (default)',
+              value: '16px',
+            },
+            {
+              label: '32px',
+              value: '32px',
+            },
+            {
+              label: '48px',
+              value: '48px',
+            },
+            {
+              label: 'Custom',
+              value: 'custom',
+            },
+          ]"
+          emit-value
+          map-options
+          stack-label
+          label="Board Vertical Padding"
+        />
+        <template v-if="gameVerticalPadding === 'custom'">
+          <q-input
+            debounce="100"
+            v-model.number="gameTopPadding"
+            label="Board Top Padding"
+            type="number"
+            dense
+            min="4"
+            max="2000"
+            style="width: 110px"
+          />
+          <q-input
+            debounce="100"
+            v-model.number="gameBottomPadding"
+            label="Board Bottom Padding"
+            type="number"
+            dense
+            min="4"
+            max="2000"
+            style="width: 110px"
+          />
+        </template>
         <q-checkbox
           v-model="centreInterface"
           label="Centre interface (other than board)"
@@ -2186,11 +2252,215 @@
             game.board.drawBorders();
             game.board.drawCoords();
           "
+        /><br />
+        <q-btn
+          @click="
+            filtersModal = true;
+            settingsModal = false;
+          "
+          color="secondary"
+          label="Visual Filters"
         />
       </q-card-section>
 
       <q-card-actions align="right" class="text-primary">
         <q-btn flat label="Close" v-close-popup />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+
+  <q-dialog v-model="filtersModal">
+    <q-card style="min-width: 350px">
+      <q-card-section>
+        <div class="text-h6">Visual Filters</div>
+      </q-card-section>
+
+      <q-card-section class="q-pt-none">
+        <p>
+          Visual filters are effects that can make the board either easier to
+          read (e.g. boosting contrast) or harder to read (e.g. adding blur).
+          They can also be used to adjust the board display to your comfort
+          (e.g. reducing brightness if playing at night). Please note that
+          having lots of filters active may affect performance. Preview for blur
+          filter may be inaccurate as it doesn't take into account Tile Size.
+        </p>
+        <q-checkbox
+          v-model="enableFilters"
+          label="Enable Visual Filters"
+        /><br />
+        <template v-if="enableFilters">
+          <q-separator />
+          <div class="row justify-around q-my-md" style="gap: 10px">
+            <img
+              src="/img/supporting/filter_preview_light.png"
+              loading="lazy"
+              :style="{ filter: filterStyleProperty }"
+              class="q-mx-sm"
+            />
+            <img
+              src="/img/supporting/filter_preview_dark.png"
+              loading="lazy"
+              :style="{ filter: filterStyleProperty }"
+              class="q-mx-sm"
+            />
+          </div>
+          <div class="row items-center">
+            <q-checkbox
+              v-model="enableFilterBlur"
+              label="Enable Blur"
+              class="col-5"
+              style="min-width: 160px"
+            />
+            <div class="col-7">
+              <q-input
+                v-if="enableFilterBlur"
+                v-model.number="filterBlurValue"
+                label="Blurriness (pixels)"
+                type="number"
+                dense
+                min="0"
+                max="1000"
+                style="width: 200px"
+              />
+            </div>
+          </div>
+          <div class="row items-center">
+            <q-checkbox
+              v-model="enableFilterBrightness"
+              label="Enable Brightness"
+              class="col-5"
+              style="min-width: 160px"
+            />
+            <div class="col-7">
+              <q-input
+                v-if="enableFilterBrightness"
+                v-model.number="filterBrightnessValue"
+                label="Brightness (< 1 is darker | > 1 is lighter)"
+                type="number"
+                dense
+                min="0"
+                max="1000"
+                step="0.1"
+                style="width: 200px"
+              />
+            </div>
+          </div>
+          <div class="row items-center">
+            <q-checkbox
+              v-model="enableFilterContrast"
+              label="Enable Contrast"
+              class="col-5"
+              style="min-width: 160px"
+            />
+            <div class="col-7">
+              <q-input
+                v-if="enableFilterContrast"
+                v-model.number="filterContrastValue"
+                label="Contrast (< 1 is less | > 1 is more)"
+                type="number"
+                dense
+                min="0"
+                max="1000"
+                step="0.1"
+                style="width: 200px"
+              />
+            </div>
+          </div>
+          <div class="row items-center">
+            <q-checkbox
+              v-model="enableFilterGrayscale"
+              label="Enable Grayscale"
+              class="col-5"
+              style="min-width: 160px"
+            />
+            <div class="col-7">
+              <q-input
+                v-if="enableFilterGrayscale"
+                v-model.number="filterGrayscaleValue"
+                label="Grayscale (0 is normal | 1 is full)"
+                type="number"
+                dense
+                min="0"
+                max="1"
+                step="0.1"
+                style="width: 200px"
+              />
+            </div>
+          </div>
+          <div class="row items-center">
+            <q-checkbox
+              v-model="enableFilterHueRotate"
+              label="Enable Hue Rotate"
+              class="col-5"
+              style="min-width: 160px"
+            />
+            <div class="col-7">
+              <q-input
+                v-if="enableFilterHueRotate"
+                v-model.number="filterHueRotateValue"
+                label="Hue Rotate (degrees)"
+                type="number"
+                dense
+                min="0"
+                max="360"
+                style="width: 200px"
+              />
+            </div>
+          </div>
+          <div class="row items-center">
+            <q-checkbox
+              v-model="enableFilterInvert"
+              label="Enable Invert"
+              class="col-5"
+              style="min-width: 160px"
+            />
+            <div class="col-7">
+              <q-input
+                v-if="enableFilterInvert"
+                v-model.number="filterInvertValue"
+                label="Invert (0 is normal | 1 is inverted)"
+                type="number"
+                dense
+                min="0"
+                max="1"
+                step="0.1"
+                style="width: 200px"
+              />
+            </div>
+          </div>
+          <div class="row items-center">
+            <q-checkbox
+              v-model="enableFilterSaturate"
+              label="Enable Saturate"
+              class="col-5"
+              style="min-width: 160px"
+            />
+            <div class="col-7">
+              <q-input
+                v-if="enableFilterSaturate"
+                v-model.number="filterSaturateValue"
+                label="Saturation (< 1 is less | > 1 is more)"
+                type="number"
+                dense
+                min="0"
+                max="10"
+                step="0.1"
+                style="width: 200px"
+              />
+            </div>
+          </div>
+        </template>
+      </q-card-section>
+
+      <q-card-actions align="right" class="text-primary">
+        <q-btn
+          flat
+          label="Close"
+          @click="
+            filtersModal = false;
+            settingsModal = true;
+          "
+        />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -3221,6 +3491,7 @@ let statsShowRqp = useLocalStorage("ls_statsShowRqp", true);
 let statsShowCorr = useLocalStorage("ls_statsShowCorr", true);
 
 let settingsModal = ref(false);
+let filtersModal = ref(false);
 let variantsHelpModal = ref(false);
 let tileSizeSlider = useLocalStorage("ls_tileSizeSlider", 25);
 let gamePositioning = useLocalStorage("ls_gamePositioning", "centre");
@@ -3231,6 +3502,9 @@ let gameCalculatedMarginLeft = computed(() => {
     ? gameLeftPadding.value + 16 + "px"
     : gameCentrePadding.value + "px";
 });
+let gameVerticalPadding = useLocalStorage("ls_gameVerticalPadding", "16px"); //Note we call this padding but it is implemented as margin.
+let gameTopPadding = useLocalStorage("ls_gameTopPadding", 16); //Note we call this padding but it is implemented as margin.
+let gameBottomPadding = useLocalStorage("ls_gameBottomPadding", 16); //Note we call this padding but it is implemented as margin.
 let centreInterface = useLocalStorage("ls_centreInterface", true);
 let showBorders = useLocalStorage("ls_showBorders", true);
 let showTimer = useLocalStorage("ls_showTimer", true);
@@ -3326,62 +3600,15 @@ let customWarning = computed(() => {
 
 let variant = ref(Utils.routeNameToVariant(route.params.variant));
 
-/* OK TO DELETE
-// Change variant based on route
-watch(
-  () => route.params.variant,
-  (newVariant) => {
-    variant.value = Utils.routeNameToVariant(newVariant);
-  }
-);
-
-// Change route when variant is changed from dropdown
-watch(variant, (newVariant) => {
-  let desiredRouteParam = Utils.variantToRouteName(newVariant);
-
-  if (desiredRouteParam !== route.params.variant) {
-    router.push({ name: "play", params: { variant: desiredRouteParam } });
-    expectedQuery = {};
-  }
-});
-
-let expectedQuery = {}; //Used to stop unnecessary query updates.
-
-// Watch for query change
-watch(
-  () => route.query,
-  (newQuery) => {
-    function updateBoardForQueryChange() {
-      if (game && game.board) {
-        game.board.updateForQueryChange(newQuery);
-      } else {
-        //Wait a bit as game.board may be initialised later
-        setTimeout(() => {
-          updateBoardForQueryChange();
-        }, 200);
-      }
-    }
-
-    updateBoardForQueryChange();
-  },
-  { immediate: true }
-);
-*/
-
 let chordingButtons = useLocalStorage("ls_chordingButtons", "l");
 let zeroStart = useLocalStorage("ls_zeroStart", true);
 let noGuessing = useLocalStorage("ls_noGuessing", false);
 let noGuessingMaxAttempts = useLocalStorage("ls_noGuessingMaxAttempts", 10000);
-//let autoHintCriteria = useLocalStorage("ls_autoHintCriteria", "always"); //never|always|time. Criteria for when to automatically use a hint on lost games
-let autoHintCriteria = ref("always"); //never|always|time. Criteria for when to automatically use a hint on lost games
-//let autoHintTime = useLocalStorage("ls_autoHintTime", 10);
-let autoHintTime = ref(10);
-//let autoHintDelay = useLocalStorage("ls_autoHintDelay", 750); //ms to linger on mines before showing hint. 0 = instant (sync)
-let autoHintDelay = ref(750); //ms to linger on mines before showing hint. 0 = instant (sync)
-//let autoHintVariants = useLocalStorage("ls_autoHintVariants", "not eff boards");
-let autoHintVariants = ref("not eff boards");
-//let autoHintBackdrop = useLocalStorage("ls_autoHintBackdrop", "mines"); //numbers, mines, no mines, minimal
-let autoHintBackdrop = ref("mines"); //numbers, mines, no mines, minimal
+let autoHintCriteria = useLocalStorage("ls_autoHintCriteria", "time"); //never|always|time. Criteria for when to automatically use a hint on lost games
+let autoHintTime = useLocalStorage("ls_autoHintTime", 5);
+let autoHintDelay = useLocalStorage("ls_autoHintDelay", 0); //ms to linger on mines before showing hint. 0 = instant (sync)
+let autoHintVariants = useLocalStorage("ls_autoHintVariants", "not eff boards");
+let autoHintBackdrop = useLocalStorage("ls_autoHintBackdrop", "no mines"); //numbers, mines, no mines, minimal
 
 let begEffPreset = ref(200);
 let begEffOptions = Object.freeze([200, 210, 225, "custom"]);
@@ -3685,6 +3912,49 @@ let keyboardClickOpenOnKeyDown = useLocalStorage(
 );
 let keyboardClickDigKey = useLocalStorage("ls_keyboardClickDigKey", "z");
 let keyboardClickFlagKey = useLocalStorage("ls_keyboardClickFlagKey", "x");
+
+let enableFilters = useLocalStorage("ls_enableFilters", false);
+let enableFilterBlur = useLocalStorage("ls_enableFilterBlur", false);
+let enableFilterBrightness = useLocalStorage(
+  "ls_enableFilterBrightness",
+  false
+);
+let enableFilterContrast = useLocalStorage("ls_enableFilterContrast", false);
+let enableFilterGrayscale = useLocalStorage("ls_enableFilterGrayscale", false);
+let enableFilterHueRotate = useLocalStorage("ls_enableFilterHueRotate", false);
+let enableFilterInvert = useLocalStorage("ls_enableFilterInvert", false);
+let enableFilterSaturate = useLocalStorage("ls_enableFilterSaturate", false);
+let filterBlurValue = useLocalStorage("ls_filterBlurValue", 2);
+let filterBrightnessValue = useLocalStorage("ls_filterBrightnessValue", 0.5);
+let filterContrastValue = useLocalStorage("ls_filterContrastValue", 1.5);
+let filterGrayscaleValue = useLocalStorage("ls_filterGrayscaleValue", 1);
+let filterHueRotateValue = useLocalStorage("ls_filterHueRotateValue", 45);
+let filterInvertValue = useLocalStorage("ls_filterInvertValue", 1);
+let filterSaturateValue = useLocalStorage("ls_filterSaturateValue", 2);
+
+let filterStyleProperty = computed(() => {
+  if (!enableFilters.value) {
+    return "none";
+  }
+
+  let filters = [];
+
+  enableFilterInvert.value &&
+    filters.push(`invert(${filterInvertValue.value})`);
+  enableFilterHueRotate.value &&
+    filters.push(`hue-rotate(${filterHueRotateValue.value}deg)`);
+  enableFilterSaturate.value &&
+    filters.push(`saturate(${filterSaturateValue.value})`);
+  enableFilterGrayscale.value &&
+    filters.push(`grayscale(${filterGrayscaleValue.value})`);
+  enableFilterContrast.value &&
+    filters.push(`contrast(${filterContrastValue.value})`);
+  enableFilterBrightness.value &&
+    filters.push(`brightness(${filterBrightnessValue.value})`);
+  enableFilterBlur.value && filters.push(`blur(${filterBlurValue.value}px)`);
+
+  return filters.length > 0 ? filters.join(" ") : "none";
+});
 
 const vFocus = {
   //directive for focussing an element when mounted, currently unused, because we use autofocus prop for q-input instead
@@ -5609,7 +5879,9 @@ class Board {
     let unflooredCoords = coordsData.unflooredCoords;
     let canvasCoords = coordsData.canvasCoords;
 
-    this.lastSquaresChangedForAutoHint = [];
+    if (this.gameStage === "running") {
+      this.lastSquaresChangedForAutoHint = [];
+    }
 
     if (touchIdentifier === "mouse" && chordingButtons.value === "l+r") {
       //Update states for l+r chord
@@ -8221,10 +8493,10 @@ class Board {
           probCalcBoard[x][y] = cellState;
         } else if (cellState === CONSTANTS.UNREVEALED) {
           probCalcBoard[x][y] = 10;
-        } else if (cellState === CONSTANTS.FLAG) {
-          probCalcBoard[x][y] = 11;
         } else {
           probCalcBoard[x][y] = 10; //Everything else can just be treated as unrevealed
+          //Note that we also include flags in here as mstoollib crashes if we were to send these
+          //as player marked flags (11) in the case where the player places flags in impossible positions
         }
       }
     }
@@ -8414,10 +8686,17 @@ class Board {
           //This is a revealed number (as opposed to unopened/bomb/flag etc), so doesn't need a hint
           //Use probCalcBoard here as it has last move removed in case of loss hint.
           render = "skip";
-        } else if (probCalcBoard[x][y] === 11 && probabilityGrid[x][y] === 1) {
+        } else if (
+          this.tilesArray[x][y].state === CONSTANTS.FLAG &&
+          probabilityGrid[x][y] === 1
+        ) {
           //Player marked as flag and it's 100% a mine
           render = "skip";
-        } else if (probCalcBoard[x][y] === 11 && probabilityGrid[x][y] < 1) {
+        } else if (
+          (this.tilesArray[x][y].state === CONSTANTS.FLAG ||
+            this.tilesArray[x][y].state === CONSTANTS.MINEWRONG) &&
+          probabilityGrid[x][y] < 1
+        ) {
           //Player marked as flag and this is only probabilistic, so still need to show probability
           render = "onflag";
         } else if (this.tilesArray[x][y].state === CONSTANTS.MINERED) {
@@ -8448,7 +8727,7 @@ class Board {
               autoHintBackdrop.value === "numbers" ||
               autoHintBackdrop.value === "mines"
             ) {
-              this.tilesArray[x][y].hint.hintTexture = "tr2_mine";
+              this.tilesArray[x][y].hint.hintTexture = "hint_mine";
             } else {
               this.tilesArray[x][y].hint.hintTexture = CONSTANTS.UNREVEALED;
             }
@@ -8857,9 +9136,6 @@ class Board {
 
   drawTilesHint() {
     const suppressHighlight = autoHintBackdrop.value === "minimal";
-    const boostMineVisibility =
-      autoHintBackdrop.value === "numbers" ||
-      autoHintBackdrop.value === "mines";
 
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
@@ -8867,8 +9143,7 @@ class Board {
           x * this.tileSize + boardHorizontalPadding.value,
           y * this.tileSize + boardTopPadding.value,
           this.tileSize,
-          suppressHighlight,
-          boostMineVisibility
+          suppressHighlight
         );
       }
     }

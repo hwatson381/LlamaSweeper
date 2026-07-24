@@ -1,0 +1,6 @@
+This file is just for writing down what changes I've done so that I can announce on discord for each update
+
+Added visual filters
+
+fixed readability issues on probability display and changed default settings
+

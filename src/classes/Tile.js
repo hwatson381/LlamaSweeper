@@ -140,7 +140,7 @@ class Tile {
     }
   }
 
-  drawHint(rawX, rawY, size, suppressHighlight, boostMineVisibility) {
+  drawHint(rawX, rawY, size, suppressHighlight) {
     if (this.hint.probability === null) {
       return;
     }
@@ -161,40 +161,7 @@ class Tile {
       }
     }
 
-    if (this.hint.render === "onflag") {
-      //Do a grey background for readability
-      ctx.fillStyle = this.skinManager.getHintReadabilityBackground("onflag");
-      ctx.fillRect(rawX, rawY, size, size);
-    } else if (this.hint.render === "onmine" && boostMineVisibility) {
-      //Do ligher grey background for readability
-      ctx.fillStyle = this.skinManager.getHintReadabilityBackground("onmine");
-      ctx.fillRect(rawX, rawY, size, size);
-    } else if (this.hint.render === "onblastmine" && boostMineVisibility) {
-      //Do darker grey background for readability
-      ctx.fillStyle = this.skinManager.getHintReadabilityBackground("onblastmine");
-      ctx.fillRect(rawX, rawY, size, size);
-    }
-
-    if (this.hint.highlight && !suppressHighlight) {
-      //Do a green highlight
-
-      /* OK TO DELETE (old highlight, transparent green background)
-      ctx.fillStyle = 'rgba(0, 255, 0, 0.25)';
-      ctx.fillRect(rawX, rawY, size, size);
-      */
-
-      const highlightColour = this.skinManager.getHighlightColour();
-
-      const thickness = 0.08 * size;
-
-      //green
-      ctx.lineWidth = thickness;
-      ctx.strokeStyle = highlightColour;
-      ctx.strokeRect(rawX + thickness * 1 / 2, rawY + thickness * 1 / 2, size - thickness, size - thickness);
-
-    }
-
-    const textScale = 0.4 * size;
+    const textScale = 0.45 * size;
     const maxWidth = 1.7 * textScale;
     let xText = rawX + size * 0.5;
     let yText = rawY + size * 0.5 + textScale * 0.1; //Text nudged slighty down so it looks more visually centred
@@ -213,12 +180,44 @@ class Tile {
       text = Math.round(percent);
     }
 
-    ctx.fillStyle = hintColour;
+
     //ctx.font = `${textScale}px monospace`;
     ctx.font = `bold ${textScale}px "Roboto", "-apple-system", "Helvetica Neue", Helvetica, Arial, sans-serif`;
 
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
+
+    const textMeasurements = ctx.measureText(text);
+    let textBgPadding = size * (window.paddingMultiplier ?? 0.04);
+    const textBgWidth = textMeasurements.width + 2 * textBgPadding;
+    const textBgHeight = textMeasurements.actualBoundingBoxAscent + textMeasurements.actualBoundingBoxDescent + 2 * textBgPadding;
+    const textBgStartX = xText - textMeasurements.actualBoundingBoxLeft - textBgPadding;
+    const textBgStartY = yText - textMeasurements.actualBoundingBoxAscent - textBgPadding;
+
+    if (this.hint.render === "onflag") {
+      ctx.fillStyle = this.skinManager.getHintReadabilityRectangle();
+      ctx.fillRect(textBgStartX, textBgStartY, textBgWidth, textBgHeight);
+    } else if (this.hint.render === "onmine") {
+      //Do nothing as we don't show the background rectangle when on mines.
+    } else if (this.hint.render === "onblastmine") {
+      ctx.fillStyle = this.skinManager.getHintReadabilityRectangle();
+      ctx.fillRect(textBgStartX, textBgStartY, textBgWidth, textBgHeight);
+    }
+
+    if (this.hint.highlight && !suppressHighlight) {
+      //Do a green highlight
+      const highlightColour = this.skinManager.getHighlightColour();
+
+      const thickness = 0.08 * size;
+
+      //green
+      ctx.lineWidth = thickness;
+      ctx.strokeStyle = highlightColour;
+      ctx.strokeRect(rawX + thickness * 1 / 2, rawY + thickness * 1 / 2, size - thickness, size - thickness);
+
+    }
+
+    ctx.fillStyle = hintColour;
     ctx.fillText(text, xText, yText, maxWidth);
   }
 

@@ -22,6 +22,7 @@ class SkinManager {
       [CONSTANTS.MINE, "/tiles/mine.svg"],
       [CONSTANTS.MINERED, "/tiles/mine_red.svg"],
       [CONSTANTS.MINEWRONG, "/tiles/mine_wrong.svg"],
+      ['hint_mine', '/tiles/hint_mine.svg'],
       ['tr_flag', '/tiles_transparent/flag.svg'],
       ['tr_mine', '/tiles_transparent/mine.svg'],
       ['tr_0', '/tiles_transparent/type0.svg'],
@@ -221,11 +222,7 @@ class SkinManager {
         defaultAlpha: 1,
         floatingAlpha: 0.3,
         floating: '#eaeaea',
-        readabilityBackground: {
-          onflag: '#ffffff44',
-          onmine: '#ffffff44',
-          onblastmine: '#ffffff44',
-        }
+        readabilityRectangle: '#ddddf7ff',
       }
     };
 
@@ -259,11 +256,7 @@ class SkinManager {
         defaultAlpha: 1,
         floatingAlpha: 0.2,
         floating: '#898F93',
-        readabilityBackground: {
-          onflag: '#00000044',
-          onmine: '#00000000',
-          onblastmine: '#00000000',
-        }
+        readabilityRectangle: '#222a3aff',
       }
     }
 
@@ -432,18 +425,8 @@ class SkinManager {
     return `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
   }
 
-  getHintReadabilityBackground(type) {
-    const hintSkin = this.colours[this.refs.boardSkin.value].hint;
-    switch (type) {
-      case "onflag":
-        return hintSkin.readabilityBackground.onflag;
-      case "onmine":
-        return hintSkin.readabilityBackground.onmine;
-      case "onblastmine":
-        return hintSkin.readabilityBackground.onblastmine;
-      default:
-        throw new Error("Invalid hint readability background type");
-    }
+  getHintReadabilityRectangle() {
+    return this.colours[this.refs.boardSkin.value].hint.readabilityRectangle;
   }
 }
 
