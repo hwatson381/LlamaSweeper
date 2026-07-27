@@ -595,8 +595,14 @@ Or can we fix the mobile bug
 
 =====
 
-copy board as image? This is a bit ugly as can't be used during a game though? Export menu is looking empty though so makes sense
-
-Only board not decorations? Is that just excluding the mouse?
-
+refactoring next.
 Bonus board editor stuff can happen after
+
+Reducing file size of main file is critically important
+Extract board logic, input handling, hint calc, drawing into classes
+
+Possible improvements we may want to do for export image but will probably never get around to:
+High dpi canvas support (we need to do this in the first place), better styling (rounded corners, gradient bg, hairline border around stats panel)
+Stop flicker on screenshot by cloning nodes to offscreen area instead of hiding .screenshot-hidden in place
+scale images/canvas to be more consistent instead of using size on website
+Have maximum or minimum sizes for things to prevent too large relative size difference between stats panel and board sizes.

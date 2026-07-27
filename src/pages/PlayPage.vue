@@ -458,6 +458,7 @@
           v-if="showStatsBlock"
           style="float: left; margin-bottom: 10px"
           class="side-panel"
+          id="stats-block"
         >
           <q-card-section style="font-family: monospace">
             <div
@@ -671,7 +672,7 @@
               </span>
               <span v-else> running </span>
 
-              <div v-if="ziniRunnerActive">
+              <div v-if="ziniRunnerActive" class="screenshot-hidden">
                 Progress: {{ ziniRunnerPercentageProgress }}<br />
                 Est. Duration: {{ ziniRunnerExpectedDuration }}<br />
                 Est. Finish: {{ ziniRunnerExpectedFinishTime }}<br />
@@ -684,8 +685,8 @@
                 </span>
               </div>
             </div>
-            <br />
-            <div class="row justify-center q-mb-md">
+            <br class="screenshot-hidden" />
+            <div class="row justify-center q-mb-md screenshot-hidden">
               <q-btn-dropdown color="primary" label="Open In">
                 <q-list>
                   <q-item
@@ -743,7 +744,7 @@
                 </q-list>
               </q-btn-dropdown>
             </div>
-            <div class="row justify-center q-mb-md">
+            <div class="row justify-center q-mb-md screenshot-hidden">
               <q-btn-dropdown color="primary" label="Export">
                 <q-list>
                   <q-item
@@ -777,10 +778,20 @@
                       <q-item-label>RawVF Download</q-item-label>
                     </q-item-section>
                   </q-item>
+
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="game.board.showExportScreenshotDialogue()"
+                  >
+                    <q-item-section>
+                      <q-item-label>Copy Screenshot</q-item-label>
+                    </q-item-section>
+                  </q-item>
                 </q-list>
               </q-btn-dropdown>
             </div>
-            <div class="row justify-center">
+            <div class="row justify-center screenshot-hidden">
               <q-btn-dropdown
                 v-if="variant !== 'mean openings'"
                 color="primary"
@@ -882,6 +893,7 @@
           "
           style="float: left; margin-bottom: 10px"
           class="side-panel"
+          id="zini-explorer-analyse-block"
         >
           <q-card-section>
             <q-markup-table class="q-mb-md" dense flat bordered>
@@ -915,7 +927,7 @@
               {{ analyse3bv }} 3bv / {{ analyseZiniTotal }} zini
             </p>
             <p class="text-center text-h5 q-mb-sm">{{ analyseEff }}% eff</p>
-            <div class="row justify-center">
+            <div class="row justify-center screenshot-hidden">
               <q-btn
                 @click="runZiniAlgorithmModal = true"
                 color="positive"
@@ -998,8 +1010,8 @@
               label="Show Premiums"
               @update:model-value="game?.board?.ziniExplore?.updateUiAndBoard()"
             />
-            <br />
-            <div class="row justify-center q-mb-md">
+            <br class="screenshot-hidden" />
+            <div class="row justify-center q-mb-md screenshot-hidden">
               <q-btn-dropdown color="primary" label="Open In">
                 <q-list>
                   <q-item
@@ -1034,7 +1046,7 @@
                 </q-list>
               </q-btn-dropdown>
             </div>
-            <div class="row justify-center q-mb-md">
+            <div class="row justify-center q-mb-md screenshot-hidden">
               <q-btn-dropdown color="primary" label="Export">
                 <q-list>
                   <q-item
@@ -1056,10 +1068,20 @@
                       <q-item-label>MBF Export</q-item-label>
                     </q-item-section>
                   </q-item>
+
+                  <q-item
+                    clickable
+                    v-close-popup
+                    @click="game.board.showExportScreenshotDialogue()"
+                  >
+                    <q-item-section>
+                      <q-item-label>Copy Screenshot</q-item-label>
+                    </q-item-section>
+                  </q-item>
                 </q-list>
               </q-btn-dropdown>
             </div>
-            <div class="row justify-center">
+            <div class="row justify-center screenshot-hidden">
               <q-btn
                 @click="
                   game.board.ziniExplore.isReplayPossible() &&
@@ -3307,6 +3329,10 @@ body.body--dark .stats-click-table-container {
   z-index: 10000;
   box-shadow: 3px 4px 10px #000000ad;
 }
+
+.screenshot-active .screenshot-hidden {
+  display: none !important;
+}
 </style>
 
 <script setup>
@@ -3340,6 +3366,8 @@ import ReplayBar from "src/components/ReplayBar.vue";
 
 import CONSTANTS from "src/includes/Constants";
 import playSound from "src/includes/Sounds";
+
+import { toBlob, toCanvas } from "html-to-image";
 
 import seedrandom from "seedrandom";
 import { useLocalStorage } from "@vueuse/core";
@@ -3493,8 +3521,7 @@ function handlePageScroll(event) {
 }
 
 function scrollToBoard() {
-  const element = document.getElementById("main-canvas");
-  element.scrollIntoView({
+  mainCanvas.value.scrollIntoView({
     behavior: "instant",
     block: "center",
     inline: "nearest",
@@ -5237,7 +5264,7 @@ class Board {
           const now = new Date();
 
           //Get current time. Then convert to desired format, hacky way is with ISOString
-          //e.g. 2011-10-05T14:48:00.000Z -> 2011100_144800
+          //e.g. 2011-10-05T14:48:00.000Z -> 20111005_144800
           const exportTimestamp = now
             .toISOString()
             .replace("T", "_")
@@ -10186,6 +10213,199 @@ class Board {
   sendToStrangeDust() {
     if (this.stats) {
       RawVF.sendToStrangeDust(this.stats);
+    }
+  }
+
+  showExportScreenshotDialogue() {
+    $q.dialog({
+      title: "Screenshot Export",
+      message: "Choose an option:",
+      options: {
+        type: "radio",
+        model: "copy-with-stats",
+        items: [
+          { label: "Copy Board With Stats Panel", value: "copy-with-stats" },
+          { label: "Copy Board Only", value: "copy-board" },
+          {
+            label: "Download Board With Stats Panel",
+            value: "download-with-stats",
+          },
+          { label: "Download Board Only", value: "download-board" },
+        ],
+      },
+      cancel: true,
+      persistent: true,
+    }).onOk((data) => {
+      this.exportBoardScreenshot(data);
+    });
+  }
+
+  async exportBoardScreenshot(exportOption) {
+    const screenshotIncludesStats = exportOption.endsWith("with-stats");
+    const screenshotIsCopied = exportOption.startsWith("copy");
+    const blob = await this.getScreenshotBlob(screenshotIncludesStats);
+
+    if (!blob) {
+      $q.notify({
+        message: "Export failed.",
+        color: "negative",
+        timeout: 1500,
+      });
+      return;
+    }
+
+    if (screenshotIsCopied) {
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({ "image/png": blob }),
+        ]);
+        $q.notify({ message: "Copied.", color: "purple", timeout: 700 });
+      } catch (e) {
+        $q.notify({
+          message: "Copy failed.",
+          color: "negative",
+          timeout: 1500,
+        });
+      }
+    } else {
+      const now = new Date();
+
+      //Get current time. Then convert to desired format, hacky way is with ISOString
+      //e.g. 2011-10-05T14:48:00.000Z -> 20111005_144800
+      const exportTimestamp = now
+        .toISOString()
+        .replace("T", "_")
+        .replace(/\.\d{3}Z/, "")
+        .replaceAll(":", "")
+        .replaceAll("-", "");
+
+      const fileName = `screenshot_${this.width}x${this.height}_${this.mineCount}-${exportTimestamp}.png`;
+
+      const status = exportFile(fileName, blob, "image/png");
+
+      if (status !== true) {
+        $q.notify({
+          message: "Download failed.",
+          color: "negative",
+          timeout: 1500,
+        });
+      }
+    }
+  }
+
+  async getScreenshotBlob(includeStats) {
+    //Easy case, only copy the board. Early return
+    if (!includeStats) {
+      const blob = await toBlob(mainCanvas.value); //Using html-to-image here as maincanvas.value.toBlob() would miss css filters applied to canvas.
+
+      return blob;
+    } else {
+      //Hard case, copy the board with stats and format it nicely, including a footer
+
+      const element =
+        document.getElementById("stats-block") ??
+        document.getElementById("zini-explorer-analyse-block");
+
+      if (!element) {
+        window.alert("missing side panel");
+        throw new Error("missing side panel");
+      }
+
+      element.classList.add("screenshot-active"); //Add a class when screenshotting element as this hides certain things we don't want in screenshot
+
+      let sidePanelCanvas;
+      try {
+        sidePanelCanvas = await toCanvas(element);
+      } finally {
+        element.classList.remove("screenshot-active");
+      }
+
+      const boardCanvas = await toCanvas(mainCanvas.value); //Using html-to-image here as maincanvas.value would miss css filters applied to canvas.
+
+      const gap = 15; //Gap between main canvas and side panel
+      const padding = 15; //Padding around the whole image
+
+      const footerHeight = 32;
+      const footerFont = `500 19px "Roboto", "-apple-system", "Helvetica Neue", Helvetica, Arial, sans-serif`;
+      const footerTextHorizontalMargin = 10;
+
+      const width =
+        boardCanvas.width + gap + sidePanelCanvas.width + 2 * padding;
+      const height =
+        Math.max(boardCanvas.height, sidePanelCanvas.height) +
+        footerHeight +
+        2 * padding;
+
+      const out = document.createElement("canvas");
+      out.width = width;
+      out.height = height;
+
+      const outCtx = out.getContext("2d");
+      outCtx.fillStyle = $q.dark.isActive ? "#121212" : "#E8E6DE";
+
+      outCtx.fillRect(0, 0, width, height); //Background
+      outCtx.drawImage(boardCanvas, padding, padding);
+      outCtx.drawImage(
+        sidePanelCanvas,
+        boardCanvas.width + gap + padding,
+        padding
+      );
+
+      //footer
+      outCtx.fillStyle = $q.dark.isActive ? "#1976D2" : "#1976D2";
+      outCtx.fillRect(0, height - footerHeight, width, footerHeight);
+      outCtx.fillStyle = $q.dark.isActive ? "#ffffff" : "#ffffff";
+      outCtx.font = footerFont;
+      outCtx.textBaseline = "middle";
+      outCtx.textAlign = "left";
+
+      const textVariant = `mode=${this.variant}`;
+      const textBoard = `board=${this.width}x${this.height}/${this.mineCount}`;
+      const textWebsite = "llamasweeper.com";
+      const space = "    ";
+      let footerTextLeft = `${textVariant}${space}${textBoard}`;
+      let footerTextRight = textWebsite;
+
+      //Test if we have enough space with footerLeft + footerRight + some space in middle
+      if (
+        outCtx.measureText(`${footerTextLeft}${space}${footerTextRight}`)
+          .width >
+        width - 2 * footerTextHorizontalMargin
+      ) {
+        //Not enough space, remove website
+        footerTextRight = "";
+      }
+
+      //Test if we have enough space to show only left footer
+      if (
+        outCtx.measureText(footerTextLeft).width >
+        width - 2 * footerTextHorizontalMargin
+      ) {
+        //Not enough space, only show mode
+        //We assume this will always fit, as the stats panel is wide enough to show this
+        footerTextLeft = textVariant;
+      }
+
+      //draw left footer text
+      outCtx.fillText(
+        footerTextLeft,
+        footerTextHorizontalMargin,
+        height - footerHeight / 2
+      );
+
+      //draw right footer text
+      if (footerTextRight.length > 0) {
+        outCtx.textAlign = "right";
+        outCtx.fillText(
+          footerTextRight,
+          width - footerTextHorizontalMargin,
+          height - footerHeight / 2
+        );
+      }
+
+      const blob = await new Promise((resolve) => out.toBlob(resolve));
+
+      return blob;
     }
   }
 }

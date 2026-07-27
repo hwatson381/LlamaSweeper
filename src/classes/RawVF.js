@@ -275,7 +275,7 @@ class RawVF {
     let now = new Date();
 
     //Get current time. Then convert to desired format, hacky way is with ISOString
-    //e.g. 2011-10-05T14:48:00.000Z -> 2011100_144800
+    //e.g. 2011-10-05T14:48:00.000Z -> 20111005_144800
     const exportTimestamp = now.toISOString()
       .replace("T", "_")
       .replace(/\.\d{3}Z/, "")

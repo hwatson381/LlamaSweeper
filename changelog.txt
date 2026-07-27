@@ -1,8 +1,10 @@
 This file is just for writing down what changes I've done so that I can announce on discord for each update
 
 Added visual filters
-(try brightness 5, hue-rotate 150, dark skin for blindsweeper)
+(try brightness 4, grayscale 1, dark skin for blindsweeper)
 
 fixed readability issues on probability display and changed default settings
 
 Add more options for displaying, default is now alphabetical x-axis.
+
+Add option to export image (including stats panel)
