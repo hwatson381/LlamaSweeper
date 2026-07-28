@@ -1,0 +1,518 @@
+================================================================================
+PLAYPAGE.VUE REFACTORING PLAN
+================================================================================
+Goal: Reduce src/pages/PlayPage.vue (currently 10,451 lines) into smaller,
+      separately-loadable files so that AI-assisted edits and human navigation
+      only need to touch the relevant slice, not the whole monolith.
+
+This plan is descriptive/strategic. It does NOT change any code. Line numbers
+are accurate as of the current file and will drift as edits are made, so treat
+them as "where to look", not exact anchors.
+
+
+================================================================================
+1. CURRENT FILE MAP (what lives where)
+================================================================================
+Total: 10,451 lines.
+
+  <template>          lines 1    – 3160   (~3160 lines)
+  <style scoped>      lines 3162 – 3336   (~175  lines)
+  <script setup>      lines 3338 – 10451  (~7115 lines)
+
+Template breakdown (1–3160):
+  1    – 32     Title text + "dev stuff" box (dev-only buttons)
+  34   – 70     Variant dropdown + "variants info" / "display settings" buttons
+  72   – 300    Board size presets (beg/int/exp/custom) + mines/config inputs
+  301  – 414    Eff boards config strip (shown only for variant 'eff boards')
+  415  – 457    Game container start (#game-container, main-canvas)
+  458  – ~895   Stats block (v-if="showStatsBlock") — large (~440 lines)
+  896  – ~1135  Zini explorer analysis block (#zini-explorer-analyse-block)
+                + quickpaint buttons
+  1138 – ~1387  Eff boards config panel (v-if showQuickPaintOptions / eff)
+  1388 – 2111   Settings "accordion" (7+ q-expansion-item panels) — large (~720)
+  2120 – 3057   MODALS: 10 x q-dialog
+                  settingsModal            2120–2322
+                  filtersModal             2324–2511
+                  coordsModal              2513–2557
+                  variantsHelpModal        2559–2622
+                  quickPaintHelpModal      2624–2695
+                  pttaImportModal          2697–2732
+                  mbfImportModal           2734–2781
+                  runZiniAlgorithmModal    2783–2951
+                  effBoardsBenchmarkModal  2953–3013
+                  effBoardsHiddenSettings  3015–3057
+  3060 – 3120   Mobile flag-toggle button
+  3126 – 3152   <ReplayBar> (ALREADY a component — good)
+  3154 – 3160   Hidden icon preload
+
+Script breakdown (3338–10451):
+  3338 – 3436   Imports, route/router, $q, wasmAvailable, defineOptions
+  3438 – 3527   onMounted / onUnmounted + key/scroll handlers
+                (handleKeyDown, handleKeyUp, checkFocusForKeyPress,
+                 handlePageScroll, scrollToBoard)
+  3529 – 3590   Stats display refs (showStatsBlock, statsObject, stats toggles)
+  3591 – 4067   ~174 module-scoped reactive refs + computeds
+                (display/scale, coords, board size, variant, chording,
+                 no-guess, auto-hint, eff-boards presets, quickpaint, edit,
+                 mobile/touch, sounds, mean openings, replay, analyse/zini,
+                 keyboard-click, filters)  ← THE SHARED STATE
+  4068 – 4595   Dev/testing code: bulkrun()..bulkrun8(), dialogTest(),
+                seedRandomTest()  (~530 lines, dev-only)
+  4596 – 4716   class Game        (~120 lines — thin delegator to Board)
+  4717 – 10412  class Board       (~5700 lines — DOES EVERYTHING)
+  10413– 10417  class BoardHistory (empty stub)
+  10419– 10450  Singletons: benchmark, skinManager, effShuffleManager,
+                statsWorkerManager, boardHistory, game
+
+
+================================================================================
+2. THE CORE ARCHITECTURAL PROBLEM (read this first)
+================================================================================
+Everything is entangled through ~174 module-scoped reactive refs declared inside
+<script setup>. Because Game/Board are defined *inside* the same <script setup>
+block, they close over those refs directly (e.g. `boardWidth.value`,
+`tileSizeSlider.value`, `noGuessing.value`). The Board class alone reads ~73
+distinct `.value` refs by closure. The template reads the same refs directly and
+calls `game.board.<method>` in ~40 places.
+
+This closure coupling is the single reason the file has never been split:
+  - You cannot move the Board class to its own .js file without giving it access
+    to those refs.
+  - You cannot cleanly extract template chunks into child components without
+    giving those components access to the same refs.
+
+GOOD NEWS: the codebase already has the solution pattern. Several classes are
+already extracted and receive their reactive dependencies via a "refs object"
+constructor argument:
+  - ZiniExplore(board, refs)          -> uses this.refs.analyseAlgorithm.value
+  - SkinManager({ boardSkin, ... })
+  - EffShuffleManager({ minimumEff, boardWidth, ... }, { begEffOptions, ... })
+So dependency-injection-of-refs is an established, working pattern here.
+
+THE ENABLING REFACTOR (do this before large extractions):
+  Move the ~174 shared refs out of <script setup> into one or more composables
+  (e.g. src/composables/useSettings.js or several grouped ones). Each returns
+  its refs. <script setup> then does `const settings = useSettings()` and the
+  extracted Board class / child components import the same composable. Because
+  useLocalStorage/ref/computed are just module-level reactive values, a
+  composable that instantiates them once (module singleton) behaves identically
+  to today, but is now importable from anywhere.
+
+  This is mostly mechanical (cut/paste + prefix references), low logic-risk, but
+  it touches a lot of lines, so do it in grouped batches and test between each.
+
+
+================================================================================
+3. RECOMMENDED STRATEGY & SEQUENCING
+================================================================================
+Work in order of increasing risk. Ship and test after each phase.
+
+  Phase 0  Quick wins that need no state untangling (dev code, style, stubs).
+  Phase 1  Extract shared refs into composables (the enabler).
+  Phase 2  Extract the Board class (+ Game, BoardHistory) into class files.
+  Phase 3  Split the Board class internally by responsibility (mixins/helpers).
+  Phase 4  Extract template chunks into child components (needs Phase 1 done).
+
+Phases 2 and 4 both depend on Phase 1. Phase 3 depends on Phase 2. Phase 0 is
+independent and can be done immediately.
+
+Rough size impact (very approximate lines removed from PlayPage.vue):
+  Phase 0:  ~700 lines   (dev/testing + trivial)
+  Phase 2:  ~5900 lines  (Board+Game+BoardHistory moved out)
+  Phase 4:  ~1500–2000   (template components)
+  => PlayPage.vue could realistically drop from 10.4k to ~2–3k lines.
+
+
+================================================================================
+4. DETAILED BREAKDOWN BY PIECE
+================================================================================
+
+--------------------------------------------------------------------------------
+PHASE 0 — QUICK WINS (independent, do now)
+--------------------------------------------------------------------------------
+
+[0a] Dev/testing code — bulkrun()..bulkrun8(), dialogTest(), seedRandomTest()
+     Location: script 4068–4595 (~530 lines). Template dev box: 15–32.
+     What: developer-only benchmarking/experiment functions, gated behind
+           `devMode` and the dev box in the template.
+     How:  Move all bulkrunN/dialogTest/seedRandomTest into a dev-only helper,
+           e.g. src/classes/DevTools.js (or src/dev/bulkRuns.js). They currently
+           close over refs (bulkIterations, game, benchmark, etc.), so either:
+             (a) pass what they need as arguments from a thin wrapper, or
+             (b) after Phase 1, import the settings composable in DevTools.
+           Simplest first step: move them behind an async dynamic import so the
+           code isn't even parsed in production:
+             `onClick -> (await import('src/dev/bulkRuns.js')).bulkrun8(ctx)`
+     Difficulty: EASY (logic is isolated, dev-only, failure is low-impact).
+     Payoff: HIGH (~530 lines for near-zero risk).
+     Gotcha: verify each bulkrun's closure deps; pass a small `ctx` object
+             ({ game, benchmark, boardWidth, ... }) rather than 30 args.
+
+[0b] BoardHistory class — script 10413–10417
+     What: empty stub class + one instantiation.
+     How:  Move to src/classes/BoardHistory.js (or delete if truly unused —
+           confirm no references first). Trivial.
+     Difficulty: TRIVIAL.
+
+[0c] <style scoped> — 3162–3336 (~175 lines)
+     What: component styles.
+     How:  Can be left inline (small), OR moved to an imported CSS/SCSS file
+           (`<style scoped src="./PlayPage.css">`). Only worthwhile if you also
+           split styles alongside extracted components (Phase 4) so each child
+           owns its styles. Keep `scoped` semantics in mind — moving styles to a
+           child component changes which elements they match.
+     Difficulty: EASY, but LOW priority / low payoff on its own.
+
+
+--------------------------------------------------------------------------------
+PHASE 1 — EXTRACT SHARED REFS INTO COMPOSABLES (the enabler)
+--------------------------------------------------------------------------------
+Location: script ~3529–4067 (stats refs + ~174 settings refs/computeds).
+
+Group the refs by domain into composables under src/composables/. Suggested
+grouping (each becomes a small file that instantiates refs once and returns
+them). Grouping keeps each file focused and lets Board import only what it needs.
+
+  useDisplaySettings.js   scale/tileSize, positioning, padding, borders, timer,
+                          mineCount, centreInterface, boardSkin, topPanel* computeds
+  useCoordsSettings.js    coordsModal, coordsUseLetters/InvertedY/ZeroIndexing
+  useBoardConfig.js       boardSizePreset, custom W/H/mines, boardWidth/Height/
+                          Mines/customWarning computeds, variant
+  useGameplaySettings.js  chordingButtons, zeroStart, noGuessing(+maxAttempts),
+                          autoHint* (criteria/time/delay/variants/backdrop)
+  useEffBoardsSettings.js beg/int/exp/customEff presets+options+custom,
+                          minimumEff, excellentEff, worker counts, implementation,
+                          benchmark/hidden-settings, storage counts
+  useQuickPaintSettings.js showQuickPaintOptions, quickPaintMode/Clearable/
+                          Minimal/OnlyTrivialLogic/InitialOnlyMines, help modal
+  useTouchSettings.js     mobileModeEnabled, mobileScrollSetting, touchReveal*,
+                          touchLongPress*, touchMaxTime, touchScrollDistance,
+                          verticalExpert, faceHitbox, flagToggle*, quickStats*
+  useReplaySettings.js    replayProgress*, replayIsPlaying/Shown/Panning/Inputting,
+                          replayType, replaySpeedMultiplier, reorderZini,
+                          replayShowHidden, replayBar* bounds
+  useAnalyseSettings.js   analyseDisplayMode/Algorithm/Scope/Iterations/History/
+                          Deep*/Visualise/Forbid, classicPathBreakdown, analyse*
+                          totals, ziniRunner* status refs
+  useFilterSettings.js    enableFilter*, filter*Value, filterStyleProperty computed
+  useStatsDisplay.js      showStatsBlock, statsObject, statsShow* toggles
+
+  How to apply:
+    1. Create composable files; move the `let x = useLocalStorage(...)` / ref /
+       computed declarations into them; `export` via a returned object (module
+       singleton so state is shared: instantiate at module scope inside the
+       composable file, return the same object each call).
+    2. In <script setup>, replace the declaration block with
+         `const { boardWidth, boardHeight, ... } = useBoardConfig();`
+       (destructuring keeps existing template/handler code working unchanged).
+    3. The template needs NO changes if you destructure into the same names.
+  Difficulty: MEDIUM. Mechanical but wide-reaching; risk is typos/missed refs.
+              Do one composable at a time, run the app, then the next.
+  Payoff: Structural — unlocks Phases 2 & 4. Also removes ~500 lines of
+          declarations from PlayPage.vue.
+  Gotchas:
+    - `useTemplateRef` refs (mainCanvas, gameContainerDiv) must STAY in the
+      component that owns the DOM element — do not move these into composables.
+    - Some computeds depend on other refs across groups; keep dependency order
+      or co-locate tightly-coupled refs.
+    - Watchers/watchEffect at 3835, 3842, 3988 read these refs — update them to
+      use the composable values (or move the watchers into the composable if the
+      side effect is purely settings-driven).
+
+
+--------------------------------------------------------------------------------
+PHASE 2 — EXTRACT Game / Board / BoardHistory INTO CLASS FILES
+--------------------------------------------------------------------------------
+This is the single biggest win: ~5900 lines leave PlayPage.vue.
+
+[2a] class Game — 4596–4716 (~120 lines)
+     What: thin delegator; every method just null-checks and forwards to
+           this.board.<same method>. Holds no real logic.
+     How:  Move to src/classes/Game.js. Its only external deps are Board (import)
+           and the board-size/tileSize/variant refs used in initialise(). Pass
+           those via constructor DI (a settings object) exactly like SkinManager.
+     Difficulty: EASY once Board is movable. Consider whether Game is even
+                 needed — it mostly guards `if (!this.board)`. Could be folded
+                 into Board + a small null-guard wrapper. Low priority nicety.
+
+[2b] class Board — 4717–10412 (~5700 lines)  ← MAIN EFFORT
+     What: the god object. Reads ~73 reactive refs by closure and calls global
+           singletons (skinManager, effShuffleManager, statsWorkerManager,
+           benchmark, boardHistory, playSound), route/router, and $q/Dialog.
+     How (after Phase 1):
+       - Create src/classes/Board.js.
+       - Constructor signature becomes something like:
+           new Board(w, h, mines, tileSize, variant, {
+             settings,          // the composable bundles it needs
+             skinManager, effShuffleManager, statsWorkerManager, benchmark,
+             boardHistory, router, route, $q, canvasRef, gameContainerRef
+           })
+         Mirror the existing ZiniExplore/EffShuffleManager DI style.
+       - Replace bare `boardWidth.value` etc. with `this.settings.boardWidth.value`
+         (or destructure once in constructor: `this.boardWidth = settings.boardWidth`).
+       - `mainCanvas.value` / `gameContainerDiv.value` (useTemplateRef, owned by
+         the component) must be injected — pass the template refs in, since the
+         DOM lives in the component. Board already reads these for canvas context
+         and sizing (see rendering_architecture memory).
+       - Imports Board already needs: Tile, Replay, CompareReplay, BoardStats,
+         BoardGenerator, ZiniExplore, ChainZini, RawVF, Algorithms, Utils,
+         CONSTANTS, playSound, html-to-image (toBlob/toCanvas), seedrandom,
+         quasar (Dialog/copyToClipboard/exportFile). Move these imports to Board.js.
+     Difficulty: HARD (size + breadth of dependencies) but LOW conceptual risk
+                 because it's mechanical DI once Phase 1 exists. The danger is
+                 missing a closed-over ref/singleton; a single missed reference
+                 = runtime ReferenceError. Mitigate by grepping the moved block
+                 for bare identifiers that are no longer in scope.
+     Payoff: MASSIVE (~5700 lines).
+     Ordering note: do Phase 1 FIRST. Extracting Board before the refs are in a
+                 composable would force ~73 constructor args or a giant refs
+                 object assembled inline — messy and error-prone.
+
+
+--------------------------------------------------------------------------------
+PHASE 3 — SPLIT THE Board CLASS INTERNALLY (by responsibility)
+--------------------------------------------------------------------------------
+Even after Board.js exists, 5700 lines in one class is still a lot. Board's
+methods cluster into cohesive groups. Split each group into a mixin/helper
+module that operates on a Board instance. Two viable mechanics:
+  (A) "Mixin" style: define methods in a separate file as plain functions that
+      take `board` as first arg, then attach: `Object.assign(Board.prototype,
+      require('./boardInput'))` — or import functions and call
+      `boardInput.handleTouchStart(this, event)`.
+  (B) Sub-object composition: e.g. `this.input = new BoardInput(this)`,
+      `this.renderer = new BoardRenderer(this)`, `this.paint = new QuickPaint(this)`.
+      Mirrors the existing `this.ziniExplore = new ZiniExplore(this, refs)` model,
+      which is the most consistent with current code.
+
+Cohesive groups inside Board (line ranges are RELATIVE offsets from the class
+start at 4717; add ~4716 for absolute), roughly:
+
+  BoardInput (mouse/touch/keyboard)        ~ methods handleMouseDown..
+    handleMouseDown/Up/Move, handleTouchStart/End/Move/Cancel, sendKeyboardClick,
+    handlePageScroll, handlePointerInput (huge ~360 lines), eventTo*Coords,
+    updateDepressedSquares, clearAllDepressedSquares, mouseMove
+    -> ~1000+ lines. Biggest single carve-out. HIGH payoff.
+
+  BoardActions (gameplay mutations)
+    attemptFlag, attemptChordOrDig, attemptChordOnly, attemptDigOnly,
+    attemptFlagOrChord, holdDownDig/Flag/TouchFlag, releaseFlag, openTile,
+    chord, getNumberSurroundingMines/Flags, doLose, blast, doWin,
+    markRemainingFlags, checkWin, attemptFaceClick
+    -> ~700 lines. HIGH payoff, but tightly coupled to tile state + draw().
+
+  BoardRenderer (all canvas drawing)
+    draw, drawTiles, drawTilesPaint/Hint/ZiniDelta/ExploreAnalysis/AndAnalysis,
+    drawBorders, drawCoords, coordIndexToText, drawTopBar,
+    drawStandardTopBar, drawQuickPaintTopBar, drawTopBarFlatBackground, drawCursor,
+    updateBoardPixelDimensions, refreshCanvasSize, updateIntegerTimerIfNeeded
+    -> ~800 lines. Self-contained-ish (reads state, writes canvas). See
+       rendering_architecture memory. HIGH payoff, MEDIUM risk.
+
+  QuickPaint
+    toggleQuickPaint, handleCycleQuickPaintModeKeypress, removeOverwrittenPaints,
+    refreshQuickPaintCounts, paintObviousSquares (~240 lines), cycleQuickPaintMode,
+    updateQuickPaintClearableDisplay, clearClearableMarkings, handleQuickPaintClick,
+    confirmBoardResetIfQuickPaint
+    -> ~500 lines. Fairly cohesive. MEDIUM.
+
+  BoardHint
+    toggleHint, showHintAsync, showHintSync, prepareProbCalcInput,
+    reverseLastMoveForLossHintOnProbCalcBoard, updateTilesArrayForHint (~190),
+    hideHint, showAutoHintIfNeeded, hasNumberNeighbourProbCalcBoardVersion,
+    hintProbabilityToScalePiecewise/NormalCdf
+    -> ~600 lines. Talks to wasm prob-calc. Cohesive. MEDIUM.
+
+  MeanOpenings
+    makeOpeningMean (~180), resetMeanMinesActiveness, getMinesConfirmedByTile,
+    isTileEnclosed, getSimplifiedTilesArray, canTilebeUsedForMobileScroll...
+    -> ~350 lines. Cohesive feature. MEDIUM.
+
+  BoardModes / navigation (edit / zini-explore / analyse / replay wiring)
+    handleEditClick, handleReplayClick, handleZiniExploreClick, switchToEditMode/
+    PlayMode/AnalyseMode, toggleFlagButton, openBoardForEdit,
+    promptForClearingEditBoard, applyEditBoardWidthHeight,
+    revertUnappliedWidthHeightSetting
+    -> ~400 lines. MEDIUM.
+
+  BoardImportExport / "sendTo" (highly groupable — noted in refactoring-notes)
+    sendToBoardEditor, sendToZiniExplorer, sendToPttCalculator, sendToMsCoach,
+    sendToMbfDialogue, sendToStrangeDust, importPttaBoard, importMbfBoard,
+    downloadRawVf, copyBoardLink, regenerateUrlAndPushIfDifferent,
+    showExportScreenshotDialogue, exportBoardScreenshot, getScreenshotBlob
+    -> ~600 lines. VERY cohesive (all cross-app links + import/export). HIGH
+       payoff, LOW risk (mostly pure-ish, few state mutations). Good early target
+       within Phase 3.
+
+  BoardUrlSync (URL query param handling — groupable per notes)
+    updateForQueryChange, updateForZiniExploreQueryPossibleChange,
+    updateForBoardEditorQueryPossibleChange, updateForUrlChange,
+    regenerateUrlAndPushIfDifferent (overlaps ImportExport)
+    -> ~250 lines. MEDIUM. Depends on route/router injection.
+
+  BoardReplayGlue
+    initReplay, initOrPrepareDeepChainReplay, closeReplay, cloneTilesArray,
+    calculateAndDisplayStats
+    -> ~300 lines. MEDIUM. Bridges to existing Replay/CompareReplay classes.
+
+  Core/lifecycle (keep in Board.js)
+    constructor, resetBoard, resetTiles, populateHiddenNumbers, generateBoard,
+    checkCoordsInBounds, getTime, clearTimerTimeout, saveGameIfRunning,
+    unflooredToFlooredTileCoords, etc. -> the spine; stays in Board.
+
+  Difficulty (Phase 3 overall): MEDIUM–HARD. Each carve-out is individually
+    safe if you use the `this.x = new X(this)` composition pattern and route
+    calls through the sub-object. The risk is shared private state: many methods
+    read/write `this.tilesArray`, `this.gameStage`, `this.width/height`,
+    `this.<mouse/touch state>`. Sub-objects reading `this.board.tilesArray` is
+    fine and matches ZiniExplore. Prefer composition (B) over prototype mixins
+    (A) for readability and to match the existing ZiniExplore convention.
+  Payoff: turns one 5700-line class into ~8–10 files of 300–1000 lines each.
+  Recommended order within Phase 3 (safest first):
+    1. BoardImportExport/sendTo   (cohesive, low state mutation)
+    2. BoardRenderer              (reads state, writes canvas)
+    3. BoardHint, QuickPaint, MeanOpenings (feature-scoped)
+    4. BoardInput, BoardActions   (most entangled — do last)
+
+
+--------------------------------------------------------------------------------
+PHASE 4 — EXTRACT TEMPLATE INTO CHILD COMPONENTS
+--------------------------------------------------------------------------------
+Requires Phase 1 (shared refs in composables) so children can read/write the
+same reactive state without prop-drilling 100+ props. Each child does
+`const settings = useXSettings()` and calls `game.board.<method>` via either an
+injected board or an emitted event. Order easiest → hardest:
+
+[4a] Modals (2120–3057, ~940 lines) — 10 self-contained q-dialogs.
+     EASIEST template win. Each modal is bounded and mostly reads settings refs
+     + a v-model boolean. Extract each into src/components/play/modals/*.vue:
+       SettingsModal, FiltersModal, CoordsModal, VariantsHelpModal,
+       QuickPaintHelpModal, PttaImportModal, MbfImportModal, RunZiniAlgorithmModal,
+       EffBoardsBenchmarkModal, EffBoardsHiddenSettingsModal.
+     Difficulty: EASY–MEDIUM. Gotchas: the open/close boolean (v-model) and any
+     buttons that call game.board methods (importPttaBoard, importMbfBoard,
+     runZini...). Pass the board in via prop/inject, or emit an event the page
+     handles. Static help modals (variantsHelp, quickPaintHelp) are TRIVIAL.
+     Payoff: HIGH (~940 lines, low risk).
+
+[4b] Settings accordion (1388–2111, ~720 lines) — the q-expansion-item stack.
+     Extract to src/components/play/SettingsPanel.vue (or one component per
+     expansion-item if you want finer granularity: display, gameplay, touch/
+     mobile, eff-boards, quickpaint, analyse, keyboard). Binds to MANY settings
+     refs -> exactly why Phase 1 must precede it.
+     Difficulty: MEDIUM (lots of bindings, but declarative — low logic risk).
+     Payoff: HIGH (~720 lines).
+
+[4c] Stats block (458–~895, ~440 lines) — v-if="showStatsBlock".
+     Extract to src/components/play/StatsPanel.vue. Reads statsObject + statsShow*
+     toggles (all in useStatsDisplay composable after Phase 1).
+     Difficulty: MEDIUM. Mostly presentational; watch for the click-table and the
+     conditional sub-blocks (womZini, deepZini, maxEff).
+     Payoff: HIGH (~440 lines).
+
+[4d] Zini explorer analysis block (896–~1135, ~240 lines).
+     Extract to src/components/play/ZiniAnalysisPanel.vue. Couples to
+     game.board.ziniExplore + analyse* refs. Some buttons open runZiniAlgorithmModal.
+     Difficulty: MEDIUM.
+     Payoff: MEDIUM (~240 lines).
+
+[4e] Eff boards config panel (301–414 strip + 1138–1387 panel, ~360 lines total).
+     Extract to src/components/play/EffBoardsConfig.vue. Binds eff-boards refs +
+     effShuffleManager status.
+     Difficulty: MEDIUM.
+     Payoff: MEDIUM (~360 lines).
+
+[4f] Board size / mines config (72–300, ~230 lines).
+     Extract to src/components/play/BoardConfigBar.vue. Binds boardSizePreset,
+     custom W/H/mines, noGuess badge; calls game.reset/resetAndUnfocus.
+     Difficulty: EASY–MEDIUM.
+     Payoff: MEDIUM.
+
+[4g] Mobile flag-toggle button (3060–3120, ~60 lines).
+     Extract to src/components/play/MobileFlagButton.vue. Small, self-contained.
+     Difficulty: EASY. Payoff: LOW-ish (~60 lines) but tidy.
+
+     Leave in PlayPage.vue: the #game-container/main-canvas (owns the DOM refs
+     the Board renders into — must stay with the component that holds
+     useTemplateRef), the title/variant dropdown header, and <ReplayBar> (already
+     a component).
+
+
+================================================================================
+5. CROSS-CUTTING GOTCHAS / RISKS
+================================================================================
+- useTemplateRef DOM refs (main-canvas, game-container) CANNOT move into
+  composables or class files; they must stay in the component that renders the
+  DOM. Board must receive them by injection.
+- Global singletons (skinManager, effShuffleManager, statsWorkerManager,
+  benchmark, boardHistory, game) are created at the bottom of <script setup> and
+  referenced by closure inside Board. After extraction, inject them into Board's
+  constructor (they already follow the DI-of-refs pattern, so this is consistent).
+- `var game` / `var effShuffleManager` are intentionally `var` to dodge
+  temporal-dead-zone "access before init" errors due to circular-ish references.
+  Preserve initialization order when moving instantiation around.
+- Watchers/watchEffect (3835, 3842, 3988) and onMounted/onUnmounted (3438+) are
+  lifecycle-bound and must stay in the component (or be returned from composables
+  that are called within setup). Do not move raw watch() calls into plain class
+  files where there is no active component instance — the Board constructor
+  currently calls watch() (see ~4788); when moving Board out, that watch still
+  works because it's created during setup via `new Game()` at setup time, but
+  keep it created synchronously during setup so Vue registers it to the instance.
+- The template calls `game.board.<method>` ~40 times. When template chunks move
+  to child components, decide a convention: inject the `game`/`board` instance
+  (provide/inject) OR emit events. Injection is less boilerplate given how many
+  calls there are; emitting is cleaner but higher churn.
+- `scoped` styles: moving markup to a child without moving its styles will break
+  styling (scoped attribute won't match). Move each component's styles with it.
+- After each extraction, grep the moved block for bare identifiers that are no
+  longer in scope (missed refs/singletons) — this is the #1 source of runtime
+  ReferenceErrors in this kind of refactor. Test the specific feature after each
+  step; do not batch many extractions before testing.
+
+
+================================================================================
+6. SUGGESTED TARGET FILE LAYOUT (end state)
+================================================================================
+  src/pages/PlayPage.vue              (~2–3k lines: header, canvas, orchestration,
+                                        lifecycle, composable wiring, child cmpts)
+  src/composables/useDisplaySettings.js
+  src/composables/useBoardConfig.js
+  src/composables/useGameplaySettings.js
+  src/composables/useEffBoardsSettings.js
+  src/composables/useQuickPaintSettings.js
+  src/composables/useTouchSettings.js
+  src/composables/useReplaySettings.js
+  src/composables/useAnalyseSettings.js
+  src/composables/useFilterSettings.js
+  src/composables/useCoordsSettings.js
+  src/composables/useStatsDisplay.js
+  src/classes/Game.js
+  src/classes/Board.js                (core/lifecycle spine)
+  src/classes/board/BoardInput.js
+  src/classes/board/BoardActions.js
+  src/classes/board/BoardRenderer.js
+  src/classes/board/QuickPaint.js
+  src/classes/board/BoardHint.js
+  src/classes/board/MeanOpenings.js
+  src/classes/board/BoardModes.js
+  src/classes/board/BoardImportExport.js
+  src/classes/board/BoardUrlSync.js
+  src/classes/board/BoardReplayGlue.js
+  src/classes/BoardHistory.js
+  src/dev/bulkRuns.js                 (dev-only, dynamically imported)
+  src/components/play/BoardConfigBar.vue
+  src/components/play/EffBoardsConfig.vue
+  src/components/play/StatsPanel.vue
+  src/components/play/ZiniAnalysisPanel.vue
+  src/components/play/SettingsPanel.vue
+  src/components/play/MobileFlagButton.vue
+  src/components/play/modals/*.vue     (the 10 dialogs)
+
+
+================================================================================
+7. IF YOU ONLY DO A LITTLE — HIGHEST VALUE-PER-RISK
+================================================================================
+  1. Phase 0a: move bulkrun/dev code out (~530 lines, ~zero risk).
+  2. Phase 1: composables for shared refs (unlocks everything; ~500 lines out).
+  3. Phase 2b: move Board into Board.js (~5700 lines out — the headline win).
+  4. Phase 4a: extract the 10 modals (~940 lines out, low risk).
+  Doing just these four takes PlayPage.vue from ~10.4k to well under ~3k lines.

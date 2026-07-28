@@ -1,0 +1,96 @@
+We need to significantly reduce the file size of playPage.vue
+
+What is inside this (in rough order)
+
+<template> section
+
+dev stuff html
+bulkrun8/dialogTest/playSound/seedRandomTest
+
+variants dropdown
+buttons for some modals  
+
+boards mines/config
+
+zini explorer/board editor above options
+
+eff boards above info
+
+mean openings above info
+
+game container
+
+stats block (takes up a decent amount of space, move to component?)
+
+zini explorer analysis block
+
+quickpaint etc buttons
+
+eff boards config (componentable again?)
+
+settings accordion (800 lines, component?)
+
+Modals:
+settingsModal
+filtersModal
+coords  
+variantsHelp
+quickPaintHelp
+pttaImportModal
+mbfImportModal
+runZiniAlgorithmModal
+effBoardsBenchmarkModal
+effBoardsHiddenSettingsModal
+
+mobile flag button
+
+replayBar (thankfully already a component)
+
+<style> section
+relatively small, be aware of losing style if moving components?
+
+<script> section
+
+some key/event handling
+
+Lots of refs declared and computed etc, around 700 lines
+
+"bulkrun" and related testing = 600 lines
+
+Game class:
+Only 200 lines, not sure how this is functionally different to board?
+
+Board class:
+this does EVERYTHING
+
+lots of "this." properties
+
+some board editor/zini explorer stuff
+
+sendToX functions (very groupable)
+
+event handling takes a lot of lines
+
+(including some helper funcs that are split)
+
+gameplay relevant actions (placing flags etc)
+there is a lot of this and maybe groupable?
+
+meanMines stuff
+
+quickpaint stuff (a decent amount of this stuff)
+
+hint stuff (groupable)
+
+handling different click types (these are smartly delegated to other files)
+
+some import functions (possibly groupable with export functions)
+
+rendering functions (draw etc)
+
+some more replay stuff (can it be merged elsewhere?)
+
+url query param handling (groupable)
+
+some more sendTo/export stuff (can be grouped with earlier sendTo stuff)
+

@@ -606,3 +606,5 @@ High dpi canvas support (we need to do this in the first place), better styling 
 Stop flicker on screenshot by cloning nodes to offscreen area instead of hiding .screenshot-hidden in place
 scale images/canvas to be more consistent instead of using size on website
 Have maximum or minimum sizes for things to prevent too large relative size difference between stats panel and board sizes.
+
+Try adding high dpi canvas support? Although after refactoring
