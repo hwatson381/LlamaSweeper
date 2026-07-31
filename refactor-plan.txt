@@ -7,7 +7,9 @@ Goal: Reduce src/pages/PlayPage.vue (currently 10,451 lines) into smaller,
 
 This plan is descriptive/strategic. It does NOT change any code. Line numbers
 are accurate as of the current file and will drift as edits are made, so treat
-them as "where to look", not exact anchors.
+them as "where to look", not exact anchors. During refactoring, 
+PlayPage-previous.vue can be used as a reference for how the original file
+looked.
 
 
 ================================================================================

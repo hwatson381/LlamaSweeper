@@ -3608,7 +3608,7 @@ let showMineCount = useLocalStorage("ls_showMineCount", true);
 let showCoords = useLocalStorage("ls_showCoords", false);
 let boardSkin = useLocalStorage("ls_boardSkin", "light");
 
-let coordsModal = useLocalStorage("ls_coordsModal", false);
+let coordsModal = ref(false);
 let coordsUseLetters = useLocalStorage("ls_coordsUseLetters", true);
 let coordsUseInvertedY = useLocalStorage("ls_coordsUseInvertedY", true);
 let coordsUseZeroIndexing = useLocalStorage("ls_coordsUseZeroIndexing", false);
