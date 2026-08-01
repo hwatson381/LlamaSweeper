@@ -1,0 +1,5 @@
+This file keeps track of what we've actually done from the plan, in case there are deviations.
+
+We've split refs/useLocalStorage section at the top into useSettings.js
+
+Note that this is a module singleton, so everything is init'd once, instead of each time

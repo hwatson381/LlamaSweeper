@@ -1,0 +1,417 @@
+================================================================================
+PLAN — EXTRACT `Board` (and `Game`, `BoardHistory`) INTO THEIR OWN FILES
+================================================================================
+Context: Phase 1 is done. All shared refs/localStorage now live in
+src/composables/useSettings.js as a MODULE SINGLETON with named exports.
+That single fact removes almost all of the "constructor DI" the old
+refactor-plan.txt described. This document supersedes the Phase 2 section of
+refactor-plan.txt where they disagree.
+
+Line numbers drift as you edit — treat references as "where to look".
+
+
+================================================================================
+0. HEADLINE DECISIONS (the short version)
+================================================================================
+- Board reads settings by IMPORTING them from useSettings, NOT via constructor
+  args and NOT renamed to `settings.x`. Existing `boardWidth.value` etc. stay
+  verbatim; they just become import references.
+- The ONLY things Board's constructor must be given (they cannot be plain
+  imports) are the component-owned bits:
+      { mainCanvas, gameContainerDiv, route, router }
+  Everything else is an import.
+- The `w, h, mines, tileSize, variant` args currently passed in
+  Game.initialise() are VESTIGIAL — the Board constructor is `constructor() {}`
+  and ignores them (resetBoard reads the refs directly). Delete them.
+- The singleton managers (skinManager / effShuffleManager / statsWorkerManager /
+  benchmark / boardHistory) become singletons EXPORTED FROM THEIR OWN CLASS
+  FILES (no singletons.js). Board imports them.
+- Board currently references the `game` singleton internally in 5 spots. Convert
+  those to `this.` so Board no longer depends on `game` (kills the Board<->game
+  import cycle).
+- $q inside Board becomes direct `quasar` imports (Dialog/Notify/copyToClipboard/
+  exportFile/Dark). `$q.dialog(...)` -> `Dialog.create(...)`, `$q.notify(...)` ->
+  `Notify.create(...)`, `$q.dark.isActive` -> `Dark.isActive`.
+- `wasmAvailable` is currently a local ref in PlayPage but Board reads it. Move
+  it into useSettings so both can import it.
+- NEW SIDE EFFECT of the module-singleton refs: plain `ref()` values now KEEP
+  their value when you navigate away from PlayPage and back (they used to reset
+  because they lived in <script setup>). localStorage-backed refs are unchanged.
+  See section 9 for the reset list.
+
+
+================================================================================
+1. WHAT BOARD DEPENDS ON — sorted into 3 buckets
+================================================================================
+
+BUCKET A — plain ES imports (no DI, no rename):
+  From src/composables/useSettings.js:
+    every settings ref Board reads (boardWidth, boardHeight, boardMines,
+    tileSizeSlider, variant, boardHorizontalPadding, boardTopPadding,
+    boardBottomPadding, topPanelHeight, topPanelTopAndBottomBorder,
+    showBorders, showTimer, showMineCount, showCoords, coordsUse*,
+    chordingButtons, zeroStart, noGuessing, noGuessingMaxAttempts, autoHint*,
+    quickPaint* , mobile*/touch* , meanOpening*/meanMineClickBehaviour,
+    replay* , analyse* , ziniRunner* , flagToggle* , faceHitbox,
+    soundEffectsEnabled, keyboardClickOpenOnKeyDown, showStatsBlock,
+    statsObject, statsShow* used by BoardStats, isCurrentlyEditModeDisplay,
+    editBoardUnappliedWidth/Height, showQuickPaintOptions, quickPaintModeDisplay,
+    quickPaintClearable, pttaUrl, mbfStringToImport, mbfFileToImport,
+    analyseZiniTotal, classicPathBreakdown, analyse3bv, analyseEff, ... )
+    PLUS wasmAvailable (after you move it here — see section 6).
+  Singletons (from their own class files after section 4):
+    skinManager, effShuffleManager, statsWorkerManager
+    (benchmark + boardHistory are NOT used by Board — see section 4.)
+  Classes / helpers Board actually uses:
+    Tile, Replay, CompareReplay, BoardStats, BoardGenerator, ZiniExplore,
+    RawVF, Algorithms, Utils
+    (verify the exact set by grepping the moved block — do NOT blindly copy
+     PlayPage's whole import list; e.g. Benchmark, ChainZini, seedrandom,
+     testGames belong to the DEV code, not Board.)
+  Constants / misc:
+    CONSTANTS (src/includes/Constants), playSound (src/includes/Sounds),
+    { toBlob, toCanvas } from "html-to-image",
+    { Dialog, Notify, copyToClipboard, exportFile, Dark } from "quasar".
+
+BUCKET B — MUST be injected via constructor (component-owned, cannot import):
+  mainCanvas        (useTemplateRef "main-canvas", owns the <canvas> DOM)
+  gameContainerDiv  (useTemplateRef "game-container")
+  route             (useRoute(), only valid in setup)
+  router            (useRouter())
+
+BUCKET C — self / already handled:
+  `game` singleton  -> convert internal uses to `this.` (section 5). Board must
+                       NOT import game.
+  the constructor watch on route -> stays; see section 7.
+
+
+================================================================================
+2. NEW CONSTRUCTOR SHAPE
+================================================================================
+  class Board {
+    constructor(deps) {
+      this.mainCanvas = deps.mainCanvas;
+      this.gameContainerDiv = deps.gameContainerDiv;
+      this.route = deps.route;
+      this.router = deps.router;
+      ...existing field init...
+      this.ziniExplore = new ZiniExplore(this, { ...analyse refs... });
+      this.stopUrlWatch = watch([...], ...);   // capture stop handle (section 7)
+      this.resetBoard(true);
+    }
+  }
+
+Then inside Board, mechanically replace bare identifiers:
+  mainCanvas.value        -> this.mainCanvas.value
+  gameContainerDiv.value  -> this.gameContainerDiv.value
+  route.<x>               -> this.route.<x>
+  router.<x>              -> this.router.<x>
+Also in resetTiles(): `new Tile(CONSTANTS.UNREVEALED, { mainCanvas }, skinManager)`
+  -> `new Tile(CONSTANTS.UNREVEALED, { mainCanvas: this.mainCanvas }, skinManager)`
+
+Game.initialise() becomes:
+  initialise() {
+    this.board = new Board({ mainCanvas, gameContainerDiv, route, router });
+  }
+(No w/h/mines/tileSize/variant — they were dead args.)
+
+
+================================================================================
+3. STEP-BY-STEP SEQUENCE (ship + test between steps)
+================================================================================
+Do these in order; each is independently testable.
+
+  Step 1  Move `wasmAvailable` into useSettings (section 6). Test app still
+          boots, no-guess/hint toggles still enable/disable correctly.
+  Step 2  Promote the manager singletons into their own class files
+          (section 4). Test: board renders, eff-boards background gen works,
+          stats worker still computes, screenshots still export.
+  Step 3  Move `class Board` to src/classes/Board.js:
+            - add imports (Bucket A),
+            - add the `deps` constructor + this.mainCanvas/... rewrites,
+            - convert `game.` self-refs to `this.` (section 5),
+            - swap `$q.*` for direct quasar calls (section 8).
+  Step 4  Move `class Game` to src/classes/Game.js (fix `game.reset()` ->
+          `this.reset()` in resetAndUnfocus; pass deps through to new Board).
+  Step 5  Move `class BoardHistory` to src/classes/BoardHistory.js (or delete —
+          it's an empty stub Board never actually calls).
+  Step 6  In PlayPage <script setup>, keep: useTemplateRefs, useRoute/useRouter,
+          useQuasar (only if the remaining PlayPage/dev code needs $q),
+          lifecycle hooks, the eff-boards watch/watchEffect, and
+          `var game = new Game()`. Import Board/Game/singletons instead of
+          declaring them.
+  Step 7  Add transient-state reset (section 9) in onMounted.
+
+  AFTER EACH MOVE: grep the moved block for bare identifiers that are no longer
+  in scope. A single missed ref/singleton = runtime ReferenceError. This is the
+  #1 failure mode of this refactor.
+
+
+================================================================================
+4. SINGLETON CHANGES (export the instance from the class's own file)
+================================================================================
+Pattern (confirmed safe — none of these import Board, so no cycle):
+
+  // src/classes/EffShuffleManager.js
+  import { Dialog } from "quasar";
+  import Algorithms from "./Algorithms";
+  import { minimumEff, generateEffBoardsInBackground, effBoardsStoredDisplayCount,
+           effBoardsMaxStoredCount, effBoardsStoredFirstClickDisplay,
+           effFirstClickType, effWebWorkerCount, effBoardsImplementation,
+           boardWidth, boardHeight, boardMines,
+           begEffOptions, intEffOptions, expEffOptions,
+           begEffSlowGenPoint, intEffSlowGenPoint, expEffSlowGenPoint
+         } from "src/composables/useSettings";
+
+  class EffShuffleManager { ...unchanged... }
+
+  export default EffShuffleManager;                 // keep only if anything else builds one
+  export const effShuffleManager = new EffShuffleManager(
+    { minimumEff, generateEffBoardsInBackground, effBoardsStoredDisplayCount,
+      effBoardsMaxStoredCount, effBoardsStoredFirstClickDisplay, effFirstClickType,
+      effWebWorkerCount, effBoardsImplementation, boardWidth, boardHeight, boardMines },
+    { begEffOptions, intEffOptions, expEffOptions,
+      begEffSlowGenPoint, intEffSlowGenPoint, expEffSlowGenPoint }
+  );
+
+Per-manager notes (verified):
+  skinManager (SkinManager.js)
+    - constructor deps: { boardSkin, analyseHiddenStyle, replayShowHidden } (all in useSettings).
+    - Used by Board AND by PlayPage (onMounted addCallbackWhenAllPriorityLoaded/
+      addCallbackWhenSingleImageLoaded) AND by Tile. Same imported singleton for all.
+    - Begins image loading eagerly; now starts at import time instead of mount.
+      Harmless (PlayPage is a lazy route, so its chunk only loads when you visit).
+
+  effShuffleManager (EffShuffleManager.js)
+    - Constructor does NOT spawn workers (new Worker lives in reinitWorkers()), so
+      eager module-level construction has no side effects. Safe.
+
+  statsWorkerManager (StatsWorkerManager.js)
+    - WARNING: its constructor DOES `new Worker(...)` eagerly. As a module
+      singleton the worker spawns at import time (still only when PlayPage's chunk
+      loads, so timing is nearly identical to today).
+
+  benchmark (Benchmark.js)
+    - `new Benchmark()`, no deps. Board does NOT use it (only the dev bulkrun*
+      functions do). Leave it wherever the dev code ends up; not needed by Board.
+
+  boardHistory (BoardHistory.js)
+    - Empty stub; Board.saveGameIfRunning only console.logs and never touches it.
+      Move to its own file or delete. Not a Board dependency.
+
+  *** TEARDOWN CONSEQUENCE (important) ***
+  PlayPage onUnmounted currently does:
+        effShuffleManager.killAllWorkers();
+        statsWorkerManager.killWorker();
+  Today these managers are re-created fresh on every mount, so killing on unmount
+  is fine. As APP-LIFETIME SINGLETONS, killing their workers on unmount would
+  leave a DEAD worker when you navigate back to PlayPage.
+  Choose one:
+    (a) Preferred: stop killing on unmount. Replace with a pause/deactivate:
+        effShuffleManager already has deactivateBackgroundGeneration() (the
+        watchEffect re-activates it); statsWorkerManager's worker can just sit
+        idle. Accept that the worker lives for the session.
+    (b) Or: re-init on mount (statsWorkerManager gains a reinit/ensureWorker()
+        called from onMounted; effShuffleManager.reinitWorkers() as needed).
+    (c) Or: keep these two NON-singleton and inject them into Board instead
+        (skinManager/benchmark/boardHistory can still be singletons). More DI,
+        but preserves exact teardown semantics.
+  Recommendation: (a). Simplest and matches "singletons live for the session".
+
+
+================================================================================
+5. INTERNAL `game.` SELF-REFERENCES INSIDE BOARD — convert to `this.`
+================================================================================
+Board currently reaches back through the `game` singleton to refer to itself.
+Convert each so Board depends only on `this` (removes the Board<->game cycle):
+
+  attemptFaceClick():                  game.reset();
+     -> this.resetBoard();             // game.reset() === this.board.resetBoard(false)
+  doLose():                            game.board.stats.lateCalcDeepChainZini();
+     -> this.stats.lateCalcDeepChainZini();
+  doWin():                             game.board.stats.lateCalcDeepChainZini();
+     -> this.stats.lateCalcDeepChainZini();
+  toggleFlagButton():                  game.reset();
+     -> this.resetBoard();
+  updateForZiniExploreQueryPossibleChange():
+                                       game.board.ziniExplore.runDefaultAlgorithm(false);
+     -> this.ziniExplore.runDefaultAlgorithm(false);
+
+And in the Game class:
+  resetAndUnfocus():                   game.reset();
+     -> this.reset();
+
+(Grep the moved Board for any remaining `game.` — there should be zero.)
+
+
+================================================================================
+6. RELOCATE `wasmAvailable` INTO useSettings
+================================================================================
+Currently in PlayPage <script setup>:
+    const wasmAvailable = ref(isWasmAvailable());
+    wasmReadySettled.then(ok => wasmAvailable.value = ok);
+Board reads wasmAvailable.value in toggleHint / showHintSync / showHintAsync.
+
+Move the declaration into useSettings.js:
+    import { isWasmAvailable, wasmReadySettled } from "src/classes/RustWasm";
+    let wasmAvailable = ref(isWasmAvailable());
+    wasmReadySettled.then((ok) => { wasmAvailable.value = ok; });
+    // add wasmAvailable to the export block
+Then PlayPage imports it from useSettings (delete its local copy) and Board
+imports it too. Template `:disable="!wasmAvailable"` etc. keep working unchanged.
+
+
+================================================================================
+7. THE CONSTRUCTOR `watch()` — lifecycle consideration
+================================================================================
+Board's constructor calls watch([() => route.params.variant, () => route.query], ...).
+Board is constructed via game.initialise(), which PlayPage calls from a
+skinManager image-load callback inside onMounted. Two points:
+  - Keep construction happening during setup/mount so Vue binds the watcher to
+    the component instance and auto-disposes it on unmount.
+  - CAVEAT (pre-existing, not introduced here): that image-load callback may fire
+    ASYNCHRONOUSLY (after images load), at which point getCurrentInstance() can be
+    null and the watch would NOT auto-dispose -> a stale watcher on an old Board
+    could survive navigation. To be safe, capture the stop handle:
+        this.stopUrlWatch = watch(...);
+    and call this.stopUrlWatch() from a Board teardown method invoked in
+    game.unmount() (onUnmounted). Low effort, closes a latent leak.
+
+
+================================================================================
+8. $q  ->  DIRECT QUASAR IMPORTS (inside Board only)
+================================================================================
+Add to Board.js:  import { Dialog, Notify, copyToClipboard, exportFile, Dark } from "quasar";
+Replace:
+    $q.dialog({ ... })      ->  Dialog.create({ ... })      (keep .onOk/.onCancel/.onDismiss chaining)
+    $q.notify({ ... })      ->  Notify.create({ ... })
+    $q.dark.isActive        ->  Dark.isActive               (getScreenshotBlob, several spots)
+    copyToClipboard(...)    ->  already the standalone import
+    exportFile(...)         ->  already the standalone import
+Call sites in Board: promptForClearingEditBoard, sendToMbfDialogue, toggleHint,
+importMbfBoard, copyBoardLink, downloadRawVf, showExportScreenshotDialogue,
+exportBoardScreenshot, getScreenshotBlob.
+(Notify/Dialog plugins are already enabled since $q.notify/$q.dialog are used
+today — no quasar.config change needed. The dev-only dialogTest() stays in
+PlayPage where $q is still available.)
+
+
+================================================================================
+9. useSettings PERSISTENCE BEHAVIOUR CHANGE + REF-RESET LIST
+================================================================================
+WHY: refs used to be declared in <script setup>, so every visit to PlayPage made
+FRESH refs (leaving + returning reset them). Now they are module singletons, so
+plain ref() values KEEP their value across in-page navigation. A full page
+RELOAD still resets them (module re-evaluates); only localStorage-backed refs
+survive a reload. => The change only affects plain ref() values, on client-side
+navigation.
+
+DEFINITIONS (so the buckets are unambiguous):
+  LIGHT / STICKY SETTING = a preference or toggle the user deliberately chooses,
+    where retaining it across navigation is harmless or nice and can NEVER show
+    stale game data (e.g. tile size, chording mode, a chosen algorithm). Safe to
+    leave persisting. (Most are already useLocalStorage.)
+  TRANSIENT RUNTIME STATE = reflects one specific game's progress/result, a modal
+    open/closed flag, a scratch input field, or live replay/analysis/worker
+    status. Retaining it across navigation produces visually-WRONG or confusing
+    UI on return. RESET these on mount.
+
+------------------------------------------------------------------
+GROUP A — RESET ON MOUNT (transient; will look wrong if retained)
+------------------------------------------------------------------
+  Modals (must start closed):
+    settingsModal, filtersModal, variantsHelpModal, coordsModal,
+    quickPaintHelpModal, pttaImportModal, mbfImportModal,
+    effBoardsBenchmarkModal, effBoardsHiddenSettingsModal, runZiniAlgorithmModal
+  Stats panel (stale game data):
+    showStatsBlock, statsObject (reset to full default shape), showStatsClicksTable
+  QuickPaint UI:
+    showQuickPaintOptions, quickPaintModeDisplay, quickPaintClearable
+  Scratch inputs (leftover text/file):
+    pttaUrl, mbfStringToImport, mbfFileToImport
+  Replay state:
+    replayIsShown, replayIsPlaying, replayProgress, replayProgressRounded,
+    replayBarStartValue, replayBarLastValue, replayTypeForceSteppy, replayType,
+    replaySpeedMultiplier, replayIsPanning, replayIsInputting
+  Analyse OUTPUT (not the settings):
+    classicPathBreakdown, analyseZiniTotal, analyse3bv, analyseEff
+  Zini runner status:
+    ziniRunnerActive, synchronousZiniActive, ziniRunnerExpectedDuration,
+    ziniRunnerExpectedFinishTime, ziniRunnerIterationsDisplay,
+    ziniRunnerPercentageProgress
+    (caveat: if a worker could still be genuinely running, also ensure the runner
+     is actually killed on unmount, don't just flip the flag.)
+
+--------------------------------------------------------------------------
+GROUP B — ALREADY RESET by resetBoard()/initialise()/route-init (verify only)
+--------------------------------------------------------------------------
+  variant                         (set from route each mount: variant.value = routeNameToVariant(...))
+  flagToggleActive, flagToggleShowReset   (set inside resetBoard)
+  isCurrentlyEditModeDisplay      (set inside resetBoard)
+  editBoardUnappliedWidth/Height  (set via revertUnappliedWidthHeightSetting/reset)
+  gameCentrePadding               (recomputed by updateBoardPixelDimensions)
+  effBoardsStoredDisplayCount, effBoardsStoredFirstClickDisplay
+                                  (reflect the live effShuffleManager singleton state)
+  => normally no separate action; just confirm they still get set on mount.
+
+------------------------------------------------------------------------------
+GROUP C — JUDGEMENT CALL: plain refs that USED TO reset each mount but are genuine
+settings. Old behaviour = reset to default on navigation. Pick per item:
+  (1) leave sticky (usually fine / arguably nicer), or
+  (2) reset on mount to preserve exact old behaviour, or
+  (3) BEST for real settings: promote to useLocalStorage so they persist across
+      reloads too (make them properly sticky instead of accidentally sticky).
+------------------------------------------------------------------------------
+  Board size:
+    boardSizePreset          (was "beg" each visit)
+  Eff-boards config:
+    begEffPreset, intEffPreset, expEffPreset, generateEffBoardsInBackground,
+    effWebWorkerCount, effBoardsImplementation, effFirstClickType,
+    effBoardsBenchmarkIterations
+  Analyse SETTINGS (chosen in the Run-ZiNi modal):
+    analyseDisplayMode, analyseAlgorithm, analyseAlgorithmScope, analyseIterations,
+    analyseHistoryRewrite, analyseDeepType, analyseDeepIterations, analyseVisualise,
+    analyseForbid, analyseShowPremiums, analyseHiddenStyle
+  (My leaning: these are light settings — leaving them sticky, or promoting the
+   ones you care about to useLocalStorage, is nicer than resetting. But it IS a
+   behaviour change from before, so review each.)
+
+----------------------------------------------------------
+GROUP D — NO ACTION (already sticky / derived; unchanged)
+----------------------------------------------------------
+  Every useLocalStorage(...) ref (tile size, positioning, borders, coords,
+  chording, zeroStart, noGuessing*, autoHint*, all mobile/touch settings,
+  keyboard keys, all filter settings, quickPaint settings, stats-show toggles,
+  reorderZini, replayShowHidden, meanOpening* etc.) — already persisted across
+  navigation AND reloads; behaviour identical to before.
+  All `computed(...)` (boardWidth/Height/Mines, minimumEff, excellentEff,
+  paddings, filterStyleProperty, scopeOptions, ...) — derived, never reset.
+  Frozen consts (begEffOptions, intEffOptions, expEffOptions, slow-gen points).
+
+------------------------------------------------------
+HOW TO IMPLEMENT THE RESET (keep it co-located)
+------------------------------------------------------
+  Export a `resetTransientSettings()` from useSettings.js that sets every Group-A
+  ref back to its initial value (and rebuilds statsObject's default shape). Call
+  it from PlayPage onMounted, BEFORE game.initialise():
+      onMounted(() => { resetTransientSettings(); ...existing... });
+  This avoids importing ~30 refs into PlayPage just to reset them, and keeps the
+  reset next to the declarations so they can't drift apart.
+
+
+================================================================================
+10. RISKS / TESTING CHECKLIST
+================================================================================
+  [ ] After moving Board, grep the class for bare identifiers not in scope
+      (missed ref / missed singleton / missed CONSTANTS/Utils) -> ReferenceError.
+  [ ] Confirm zero `game.` and zero `$q` remain inside Board.js.
+  [ ] mainCanvas/gameContainerDiv/route/router all read via `this.` inside Board.
+  [ ] Manager teardown: navigate away from PlayPage and back — eff-boards
+      background gen + stats worker + hints still work (validates you didn't kill
+      a singleton worker permanently on unmount; section 4).
+  [ ] Feature smoke test: mouse + touch play, reset (space/face), win/loss stats,
+      hint, quickpaint, replay open/close, board-editor + zini-explorer URL sync,
+      screenshot export (Dark.isActive path), MBF/PTT import.
+  [ ] Navigate away + back: modals closed, stats panel gone, replay bar hidden,
+      no stale analyse numbers (validates Group-A reset).
+  [ ] Full reload still fine (module re-eval resets in-memory refs).
