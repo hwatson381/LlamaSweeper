@@ -1,9 +1,12 @@
 import CONSTANTS from "src/includes/Constants";
+import {
+  boardSkin,
+  analyseHiddenStyle,
+  replayShowHidden
+} from 'src/composables/useSettings';
 
 class SkinManager {
-  constructor(refs) {
-    this.refs = refs;
-
+  constructor() {
     this.createMissingTextureImage();
 
     //Skins have multiple variants (e.g. light/dark)
@@ -107,7 +110,7 @@ class SkinManager {
       '/img/other/',
     ];
 
-    switch (refs.analyseHiddenStyle.value) {
+    switch (analyseHiddenStyle.value) {
       case "mines":
         priorityPathStarts.push('/tiles_closed/mine.svg'); // More specific path as just closed mine is used here
         break;
@@ -126,7 +129,7 @@ class SkinManager {
         break;
     }
 
-    switch (refs.replayShowHidden.value) {
+    switch (replayShowHidden.value) {
       case "mines":
         priorityPathStarts.push('/tiles_closed/mine.svg'); // More specific path as just closed mine is used here
         break;
@@ -172,7 +175,7 @@ class SkinManager {
 
         let isPriority = false;
 
-        if (theme === this.refs.boardSkin.value) {
+        if (theme === boardSkin.value) {
           //If on the chosen theme, then check for priority images
           if (priorityPathStarts.some(prefix => img[1].startsWith(prefix))) {
             isPriority = true
@@ -325,8 +328,8 @@ class SkinManager {
     //Then check if it's a general image
     //Otherwise return the missing texture
 
-    if (this.images.skins[this.refs.boardSkin.value].hasOwnProperty(value)) {
-      return this.images.skins[this.refs.boardSkin.value][value];
+    if (this.images.skins[boardSkin.value].hasOwnProperty(value)) {
+      return this.images.skins[boardSkin.value][value];
     } else if (this.images.general.hasOwnProperty(value)) {
       return this.images.general[value];
     } else {
@@ -349,69 +352,69 @@ class SkinManager {
   }
 
   getTopPanelColour() {
-    return this.colours[this.refs.boardSkin.value].topPanel;
+    return this.colours[boardSkin.value].topPanel;
   }
 
   getMineTimerTextColour() {
-    return this.colours[this.refs.boardSkin.value].mineTimerText;
+    return this.colours[boardSkin.value].mineTimerText;
   }
 
   getCoordTextColour() {
-    return this.colours[this.refs.boardSkin.value].coordText;
+    return this.colours[boardSkin.value].coordText;
   }
 
   getRedCounterTextColour() {
-    return this.colours[this.refs.boardSkin.value].redCounterText;
+    return this.colours[boardSkin.value].redCounterText;
   }
 
   getOrangeCounterTextColour() {
-    return this.colours[this.refs.boardSkin.value].orangeCounterText;
+    return this.colours[boardSkin.value].orangeCounterText;
   }
 
   getDotsCounterTextColour() {
-    return this.colours[this.refs.boardSkin.value].dotsCounterText;
+    return this.colours[boardSkin.value].dotsCounterText;
   }
 
   getDotMainColour() {
-    return this.colours[this.refs.boardSkin.value].dotMain;
+    return this.colours[boardSkin.value].dotMain;
   }
 
   getDotSecondaryColour() {
-    return this.colours[this.refs.boardSkin.value].dotSecondary;
+    return this.colours[boardSkin.value].dotSecondary;
   }
 
   getClickGainColour() {
-    return this.colours[this.refs.boardSkin.value].clickGain;
+    return this.colours[boardSkin.value].clickGain;
   }
 
   getClickLossColour() {
-    return this.colours[this.refs.boardSkin.value].clickLoss;
+    return this.colours[boardSkin.value].clickLoss;
   }
 
   getClickNeutralColour() {
-    return this.colours[this.refs.boardSkin.value].clickNeutral;
+    return this.colours[boardSkin.value].clickNeutral;
   }
 
   getClassicDigColour() {
-    return this.colours[this.refs.boardSkin.value].classicDig;
+    return this.colours[boardSkin.value].classicDig;
   }
 
   getClassicChordColour() {
-    return this.colours[this.refs.boardSkin.value].classicChord;
+    return this.colours[boardSkin.value].classicChord;
   }
 
   getPremiumColour() {
-    return this.colours[this.refs.boardSkin.value].premium;
+    return this.colours[boardSkin.value].premium;
   }
 
   getHighlightColour() {
-    return this.colours[this.refs.boardSkin.value].highlight;
+    return this.colours[boardSkin.value].highlight;
   }
 
   getHintColour(colourScale, isFloating) {
     //lerp between safe and mine hint colours based on the colourScale (0 to 1)
 
-    const hintSkin = this.colours[this.refs.boardSkin.value].hint;
+    const hintSkin = this.colours[boardSkin.value].hint;
 
     if (isFloating) {
       return hintSkin.floating;
@@ -426,8 +429,9 @@ class SkinManager {
   }
 
   getHintReadabilityRectangle() {
-    return this.colours[this.refs.boardSkin.value].hint.readabilityRectangle;
+    return this.colours[boardSkin.value].hint.readabilityRectangle;
   }
 }
 
-export default SkinManager;
+const skinManager = new SkinManager();
+export default skinManager;

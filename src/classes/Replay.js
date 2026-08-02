@@ -1,6 +1,20 @@
 import Algorithms from "./Algorithms";
 import Utils from "src/classes/Utils";
 
+import {
+  replayTypeForceSteppy,
+  replayIsPanning,
+  replayIsInputting,
+  replayType,
+  replaySpeedMultiplier,
+  replayIsPlaying,
+  replayBarStartValue,
+  replayBarLastValue,
+  replayProgress,
+  replayProgressRounded,
+  replayShowHidden,
+} from 'src/composables/useSettings'
+
 class Replay {
   constructor({
     clicks,
@@ -10,9 +24,7 @@ class Replay {
     isComplete = true,
     forceSteppy = false,
     analysis = false
-  }, refs) {
-    this.refs = refs;
-
+  }) {
     this.clicks = clicks;
     this.moves = moves;
     this.rawTime = null;
@@ -26,7 +38,7 @@ class Replay {
     this.isComplete = isComplete;
     this.analysis = analysis;
 
-    this.refs.replayTypeForceSteppy.value = forceSteppy;
+    replayTypeForceSteppy.value = forceSteppy;
 
     this.millisPerSteppyTurn = 500; //milliseconds to pass before we advance to next click on "steppy" mode
 
@@ -66,7 +78,7 @@ class Replay {
     if (newClickIndex === this.currentClickIndex) {
       if (newClickIndex === this.clicks.length - 1) {
         //Pause if playhead at the end. This would be checked later, though can get missed if it hits replay end during a pan
-        !this.refs.replayIsPanning.value && !this.refs.replayIsInputting.value && this.pause();
+        !replayIsPanning.value && !replayIsInputting.value && this.pause();
       }
       return;
     }
@@ -83,8 +95,8 @@ class Replay {
       //Full reset of tiles
       this.board.resetTiles();
 
-      if (this.refs.replayShowHidden.value !== 'none') {
-        this.board.populateHiddenNumbers(this.refs.replayShowHidden.value);
+      if (replayShowHidden.value !== 'none') {
+        this.board.populateHiddenNumbers(replayShowHidden.value);
       }
 
       this.board.unflagged = this.board.mineCount;
@@ -155,7 +167,7 @@ class Replay {
         this.isWin && this.board.markRemainingFlags();
         !this.isWin && this.board.blast();
       }
-      !this.refs.replayIsPanning.value && !this.refs.replayIsInputting.value && this.pause();
+      !replayIsPanning.value && !replayIsInputting.value && this.pause();
     }
 
     if (isHintActive) {
@@ -227,14 +239,14 @@ class Replay {
 
     if (lerpedClickIndex < 0) {
       //Before first click
-      if (this.refs.replayType.value === "accurate") {
+      if (replayType.value === "accurate") {
         cursor = { x: this.clicks[0].xRaw, y: this.clicks[0].yRaw };
       } else {
         cursor = { x: this.clicks[0].x + 0.5, y: this.clicks[0].y + 0.5 };
       }
     } else if (flooredClickIndex === this.clicks.length - 1) {
       //At last click
-      if (this.refs.replayType.value === "accurate") {
+      if (replayType.value === "accurate") {
         cursor = { x: this.clicks.at(-1).xRaw, y: this.clicks.at(-1).yRaw };
       } else {
         cursor = {
@@ -244,7 +256,7 @@ class Replay {
       }
     } else {
       //Inbetween clicks, so need to find clicks before and after and lerp
-      if (this.refs.replayType.value === "accurate") {
+      if (replayType.value === "accurate") {
         //Accurate replay also needs to check the moves array
         cursor =
           this.getAccurateCursorFromlerpedClickIndexBetweenClicks(
@@ -422,13 +434,13 @@ class Replay {
     let delta = tFrame - this.tLastFrame;
     this.tLastFrame = tFrame;
 
-    if (this.refs.replayIsPanning.value || this.refs.replayIsInputting.value) {
+    if (replayIsPanning.value || replayIsInputting.value) {
       delta = 0; //When panning/inputting, we do a soft pause
     }
 
-    if (this.refs.replayType.value === "steppy") {
+    if (replayType.value === "steppy") {
       let clickIndexDelta =
-        (delta / this.millisPerSteppyTurn) * this.refs.replaySpeedMultiplier.value;
+        (delta / this.millisPerSteppyTurn) * replaySpeedMultiplier.value;
 
       this.currentClickIndexLerped += clickIndexDelta;
 
@@ -436,7 +448,7 @@ class Replay {
     } else {
       //accurate or rounded replay types
 
-      let timeDelta = (delta / 1000) * this.refs.replaySpeedMultiplier.value;
+      let timeDelta = (delta / 1000) * replaySpeedMultiplier.value;
 
       let newRawTime = this.rawTime + timeDelta;
 
@@ -464,7 +476,7 @@ class Replay {
   play() {
     if (!this.isPlaying) {
       this.isPlaying = true;
-      this.refs.replayIsPlaying.value = true;
+      replayIsPlaying.value = true;
 
       this.tLastFrame = null; //So that we don't simulate all the time that's passed since pausing
 
@@ -483,7 +495,7 @@ class Replay {
     if (this.isPlaying) {
       window.cancelAnimationFrame(this.reqAnimFrameHandle);
       this.isPlaying = false;
-      this.refs.replayIsPlaying.value = false;
+      replayIsPlaying.value = false;
 
       this.tLastFrame = null; //So that we don't simulate passing (defensive, probably not needed0)
 
@@ -511,30 +523,30 @@ class Replay {
   }
 
   setupReplayBar() {
-    this.refs.replayBarStartValue.value = -1;
-    if (this.refs.replayType.value === "steppy") {
-      this.refs.replayBarLastValue.value = this.clicks.length - 1;
+    replayBarStartValue.value = -1;
+    if (replayType.value === "steppy") {
+      replayBarLastValue.value = this.clicks.length - 1;
     } else {
       //accurate/rounded replay type
-      this.refs.replayBarLastValue.value = this.clicks.at(-1)?.time;
+      replayBarLastValue.value = this.clicks.at(-1)?.time;
     }
 
     this.updateReplayBarValue();
   }
 
   updateReplayBarValue() {
-    if (this.refs.replayType.value === "steppy") {
-      this.refs.replayProgress.value = this.currentClickIndexLerped;
-      if (!this.refs.replayIsInputting.value) {
+    if (replayType.value === "steppy") {
+      replayProgress.value = this.currentClickIndexLerped;
+      if (!replayIsInputting.value) {
         //Guard against changing value whilst we are editing it
-        this.refs.replayProgressRounded.value = this.currentClickIndexLerped.toFixed(3);
+        replayProgressRounded.value = this.currentClickIndexLerped.toFixed(3);
       }
     } else {
       //accurate/rounded replay type
-      this.refs.replayProgress.value = this.rawTime;
-      if (!this.refs.replayIsInputting.value) {
+      replayProgress.value = this.rawTime;
+      if (!replayIsInputting.value) {
         //Guard against changing value whilst we are editing it
-        this.refs.replayProgressRounded.value = this.rawTime.toFixed(3);
+        replayProgressRounded.value = this.rawTime.toFixed(3);
       }
     }
   }
@@ -544,7 +556,7 @@ class Replay {
 
     this.tLastFrame = null; //So we don't immediately jump back to where we were before
 
-    if (this.refs.replayType.value === "steppy") {
+    if (replayType.value === "steppy") {
       this.jumpToSpecificClickLerped(newValue);
     } else {
       //accurate/rounded replay type
@@ -570,14 +582,14 @@ class Replay {
       return; //Do nothing
     }
 
-    if (this.refs.replayBarLastValue.value.toFixed(3) === floatVal.toFixed(3)) {
+    if (replayBarLastValue.value.toFixed(3) === floatVal.toFixed(3)) {
       //f we are at the end of the replay, then allow small rounding to hit the final click
-      valueToUpdateWith = this.refs.replayBarLastValue.value;
+      valueToUpdateWith = replayBarLastValue.value;
     } else {
       valueToUpdateWith = Utils.clamp(
         floatVal,
-        this.refs.replayBarStartValue.value,
-        this.refs.replayBarLastValue.value
+        replayBarStartValue.value,
+        replayBarLastValue.value
       );
     }
 
@@ -653,7 +665,7 @@ class Replay {
       targetIndex = this.clicks.length - 1;
     }
 
-    if (this.refs.replayType.value === "steppy") {
+    if (replayType.value === "steppy") {
       //Jump to click before the one that reveals the square
       this.handleSliderChange(targetIndex - 1);
     } else {

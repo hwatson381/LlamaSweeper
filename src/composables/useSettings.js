@@ -3,6 +3,16 @@
 import { ref, computed, watchEffect } from "vue";
 import { useLocalStorage } from "@vueuse/core";
 import Utils from "src/classes/Utils";
+import { isWasmAvailable, wasmReadySettled } from "src/classes/RustWasm";
+
+//Whether the Rust/WASM module is usable. Authoritative by the time the UI is
+//interactive (the app boot waits for wasm init to settle before mounting), but
+//kept reactive so the no-guess / hint controls can disable themselves and
+//other code paths can handle this situation
+const wasmAvailable = ref(isWasmAvailable());
+wasmReadySettled.then((ok) => {
+  wasmAvailable.value = ok;
+});
 
 let showStatsBlock = ref(false);
 let statsObject = ref({
@@ -533,6 +543,7 @@ let filterStyleProperty = computed(() => {
 });
 
 export {
+  wasmAvailable,
   showStatsBlock,
   statsObject,
   showStatsClicksTable,

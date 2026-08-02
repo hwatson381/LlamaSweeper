@@ -2,13 +2,21 @@ import Algorithms from "./Algorithms";
 import ChainZini from "./ChainZini";
 import DeepChainZiniRunner from "./DeepChainZiniRunner";
 
+import {
+  statsObject,
+  statsShow8Way,
+  statsShowChain,
+  statsShowWomZini,
+  statsShowMaxEff,
+  ziniRunnerPercentageProgress
+} from 'src/composables/useSettings'
+
 class BoardStats {
-  constructor(minesArray, refs, statsWorkerManager) {
+  constructor(minesArray, statsWorkerManager) {
     this.mines = structuredClone(minesArray);
     this.clicks = [];
     this.moves = []; //Mouse movements, use separate array as this can get quite large
     this.isWin = null;
-    this.refs = refs;
     this.attributes = {
       //Other data that we should track related to the game
       //but doesn't fit neatly elsewhere.
@@ -264,55 +272,55 @@ class BoardStats {
 
     const pttaLink = this.getPttaLink();
 
-    this.refs.statsObject.value = {};
+    statsObject.value = {};
 
     if (isWin) {
-      this.refs.statsObject.value.isWonGame = true;
-      this.refs.statsObject.value.time = time.toFixed(3);
-      this.refs.statsObject.value.total3bv = bbbv;
-      this.refs.statsObject.value.bbbvs = bbbvs.toFixed(3);
-      this.refs.statsObject.value.eff = Math.round(eff);
-      this.refs.statsObject.value.maxEff = null;
-      this.refs.statsObject.value.deepMaxEff = null;
-      this.refs.statsObject.value.clicks = clicksObject;
-      this.refs.statsObject.value.eightZini = null;
-      this.refs.statsObject.value.chainZini = null;
-      this.refs.statsObject.value.womZini = null;
-      this.refs.statsObject.value.womHzini = null;
-      this.refs.statsObject.value.cWomZini = null;
-      this.refs.statsObject.value.cWomHzini = null;
-      this.refs.statsObject.value.pttaLink = pttaLink;
-      this.refs.statsObject.value.deepZini = null;
-      this.refs.statsObject.value.stnb = stnb !== null ? stnb.toFixed(3) : null;
-      this.refs.statsObject.value.thrp = Math.round(thrp);
-      this.refs.statsObject.value.rqp = rqp.toFixed(3);
-      this.refs.statsObject.value.corr = corr.toFixed(3);
+      statsObject.value.isWonGame = true;
+      statsObject.value.time = time.toFixed(3);
+      statsObject.value.total3bv = bbbv;
+      statsObject.value.bbbvs = bbbvs.toFixed(3);
+      statsObject.value.eff = Math.round(eff);
+      statsObject.value.maxEff = null;
+      statsObject.value.deepMaxEff = null;
+      statsObject.value.clicks = clicksObject;
+      statsObject.value.eightZini = null;
+      statsObject.value.chainZini = null;
+      statsObject.value.womZini = null;
+      statsObject.value.womHzini = null;
+      statsObject.value.cWomZini = null;
+      statsObject.value.cWomHzini = null;
+      statsObject.value.pttaLink = pttaLink;
+      statsObject.value.deepZini = null;
+      statsObject.value.stnb = stnb !== null ? stnb.toFixed(3) : null;
+      statsObject.value.thrp = Math.round(thrp);
+      statsObject.value.rqp = rqp.toFixed(3);
+      statsObject.value.corr = corr.toFixed(3);
     } else {
-      this.refs.statsObject.value.isWonGame = false;
-      this.refs.statsObject.value.time = time.toFixed(3);
-      this.refs.statsObject.value.estTime = estTime.toFixed(3);
-      this.refs.statsObject.value.solved3bv = solved3bv;
-      this.refs.statsObject.value.total3bv = bbbv;
-      this.refs.statsObject.value.bbbvs = bbbvs.toFixed(3);
-      this.refs.statsObject.value.eff = Math.round(eff);
-      this.refs.statsObject.value.maxEff = null;
-      this.refs.statsObject.value.deepMaxEff = null;
-      this.refs.statsObject.value.clicks = clicksObject;
-      this.refs.statsObject.value.eightZini = null;
-      this.refs.statsObject.value.chainZini = null;
-      this.refs.statsObject.value.womZini = null;
-      this.refs.statsObject.value.womHzini = null;
-      this.refs.statsObject.value.cWomZini = null;
-      this.refs.statsObject.value.cWomHzini = null;
-      this.refs.statsObject.value.pttaLink = pttaLink;
-      this.refs.statsObject.value.deepZini = null;
-      this.refs.statsObject.value.stnb = stnb !== null ? stnb.toFixed(3) : null;
-      this.refs.statsObject.value.thrp = Math.round(thrp);
-      this.refs.statsObject.value.rqp = rqp.toFixed(3);
-      this.refs.statsObject.value.corr = corr.toFixed(3);
+      statsObject.value.isWonGame = false;
+      statsObject.value.time = time.toFixed(3);
+      statsObject.value.estTime = estTime.toFixed(3);
+      statsObject.value.solved3bv = solved3bv;
+      statsObject.value.total3bv = bbbv;
+      statsObject.value.bbbvs = bbbvs.toFixed(3);
+      statsObject.value.eff = Math.round(eff);
+      statsObject.value.maxEff = null;
+      statsObject.value.deepMaxEff = null;
+      statsObject.value.clicks = clicksObject;
+      statsObject.value.eightZini = null;
+      statsObject.value.chainZini = null;
+      statsObject.value.womZini = null;
+      statsObject.value.womHzini = null;
+      statsObject.value.cWomZini = null;
+      statsObject.value.cWomHzini = null;
+      statsObject.value.pttaLink = pttaLink;
+      statsObject.value.deepZini = null;
+      statsObject.value.stnb = stnb !== null ? stnb.toFixed(3) : null;
+      statsObject.value.thrp = Math.round(thrp);
+      statsObject.value.rqp = rqp.toFixed(3);
+      statsObject.value.corr = corr.toFixed(3);
     }
 
-    this.refs.statsObject.value.attributes = {
+    statsObject.value.attributes = {
       noGuess: this.attributes.noGuess,
       hintsUsed: this.attributes.hintsUsed,
     };
@@ -322,7 +330,6 @@ class BoardStats {
 
   lateCalcDeepChainZini(completionCallback = false) {
     this.ziniRunner = new DeepChainZiniRunner(
-      this.refs,
       {
         mines: this.mines,
         analysisType: 'separate',
@@ -331,7 +338,7 @@ class BoardStats {
       },
       {
         onPercentageProgress: (percent) => {
-          this.refs.ziniRunnerPercentageProgress.value = `${percent}%`;
+          ziniRunnerPercentageProgress.value = `${percent}%`;
         },
         onCompleteRun: (result) => {
           this.deepZini = result.total;
@@ -351,10 +358,10 @@ class BoardStats {
   async calcZinisForStatsPanel() {
     if (!this.statsWorkerManager) return;
 
-    const includeEightWay = this.refs.statsShowMaxEff.value || this.refs.statsShow8Way.value;
-    const include100Chain = this.refs.statsShowMaxEff.value || this.refs.statsShowChain.value;
+    const includeEightWay = statsShowMaxEff.value || statsShow8Way.value;
+    const include100Chain = statsShowMaxEff.value || statsShowChain.value;
     //Note womzini only shown by default for 3bv < 500, if this threshold changes also remember to update in PlayPage.vue.
-    const includeWomZini = (this.refs.statsShowMaxEff.value || this.refs.statsShowWomZini.value) && this.bbbv < 500;
+    const includeWomZini = (statsShowMaxEff.value || statsShowWomZini.value) && this.bbbv < 500;
 
     let eightZiniResult = null;
     let chainZiniResult = null;
@@ -415,7 +422,7 @@ class BoardStats {
       bestZini = null;
     }
 
-    if (!this.refs.statsShowMaxEff.value) { bestZini = null; }
+    if (!statsShowMaxEff.value) { bestZini = null; }
 
     let maxEff;
     if (bestZini !== null) {
@@ -424,18 +431,18 @@ class BoardStats {
       maxEff = null;
     }
 
-    this.refs.statsObject.value.eightZini = this.eightZini;
-    this.refs.statsObject.value.chainZini = this.chainZini;
-    this.refs.statsObject.value.womZini = this.womZini;
-    this.refs.statsObject.value.womHzini = this.womHzini;
-    this.refs.statsObject.value.cWomZini = this.cWomZini;
-    this.refs.statsObject.value.cWomHzini = this.cWomHzini;
-    this.refs.statsObject.value.bestZini = bestZini;
-    this.refs.statsObject.value.maxEff = maxEff;
+    statsObject.value.eightZini = this.eightZini;
+    statsObject.value.chainZini = this.chainZini;
+    statsObject.value.womZini = this.womZini;
+    statsObject.value.womHzini = this.womHzini;
+    statsObject.value.cWomZini = this.cWomZini;
+    statsObject.value.cWomHzini = this.cWomHzini;
+    statsObject.value.bestZini = bestZini;
+    statsObject.value.maxEff = maxEff;
 
     if (this.deepZini != null) {
-      this.refs.statsObject.value.deepZini = this.deepZini;
-      this.refs.statsObject.value.deepMaxEff = (
+      statsObject.value.deepZini = this.deepZini;
+      statsObject.value.deepMaxEff = (
         (100 * this.bbbv) / this.deepZini).toFixed(0);
     }
   }

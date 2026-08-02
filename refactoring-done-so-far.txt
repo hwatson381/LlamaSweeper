@@ -3,3 +3,10 @@ This file keeps track of what we've actually done from the plan, in case there a
 We've split refs/useLocalStorage section at the top into useSettings.js
 
 Note that this is a module singleton, so everything is init'd once, instead of each time
+
+statsWorker - be careful with teardown
+
+We need to tidy up everything which uses "refs" so that it instead uses "useSettings" and imports
+this can't work for "Tile" because it relies on mainCanvas template ref
+
+Do statsWorkerManager when I get back

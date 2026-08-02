@@ -1,11 +1,28 @@
 import Algorithms from "./Algorithms";
 import { Dialog } from 'quasar';
 
-class EffShuffleManager {
-  constructor(refs, consts) {
-    this.refs = refs;
-    this.consts = consts;
+import {
+  minimumEff,
+  generateEffBoardsInBackground,
+  effBoardsStoredDisplayCount,
+  effBoardsMaxStoredCount,
+  effBoardsStoredFirstClickDisplay,
+  effFirstClickType,
+  effWebWorkerCount,
+  effBoardsImplementation,
+  boardWidth,
+  boardHeight,
+  boardMines,
+  begEffOptions,
+  intEffOptions,
+  expEffOptions,
+  begEffSlowGenPoint,
+  intEffSlowGenPoint,
+  expEffSlowGenPoint,
+} from "src/composables/useSettings";
 
+class EffShuffleManager {
+  constructor() {
     this.isWorkerPoolInitialised = false;
     this.workerPool = [];
 
@@ -32,19 +49,19 @@ class EffShuffleManager {
   }
 
   provideEffBoard(width, height, mineCount, firstClick) {
-    const targetEff = this.refs.minimumEff.value;
+    const targetEff = minimumEff.value;
     const timeoutSeconds = 5;
 
-    if (this.refs.generateEffBoardsInBackground.value) {
+    if (generateEffBoardsInBackground.value) {
       //Check if we have a pre-generated board
       const boardKey = `${width}-${height}-${mineCount}-${targetEff}`;
       const storedBoard = this.storedBoards.get(boardKey);
       this.addRecentlyPlayedCustom(boardKey); //Mark this board as being played since they've requested a board for it (only if it is a custom game)
       if (Array.isArray(storedBoard) && storedBoard.length > 0) {
         let precomputedBoard = storedBoard.shift(); //return precomputed mines array and where the first click was
-        this.refs.effBoardsStoredDisplayCount.value = storedBoard.length;
-        this.refs.effBoardsStoredFirstClickDisplay.value =
-          storedBoard[0]?.firstClickType ?? this.refs.effFirstClickType.value;
+        effBoardsStoredDisplayCount.value = storedBoard.length;
+        effBoardsStoredFirstClickDisplay.value =
+          storedBoard[0]?.firstClickType ?? effFirstClickType.value;
         this.sendWorkersCurrentTask(); //Just in case, as workers may need resuming if it was previously paused
         return precomputedBoard;
       }
@@ -53,7 +70,7 @@ class EffShuffleManager {
     //No pre-generated boards (as we would've returned earlier) so try to generate our own
 
     //change firstClick as needed
-    switch (this.refs.effFirstClickType.value) {
+    switch (effFirstClickType.value) {
       case "corner":
         firstClick = { x: 0, y: 0 };
         break;
@@ -87,11 +104,11 @@ class EffShuffleManager {
       });
       return false;
     } else {
-      if (this.refs.effFirstClickType.value === "random") {
+      if (effFirstClickType.value === "random") {
         firstClick = Algorithms.getRandomZeroCell(minesArray);
       }
 
-      if (this.refs.effFirstClickType.value === "same") {
+      if (effFirstClickType.value === "same") {
         firstClick = false; //Signal that we don't change position of the click
       }
 
@@ -133,7 +150,7 @@ class EffShuffleManager {
 
     let hasReportedWorkerError = false;
 
-    for (let i = 0; i < this.refs.effWebWorkerCount.value; i++) {
+    for (let i = 0; i < effWebWorkerCount.value; i++) {
       console.log(`initing worker ${i}`);
 
       const worker = new Worker(
@@ -188,7 +205,7 @@ class EffShuffleManager {
     this.sendUpdateFirstClickIfNeeded();
     this.sendUpdateImplementationIfNeeded();
 
-    const boardKey = `${this.refs.boardWidth.value}-${this.refs.boardHeight.value}-${this.refs.boardMines.value}-${this.refs.minimumEff.value}`;
+    const boardKey = `${boardWidth.value}-${boardHeight.value}-${boardMines.value}-${minimumEff.value}`;
 
     if (
       !this.isWorkerPoolPaused &&
@@ -201,16 +218,16 @@ class EffShuffleManager {
     const storedBoard = this.storedBoards.get(boardKey);
 
     if (Array.isArray(storedBoard)) {
-      this.refs.effBoardsStoredDisplayCount.value = storedBoard.length;
-      this.refs.effBoardsStoredFirstClickDisplay.value =
-        storedBoard[0]?.firstClickType ?? this.refs.effFirstClickType.value;
+      effBoardsStoredDisplayCount.value = storedBoard.length;
+      effBoardsStoredFirstClickDisplay.value =
+        storedBoard[0]?.firstClickType ?? effFirstClickType.value;
     } else {
-      this.refs.effBoardsStoredDisplayCount.value = 0;
+      effBoardsStoredDisplayCount.value = 0;
     }
 
     if (
       Array.isArray(storedBoard) &&
-      storedBoard.length >= this.refs.effBoardsMaxStoredCount.value
+      storedBoard.length >= effBoardsMaxStoredCount.value
     ) {
       //Already generated enough of this board
       this.sendWorkersPauseCommand();
@@ -220,10 +237,10 @@ class EffShuffleManager {
     this.workerPool.forEach((worker) =>
       worker.postMessage({
         command: "process",
-        width: this.refs.boardWidth.value,
-        height: this.refs.boardHeight.value,
-        mineCount: this.refs.boardMines.value,
-        targetEff: this.refs.minimumEff.value,
+        width: boardWidth.value,
+        height: boardHeight.value,
+        mineCount: boardMines.value,
+        targetEff: minimumEff.value,
       })
     );
 
@@ -251,15 +268,15 @@ class EffShuffleManager {
   }
 
   sendUpdateFirstClickIfNeeded() {
-    if (this.refs.effBoardsStoredDisplayCount.value === 0) {
-      this.refs.effBoardsStoredFirstClickDisplay.value = this.refs.effFirstClickType.value;
+    if (effBoardsStoredDisplayCount.value === 0) {
+      effBoardsStoredFirstClickDisplay.value = effFirstClickType.value;
     }
 
     if (!this.isWorkerPoolInitialised) {
       return;
     }
 
-    if (this.workerPoolCurrentFirstClickType === this.refs.effFirstClickType.value) {
+    if (this.workerPoolCurrentFirstClickType === effFirstClickType.value) {
       //worker is already using correct first click
       return;
     }
@@ -267,11 +284,11 @@ class EffShuffleManager {
     this.workerPool.forEach((worker) =>
       worker.postMessage({
         command: "updateFirstClickType",
-        firstClickType: this.refs.effFirstClickType.value,
+        firstClickType: effFirstClickType.value,
       })
     );
 
-    this.workerPoolCurrentFirstClickType = this.refs.effFirstClickType.value;
+    this.workerPoolCurrentFirstClickType = effFirstClickType.value;
   }
 
   sendUpdateImplementationIfNeeded() {
@@ -279,7 +296,7 @@ class EffShuffleManager {
       return;
     }
 
-    if (this.workerPoolCurrentImplementationType === this.refs.effBoardsImplementation.value) {
+    if (this.workerPoolCurrentImplementationType === effBoardsImplementation.value) {
       //worker is already using correct implementation
       return;
     }
@@ -287,11 +304,11 @@ class EffShuffleManager {
     this.workerPool.forEach((worker) =>
       worker.postMessage({
         command: "updateImplementationType",
-        implementationType: this.refs.effBoardsImplementation.value,
+        implementationType: effBoardsImplementation.value,
       })
     );
 
-    this.workerPoolCurrentImplementationType = this.refs.effBoardsImplementation.value;
+    this.workerPoolCurrentImplementationType = effBoardsImplementation.value;
   }
 
   handleMessageReceived(event) {
@@ -318,20 +335,20 @@ class EffShuffleManager {
     }
 
     for (let board of foundBoards) {
-      if (storedBoardArray.length <= this.refs.effBoardsMaxStoredCount.value - 1) {
+      if (storedBoardArray.length <= effBoardsMaxStoredCount.value - 1) {
         storedBoardArray.push(board);
       }
     }
 
     //If we are on this board then update counter that tells user how many boards are stored
     if (this.workerPoolCurrentTaskKey === workerBoardKey) {
-      this.refs.effBoardsStoredDisplayCount.value = storedBoardArray.length;
-      this.refs.effBoardsStoredFirstClickDisplay.value =
-        storedBoardArray[0]?.firstClickType ?? this.refs.effFirstClickType.value;
+      effBoardsStoredDisplayCount.value = storedBoardArray.length;
+      effBoardsStoredFirstClickDisplay.value =
+        storedBoardArray[0]?.firstClickType ?? effFirstClickType.value;
     }
 
     //Pause workers if we have maxed out the number of stored boards for this size
-    if (storedBoardArray.length >= this.refs.effBoardsMaxStoredCount.value) {
+    if (storedBoardArray.length >= effBoardsMaxStoredCount.value) {
       if (
         this.workerPoolCurrentTaskKey === workerBoardKey &&
         !this.isWorkerPoolPaused
@@ -363,7 +380,7 @@ class EffShuffleManager {
       persistent: true,
     });
 
-    if (this.refs.generateEffBoardsInBackground.value) {
+    if (generateEffBoardsInBackground.value) {
       this.sendWorkersCurrentTaskDebounced(); //Restart workers after. Slightly sketchy because maybe we navigated away but whatever.
     }
   }
@@ -384,10 +401,10 @@ class EffShuffleManager {
       targetEff = parseInt(targetEff);
 
       if (
-        width === this.refs.boardWidth.value &&
-        height === this.refs.boardHeight.value &&
-        mineCount === this.refs.boardMines.value &&
-        targetEff === this.refs.minimumEff.value
+        width === boardWidth.value &&
+        height === boardHeight.value &&
+        mineCount === boardMines.value &&
+        targetEff === minimumEff.value
       ) {
         //currently active board, don't garbage collect
         continue;
@@ -396,8 +413,8 @@ class EffShuffleManager {
       //beginner
       if (key.startsWith("9-9-10-")) {
         if (
-          this.consts.begEffOptions.includes(targetEff) ||
-          targetEff > this.consts.begEffSlowGenPoint
+          begEffOptions.includes(targetEff) ||
+          targetEff > begEffSlowGenPoint
         ) {
           //Don't garbage collect beg if it's a dropdown option or above a certain value
           continue;
@@ -407,8 +424,8 @@ class EffShuffleManager {
       //int
       if (key.startsWith("16-16-40-")) {
         if (
-          this.consts.intEffOptions.includes(targetEff) ||
-          targetEff > this.consts.intEffSlowGenPoint
+          intEffOptions.includes(targetEff) ||
+          targetEff > intEffSlowGenPoint
         ) {
           //Don't garbage collect int if it's a dropdown option or above a certain value
           continue;
@@ -418,8 +435,8 @@ class EffShuffleManager {
       //exp
       if (key.startsWith("30-16-99-") || key.startsWith("16-30-99-")) {
         if (
-          this.consts.expEffOptions.includes(targetEff) ||
-          targetEff > this.consts.expEffSlowGenPoint
+          expEffOptions.includes(targetEff) ||
+          targetEff > expEffSlowGenPoint
         ) {
           //Don't garbage collect exp if it's a dropdown option or above a certain value
           continue;
@@ -440,8 +457,8 @@ class EffShuffleManager {
 
   clearAllStoredBoards() {
     this.storedBoards.clear();
-    this.refs.effBoardsStoredFirstClickDisplay.value = this.refs.effFirstClickType.value;
-    this.refs.effBoardsStoredDisplayCount.value = 0;
+    effBoardsStoredFirstClickDisplay.value = effFirstClickType.value;
+    effBoardsStoredDisplayCount.value = 0;
     this.sendWorkersCurrentTask(); //just in case as workers may need resuming
   }
 
@@ -513,4 +530,5 @@ class EffShuffleManager {
   }
 }
 
-export default EffShuffleManager;
+const effShuffleManager = new EffShuffleManager();
+export default effShuffleManager;

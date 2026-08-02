@@ -1,10 +1,16 @@
 import Utils from "./Utils";
 import { Dialog } from 'quasar';
+import {
+  ziniRunnerActive,
+  ziniRunnerExpectedDuration,
+  ziniRunnerExpectedFinishTime,
+  ziniRunnerIterationsDisplay,
+  ziniRunnerPercentageProgress,
+} from 'src/composables/useSettings';
 
 //Class to manage running inclusion exclusion zini, and interfacing with web workers
 class DeepChainZiniRunner {
-  constructor(refs, inclusionExclusionParameters, progressCallbacks, deepReportProgress) {
-    this.refs = refs;
+  constructor(inclusionExclusionParameters, progressCallbacks, deepReportProgress) {
     this.inclusionExclusionParameters = inclusionExclusionParameters;
     this.progressCallbacks = progressCallbacks;
     this.deepReportProgress = deepReportProgress;
@@ -14,11 +20,11 @@ class DeepChainZiniRunner {
       throw new Error('Web workers not support for inclusion exclusion zini.');
     }
 
-    this.refs.ziniRunnerActive.value = true;
-    this.refs.ziniRunnerExpectedDuration.value = 'calculating...';
-    this.refs.ziniRunnerExpectedFinishTime.value = 'calculating...';
-    this.refs.ziniRunnerIterationsDisplay.value = '';
-    this.refs.ziniRunnerPercentageProgress.value = '0%';
+    ziniRunnerActive.value = true;
+    ziniRunnerExpectedDuration.value = 'calculating...';
+    ziniRunnerExpectedFinishTime.value = 'calculating...';
+    ziniRunnerIterationsDisplay.value = '';
+    ziniRunnerPercentageProgress.value = '0%';
 
     this.worker = new Worker(
       new URL("../workers/deepchain-worker.js", import.meta.url),
@@ -84,8 +90,8 @@ class DeepChainZiniRunner {
   }
 
   timingRunDone(timingRun) {
-    this.refs.ziniRunnerExpectedDuration.value = Utils.formatTime(timingRun);
-    this.refs.ziniRunnerExpectedFinishTime.value = Utils.timeInFuture(timingRun);
+    ziniRunnerExpectedDuration.value = Utils.formatTime(timingRun);
+    ziniRunnerExpectedFinishTime.value = Utils.timeInFuture(timingRun);
   }
 
   updateBoardProgress(clicks) {
@@ -101,7 +107,7 @@ class DeepChainZiniRunner {
   }
 
   updateIterationDisplay(iterations) {
-    this.refs.ziniRunnerIterationsDisplay.value = iterations;
+    ziniRunnerIterationsDisplay.value = iterations;
   }
 
   addLogEntry(logEntry) {
@@ -111,7 +117,7 @@ class DeepChainZiniRunner {
   completeRun(result) {
     console.log(result);
     this.worker.terminate();
-    this.refs.ziniRunnerActive.value = false;
+    ziniRunnerActive.value = false;
     if (this.progressCallbacks && this.progressCallbacks.onCompleteRun) {
       this.progressCallbacks.onCompleteRun(result);
     }
@@ -119,7 +125,7 @@ class DeepChainZiniRunner {
 
   killWorker() {
     this.worker.terminate();
-    this.refs.ziniRunnerActive.value = false;
+    ziniRunnerActive.value = false;
   }
 }
 

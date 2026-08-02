@@ -138,6 +138,19 @@ class StatsWorkerManager {
 
     this.jobsMap.clear();
   }
+
+  softReset() {
+    //Soft clear of jobs that have been sent
+    //This is used when we unmount PlayPage
+
+    this.incrementStatsLock();
+    this.incrementAutoHintLock();
+
+    //Also reject all remaining jobs
+    this.jobsMap.forEach(job => job.reject());
+    this.jobsMap.clear();
+  }
 }
 
-export default StatsWorkerManager;
+const statsWorkerManager = new StatsWorkerManager();
+export default statsWorkerManager;

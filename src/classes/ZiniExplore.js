@@ -3,11 +3,30 @@ import Algorithms from "./Algorithms";
 import { Dialog } from 'quasar'
 import ChainZini from "./ChainZini";
 import DeepChainZiniRunner from "./DeepChainZiniRunner";
+import {
+  analyseDisplayMode,
+  analyseAlgorithm,
+  analyseAlgorithmScope,
+  analyseIterations,
+  analyseHistoryRewrite,
+  analyseHiddenStyle,
+  analyseDeepType,
+  analyseDeepIterations,
+  analyseVisualise,
+  analyseForbid,
+  classicPathBreakdown,
+  analyseZiniTotal,
+  analyse3bv,
+  analyseEff,
+  analyseShowPremiums,
+  ziniRunnerActive,
+  synchronousZiniActive,
+  replayIsShown,
+} from 'src/composables/useSettings'
 
 class ZiniExplore {
-  constructor(board, refs) {
+  constructor(board) {
     this.board = board
-    this.refs = refs
 
     this.classicPath = []; //Array of clicks {type:'left', x: 1, y: 2} etc for classic display mode
 
@@ -19,14 +38,14 @@ class ZiniExplore {
   }
 
   handleZiniExploreClick(tileX, tileY, isDigInput, isFlagInput) {
-    if (this.refs.ziniRunnerActive.value || this.refs.synchronousZiniActive.value) {
+    if (ziniRunnerActive.value || synchronousZiniActive.value) {
       //Block click if we are in the middle of computing zini
       return;
     }
 
-    if (this.refs.analyseDisplayMode.value === 'classic') {
+    if (analyseDisplayMode.value === 'classic') {
       this.handleClassicClick(tileX, tileY, isDigInput, isFlagInput);
-    } else if (this.refs.analyseDisplayMode.value === 'chain') {
+    } else if (analyseDisplayMode.value === 'chain') {
       this.handleChainClick(tileX, tileY, isDigInput, isFlagInput);
     } else {
       throw new Error('Unrecognised display mode');
@@ -861,18 +880,18 @@ class ZiniExplore {
   }
 
   updateZiniSumRefs() {
-    if (this.refs.analyseDisplayMode.value === 'classic' || this.refs.analyseDisplayMode.value === 'chain') {
-      this.refs.classicPathBreakdown.value.lefts = this.classicPath.filter(c => c.type === 'left').length;
-      this.refs.classicPathBreakdown.value.rights = this.classicPath.filter(c => c.type === 'right').length;
-      this.refs.classicPathBreakdown.value.chords = this.classicPath.filter(c => c.type === 'chord').length;
+    if (analyseDisplayMode.value === 'classic' || analyseDisplayMode.value === 'chain') {
+      classicPathBreakdown.value.lefts = this.classicPath.filter(c => c.type === 'left').length;
+      classicPathBreakdown.value.rights = this.classicPath.filter(c => c.type === 'right').length;
+      classicPathBreakdown.value.chords = this.classicPath.filter(c => c.type === 'chord').length;
 
       const bbbv = Algorithms.calc3bv(this.board.mines, this.board.tilesArray, this.preprocessedData);
       const remaining3bv = bbbv.bbbv - bbbv.solved3bv;
-      this.refs.classicPathBreakdown.value.remaining3bv = remaining3bv;
+      classicPathBreakdown.value.remaining3bv = remaining3bv;
 
-      this.refs.analyseZiniTotal.value = remaining3bv + this.classicPath.length;
-      this.refs.analyse3bv.value = bbbv.bbbv;
-      this.refs.analyseEff.value = Math.round((this.refs.analyse3bv.value / this.refs.analyseZiniTotal.value) * 100)
+      analyseZiniTotal.value = remaining3bv + this.classicPath.length;
+      analyse3bv.value = bbbv.bbbv;
+      analyseEff.value = Math.round((analyse3bv.value / analyseZiniTotal.value) * 100)
     } else {
       throw new Error('Unrecognised display mode');
     }
@@ -980,8 +999,8 @@ class ZiniExplore {
     const width = this.board.mines.length;
     const height = this.board.mines[0].length;
 
-    const showPremiumsValue = this.refs.analyseShowPremiums.value; //Shorter to type :)
-    const displayInputMode = this.refs.analyseDisplayMode.value;
+    const showPremiumsValue = analyseShowPremiums.value; //Shorter to type :)
+    const displayInputMode = analyseDisplayMode.value;
 
     let highestPremium = premiums
       .flat()
@@ -1070,16 +1089,16 @@ class ZiniExplore {
 
   updateUiAndBoard() {
     this.removeInvalidChordsAndRegenerateTileStates();
-    this.board.populateHiddenNumbers(this.refs.analyseHiddenStyle.value);
+    this.board.populateHiddenNumbers(analyseHiddenStyle.value);
     this.updateFlagCounter();
     this.updateZiniSumRefs();
     this.updateTileAnnotations();
-    if (this.refs.analyseShowPremiums.value !== 'none') {
+    if (analyseShowPremiums.value !== 'none') {
       let premiumsArray;
-      if (this.refs.analyseDisplayMode.value === 'classic') {
+      if (analyseDisplayMode.value === 'classic') {
         premiumsArray = this.calculateNormalPremiums();
       }
-      if (this.refs.analyseDisplayMode.value === 'chain') {
+      if (analyseDisplayMode.value === 'chain') {
         premiumsArray = this.calculateChainPremiums();
       }
 
@@ -1089,7 +1108,7 @@ class ZiniExplore {
   }
 
   updateTileAnnotations() {
-    if (this.refs.analyseDisplayMode.value === 'classic' || this.refs.analyseDisplayMode.value === 'chain') {
+    if (analyseDisplayMode.value === 'classic' || analyseDisplayMode.value === 'chain') {
       for (const click of this.classicPath) {
         if (click.type === 'left') {
           this.board.tilesArray[click.x][click.y].addClassicDig();
@@ -1102,40 +1121,40 @@ class ZiniExplore {
   }
 
   runAlgorithm() {
-    switch (this.refs.analyseAlgorithm.value) {
+    switch (analyseAlgorithm.value) {
       case '8 way':
-        this.refs.synchronousZiniActive.value = true;
+        synchronousZiniActive.value = true;
         this.run8way();
-        setTimeout(() => this.refs.synchronousZiniActive.value = false, 100);
+        setTimeout(() => synchronousZiniActive.value = false, 100);
         break;
       case 'womzini':
-        this.refs.synchronousZiniActive.value = true;
+        synchronousZiniActive.value = true;
         this.classicPath = Algorithms.calcWomZiniAndHZini(
           this.board.mines,
           false
         ).womZini.clicks;
-        setTimeout(() => this.refs.synchronousZiniActive.value = false, 100);
+        setTimeout(() => synchronousZiniActive.value = false, 100);
         break;
       case 'womzinifix':
-        this.refs.synchronousZiniActive.value = true;
+        synchronousZiniActive.value = true;
         this.classicPath = Algorithms.calcWomZiniAndHZini(
           this.board.mines,
           true
         ).womZini.clicks;
-        setTimeout(() => this.refs.synchronousZiniActive.value = false, 100);
+        setTimeout(() => synchronousZiniActive.value = false, 100);
         break;
       case 'womhzini':
-        this.refs.synchronousZiniActive.value = true;
+        synchronousZiniActive.value = true;
         this.classicPath = Algorithms.calcWomZiniAndHZini(
           this.board.mines,
           false
         ).womHzini.clicks;
-        setTimeout(() => this.refs.synchronousZiniActive.value = false, 100);
+        setTimeout(() => synchronousZiniActive.value = false, 100);
         break;
       case 'chainzini':
-        this.refs.synchronousZiniActive.value = true;
+        synchronousZiniActive.value = true;
         this.runChainZini();
-        setTimeout(() => this.refs.synchronousZiniActive.value = false, 100);
+        setTimeout(() => synchronousZiniActive.value = false, 100);
         break;
       case 'incexzini':
         this.runInclusionExclusionZini(true);
@@ -1149,7 +1168,7 @@ class ZiniExplore {
   }
 
   runDefaultAlgorithmOrPromptForInfo() {
-    if (this.refs.replayIsShown.value) {
+    if (replayIsShown.value) {
       Dialog.create({
         title: "Alert",
         message: "Please close the replay first",
@@ -1191,7 +1210,7 @@ class ZiniExplore {
   }
 
   run8way() {
-    if (this.refs.analyseAlgorithmScope.value === 'beginning') {
+    if (analyseAlgorithmScope.value === 'beginning') {
       this.classicPath = Algorithms.calcEightWayZini(this.board.mines).clicks
     } else {
       const { revealedStates, flagStates } = this.getRevealedAndFlagStates();
@@ -1201,22 +1220,22 @@ class ZiniExplore {
   }
 
   runChainZini() {
-    let iterations = this.refs.analyseIterations.value;
+    let iterations = analyseIterations.value;
     if (
       !Number.isFinite(iterations) ||
       !Number.isInteger(iterations) ||
       iterations < 1
     ) {
-      this.refs.analyseIterations.value = 100;
+      analyseIterations.value = 100;
       iterations = 100;
     }
 
     if (iterations > 1000000) {
-      this.refs.analyseIterations.value = 1000000;
+      analyseIterations.value = 1000000;
       iterations = 1000000;
     }
 
-    if (this.refs.analyseAlgorithmScope.value === 'beginning') {
+    if (analyseAlgorithmScope.value === 'beginning') {
       this.classicPath = ChainZini.calcNWayChainZini({
         mines: this.board.mines,
         numberOfIterations: iterations,
@@ -1232,7 +1251,7 @@ class ZiniExplore {
       } = ChainZini.convertClickPathToChainInput(
         this.classicPath,
         this.board.mines,
-        this.refs.analyseHistoryRewrite.value
+        analyseHistoryRewrite.value
       );
       this.classicPath = ChainZini.calcNWayChainZini({
         mines: this.board.mines,
@@ -1258,12 +1277,12 @@ class ZiniExplore {
     let forbidMoves = false;
 
     if (useRefs) {
-      scope = this.refs.analyseAlgorithmScope.value;
-      rewrite = this.refs.analyseHistoryRewrite.value;
-      deepType = this.refs.analyseDeepType.value;
-      deepIterations = this.refs.analyseDeepIterations.value;
-      deepReportProgress = this.refs.analyseVisualise.value;
-      forbidMoves = this.refs.analyseForbid.value;
+      scope = analyseAlgorithmScope.value;
+      rewrite = analyseHistoryRewrite.value;
+      deepType = analyseDeepType.value;
+      deepIterations = analyseDeepIterations.value;
+      deepReportProgress = analyseVisualise.value;
+      forbidMoves = analyseForbid.value;
     }
 
     if (
@@ -1271,12 +1290,12 @@ class ZiniExplore {
       !Number.isInteger(deepIterations) ||
       deepIterations < 1
     ) {
-      this.refs.analyseDeepIterations.value = 5;
+      analyseDeepIterations.value = 5;
       deepIterations = 5;
     }
 
     if (deepIterations > 1000) {
-      this.refs.analyseDeepIterations.value = 1000;
+      analyseDeepIterations.value = 1000;
       deepIterations = 1000;
     }
 
@@ -1284,7 +1303,6 @@ class ZiniExplore {
 
     if (scope === 'beginning') {
       this.ziniRunner = new DeepChainZiniRunner(
-        this.refs,
         {
           mines: this.board.mines,
           analysisType: deepType,
@@ -1319,7 +1337,6 @@ class ZiniExplore {
         rewrite
       );
       this.ziniRunner = new DeepChainZiniRunner(
-        this.refs,
         {
           mines: this.board.mines,
           initialRevealedStates,

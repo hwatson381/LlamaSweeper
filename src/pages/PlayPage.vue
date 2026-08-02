@@ -3044,7 +3044,7 @@
         />
         <br />
         <q-btn
-          @click="effShuffleManager && effShuffleManager.clearAllStoredBoards()"
+          @click="effShuffleManager.clearAllStoredBoards()"
           color="negative"
           label="Clear stored boards"
         />
@@ -3346,21 +3346,21 @@ import {
   watch,
 } from "vue";
 
-import Benchmark from "src/classes/Benchmark.js";
+import Benchmark from "src/classes/Benchmark";
+import BoardHistory from "src/classes/BoardHistory";
 import Algorithms from "src/classes/Algorithms";
 import Replay from "src/classes/Replay";
 import CompareReplay from "src/classes/CompareReplay";
 import BoardStats from "src/classes/BoardStats";
-import EffShuffleManager from "src/classes/EffShuffleManager";
+import effShuffleManager from "src/classes/EffShuffleManager";
 import BoardGenerator from "src/classes/BoardGenerator";
-import SkinManager from "src/classes/SkinManager";
+import skinManager from "src/classes/SkinManager";
 import Tile from "src/classes/Tile";
 import Utils from "src/classes/Utils";
 import ZiniExplore from "src/classes/ZiniExplore";
 import ChainZini from "src/classes/ChainZini";
-import StatsWorkerManager from "src/classes/StatsWorkerManager";
+import statsWorkerManager from "src/classes/StatsWorkerManager";
 import RawVF from "src/classes/RawVF";
-import { isWasmAvailable, wasmReadySettled } from "src/classes/RustWasm";
 
 import ReplayBar from "src/components/ReplayBar.vue";
 
@@ -3370,7 +3370,6 @@ import playSound from "src/includes/Sounds";
 import { toBlob, toCanvas } from "html-to-image";
 
 import seedrandom from "seedrandom";
-import { useLocalStorage } from "@vueuse/core";
 
 import testGames from "src/assets/janitor-test-data";
 
@@ -3380,15 +3379,6 @@ const router = useRouter();
 
 import { useQuasar, copyToClipboard, debounce, exportFile } from "quasar";
 const $q = useQuasar();
-
-//Whether the Rust/WASM module is usable. Authoritative by the time the UI is
-//interactive (the app boot waits for wasm init to settle before mounting), but
-//kept reactive so the no-guess / hint controls can disable themselves and
-//other code paths can handle this situation
-const wasmAvailable = ref(isWasmAvailable());
-wasmReadySettled.then((ok) => {
-  wasmAvailable.value = ok;
-});
 
 defineOptions({
   name: "PlayPage",
@@ -3414,8 +3404,8 @@ onUnmounted(() => {
   document.body.removeEventListener("keyup", handleKeyUp, true);
   window.removeEventListener("scroll", handlePageScroll);
   game.unmount();
-  effShuffleManager.killAllWorkers();
-  statsWorkerManager.killWorker();
+  effShuffleManager.deactivateBackgroundGeneration();
+  statsWorkerManager.softReset();
   game?.board?.replay?.pause();
 });
 
@@ -3532,6 +3522,7 @@ const mainCanvas = useTemplateRef("main-canvas");
 const gameContainerDiv = useTemplateRef("game-container");
 
 import {
+  wasmAvailable,
   showStatsBlock,
   statsObject,
   showStatsClicksTable,
@@ -3720,16 +3711,16 @@ variant.value = Utils.routeNameToVariant(route.params.variant);
 
 watchEffect(() => {
   if (variant.value === "eff boards" && generateEffBoardsInBackground.value) {
-    effShuffleManager && effShuffleManager.activateBackgroundGeneration();
+    effShuffleManager.activateBackgroundGeneration();
   } else {
-    effShuffleManager && effShuffleManager.deactivateBackgroundGeneration();
+    effShuffleManager.deactivateBackgroundGeneration();
   }
 });
 watch(
   [boardWidth, boardHeight, boardMines, minimumEff, effBoardsMaxStoredCount],
   () => {
     if (variant.value === "eff boards" && generateEffBoardsInBackground.value) {
-      effShuffleManager && effShuffleManager.sendWorkersCurrentTaskDebounced();
+      effShuffleManager.sendWorkersCurrentTaskDebounced();
     }
   }
 );
@@ -4047,7 +4038,7 @@ function bulkrun5() {
       console.log("Found candidate");
       console.log(`EightZini: ${eightZini}`);
 
-      let boardStats = new BoardStats(mines, {}, null);
+      let boardStats = new BoardStats(mines, null);
       let link = boardStats.getPttaLink();
       console.log(`Link:
       ${link}`);
@@ -4421,30 +4412,7 @@ class Board {
     this.editingEditBoard = true;
     this.editingZiniBoard = true;
 
-    this.ziniExplore = new ZiniExplore(this, {
-      analyseDisplayMode,
-      analyseAlgorithm,
-      analyseAlgorithmScope,
-      analyseIterations,
-      analyseHistoryRewrite,
-      analyseHiddenStyle,
-      analyseDeepType,
-      analyseDeepIterations,
-      analyseVisualise,
-      analyseForbid,
-      classicPathBreakdown,
-      analyseZiniTotal,
-      analyse3bv,
-      analyseEff,
-      analyseShowPremiums,
-      ziniRunnerActive,
-      synchronousZiniActive,
-      ziniRunnerExpectedDuration,
-      ziniRunnerExpectedFinishTime,
-      ziniRunnerIterationsDisplay,
-      ziniRunnerPercentageProgress,
-      replayIsShown,
-    });
+    this.ziniExplore = new ZiniExplore(this);
 
     watch(
       [() => route.params.variant, () => route.query],
@@ -4591,9 +4559,7 @@ class Board {
       .map(() =>
         new Array(this.height)
           .fill(0)
-          .map(
-            () => new Tile(CONSTANTS.UNREVEALED, { mainCanvas }, skinManager)
-          )
+          .map(() => new Tile(CONSTANTS.UNREVEALED, { mainCanvas }))
       );
   }
 
@@ -4884,7 +4850,7 @@ class Board {
   sendToPttCalculator() {
     if (this.variant === "zini explorer") {
       //Need to compute pttaLink. Kinda hacky for zini explorer...
-      let tempBoardStats = new BoardStats(this.mines, {}, null);
+      let tempBoardStats = new BoardStats(this.mines, null);
       window.open(tempBoardStats.getPttaLink(), "_blank").focus();
     } else {
       window.open(statsObject.value.pttaLink, "_blank").focus();
@@ -6095,22 +6061,7 @@ class Board {
     //Refresh tiles
     this.resetTiles();
 
-    this.stats = new BoardStats(
-      this.mines,
-      {
-        statsObject,
-        statsShow8Way,
-        statsShowChain,
-        statsShowWomZini,
-        statsShowMaxEff,
-        ziniRunnerActive,
-        ziniRunnerExpectedDuration,
-        ziniRunnerExpectedFinishTime,
-        ziniRunnerIterationsDisplay,
-        ziniRunnerPercentageProgress,
-      },
-      statsWorkerManager
-    );
+    this.stats = new BoardStats(this.mines, statsWorkerManager);
     if (noGuessing.value && this.variant !== "eff boards") {
       this.stats.addNoGuessAttribute();
     }
@@ -9507,21 +9458,7 @@ class Board {
       statsWorkerManager.incrementAutoHintLock();
     }
 
-    let refs = {
-      replayTypeForceSteppy,
-      replayIsPanning,
-      replayIsInputting,
-      replayType,
-      replaySpeedMultiplier,
-      replayIsPlaying,
-      replayBarStartValue,
-      replayBarLastValue,
-      replayProgress,
-      replayProgressRounded,
-      replayShowHidden,
-    };
-
-    this.replay = new Replay(replayParams, refs);
+    this.replay = new Replay(replayParams);
   }
 
   initOrPrepareDeepChainReplay() {
@@ -10087,42 +10024,7 @@ class Board {
   }
 }
 
-class BoardHistory {
-  //Stores past games that we can recover and resume
-  //Saves to local storage?
-  constructor() {}
-}
-
 const benchmark = new Benchmark();
-const skinManager = new SkinManager({
-  boardSkin,
-  analyseHiddenStyle,
-  replayShowHidden,
-});
-var effShuffleManager = new EffShuffleManager(
-  {
-    minimumEff,
-    generateEffBoardsInBackground,
-    effBoardsStoredDisplayCount,
-    effBoardsMaxStoredCount,
-    effBoardsStoredFirstClickDisplay,
-    effFirstClickType,
-    effWebWorkerCount,
-    effBoardsImplementation,
-    boardWidth,
-    boardHeight,
-    boardMines,
-  },
-  {
-    begEffOptions,
-    intEffOptions,
-    expEffOptions,
-    begEffSlowGenPoint,
-    intEffSlowGenPoint,
-    expEffSlowGenPoint,
-  }
-); //Needs to be var to stop an access-before-init error
-var statsWorkerManager = new StatsWorkerManager();
-const boardHistory = new BoardHistory();
+const boardHistory = new BoardHistory(); //Unused, but in the future we might decide to save games locally
 var game = new Game(); //Needs to be var to stop an access-before-init error
 </script>

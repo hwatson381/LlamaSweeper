@@ -1,9 +1,9 @@
 import CONSTANTS from "src/includes/Constants";
+import skinManager from "src/classes/SkinManager";
 
 class Tile {
-  constructor(state, refs, skinManager) {
+  constructor(state, refs) {
     this.refs = refs
-    this.skinManager = skinManager
 
     this.state = state; //Possible values are numbers (e.g. 0, 1, 2... and stuff like CONSTANTS.UNREVEALED etc)
     this.depressed = false;
@@ -49,7 +49,7 @@ class Tile {
       toDraw = CONSTANTS.UNREVEALED
     }
 
-    ctx.drawImage(this.skinManager.getImage(toDraw), rawX, rawY, size, size);
+    ctx.drawImage(skinManager.getImage(toDraw), rawX, rawY, size, size);
   }
 
   drawPaint(rawX, rawY, size) {
@@ -91,8 +91,8 @@ class Tile {
 
     //draw dots
     if (this.paintDots !== 0) {
-      ctx.fillStyle = this.skinManager.getDotMainColour();
-      ctx.strokeStyle = this.skinManager.getDotSecondaryColour();
+      ctx.fillStyle = skinManager.getDotMainColour();
+      ctx.strokeStyle = skinManager.getDotSecondaryColour();
 
       const dotRadius = size * 0.11;
 
@@ -154,7 +154,7 @@ class Tile {
     if (this.hint.hintTexture !== null) {
       //Note - we are drawing directly on top of the normal tile texture
       //this is a bit inefficient, but seemed easier for organising code and allows possiblity of transparency
-      ctx.drawImage(this.skinManager.getImage(this.hint.hintTexture), rawX, rawY, size, size);
+      ctx.drawImage(skinManager.getImage(this.hint.hintTexture), rawX, rawY, size, size);
 
       if (this.hint.render === "textureonly") {
         return;
@@ -167,7 +167,7 @@ class Tile {
     let yText = rawY + size * 0.5 + textScale * 0.1; //Text nudged slighty down so it looks more visually centred
 
     const isFloating = this.hint.render === "floating";
-    const hintColour = this.skinManager.getHintColour(this.hint.colourScale, isFloating);
+    const hintColour = skinManager.getHintColour(this.hint.colourScale, isFloating);
 
     let percent = this.hint.probability * 100;
 
@@ -195,18 +195,18 @@ class Tile {
     const textBgStartY = yText - textMeasurements.actualBoundingBoxAscent - textBgPadding;
 
     if (this.hint.render === "onflag") {
-      ctx.fillStyle = this.skinManager.getHintReadabilityRectangle();
+      ctx.fillStyle = skinManager.getHintReadabilityRectangle();
       ctx.fillRect(textBgStartX, textBgStartY, textBgWidth, textBgHeight);
     } else if (this.hint.render === "onmine") {
       //Do nothing as we don't show the background rectangle when on mines.
     } else if (this.hint.render === "onblastmine") {
-      ctx.fillStyle = this.skinManager.getHintReadabilityRectangle();
+      ctx.fillStyle = skinManager.getHintReadabilityRectangle();
       ctx.fillRect(textBgStartX, textBgStartY, textBgWidth, textBgHeight);
     }
 
     if (this.hint.highlight && !suppressHighlight) {
       //Do a green highlight
-      const highlightColour = this.skinManager.getHighlightColour();
+      const highlightColour = skinManager.getHighlightColour();
 
       const thickness = 0.08 * size;
 
@@ -230,9 +230,9 @@ class Tile {
     }
 
     const ctx = this.refs.mainCanvas.value.getContext("2d");
-    const gainColour = this.skinManager.getClickGainColour();
-    const lossColour = this.skinManager.getClickLossColour();
-    const neutralColour = this.skinManager.getClickNeutralColour();
+    const gainColour = skinManager.getClickGainColour();
+    const lossColour = skinManager.getClickLossColour();
+    const neutralColour = skinManager.getClickNeutralColour();
 
     const thickness = 0.07 * size;
 
@@ -320,8 +320,8 @@ class Tile {
     //zini explore annotations
     //////////////////////////////////
 
-    const classicDigColour = this.skinManager.getClassicDigColour();
-    const classicChordColour = this.skinManager.getClassicChordColour();
+    const classicDigColour = skinManager.getClassicDigColour();
+    const classicChordColour = skinManager.getClassicChordColour();
 
     if (this.explore.classicChord && this.explore.classicDig) {
       this.drawStateWithBackgroundColors(rawX, rawY, size, true, classicChordColour, classicDigColour);
@@ -339,8 +339,8 @@ class Tile {
     //click loss/gain annotations
     //////////////////////////////////
 
-    const gainColour = this.skinManager.getClickGainColour();
-    const lossColour = this.skinManager.getClickLossColour();
+    const gainColour = skinManager.getClickGainColour();
+    const lossColour = skinManager.getClickLossColour();
 
     const isOpen = this.state !== CONSTANTS.FLAG; //flag needs closed background instead of open one
 
@@ -362,10 +362,10 @@ class Tile {
 
     if (useOpenbackground) {
       //Draw tile base (same image as a zero tile)
-      ctx.drawImage(this.skinManager.getImage('raw_open'), rawX, rawY, size, size);
+      ctx.drawImage(skinManager.getImage('raw_open'), rawX, rawY, size, size);
     } else {
       //Draw tile base (same image as a closed tile)
-      ctx.drawImage(this.skinManager.getImage('raw_closed'), rawX, rawY, size, size);
+      ctx.drawImage(skinManager.getImage('raw_closed'), rawX, rawY, size, size);
     }
 
     //downsize slightly
@@ -411,7 +411,7 @@ class Tile {
     }
 
     //Draw number/icon on top
-    ctx.drawImage(this.skinManager.getImage('raw_' + this.state), rawX, rawY, size, size);
+    ctx.drawImage(skinManager.getImage('raw_' + this.state), rawX, rawY, size, size);
   }
 
   drawPremium(rawX, rawY, size) {
@@ -439,7 +439,7 @@ class Tile {
     ctx.textBaseline = "top";
     ctx.textAlign = "left";
     ctx.font = `${textScale}px monospace`;
-    ctx.fillStyle = this.skinManager.getPremiumColour();
+    ctx.fillStyle = skinManager.getPremiumColour();
 
     ctx.fillText(this.explore.premium, xText, yText, maxWidth);
   }
@@ -447,7 +447,7 @@ class Tile {
   drawHighlight(rawX, rawY, size) {
     const ctx = this.refs.mainCanvas.value.getContext("2d");
 
-    const highlightColour = this.skinManager.getHighlightColour();
+    const highlightColour = skinManager.getHighlightColour();
 
     const thickness = 0.08 * size;
 
@@ -482,7 +482,7 @@ class Tile {
   }
 
   clone() {
-    const newTile = new Tile(this.state, this.refs, this.skinManager);
+    const newTile = new Tile(this.state, this.refs);
     newTile.depressed = this.depressed;
     newTile.paintColour = this.paintColour;
     newTile.paintDots = this.paintDots;

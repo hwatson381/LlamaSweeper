@@ -608,3 +608,5 @@ scale images/canvas to be more consistent instead of using size on website
 Have maximum or minimum sizes for things to prevent too large relative size difference between stats panel and board sizes.
 
 Try adding high dpi canvas support? Although after refactoring
+
+Refactor such that whenever we have this.refs, it becomes an import instead
