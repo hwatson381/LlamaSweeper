@@ -165,6 +165,7 @@ let emit = defineEmits([
   "handle-slider-change",
   "handle-input-change",
   "replay-type-change",
+  "close-replay",
 ]);
 
 let replaySpeedMultiplierUnderlying = ref(20);
