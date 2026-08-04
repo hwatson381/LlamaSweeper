@@ -3371,6 +3371,7 @@ defineOptions({
 });
 
 onMounted(() => {
+  resetTransientSettings();
   document.body.addEventListener("keydown", handleKeyDown, true);
   document.body.addEventListener("keyup", handleKeyUp, true);
   window.addEventListener("scroll", handlePageScroll);
@@ -3392,7 +3393,6 @@ onUnmounted(() => {
   game.unmount();
   effShuffleManager.deactivateBackgroundGeneration();
   statsWorkerManager.softReset();
-  game?.board?.replay?.pause();
 });
 
 function handleKeyDown(event) {
@@ -3678,6 +3678,7 @@ import {
   filterInvertValue,
   filterSaturateValue,
   filterStyleProperty,
+  resetTransientSettings,
 } from "src/composables/useSettings";
 
 //variant gets declared in useSettings, but we synchronously set the initial value here
@@ -4233,6 +4234,10 @@ class Game {
     this.board.clearTimerTimeout();
     this.board.saveGameIfRunning();
     this.board.stopUrlWatch();
+    this.board.ziniExplore?.killDeepChainZiniRunner();
+    this.board.stats?.killDeepChainZiniRunner();
+
+    this.board?.replay?.pause();
   }
 
   refreshSize() {

@@ -121,7 +121,7 @@ let topPanelHeight = computed(() => {
 let pttaUrl = ref("");
 let mbfStringToImport = ref("");
 let mbfFileToImport = ref(null);
-let boardSizePreset = ref("beg"); //beg/int/exp. Mainly just used for showing correct thing in dropdown
+let boardSizePreset = useLocalStorage("ls_boardSizePreset", "beg"); //beg/int/exp. Mainly just used for showing correct thing in dropdown
 let customWidth = useLocalStorage("ls_customWidth", 8);
 let customHeight = useLocalStorage("ls_customHeight", 8);
 let customMines = useLocalStorage("ls_customMines", 10);
@@ -194,21 +194,21 @@ let autoHintDelay = useLocalStorage("ls_autoHintDelay", 0); //ms to linger on mi
 let autoHintVariants = useLocalStorage("ls_autoHintVariants", "not eff boards");
 let autoHintBackdrop = useLocalStorage("ls_autoHintBackdrop", "no mines"); //numbers, mines, no mines, minimal
 
-let begEffPreset = ref(200);
+let begEffPreset = useLocalStorage("ls_begEffPreset", 200);
 let begEffOptions = Object.freeze([200, 210, 225, "custom"]);
 let begEffCustom = useLocalStorage("ls_begEffCustom", 235);
 const begEffSlowGenPoint = 210;
-let intEffPreset = ref(160);
+let intEffPreset = useLocalStorage("ls_intEffPreset", 160);
 let intEffOptions = Object.freeze([160, 170, 180, "custom"]);
 let intEffCustom = useLocalStorage("ls_intEffCustom", 190);
 const intEffSlowGenPoint = 180;
-let expEffPreset = ref(150);
+let expEffPreset = useLocalStorage("ls_expEffPreset", 150);
 let expEffOptions = Object.freeze([150, 160, 170, "custom"]);
 let expEffCustom = useLocalStorage("ls_expEffCustom", 180);
 const expEffSlowGenPoint = 170;
 let customEffCustom = useLocalStorage("ls_customEffCustom", 150);
-let generateEffBoardsInBackground = ref(false);
-let effWebWorkerCount = ref(1);
+let generateEffBoardsInBackground = useLocalStorage("ls_generateEffBoardsInBackground", false);
+let effWebWorkerCount = useLocalStorage("ls_effWebWorkerCount", 1);
 let browserSupportsWebWorkers = window.Worker ? true : false;
 let browserSupportsConcurrency =
   browserSupportsWebWorkers && window.navigator.hardwareConcurrency > 2;
@@ -219,7 +219,7 @@ let effBoardsHiddenSettingsModal = ref(false);
 let effBoardsStoredDisplayCount = ref(0);
 let effBoardsMaxStoredCount = useLocalStorage("ls_effBoardsMaxStoredCount", 40);
 let effBoardsStoredFirstClickDisplay = ref("random");
-let effFirstClickType = ref("same");
+let effFirstClickType = useLocalStorage("ls_effFirstClickType", "same");
 let minimumEff = computed(() => {
   let minEff = 0;
   switch (boardSizePreset.value) {
@@ -426,7 +426,7 @@ let replayIsInputting = ref(false);
 let reorderZini = useLocalStorage("ls_reorderZini", false);
 let replayShowHidden = useLocalStorage("ls_replayShowHidden", "transparent3");
 
-let analyseDisplayMode = ref("classic");
+let analyseDisplayMode = useLocalStorage("ls_analyseDisplayMode", "classic");
 let analyseAlgorithm = ref("incexzini");
 let analyseAlgorithmScope = ref("beginning");
 let analyseIterations = ref(100);
@@ -444,8 +444,8 @@ let classicPathBreakdown = ref({
 let analyseZiniTotal = ref(0);
 let analyse3bv = ref(0);
 let analyseEff = ref(0);
-let analyseShowPremiums = ref("none");
-let analyseHiddenStyle = ref("transparent3");
+let analyseShowPremiums = useLocalStorage("ls_analyseShowPremiums", "none");
+let analyseHiddenStyle = useLocalStorage("ls_analyseHiddenStyle", "transparent3");
 let analyseAlgorithmScopeOptions = computed(() => {
   const withCurrentOpts = [
     {
@@ -541,6 +541,71 @@ let filterStyleProperty = computed(() => {
 
   return filters.length > 0 ? filters.join(" ") : "none";
 });
+
+function resetTransientSettings() {
+  //This gets called when PlayPage mounts to reset some refs.
+  //This is needed now that useSettings is a singleton module,
+  //because otherwise refs might get stuck on navigating away to back
+  //to the variants page
+
+  //Reset modals
+  settingsModal.value = false;
+  filtersModal.value = false;
+  variantsHelpModal.value = false;
+  coordsModal.value = false;
+  effBoardsBenchmarkModal.value = false;
+  effBoardsHiddenSettingsModal.value = false;
+  quickPaintHelpModal.value = false;
+  pttaImportModal.value = false;
+  mbfImportModal.value = false;
+  runZiniAlgorithmModal.value = false;
+
+  //Stats panel
+  showStatsBlock.value = false;
+  //statsObject.value = <default shape goes here> //Is it bad to leave this as is? Other it's messy to reset
+  showStatsClicksTable.value = false;
+
+  //QuickPaint UI
+  showQuickPaintOptions.value = false;
+  quickPaintModeDisplay.value = "Guess";
+  quickPaintClearable.value = "guesses";
+
+  //Values used for inputs
+  pttaUrl.value = ""
+  mbfStringToImport.value = ""
+  mbfFileToImport.value = null
+
+  //Replay state
+  replayIsShown.value = false;
+  replayIsPlaying.value = false;
+  replayProgress.value = -1;
+  replayProgressRounded.value = "-1.000"
+  replayBarStartValue.value = 0
+  replayBarLastValue.value = 100
+  replayTypeForceSteppy.value = false
+  replayType.value = "accurate"
+  replaySpeedMultiplier.value = 1
+  replayIsPanning.value = false
+  replayIsInputting.value = false
+
+  //ZiNi stuff
+  classicPathBreakdown.value = {
+    lefts: 0,
+    rights: 0,
+    chords: 0,
+    remaining3bv: 0,
+  };
+  analyseZiniTotal.value = 0
+  analyse3bv.value = 0
+  analyseEff.value = 0
+
+  ziniRunnerActive.value = false
+  synchronousZiniActive.value = false
+  ziniRunnerExpectedDuration.value = "calculating..."
+  ziniRunnerExpectedFinishTime.value = "calculating..."
+  ziniRunnerIterationsDisplay.value = ""
+  ziniRunnerPercentageProgress.value = "0%"
+}
 
 export {
   wasmAvailable,
@@ -724,5 +789,6 @@ export {
   filterHueRotateValue,
   filterInvertValue,
   filterSaturateValue,
-  filterStyleProperty
+  filterStyleProperty,
+  resetTransientSettings
 };
