@@ -35,7 +35,7 @@ class Tile {
   }
 
   draw(rawX, rawY, size) {
-    const ctx = this.refs.mainCanvas.value.getContext("2d");
+    const ctx = this.refs.mainCanvasCtx; //Give it a slightly shorter name...
 
     //Depressed squares get drawn as a zero tile
     let toDraw;
@@ -57,7 +57,7 @@ class Tile {
       return;
     }
 
-    const ctx = this.refs.mainCanvas.value.getContext("2d");
+    const ctx = this.refs.mainCanvasCtx; //Give it a slightly shorter name...
 
     //draw square
     if (this.paintColour) {
@@ -149,7 +149,7 @@ class Tile {
       return;
     }
 
-    const ctx = this.refs.mainCanvas.value.getContext("2d");
+    const ctx = this.refs.mainCanvasCtx; //Give it a slightly shorter name...
 
     if (this.hint.hintTexture !== null) {
       //Note - we are drawing directly on top of the normal tile texture
@@ -229,7 +229,7 @@ class Tile {
       return;
     }
 
-    const ctx = this.refs.mainCanvas.value.getContext("2d");
+    const ctx = this.refs.mainCanvasCtx; //Give it a slightly shorter name...
     const gainColour = skinManager.getClickGainColour();
     const lossColour = skinManager.getClickLossColour();
     const neutralColour = skinManager.getClickNeutralColour();
@@ -358,7 +358,7 @@ class Tile {
   }
 
   drawStateWithBackgroundColors(rawX, rawY, size, useOpenbackground, col1, col2 = null) {
-    const ctx = this.refs.mainCanvas.value.getContext("2d");
+    const ctx = this.refs.mainCanvasCtx; //Give it a slightly shorter name...
 
     if (useOpenbackground) {
       //Draw tile base (same image as a zero tile)
@@ -415,7 +415,7 @@ class Tile {
   }
 
   drawPremium(rawX, rawY, size) {
-    const ctx = this.refs.mainCanvas.value.getContext("2d");
+    const ctx = this.refs.mainCanvasCtx; //Give it a slightly shorter name...
 
     const textScale = 0.4 * size;
     const maxWidth = 1.5 * textScale;
@@ -445,7 +445,7 @@ class Tile {
   }
 
   drawHighlight(rawX, rawY, size) {
-    const ctx = this.refs.mainCanvas.value.getContext("2d");
+    const ctx = this.refs.mainCanvasCtx; //Give it a slightly shorter name...
 
     const highlightColour = skinManager.getHighlightColour();
 

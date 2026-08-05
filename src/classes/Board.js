@@ -98,6 +98,7 @@ class Board {
   constructor(mainCanvas, gameContainerDiv, route, router) {
     //injected dependencies
     this.mainCanvas = mainCanvas;
+    this.mainCanvasCtx = this.mainCanvas.value.getContext("2d"); //save ctx for performance
     this.gameContainerDiv = gameContainerDiv;
     this.route = route;
     this.router = router;
@@ -277,7 +278,7 @@ class Board {
       .map(() =>
         new Array(this.height)
           .fill(0)
-          .map(() => new Tile(CONSTANTS.UNREVEALED, { mainCanvas: this.mainCanvas }))
+          .map(() => new Tile(CONSTANTS.UNREVEALED, { mainCanvasCtx: this.mainCanvasCtx }))
       );
   }
 
@@ -4533,8 +4534,7 @@ class Board {
   }
 
   draw() {
-    const ctx = this.mainCanvas.value.getContext("2d");
-    ctx.clearRect(0, 0, this.mainCanvas.value.width, this.mainCanvas.value.height);
+    this.mainCanvasCtx.clearRect(0, 0, this.mainCanvas.value.width, this.mainCanvas.value.height);
 
     if (this.gameStage === "analyse" || this.gameStage === "replay") {
       this.drawTilesAndAnalysis();
@@ -4638,7 +4638,7 @@ class Board {
     if (!showBorders.value) {
       return;
     }
-    const ctx = this.mainCanvas.value.getContext("2d");
+    const ctx = this.mainCanvasCtx; //Give it a slightly shorter name...
 
     //Draw borders
     //top left corner
@@ -4759,7 +4759,7 @@ class Board {
       return;
     }
 
-    const ctx = this.mainCanvas.value.getContext("2d");
+    const ctx = this.mainCanvasCtx; //Give it a slightly shorter name...
 
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
@@ -4840,7 +4840,7 @@ class Board {
       return;
     }
 
-    const ctx = this.mainCanvas.value.getContext("2d");
+    const ctx = this.mainCanvasCtx; //Give it a slightly shorter name...
 
     //A bunch of variables for positioning things
     const topPanelMiddleHeight = topPanelHeight.value / 2;
@@ -4910,7 +4910,7 @@ class Board {
       return;
     }
 
-    const ctx = this.mainCanvas.value.getContext("2d");
+    const ctx = this.mainCanvasCtx; //Give it a slightly shorter name...
 
     //A bunch of variables for positioning things
     const topPanelMiddleHeight = topPanelHeight.value / 2;
@@ -4977,11 +4977,9 @@ class Board {
   }
 
   drawTopBarFlatBackground() {
-    const ctx = this.mainCanvas.value.getContext("2d");
-
     //Draw flat background for top panel
-    ctx.fillStyle = skinManager.getTopPanelColour();
-    ctx.fillRect(
+    this.mainCanvasCtx.fillStyle = skinManager.getTopPanelColour();
+    this.mainCanvasCtx.fillRect(
       boardHorizontalPadding.value,
       topPanelTopAndBottomBorder.value,
       this.width * this.tileSize,
@@ -4999,8 +4997,6 @@ class Board {
       return;
     }
 
-    const ctx = this.mainCanvas.value.getContext("2d");
-
     const cursorStartX =
       boardHorizontalPadding.value + this.cursor.x * this.tileSize;
     const cursorStartY = boardTopPadding.value + this.cursor.y * this.tileSize;
@@ -5012,7 +5008,7 @@ class Board {
     const cursorHeight = (this.tileSize * 3) / 4; //Height will be 3/4 of a tile
     const cursorWidth = cursorHeight * aspectRatio;
 
-    ctx.drawImage(
+    this.mainCanvasCtx.drawImage(
       mouseImg,
       cursorStartX,
       cursorStartY,
