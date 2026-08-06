@@ -9,7 +9,6 @@ import CompareReplay from "src/classes/CompareReplay";
 import BoardStats from "src/classes/BoardStats";
 import effShuffleManager from "src/classes/EffShuffleManager";
 import BoardGenerator from "src/classes/BoardGenerator";
-import skinManager from "src/classes/SkinManager";
 import Tile from "src/classes/Tile";
 import Utils from "src/classes/Utils";
 import ZiniExplore from "src/classes/ZiniExplore";
@@ -27,19 +26,11 @@ import {
   showStatsBlock,
   statsRunDeepChain,
   tileSizeSlider,
-  gameCentrePadding,
-  coordsUseLetters,
-  coordsUseInvertedY,
-  coordsUseZeroIndexing,
   boardHorizontalPadding,
   boardTopPadding,
-  boardBottomPadding,
   topPanelTopAndBottomBorder,
   topPanelHeight,
   showBorders,
-  showCoords,
-  showMineCount,
-  showTimer,
   boardWidth,
   boardHeight,
   boardMines,
@@ -82,7 +73,6 @@ import {
   meanMineClickBehaviour,
   replayIsShown,
   reorderZini,
-  analyseZiniTotal,
   ziniRunnerActive,
   keyboardClickOpenOnKeyDown,
 } from "src/composables/useSettings";
@@ -239,7 +229,7 @@ class Board {
     }
     this.replay = null;
 
-    this.clearTimerTimeout();
+    this.boardRenderer.clearTimerTimeout();
 
     showStatsBlock.value = false;
     this.quickPaintActive = false;
@@ -255,7 +245,7 @@ class Board {
     this.hintActive = false;
     this.lastSquaresChangedForAutoHint = [];
 
-    this.updateBoardPixelDimensions();
+    this.boardRenderer.updateBoardPixelDimensions();
 
     if (this.gameStage === "analyse") {
       if (!isVariantChange) {
@@ -264,7 +254,7 @@ class Board {
       this.ziniExplore.refreshForEditedBoard();
     }
 
-    this.draw();
+    this.boardRenderer.draw();
   }
 
   resetTiles() {
@@ -395,7 +385,7 @@ class Board {
 
     this.switchToEditMode();
 
-    this.draw();
+    this.boardRenderer.draw();
   }
 
   promptForClearingEditBoard() {
@@ -444,7 +434,7 @@ class Board {
 
       this.switchToEditMode();
 
-      this.draw();
+      this.boardRenderer.draw();
     });
   }
 
@@ -588,7 +578,7 @@ class Board {
       isRightDown
     );
     if (requiresRedraw) {
-      this.draw();
+      this.boardRenderer.draw();
     }
   }
 
@@ -865,7 +855,7 @@ class Board {
     }
 
     if (redrawNeededForBlockedTouched) {
-      this.draw();
+      this.boardRenderer.draw();
     }
   }
 
@@ -971,7 +961,7 @@ class Board {
     }
 
     if (requiresRedraw) {
-      this.draw();
+      this.boardRenderer.draw();
     }
   }
 
@@ -1032,7 +1022,7 @@ class Board {
     }
 
     if (requiresRedraw) {
-      this.draw();
+      this.boardRenderer.draw();
     }
   }
 
@@ -1145,7 +1135,7 @@ class Board {
     }
 
     if (redrawRequired) {
-      this.draw();
+      this.boardRenderer.draw();
     }
   }
 
@@ -1222,7 +1212,7 @@ class Board {
       );
       if (wasClickOnFace) {
         //Don't process click further
-        this.draw(); //just in case
+        this.boardRenderer.draw(); //just in case
         return; //Note that this includes clicks on face that then got cancelled.
       }
     }
@@ -1240,7 +1230,7 @@ class Board {
           isMiddleClick,
           event
         );
-        this.draw();
+        this.boardRenderer.draw();
       }
       return;
     }
@@ -1249,7 +1239,7 @@ class Board {
     if (this.gameStage === "edit") {
       if (mouseDownOrTouchUp && (isDigInput || isFlagInput)) {
         this.handleEditClick(flooredCoords.tileX, flooredCoords.tileY);
-        this.draw();
+        this.boardRenderer.draw();
       }
 
       return;
@@ -1264,7 +1254,7 @@ class Board {
           isDigInput,
           isFlagInput
         );
-        this.draw();
+        this.boardRenderer.draw();
       }
       return;
     }
@@ -1273,7 +1263,7 @@ class Board {
     if (this.gameStage === "replay") {
       if (mouseDownOrTouchUp && (isDigInput || isFlagInput)) {
         this.handleReplayClick(flooredCoords.tileX, flooredCoords.tileY);
-        this.draw();
+        this.boardRenderer.draw();
       }
 
       return;
@@ -1378,7 +1368,7 @@ class Board {
           false,
           touchIdentifier
         );
-        this.draw();
+        this.boardRenderer.draw();
         return; //Don't start game. Click not inbounds, or something else went wrong
       }
     }
@@ -1504,7 +1494,7 @@ class Board {
     }
 
     if (isDrawRequired) {
-      this.draw();
+      this.boardRenderer.draw();
     }
   }
 
@@ -1614,9 +1604,9 @@ class Board {
     }
     this.stats.addVariantAttribute(this.variant);
     this.boardStartTime = performance.now();
-    this.clearTimerTimeout(); //defensive as it should already be disabled since we reset board.
+    this.boardRenderer.clearTimerTimeout(); //defensive as it should already be disabled since we reset board.
     this.updateTimerSetTimeoutHandle = setTimeout(
-      this.updateIntegerTimerIfNeeded.bind(this),
+      this.boardRenderer.updateIntegerTimerIfNeeded.bind(this.boardRenderer),
       100
     );
 
@@ -2486,7 +2476,7 @@ class Board {
       this.stats.addMeanMines(this.meanMineStates);
     }
     this.clearAllDepressedSquares();
-    this.clearTimerTimeout();
+    this.boardRenderer.clearTimerTimeout();
     this.integerTimer = Math.floor(finalTime);
     this.calculateAndDisplayStats(false);
     if (
@@ -2538,7 +2528,7 @@ class Board {
       this.stats.addMeanMines(this.meanMineStates);
     }
     this.clearAllDepressedSquares();
-    this.clearTimerTimeout();
+    this.boardRenderer.clearTimerTimeout();
     this.integerTimer = Math.floor(finalTime);
     this.calculateAndDisplayStats(true);
     if (
@@ -3086,7 +3076,7 @@ class Board {
       this.refreshQuickPaintCounts();
       this.updateQuickPaintClearableDisplay();
     }
-    this.draw();
+    this.boardRenderer.draw();
   }
 
   handleCycleQuickPaintModeKeypress() {
@@ -3458,7 +3448,7 @@ class Board {
     this.refreshQuickPaintCounts();
     this.updateQuickPaintClearableDisplay();
 
-    this.draw();
+    this.boardRenderer.draw();
   }
 
   handleQuickPaintClick(
@@ -3692,7 +3682,7 @@ class Board {
       this.stats.addHintUsed();
     }
 
-    this.draw();
+    this.boardRenderer.draw();
   }
 
   showHintSync(isLossHint = false) {
@@ -3731,7 +3721,7 @@ class Board {
       this.stats.addHintUsed();
     }
 
-    this.draw();
+    this.boardRenderer.draw();
   }
 
   prepareProbCalcInput(isLossHint = false) {
@@ -4083,7 +4073,7 @@ class Board {
     }
 
     if (!suppressDraw) {
-      this.draw();
+      this.boardRenderer.draw();
     }
   }
 
@@ -4237,7 +4227,7 @@ class Board {
       //do nothing
     }
 
-    this.draw();
+    this.boardRenderer.draw();
   }
 
   switchToPlayMode() {
@@ -4252,7 +4242,7 @@ class Board {
       //do nothing
     }
 
-    this.draw();
+    this.boardRenderer.draw();
   }
 
   switchToAnalyseMode(skipAskForPathReset = false) {
@@ -4270,7 +4260,7 @@ class Board {
       //do nothing
     }
 
-    this.draw();
+    this.boardRenderer.draw();
   }
 
   toggleFlagButton() {
@@ -4468,7 +4458,7 @@ class Board {
         this.integerTimer = this.stateBeforeReplay.integerTimer;
         this.unflagged = this.stateBeforeReplay.unflagged;
         this.tilesArray = this.stateBeforeReplay.tilesArray;
-        this.draw();
+        this.boardRenderer.draw();
         break;
       case "zini explorer":
         this.switchToAnalyseMode();

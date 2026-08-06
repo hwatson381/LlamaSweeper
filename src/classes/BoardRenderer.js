@@ -1,30 +1,6 @@
-import {
-  watch,
-} from "vue";
-
-import BoardHistory from "src/classes/BoardHistory";
-import Algorithms from "src/classes/Algorithms";
-import Replay from "src/classes/Replay";
-import CompareReplay from "src/classes/CompareReplay";
-import BoardStats from "src/classes/BoardStats";
-import effShuffleManager from "src/classes/EffShuffleManager";
-import BoardGenerator from "src/classes/BoardGenerator";
 import skinManager from "src/classes/SkinManager";
-import Tile from "src/classes/Tile";
-import Utils from "src/classes/Utils";
-import ZiniExplore from "src/classes/ZiniExplore";
-import statsWorkerManager from "src/classes/StatsWorkerManager";
-import BoardImportExport from "src/classes/BoardImportExport";
-
-import CONSTANTS from "src/includes/Constants";
-import playSound from "src/includes/Sounds";
-
-import { Dialog, } from "quasar"
 
 import {
-  wasmAvailable,
-  showStatsBlock,
-  statsRunDeepChain,
   tileSizeSlider,
   gameCentrePadding,
   coordsUseLetters,
@@ -39,51 +15,8 @@ import {
   showCoords,
   showMineCount,
   showTimer,
-  boardWidth,
-  boardHeight,
-  boardMines,
-  variant,
-  chordingButtons,
-  zeroStart,
-  noGuessing,
-  noGuessingMaxAttempts,
-  autoHintCriteria,
-  autoHintTime,
-  autoHintDelay,
-  autoHintVariants,
   autoHintBackdrop,
-  showQuickPaintOptions,
-  quickPaintModeDisplay,
-  quickPaintClearable,
-  quickPaintInitialOnlyMines,
-  quickPaintMinimalMode,
-  quickPaintOnlyTrivialLogic,
-  editBoardUnappliedWidth,
-  editBoardUnappliedHeight,
-  isCurrentlyEditModeDisplay,
-  flagToggleActive,
-  flagToggleShowReset,
-  flagToggleSwitchAfterStart,
-  mobileModeEnabled,
-  mobileScrollSetting,
-  scrollLetThroughActive,
-  mobileDelayForEnableScroll,
-  touchRevealLocation,
-  touchRevealTiming,
-  touchLongPressTime,
-  touchLongPressDisabled,
-  touchMaxTime,
-  touchScrollDistance,
-  faceHitbox,
-  soundEffectsEnabled,
-  meanOpeningMineDensity,
-  meanOpeningFlagDensity,
-  meanMineClickBehaviour,
-  replayIsShown,
-  reorderZini,
   analyseZiniTotal,
-  ziniRunnerActive,
-  keyboardClickOpenOnKeyDown,
 } from "src/composables/useSettings";
 
 class BoardRenderer {
@@ -92,48 +25,48 @@ class BoardRenderer {
   }
 
   draw() {
-    this.mainCanvasCtx.clearRect(0, 0, this.mainCanvas.value.width, this.mainCanvas.value.height);
+    this.board.mainCanvasCtx.clearRect(0, 0, this.board.mainCanvas.value.width, this.board.mainCanvas.value.height);
 
-    if (this.gameStage === "analyse" || this.gameStage === "replay") {
+    if (this.board.gameStage === "analyse" || this.board.gameStage === "replay") {
       this.drawTilesAndAnalysis();
     } else {
       this.drawTiles();
     }
-    if (this.quickPaintActive) {
+    if (this.board.quickPaintActive) {
       this.drawTilesPaint();
     }
-    if (this.hintActive) {
+    if (this.board.hintActive) {
       this.drawTilesHint();
     }
     this.drawBorders();
     this.drawCoords();
     this.drawTopBar();
 
-    if (this.gameStage === "replay") {
+    if (this.board.gameStage === "replay") {
       //this.drawTilesZiniDelta();
       this.drawCursor();
     }
   }
 
   drawTiles() {
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
-        this.tilesArray[x][y].draw(
-          x * this.tileSize + boardHorizontalPadding.value,
-          y * this.tileSize + boardTopPadding.value,
-          this.tileSize
+    for (let x = 0; x < this.board.width; x++) {
+      for (let y = 0; y < this.board.height; y++) {
+        this.board.tilesArray[x][y].draw(
+          x * this.board.tileSize + boardHorizontalPadding.value,
+          y * this.board.tileSize + boardTopPadding.value,
+          this.board.tileSize
         );
       }
     }
   }
 
   drawTilesPaint() {
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
-        this.tilesArray[x][y].drawPaint(
-          x * this.tileSize + boardHorizontalPadding.value,
-          y * this.tileSize + boardTopPadding.value,
-          this.tileSize
+    for (let x = 0; x < this.board.width; x++) {
+      for (let y = 0; y < this.board.height; y++) {
+        this.board.tilesArray[x][y].drawPaint(
+          x * this.board.tileSize + boardHorizontalPadding.value,
+          y * this.board.tileSize + boardTopPadding.value,
+          this.board.tileSize
         );
       }
     }
@@ -142,12 +75,12 @@ class BoardRenderer {
   drawTilesHint() {
     const suppressHighlight = autoHintBackdrop.value === "minimal";
 
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
-        this.tilesArray[x][y].drawHint(
-          x * this.tileSize + boardHorizontalPadding.value,
-          y * this.tileSize + boardTopPadding.value,
-          this.tileSize,
+    for (let x = 0; x < this.board.width; x++) {
+      for (let y = 0; y < this.board.height; y++) {
+        this.board.tilesArray[x][y].drawHint(
+          x * this.board.tileSize + boardHorizontalPadding.value,
+          y * this.board.tileSize + boardTopPadding.value,
+          this.board.tileSize,
           suppressHighlight
         );
       }
@@ -155,24 +88,24 @@ class BoardRenderer {
   }
 
   drawTilesZiniDelta() {
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
-        this.tilesArray[x][y].drawZiniDelta(
-          x * this.tileSize + boardHorizontalPadding.value,
-          y * this.tileSize + boardTopPadding.value,
-          this.tileSize
+    for (let x = 0; x < this.board.width; x++) {
+      for (let y = 0; y < this.board.height; y++) {
+        this.board.tilesArray[x][y].drawZiniDelta(
+          x * this.board.tileSize + boardHorizontalPadding.value,
+          y * this.board.tileSize + boardTopPadding.value,
+          this.board.tileSize
         );
       }
     }
   }
 
   drawTilesAndAnalysis() {
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
-        this.tilesArray[x][y].drawIncludingAnalysis(
-          x * this.tileSize + boardHorizontalPadding.value,
-          y * this.tileSize + boardTopPadding.value,
-          this.tileSize
+    for (let x = 0; x < this.board.width; x++) {
+      for (let y = 0; y < this.board.height; y++) {
+        this.board.tilesArray[x][y].drawIncludingAnalysis(
+          x * this.board.tileSize + boardHorizontalPadding.value,
+          y * this.board.tileSize + boardTopPadding.value,
+          this.board.tileSize
         );
       }
     }
@@ -182,7 +115,7 @@ class BoardRenderer {
     if (!showBorders.value) {
       return;
     }
-    const ctx = this.mainCanvasCtx; //Give it a slightly shorter name...
+    const ctx = this.board.mainCanvasCtx; //Give it a slightly shorter name...
 
     //Draw borders
     //top left corner
@@ -196,7 +129,7 @@ class BoardRenderer {
     //top right corner
     ctx.drawImage(
       skinManager.getImage("b_c_up_right"),
-      this.width * this.tileSize + boardHorizontalPadding.value,
+      this.board.width * this.board.tileSize + boardHorizontalPadding.value,
       0,
       boardHorizontalPadding.value,
       topPanelTopAndBottomBorder.value
@@ -205,15 +138,15 @@ class BoardRenderer {
     ctx.drawImage(
       skinManager.getImage("b_c_bot_left"),
       0,
-      this.height * this.tileSize + boardTopPadding.value,
+      this.board.height * this.board.tileSize + boardTopPadding.value,
       boardHorizontalPadding.value,
       boardBottomPadding.value
     );
     //bottom right corner
     ctx.drawImage(
       skinManager.getImage("b_c_bot_right"),
-      this.width * this.tileSize + boardHorizontalPadding.value,
-      this.height * this.tileSize + boardTopPadding.value,
+      this.board.width * this.board.tileSize + boardHorizontalPadding.value,
+      this.board.height * this.board.tileSize + boardTopPadding.value,
       boardHorizontalPadding.value,
       boardBottomPadding.value
     );
@@ -230,7 +163,7 @@ class BoardRenderer {
     //right t piece
     ctx.drawImage(
       skinManager.getImage("t_right"),
-      this.width * this.tileSize + boardHorizontalPadding.value,
+      this.board.width * this.board.tileSize + boardHorizontalPadding.value,
       topPanelTopAndBottomBorder.value + topPanelHeight.value,
       boardHorizontalPadding.value,
       boardBottomPadding.value
@@ -242,7 +175,7 @@ class BoardRenderer {
       skinManager.getImage("b_hor"),
       boardHorizontalPadding.value,
       0,
-      this.tileSize * this.width,
+      this.board.tileSize * this.board.width,
       topPanelTopAndBottomBorder.value
     );
     //middle line
@@ -250,15 +183,15 @@ class BoardRenderer {
       skinManager.getImage("b_hor"),
       boardHorizontalPadding.value,
       topPanelTopAndBottomBorder.value + topPanelHeight.value,
-      this.tileSize * this.width,
+      this.board.tileSize * this.board.width,
       topPanelTopAndBottomBorder.value
     );
     //bottom line
     ctx.drawImage(
       skinManager.getImage("b_hor"),
       boardHorizontalPadding.value,
-      this.height * this.tileSize + boardTopPadding.value,
-      this.tileSize * this.width,
+      this.board.height * this.board.tileSize + boardTopPadding.value,
+      this.board.tileSize * this.board.width,
       boardBottomPadding.value
     );
     //left short segment
@@ -272,7 +205,7 @@ class BoardRenderer {
     //right short segment
     ctx.drawImage(
       skinManager.getImage("b_vert"),
-      this.width * this.tileSize + boardHorizontalPadding.value,
+      this.board.width * this.board.tileSize + boardHorizontalPadding.value,
       topPanelTopAndBottomBorder.value,
       boardHorizontalPadding.value,
       topPanelHeight.value
@@ -283,15 +216,15 @@ class BoardRenderer {
       0,
       boardTopPadding.value,
       boardHorizontalPadding.value,
-      this.height * this.tileSize
+      this.board.height * this.board.tileSize
     );
     //right long segment
     ctx.drawImage(
       skinManager.getImage("b_vert"),
-      this.width * this.tileSize + boardHorizontalPadding.value,
+      this.board.width * this.board.tileSize + boardHorizontalPadding.value,
       boardTopPadding.value,
       boardHorizontalPadding.value,
-      this.height * this.tileSize
+      this.board.height * this.board.tileSize
     );
   }
 
@@ -303,16 +236,16 @@ class BoardRenderer {
       return;
     }
 
-    const ctx = this.mainCanvasCtx; //Give it a slightly shorter name...
+    const ctx = this.board.mainCanvasCtx; //Give it a slightly shorter name...
 
     ctx.textBaseline = "middle";
     ctx.textAlign = "center";
-    ctx.font = `${this.tileSize / 2}px monospace`;
+    ctx.font = `${this.board.tileSize / 2}px monospace`;
     ctx.fillStyle = skinManager.getCoordTextColour();
 
     //Horizontal coords
-    for (let i = 0; i < this.width; i++) {
-      const maxWidth = this.tileSize;
+    for (let i = 0; i < this.board.width; i++) {
+      const maxWidth = this.board.tileSize;
 
       const yPos =
         topPanelTopAndBottomBorder.value +
@@ -320,17 +253,17 @@ class BoardRenderer {
         topPanelTopAndBottomBorder.value / 2;
 
       const xPos =
-        boardHorizontalPadding.value + this.tileSize / 2 + i * this.tileSize;
+        boardHorizontalPadding.value + this.board.tileSize / 2 + i * this.board.tileSize;
 
       ctx.fillText(this.coordIndexToText(i, true), xPos, yPos, maxWidth);
     }
 
     //Vertical coords
-    for (let i = 0; i < this.height; i++) {
+    for (let i = 0; i < this.board.height; i++) {
       const maxWidth = boardHorizontalPadding.value;
 
       const yPos =
-        boardTopPadding.value + this.tileSize / 2 + i * this.tileSize;
+        boardTopPadding.value + this.board.tileSize / 2 + i * this.board.tileSize;
 
       const xPos = boardHorizontalPadding.value / 2;
 
@@ -360,7 +293,7 @@ class BoardRenderer {
 
     if (!isHorizontal && !coordsUseInvertedY.value) {
       //Handle Y axis getting flipped
-      index = this.height - 1 - index;
+      index = this.board.height - 1 - index;
     }
 
     if (!coordsUseZeroIndexing.value) {
@@ -372,7 +305,7 @@ class BoardRenderer {
   }
 
   drawTopBar() {
-    if (this.quickPaintActive) {
+    if (this.board.quickPaintActive) {
       this.drawQuickPaintTopBar();
     } else {
       this.drawStandardTopBar();
@@ -384,16 +317,16 @@ class BoardRenderer {
       return;
     }
 
-    const ctx = this.mainCanvasCtx; //Give it a slightly shorter name...
+    const ctx = this.board.mainCanvasCtx; //Give it a slightly shorter name...
 
     //A bunch of variables for positioning things
     const topPanelMiddleHeight = topPanelHeight.value / 2;
-    const topPanelMiddleWidth = (this.width * this.tileSize) / 2;
-    const topPanelInnerPadding = this.tileSize / 4;
+    const topPanelMiddleWidth = (this.board.width * this.board.tileSize) / 2;
+    const topPanelInnerPadding = this.board.tileSize / 4;
     const mineStartX = boardHorizontalPadding.value + topPanelInnerPadding;
     const timerStartX =
       boardHorizontalPadding.value +
-      this.width * this.tileSize -
+      this.board.width * this.board.tileSize -
       topPanelInnerPadding; //note timer is right aligned, so this is where right edge of timer is
     const mineTimerStartY =
       topPanelTopAndBottomBorder.value + topPanelMiddleHeight;
@@ -408,7 +341,7 @@ class BoardRenderer {
 
     //Set up font for mine/timer text
     ctx.textBaseline = "middle";
-    ctx.font = `${this.tileSize}px monospace`;
+    ctx.font = `${this.board.tileSize}px monospace`;
 
     ctx.fillStyle = skinManager.getMineTimerTextColour();
 
@@ -416,7 +349,7 @@ class BoardRenderer {
     if (showMineCount.value) {
       ctx.textAlign = "left";
       ctx.fillText(
-        this.unflagged,
+        this.board.unflagged,
         mineStartX,
         mineTimerStartY,
         mineTimerMaxWidth
@@ -425,8 +358,8 @@ class BoardRenderer {
 
     //Draw timer (or zini value if analysing on zini explorer)
     if (showTimer.value) {
-      let timerOrZini = this.integerTimer;
-      if (this.variant === "zini explorer" && this.gameStage === "analyse") {
+      let timerOrZini = this.board.integerTimer;
+      if (this.board.variant === "zini explorer" && this.board.gameStage === "analyse") {
         timerOrZini = analyseZiniTotal.value;
       }
 
@@ -454,16 +387,16 @@ class BoardRenderer {
       return;
     }
 
-    const ctx = this.mainCanvasCtx; //Give it a slightly shorter name...
+    const ctx = this.board.mainCanvasCtx; //Give it a slightly shorter name...
 
     //A bunch of variables for positioning things
     const topPanelMiddleHeight = topPanelHeight.value / 2;
-    const topPanelMiddleWidth = (this.width * this.tileSize) / 2;
-    const topPanelInnerPadding = this.tileSize / 4;
+    const topPanelMiddleWidth = (this.board.width * this.board.tileSize) / 2;
+    const topPanelInnerPadding = this.board.tileSize / 4;
     const redStartX = boardHorizontalPadding.value + topPanelInnerPadding;
     const dotStartX =
       boardHorizontalPadding.value +
-      this.width * this.tileSize -
+      this.board.width * this.board.tileSize -
       topPanelInnerPadding; //note dot counter is right aligned, so this is where right edge of dot counter is
     const counterStartY =
       topPanelTopAndBottomBorder.value + topPanelMiddleHeight;
@@ -473,8 +406,8 @@ class BoardRenderer {
     const faceStartY = topPanelTopAndBottomBorder.value + topPanelInnerPadding;
 
     const largeMaxWidth = faceStartX - redStartX;
-    const smallMaxWidth = this.tileSize * 1.5;
-    const orangeLeftGap = this.tileSize / 4;
+    const smallMaxWidth = this.board.tileSize * 1.5;
+    const orangeLeftGap = this.board.tileSize / 4;
     const orangeStartX = redStartX + smallMaxWidth + orangeLeftGap;
 
     let noSpaceForOrangeCounter = false;
@@ -487,18 +420,18 @@ class BoardRenderer {
 
     //Set up font for counter text
     ctx.textBaseline = "middle";
-    ctx.font = `${this.tileSize}px monospace`;
+    ctx.font = `${this.board.tileSize}px monospace`;
 
     //Draw red counter
     ctx.fillStyle = skinManager.getRedCounterTextColour();
     ctx.textAlign = "left";
-    ctx.fillText(this.redCount, redStartX, counterStartY, redMaxWidth);
+    ctx.fillText(this.board.redCount, redStartX, counterStartY, redMaxWidth);
 
     //Draw orange counter
     if (!noSpaceForOrangeCounter) {
       ctx.fillStyle = skinManager.getOrangeCounterTextColour();
       ctx.fillText(
-        this.orangeCount,
+        this.board.orangeCount,
         orangeStartX,
         counterStartY,
         smallMaxWidth
@@ -508,7 +441,7 @@ class BoardRenderer {
     //Draw dots count
     ctx.textAlign = "right";
     ctx.fillStyle = skinManager.getDotsCounterTextColour();
-    ctx.fillText(this.dotCount, dotStartX, counterStartY, largeMaxWidth);
+    ctx.fillText(this.board.dotCount, dotStartX, counterStartY, largeMaxWidth);
 
     //Draw face
     ctx.drawImage(
@@ -522,11 +455,11 @@ class BoardRenderer {
 
   drawTopBarFlatBackground() {
     //Draw flat background for top panel
-    this.mainCanvasCtx.fillStyle = skinManager.getTopPanelColour();
-    this.mainCanvasCtx.fillRect(
+    this.board.mainCanvasCtx.fillStyle = skinManager.getTopPanelColour();
+    this.board.mainCanvasCtx.fillRect(
       boardHorizontalPadding.value,
       topPanelTopAndBottomBorder.value,
-      this.width * this.tileSize,
+      this.board.width * this.board.tileSize,
       topPanelHeight.value
     );
   }
@@ -534,25 +467,25 @@ class BoardRenderer {
   drawCursor() {
     //Cursor shown on replays
     if (
-      this.cursor === null ||
-      this.cursor.x === null ||
-      this.cursor.y === null
+      this.board.cursor === null ||
+      this.board.cursor.x === null ||
+      this.board.cursor.y === null
     ) {
       return;
     }
 
     const cursorStartX =
-      boardHorizontalPadding.value + this.cursor.x * this.tileSize;
-    const cursorStartY = boardTopPadding.value + this.cursor.y * this.tileSize;
+      boardHorizontalPadding.value + this.board.cursor.x * this.board.tileSize;
+    const cursorStartY = boardTopPadding.value + this.board.cursor.y * this.board.tileSize;
 
     const mouseImg = skinManager.getImage("cursor");
 
     const aspectRatio = mouseImg.width / mouseImg.height;
 
-    const cursorHeight = (this.tileSize * 3) / 4; //Height will be 3/4 of a tile
+    const cursorHeight = (this.board.tileSize * 3) / 4; //Height will be 3/4 of a tile
     const cursorWidth = cursorHeight * aspectRatio;
 
-    this.mainCanvasCtx.drawImage(
+    this.board.mainCanvasCtx.drawImage(
       mouseImg,
       cursorStartX,
       cursorStartY,
@@ -564,22 +497,22 @@ class BoardRenderer {
   updateBoardPixelDimensions() {
     //Set pixel dimensions for board
     const mainCanvasWidth =
-      this.width * tileSizeSlider.value + 2 * boardHorizontalPadding.value;
+      this.board.width * tileSizeSlider.value + 2 * boardHorizontalPadding.value;
     const mainCanvasHeight =
-      this.height * tileSizeSlider.value +
+      this.board.height * tileSizeSlider.value +
       boardTopPadding.value +
       boardBottomPadding.value;
 
-    this.mainCanvas.value.width = mainCanvasWidth;
-    this.mainCanvas.value.height = mainCanvasHeight;
+    this.board.mainCanvas.value.width = mainCanvasWidth;
+    this.board.mainCanvas.value.height = mainCanvasHeight;
 
     //Also set height in style (needed for flex layout to work)
-    this.mainCanvas.value.style.width = `${mainCanvasWidth}px`;
-    this.mainCanvas.value.style.height = `${mainCanvasHeight}px`;
+    this.board.mainCanvas.value.style.width = `${mainCanvasWidth}px`;
+    this.board.mainCanvas.value.style.height = `${mainCanvasHeight}px`;
 
     //Figure out what left padding should be in order to centre the board
     let gameContainerWidth =
-      this.gameContainerDiv.value.getBoundingClientRect().width;
+      this.board.gameContainerDiv.value.getBoundingClientRect().width;
 
     let marginToCentre = Math.max(
       (gameContainerWidth - mainCanvasWidth) / 2,
@@ -592,20 +525,20 @@ class BoardRenderer {
   refreshCanvasSize() {
     this.updateBoardPixelDimensions();
 
-    this.tileSize = tileSizeSlider.value;
+    this.board.tileSize = tileSizeSlider.value;
     this.draw();
   }
 
 
   updateIntegerTimerIfNeeded() {
-    let newTimerValue = Math.floor(this.getTime());
+    let newTimerValue = Math.floor(this.board.getTime());
 
-    if (newTimerValue !== this.integerTimer) {
-      this.integerTimer = newTimerValue;
+    if (newTimerValue !== this.board.integerTimer) {
+      this.board.integerTimer = newTimerValue;
       this.drawTopBar();
     }
 
-    this.updateTimerSetTimeoutHandle = setTimeout(
+    this.board.updateTimerSetTimeoutHandle = setTimeout(
       this.updateIntegerTimerIfNeeded.bind(this),
       100
     );
@@ -613,8 +546,8 @@ class BoardRenderer {
 
   clearTimerTimeout() {
     //May refactor in future. Disables setTimeout for timer
-    if (this.updateTimerSetTimeoutHandle !== null) {
-      clearTimeout(this.updateTimerSetTimeoutHandle);
+    if (this.board.updateTimerSetTimeoutHandle !== null) {
+      clearTimeout(this.board.updateTimerSetTimeoutHandle);
     }
   }
 }

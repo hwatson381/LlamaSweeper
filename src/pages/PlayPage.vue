@@ -2262,20 +2262,20 @@
         <q-checkbox
           v-model="showTimer"
           label="Show timer"
-          @update:model-value="game.board.drawTopBar()"
+          @update:model-value="game.board.boardRenderer.drawTopBar()"
         /><br />
         <q-checkbox
           v-model="showMineCount"
           label="Show mine count"
-          @update:model-value="game.board.drawTopBar()"
+          @update:model-value="game.board.boardRenderer.drawTopBar()"
         />
         <div class="flex q-mb-sm" style="align-items: center">
           <q-checkbox
             v-model="showCoords"
             label="Show coordinates"
             @update:model-value="
-              game.board.drawBorders();
-              game.board.drawCoords();
+              game.board.boardRenderer.drawBorders();
+              game.board.boardRenderer.drawCoords();
             "
             class="q-pr-md"
             style="flex-shrink: 0"
@@ -2523,24 +2523,24 @@
           v-model="coordsUseLetters"
           label="Use letters for x-axis"
           @update:model-value="
-            game.board.drawBorders();
-            game.board.drawCoords();
+            game.board.boardRenderer.drawBorders();
+            game.board.boardRenderer.drawCoords();
           "
         /><br />
         <q-checkbox
           v-model="coordsUseInvertedY"
           label="Invert y-axis"
           @update:model-value="
-            game.board.drawBorders();
-            game.board.drawCoords();
+            game.board.boardRenderer.drawBorders();
+            game.board.boardRenderer.drawCoords();
           "
         /><br />
         <q-checkbox
           v-model="coordsUseZeroIndexing"
           label="Start from 0"
           @update:model-value="
-            game.board.drawBorders();
-            game.board.drawCoords();
+            game.board.boardRenderer.drawBorders();
+            game.board.boardRenderer.drawCoords();
           "
         />
       </q-card-section>
@@ -4241,7 +4241,7 @@ class Game {
       return;
     }
 
-    this.board.clearTimerTimeout();
+    this.board.boardRenderer.clearTimerTimeout();
     this.board.saveGameIfRunning();
     this.board.stopUrlWatch();
     this.board.ziniExplore?.killDeepChainZiniRunner();
@@ -4256,7 +4256,7 @@ class Game {
       return;
     }
 
-    this.board.refreshCanvasSize();
+    this.board.boardRenderer.refreshCanvasSize();
   }
 
   handleMouseDown(event) {

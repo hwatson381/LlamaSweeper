@@ -1104,7 +1104,7 @@ class ZiniExplore {
 
       this.displayPremiums(premiumsArray);
     }
-    this.board.draw();
+    this.board.boardRenderer.draw();
   }
 
   updateTileAnnotations() {

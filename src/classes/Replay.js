@@ -187,7 +187,7 @@ class Replay {
 
     this.updateReplayBarValue();
 
-    this.board.draw(); //as we may be paused
+    this.board.boardRenderer.draw(); //as we may be paused
   }
 
   jumpToPreviousClick() {
@@ -201,7 +201,7 @@ class Replay {
 
     this.updateReplayBarValue();
 
-    this.board.draw(); //as we may be paused
+    this.board.boardRenderer.draw(); //as we may be paused
   }
 
   lerpedClickIndexToRawTime(lerpedClickIndex) {
@@ -469,7 +469,7 @@ class Replay {
 
     this.doUpdate(tFrame);
 
-    this.board.draw();
+    this.board.boardRenderer.draw();
   }
 
   //Sets up reqAnimFrame loop
@@ -499,7 +499,7 @@ class Replay {
 
       this.tLastFrame = null; //So that we don't simulate passing (defensive, probably not needed0)
 
-      this.board.draw(); //just in case
+      this.board.boardRenderer.draw(); //just in case
     }
   }
 
@@ -519,7 +519,7 @@ class Replay {
     //Small hacky way to get it to update mouse position for replay type
     this.jumpToSpecificClickLerped(this.currentClickIndexLerped);
 
-    this.board.draw();
+    this.board.boardRenderer.draw();
   }
 
   setupReplayBar() {
@@ -568,7 +568,7 @@ class Replay {
 
     this.updateReplayBarValue();
 
-    this.board.draw();
+    this.board.boardRenderer.draw();
   }
 
   handleInputChange(newValue) {
@@ -795,7 +795,7 @@ class Replay {
     this.currentClickIndexLerped = null;
 
     this.jumpToSpecificClickLerped(currentClickIndexLerped);
-    this.board.draw();
+    this.board.boardRenderer.draw();
   }
 }
 
