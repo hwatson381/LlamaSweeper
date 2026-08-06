@@ -691,7 +691,7 @@
                     v-if="variant !== 'board editor'"
                     clickable
                     v-close-popup
-                    @click="game.board.sendToBoardEditor()"
+                    @click="game.board.boardImportExport.sendToBoardEditor()"
                   >
                     <q-item-section>
                       <q-item-label>Board Editor</q-item-label>
@@ -702,7 +702,7 @@
                     v-if="variant !== 'zini explorer'"
                     clickable
                     v-close-popup
-                    @click="game.board.sendToZiniExplorer()"
+                    @click="game.board.boardImportExport.sendToZiniExplorer()"
                   >
                     <q-item-section>
                       <q-item-label>Zini Explorer</q-item-label>
@@ -712,7 +712,7 @@
                   <q-item
                     clickable
                     v-close-popup
-                    @click="game.board.sendToPttCalculator()"
+                    @click="game.board.boardImportExport.sendToPttCalculator()"
                   >
                     <q-item-section>
                       <q-item-label>PTT ZiNi Calculator</q-item-label>
@@ -722,7 +722,7 @@
                   <q-item
                     clickable
                     v-close-popup
-                    @click="game.board.sendToMsCoach()"
+                    @click="game.board.boardImportExport.sendToMsCoach()"
                   >
                     <q-item-section>
                       <q-item-label>MSCoach Solver</q-item-label>
@@ -733,7 +733,7 @@
                     v-if="variant !== 'mean openings'"
                     clickable
                     v-close-popup
-                    @click="game.board.sendToStrangeDust()"
+                    @click="game.board.boardImportExport.sendToStrangeDust()"
                   >
                     <q-item-section>
                       <q-item-label>StrangeDust Analyser</q-item-label>
@@ -749,7 +749,7 @@
                     v-if="variant === 'board editor'"
                     clickable
                     v-close-popup
-                    @click="game.board.copyBoardLink()"
+                    @click="game.board.boardImportExport.copyBoardLink()"
                   >
                     <q-item-section>
                       <q-item-label>Copy Board Link</q-item-label>
@@ -759,7 +759,7 @@
                   <q-item
                     clickable
                     v-close-popup
-                    @click="game.board.sendToMbfDialogue()"
+                    @click="game.board.boardImportExport.sendToMbfDialogue()"
                   >
                     <q-item-section>
                       <q-item-label>MBF Export</q-item-label>
@@ -770,7 +770,7 @@
                     v-if="variant !== 'mean openings'"
                     clickable
                     v-close-popup
-                    @click="game.board.downloadRawVf()"
+                    @click="game.board.boardImportExport.downloadRawVf()"
                   >
                     <q-item-section>
                       <q-item-label>RawVF Download</q-item-label>
@@ -780,7 +780,9 @@
                   <q-item
                     clickable
                     v-close-popup
-                    @click="game.board.showExportScreenshotDialogue()"
+                    @click="
+                      game.board.boardImportExport.showExportScreenshotDialogue()
+                    "
                   >
                     <q-item-section>
                       <q-item-label>Copy Screenshot</q-item-label>
@@ -1015,7 +1017,7 @@
                   <q-item
                     clickable
                     v-close-popup
-                    @click="game.board.sendToBoardEditor()"
+                    @click="game.board.boardImportExport.sendToBoardEditor()"
                   >
                     <q-item-section>
                       <q-item-label>Board Editor</q-item-label>
@@ -1025,7 +1027,7 @@
                   <q-item
                     clickable
                     v-close-popup
-                    @click="game.board.sendToPttCalculator()"
+                    @click="game.board.boardImportExport.sendToPttCalculator()"
                   >
                     <q-item-section>
                       <q-item-label>PTT ZiNi Calculator</q-item-label>
@@ -1035,7 +1037,7 @@
                   <q-item
                     clickable
                     v-close-popup
-                    @click="game.board.sendToMsCoach()"
+                    @click="game.board.boardImportExport.sendToMsCoach()"
                   >
                     <q-item-section>
                       <q-item-label>MSCoach Solver</q-item-label>
@@ -1050,7 +1052,7 @@
                   <q-item
                     clickable
                     v-close-popup
-                    @click="game.board.copyBoardLink()"
+                    @click="game.board.boardImportExport.copyBoardLink()"
                   >
                     <q-item-section>
                       <q-item-label>Copy Board Link</q-item-label>
@@ -1060,7 +1062,7 @@
                   <q-item
                     clickable
                     v-close-popup
-                    @click="game.board.sendToMbfDialogue()"
+                    @click="game.board.boardImportExport.sendToMbfDialogue()"
                   >
                     <q-item-section>
                       <q-item-label>MBF Export</q-item-label>
@@ -1070,7 +1072,9 @@
                   <q-item
                     clickable
                     v-close-popup
-                    @click="game.board.showExportScreenshotDialogue()"
+                    @click="
+                      game.board.boardImportExport.showExportScreenshotDialogue()
+                    "
                   >
                     <q-item-section>
                       <q-item-label>Copy Screenshot</q-item-label>
@@ -2714,9 +2718,11 @@
           v-model="pttaUrl"
           label="PTT URL"
           autofocus
-          @keyup.enter="game.board.importPttaBoard()"
+          @keyup.enter="game.board.boardImportExport.importPttaBoard()"
         /><br />
-        <q-btn @click="game.board.importPttaBoard()" color="primary"
+        <q-btn
+          @click="game.board.boardImportExport.importPttaBoard()"
+          color="primary"
           >Load</q-btn
         >
         <br /><br />Importing from minesweeper.online? Try enable the
@@ -2751,7 +2757,7 @@
           label="MBF Hex String"
           autofocus
           @update:model-value="mbfFileToImport = null"
-          @keyup.enter="game.board.importMbfBoard()"
+          @keyup.enter="game.board.boardImportExport.importMbfBoard()"
         /><br />
         <q-file
           outlined
@@ -2769,7 +2775,11 @@
           </template>
         </q-file>
         <br />
-        <q-btn @click="game.board.importMbfBoard()" color="primary">Load</q-btn>
+        <q-btn
+          @click="game.board.boardImportExport.importMbfBoard()"
+          color="primary"
+          >Load</q-btn
+        >
       </q-card-section>
 
       <q-card-actions align="right" class="text-primary">

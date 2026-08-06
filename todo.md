@@ -541,7 +541,7 @@ Add copy as image button to llamasweeper? Maybe only if it can be pasted into di
 
 Time how long touch handling/click handling takes to check for performance issues
 (devtools performance tab kinda gives this, drawTiles seems to be a bottleneck)
-Llamasweeper takes 10ms to process a mouse input, whereas WoM seems to take around 1ms. Could this be noticeable? (cheap win is to cache context instead of calling getContext("2d") all the time. More complicated would be to only redraw stuff that changes. Idea to look into could be requestAnimationFrame batching)
+Llamasweeper takes 10ms to process a mouse input, whereas WoM seems to take around 1ms. Could this be noticeable? (cheap win is to cache context instead of calling getContext("2d") all the time [edit - we now do this]. More complicated would be to only redraw stuff that changes. Idea to look into could be requestAnimationFrame batching)
 
 NEXT STEPS:
 [done] Mobile scroll protection delay thingy
@@ -609,4 +609,6 @@ Have maximum or minimum sizes for things to prevent too large relative size diff
 
 Try adding high dpi canvas support? Although after refactoring
 
-Refactor such that whenever we have this.refs, it becomes an import instead
+For refactoring -
+next we need to split up the board class.
+BoardImportExport is probably easiest, and could be done by hand, and then try AI for the rest?
