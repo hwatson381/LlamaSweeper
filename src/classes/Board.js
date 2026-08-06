@@ -15,6 +15,7 @@ import Utils from "src/classes/Utils";
 import ZiniExplore from "src/classes/ZiniExplore";
 import statsWorkerManager from "src/classes/StatsWorkerManager";
 import BoardImportExport from "src/classes/BoardImportExport";
+import BoardRenderer from "src/classes/BoardRenderer";
 
 import CONSTANTS from "src/includes/Constants";
 import playSound from "src/includes/Sounds";
@@ -125,6 +126,7 @@ class Board {
 
     this.ziniExplore = new ZiniExplore(this);
     this.boardImportExport = new BoardImportExport(this);
+    this.boardRenderer = new BoardRenderer(this);
 
     this.stopUrlWatch = watch(
       [() => this.route.params.variant, () => this.route.query],
@@ -275,34 +277,6 @@ class Board {
       );
   }
 
-  updateBoardPixelDimensions() {
-    //Set pixel dimensions for board
-    const mainCanvasWidth =
-      this.width * tileSizeSlider.value + 2 * boardHorizontalPadding.value;
-    const mainCanvasHeight =
-      this.height * tileSizeSlider.value +
-      boardTopPadding.value +
-      boardBottomPadding.value;
-
-    this.mainCanvas.value.width = mainCanvasWidth;
-    this.mainCanvas.value.height = mainCanvasHeight;
-
-    //Also set height in style (needed for flex layout to work)
-    this.mainCanvas.value.style.width = `${mainCanvasWidth}px`;
-    this.mainCanvas.value.style.height = `${mainCanvasHeight}px`;
-
-    //Figure out what left padding should be in order to centre the board
-    let gameContainerWidth =
-      this.gameContainerDiv.value.getBoundingClientRect().width;
-
-    let marginToCentre = Math.max(
-      (gameContainerWidth - mainCanvasWidth) / 2,
-      0
-    );
-
-    gameCentrePadding.value = marginToCentre;
-  }
-
   populateHiddenNumbers(type) {
     if (type === "none") {
       return;
@@ -368,13 +342,6 @@ class Board {
     console.log("saving game (need to implement)");
 
     //TODO - code to serialise this game and save to boardHistory
-  }
-
-  refreshCanvasSize() {
-    this.updateBoardPixelDimensions();
-
-    this.tileSize = tileSizeSlider.value;
-    this.draw();
   }
 
   revertUnappliedWidthHeightSetting() {
@@ -662,7 +629,7 @@ class Board {
         this.gameStage === "running" &&
         this.tilesArray[flooredCoords.tileX]?.[flooredCoords.tileY]?.state ===
         0 &&
-        this.canTilebeUsedForMobileScrollConditions(
+        this.canTileBeUsedForMobileScrollConditions(
           flooredCoords.tileX,
           flooredCoords.tileY
         )
@@ -1656,27 +1623,6 @@ class Board {
     return { success: true, rewrittenFirstClick: rewrittenFirstClick };
   }
 
-  updateIntegerTimerIfNeeded() {
-    let newTimerValue = Math.floor(this.getTime());
-
-    if (newTimerValue !== this.integerTimer) {
-      this.integerTimer = newTimerValue;
-      this.drawTopBar();
-    }
-
-    this.updateTimerSetTimeoutHandle = setTimeout(
-      this.updateIntegerTimerIfNeeded.bind(this),
-      100
-    );
-  }
-
-  clearTimerTimeout() {
-    //May refactor in future. Disables setTimeout for timer
-    if (this.updateTimerSetTimeoutHandle !== null) {
-      clearTimeout(this.updateTimerSetTimeoutHandle);
-    }
-  }
-
   getTime() {
     return (performance.now() - this.boardStartTime) / 1000;
   }
@@ -2230,7 +2176,7 @@ class Board {
     newIsLeftMouseDownValue,
     touchIdentifier = "mouse"
   ) {
-    //Handle depressing squares when left mouse is down and over an square or a number (in which case this "prepares" the chord)
+    //Handle depressing squares when left mouse is down and over a square or a number (in which case this "prepares" the chord)
 
     //Set tileX/tileY to null if out of bounds
     if (!this.checkCoordsInBounds(tileX, tileY)) {
@@ -2889,7 +2835,7 @@ class Board {
 
         if (
           (typeof this.tilesArray[x][y].state !== "number" ||
-            !this.canTilebeUsedForMobileScrollConditions(x, y)) &&
+            !this.canTileBeUsedForMobileScrollConditions(x, y)) &&
           !isNormalOrMeanMine
         ) {
           //Found square in 3x3 block that is unrevealed (see next comment) and safe. So return false as the centre square is not enclosed by known mines
@@ -2915,7 +2861,7 @@ class Board {
         if (typeof this.tilesArray[x][y].state !== "number") {
           continue;
         }
-        if (!this.canTilebeUsedForMobileScrollConditions(x, y)) {
+        if (!this.canTileBeUsedForMobileScrollConditions(x, y)) {
           continue;
         }
 
@@ -3015,7 +2961,7 @@ class Board {
           potentiallyConfirmedMines.push({ x, y });
         } else if (
           (typeof this.tilesArray[x][y].state !== "number" ||
-            !this.canTilebeUsedForMobileScrollConditions(x, y)) &&
+            !this.canTileBeUsedForMobileScrollConditions(x, y)) &&
           !isNormalOrMeanMine
         ) {
           //Neighbour is unrevealed and safe. Therefore the centre square is NOT maxed out
@@ -3032,7 +2978,7 @@ class Board {
   }
 
   //Check if tile was revealed a while ago
-  canTilebeUsedForMobileScrollConditions(tileX, tileY) {
+  canTileBeUsedForMobileScrollConditions(tileX, tileY) {
     if (!this.checkCoordsInBounds(tileX, tileY)) {
       return false; //Defensive
     }
@@ -4333,490 +4279,6 @@ class Board {
     } else {
       flagToggleActive.value = !flagToggleActive.value;
     }
-  }
-
-  draw() {
-    this.mainCanvasCtx.clearRect(0, 0, this.mainCanvas.value.width, this.mainCanvas.value.height);
-
-    if (this.gameStage === "analyse" || this.gameStage === "replay") {
-      this.drawTilesAndAnalysis();
-    } else {
-      this.drawTiles();
-    }
-    if (this.quickPaintActive) {
-      this.drawTilesPaint();
-    }
-    if (this.hintActive) {
-      this.drawTilesHint();
-    }
-    this.drawBorders();
-    this.drawCoords();
-    this.drawTopBar();
-
-    if (this.gameStage === "replay") {
-      //this.drawTilesZiniDelta();
-      this.drawCursor();
-    }
-  }
-
-  drawTiles() {
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
-        this.tilesArray[x][y].draw(
-          x * this.tileSize + boardHorizontalPadding.value,
-          y * this.tileSize + boardTopPadding.value,
-          this.tileSize
-        );
-      }
-    }
-  }
-
-  drawTilesPaint() {
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
-        this.tilesArray[x][y].drawPaint(
-          x * this.tileSize + boardHorizontalPadding.value,
-          y * this.tileSize + boardTopPadding.value,
-          this.tileSize
-        );
-      }
-    }
-  }
-
-  drawTilesHint() {
-    const suppressHighlight = autoHintBackdrop.value === "minimal";
-
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
-        this.tilesArray[x][y].drawHint(
-          x * this.tileSize + boardHorizontalPadding.value,
-          y * this.tileSize + boardTopPadding.value,
-          this.tileSize,
-          suppressHighlight
-        );
-      }
-    }
-  }
-
-  drawTilesZiniDelta() {
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
-        this.tilesArray[x][y].drawZiniDelta(
-          x * this.tileSize + boardHorizontalPadding.value,
-          y * this.tileSize + boardTopPadding.value,
-          this.tileSize
-        );
-      }
-    }
-  }
-
-  /* DELETE ME
-  drawTilesExploreAnalysis() {
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
-        this.tilesArray[x][y].drawExploreAnalysis(
-          x * this.tileSize + boardHorizontalPadding.value,
-          y * this.tileSize + boardTopPadding.value,
-          this.tileSize
-        );
-      }
-    }
-  }
-  */
-
-  drawTilesAndAnalysis() {
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
-        this.tilesArray[x][y].drawIncludingAnalysis(
-          x * this.tileSize + boardHorizontalPadding.value,
-          y * this.tileSize + boardTopPadding.value,
-          this.tileSize
-        );
-      }
-    }
-  }
-
-  drawBorders() {
-    if (!showBorders.value) {
-      return;
-    }
-    const ctx = this.mainCanvasCtx; //Give it a slightly shorter name...
-
-    //Draw borders
-    //top left corner
-    ctx.drawImage(
-      skinManager.getImage("b_c_up_left"),
-      0,
-      0,
-      boardHorizontalPadding.value,
-      topPanelTopAndBottomBorder.value
-    );
-    //top right corner
-    ctx.drawImage(
-      skinManager.getImage("b_c_up_right"),
-      this.width * this.tileSize + boardHorizontalPadding.value,
-      0,
-      boardHorizontalPadding.value,
-      topPanelTopAndBottomBorder.value
-    );
-    //bottom left corner
-    ctx.drawImage(
-      skinManager.getImage("b_c_bot_left"),
-      0,
-      this.height * this.tileSize + boardTopPadding.value,
-      boardHorizontalPadding.value,
-      boardBottomPadding.value
-    );
-    //bottom right corner
-    ctx.drawImage(
-      skinManager.getImage("b_c_bot_right"),
-      this.width * this.tileSize + boardHorizontalPadding.value,
-      this.height * this.tileSize + boardTopPadding.value,
-      boardHorizontalPadding.value,
-      boardBottomPadding.value
-    );
-
-    //t pieces (between top of board and mines/timer panel)
-    //left t piece
-    ctx.drawImage(
-      skinManager.getImage("t_left"),
-      0,
-      topPanelTopAndBottomBorder.value + topPanelHeight.value,
-      boardHorizontalPadding.value,
-      boardBottomPadding.value
-    );
-    //right t piece
-    ctx.drawImage(
-      skinManager.getImage("t_right"),
-      this.width * this.tileSize + boardHorizontalPadding.value,
-      topPanelTopAndBottomBorder.value + topPanelHeight.value,
-      boardHorizontalPadding.value,
-      boardBottomPadding.value
-    );
-
-    //connecting lines
-    //top line
-    ctx.drawImage(
-      skinManager.getImage("b_hor"),
-      boardHorizontalPadding.value,
-      0,
-      this.tileSize * this.width,
-      topPanelTopAndBottomBorder.value
-    );
-    //middle line
-    ctx.drawImage(
-      skinManager.getImage("b_hor"),
-      boardHorizontalPadding.value,
-      topPanelTopAndBottomBorder.value + topPanelHeight.value,
-      this.tileSize * this.width,
-      topPanelTopAndBottomBorder.value
-    );
-    //bottom line
-    ctx.drawImage(
-      skinManager.getImage("b_hor"),
-      boardHorizontalPadding.value,
-      this.height * this.tileSize + boardTopPadding.value,
-      this.tileSize * this.width,
-      boardBottomPadding.value
-    );
-    //left short segment
-    ctx.drawImage(
-      skinManager.getImage("b_vert"),
-      0,
-      topPanelTopAndBottomBorder.value,
-      boardHorizontalPadding.value,
-      topPanelHeight.value
-    );
-    //right short segment
-    ctx.drawImage(
-      skinManager.getImage("b_vert"),
-      this.width * this.tileSize + boardHorizontalPadding.value,
-      topPanelTopAndBottomBorder.value,
-      boardHorizontalPadding.value,
-      topPanelHeight.value
-    );
-    //left long segment
-    ctx.drawImage(
-      skinManager.getImage("b_vert"),
-      0,
-      boardTopPadding.value,
-      boardHorizontalPadding.value,
-      this.height * this.tileSize
-    );
-    //right long segment
-    ctx.drawImage(
-      skinManager.getImage("b_vert"),
-      this.width * this.tileSize + boardHorizontalPadding.value,
-      boardTopPadding.value,
-      boardHorizontalPadding.value,
-      this.height * this.tileSize
-    );
-  }
-
-  drawCoords() {
-    if (!showCoords.value) {
-      return;
-    }
-    if (!showBorders.value) {
-      return;
-    }
-
-    const ctx = this.mainCanvasCtx; //Give it a slightly shorter name...
-
-    ctx.textBaseline = "middle";
-    ctx.textAlign = "center";
-    ctx.font = `${this.tileSize / 2}px monospace`;
-    ctx.fillStyle = skinManager.getCoordTextColour();
-
-    //Horizontal coords
-    for (let i = 0; i < this.width; i++) {
-      const maxWidth = this.tileSize;
-
-      const yPos =
-        topPanelTopAndBottomBorder.value +
-        topPanelHeight.value +
-        topPanelTopAndBottomBorder.value / 2;
-
-      const xPos =
-        boardHorizontalPadding.value + this.tileSize / 2 + i * this.tileSize;
-
-      ctx.fillText(this.coordIndexToText(i, true), xPos, yPos, maxWidth);
-    }
-
-    //Vertical coords
-    for (let i = 0; i < this.height; i++) {
-      const maxWidth = boardHorizontalPadding.value;
-
-      const yPos =
-        boardTopPadding.value + this.tileSize / 2 + i * this.tileSize;
-
-      const xPos = boardHorizontalPadding.value / 2;
-
-      ctx.fillText(this.coordIndexToText(i, false), xPos, yPos, maxWidth);
-    }
-  }
-
-  coordIndexToText(index, isHorizontal) {
-    if (isHorizontal && coordsUseLetters.value) {
-      //Horizontal on text mode gives excel style values (A->Z, AA->ZZ etc)
-      const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-
-      let txt = "";
-
-      while (true) {
-        txt = alphabet.charAt(index % 26) + txt;
-
-        if (index < 26) {
-          break;
-        }
-
-        index = Math.floor(index / 26) - 1;
-      }
-
-      return txt;
-    }
-
-    if (!isHorizontal && !coordsUseInvertedY.value) {
-      //Handle Y axis getting flipped
-      index = this.height - 1 - index;
-    }
-
-    if (!coordsUseZeroIndexing.value) {
-      //Adjust for coords starting from zero
-      index += 1;
-    }
-
-    return index.toString();
-  }
-
-  drawTopBar() {
-    if (this.quickPaintActive) {
-      this.drawQuickPaintTopBar();
-    } else {
-      this.drawStandardTopBar();
-    }
-  }
-
-  drawStandardTopBar() {
-    if (!showBorders.value) {
-      return;
-    }
-
-    const ctx = this.mainCanvasCtx; //Give it a slightly shorter name...
-
-    //A bunch of variables for positioning things
-    const topPanelMiddleHeight = topPanelHeight.value / 2;
-    const topPanelMiddleWidth = (this.width * this.tileSize) / 2;
-    const topPanelInnerPadding = this.tileSize / 4;
-    const mineStartX = boardHorizontalPadding.value + topPanelInnerPadding;
-    const timerStartX =
-      boardHorizontalPadding.value +
-      this.width * this.tileSize -
-      topPanelInnerPadding; //note timer is right aligned, so this is where right edge of timer is
-    const mineTimerStartY =
-      topPanelTopAndBottomBorder.value + topPanelMiddleHeight;
-    const faceWidth = topPanelHeight.value - 2 * topPanelInnerPadding;
-    const faceStartX =
-      boardHorizontalPadding.value + topPanelMiddleWidth - faceWidth / 2;
-    const faceStartY = topPanelTopAndBottomBorder.value + topPanelInnerPadding;
-
-    const mineTimerMaxWidth = faceStartX - mineStartX;
-
-    this.drawTopBarFlatBackground();
-
-    //Set up font for mine/timer text
-    ctx.textBaseline = "middle";
-    ctx.font = `${this.tileSize}px monospace`;
-
-    ctx.fillStyle = skinManager.getMineTimerTextColour();
-
-    //Draw mine counter
-    if (showMineCount.value) {
-      ctx.textAlign = "left";
-      ctx.fillText(
-        this.unflagged,
-        mineStartX,
-        mineTimerStartY,
-        mineTimerMaxWidth
-      );
-    }
-
-    //Draw timer (or zini value if analysing on zini explorer)
-    if (showTimer.value) {
-      let timerOrZini = this.integerTimer;
-      if (this.variant === "zini explorer" && this.gameStage === "analyse") {
-        timerOrZini = analyseZiniTotal.value;
-      }
-
-      ctx.textAlign = "right";
-      ctx.fillText(
-        timerOrZini,
-        timerStartX,
-        mineTimerStartY,
-        mineTimerMaxWidth
-      );
-    }
-
-    //Draw face
-    ctx.drawImage(
-      skinManager.getImage("f_unpressed"),
-      faceStartX,
-      faceStartY,
-      faceWidth,
-      faceWidth
-    );
-  }
-
-  drawQuickPaintTopBar() {
-    if (!showBorders.value) {
-      return;
-    }
-
-    const ctx = this.mainCanvasCtx; //Give it a slightly shorter name...
-
-    //A bunch of variables for positioning things
-    const topPanelMiddleHeight = topPanelHeight.value / 2;
-    const topPanelMiddleWidth = (this.width * this.tileSize) / 2;
-    const topPanelInnerPadding = this.tileSize / 4;
-    const redStartX = boardHorizontalPadding.value + topPanelInnerPadding;
-    const dotStartX =
-      boardHorizontalPadding.value +
-      this.width * this.tileSize -
-      topPanelInnerPadding; //note dot counter is right aligned, so this is where right edge of dot counter is
-    const counterStartY =
-      topPanelTopAndBottomBorder.value + topPanelMiddleHeight;
-    const faceWidth = topPanelHeight.value - 2 * topPanelInnerPadding;
-    const faceStartX =
-      boardHorizontalPadding.value + topPanelMiddleWidth - faceWidth / 2;
-    const faceStartY = topPanelTopAndBottomBorder.value + topPanelInnerPadding;
-
-    const largeMaxWidth = faceStartX - redStartX;
-    const smallMaxWidth = this.tileSize * 1.5;
-    const orangeLeftGap = this.tileSize / 4;
-    const orangeStartX = redStartX + smallMaxWidth + orangeLeftGap;
-
-    let noSpaceForOrangeCounter = false;
-    if (smallMaxWidth * 2 + orangeLeftGap > largeMaxWidth) {
-      noSpaceForOrangeCounter = true;
-    }
-    const redMaxWidth = noSpaceForOrangeCounter ? largeMaxWidth : smallMaxWidth;
-
-    this.drawTopBarFlatBackground();
-
-    //Set up font for counter text
-    ctx.textBaseline = "middle";
-    ctx.font = `${this.tileSize}px monospace`;
-
-    //Draw red counter
-    ctx.fillStyle = skinManager.getRedCounterTextColour();
-    ctx.textAlign = "left";
-    ctx.fillText(this.redCount, redStartX, counterStartY, redMaxWidth);
-
-    //Draw orange counter
-    if (!noSpaceForOrangeCounter) {
-      ctx.fillStyle = skinManager.getOrangeCounterTextColour();
-      ctx.fillText(
-        this.orangeCount,
-        orangeStartX,
-        counterStartY,
-        smallMaxWidth
-      );
-    }
-
-    //Draw dots count
-    ctx.textAlign = "right";
-    ctx.fillStyle = skinManager.getDotsCounterTextColour();
-    ctx.fillText(this.dotCount, dotStartX, counterStartY, largeMaxWidth);
-
-    //Draw face
-    ctx.drawImage(
-      skinManager.getImage("f_unpressed"),
-      faceStartX,
-      faceStartY,
-      faceWidth,
-      faceWidth
-    );
-  }
-
-  drawTopBarFlatBackground() {
-    //Draw flat background for top panel
-    this.mainCanvasCtx.fillStyle = skinManager.getTopPanelColour();
-    this.mainCanvasCtx.fillRect(
-      boardHorizontalPadding.value,
-      topPanelTopAndBottomBorder.value,
-      this.width * this.tileSize,
-      topPanelHeight.value
-    );
-  }
-
-  drawCursor() {
-    //Cursor shown on replays
-    if (
-      this.cursor === null ||
-      this.cursor.x === null ||
-      this.cursor.y === null
-    ) {
-      return;
-    }
-
-    const cursorStartX =
-      boardHorizontalPadding.value + this.cursor.x * this.tileSize;
-    const cursorStartY = boardTopPadding.value + this.cursor.y * this.tileSize;
-
-    const mouseImg = skinManager.getImage("cursor");
-
-    const aspectRatio = mouseImg.width / mouseImg.height;
-
-    const cursorHeight = (this.tileSize * 3) / 4; //Height will be 3/4 of a tile
-    const cursorWidth = cursorHeight * aspectRatio;
-
-    this.mainCanvasCtx.drawImage(
-      mouseImg,
-      cursorStartX,
-      cursorStartY,
-      cursorWidth,
-      cursorHeight
-    );
   }
 
   initReplay(replayToInit) {
