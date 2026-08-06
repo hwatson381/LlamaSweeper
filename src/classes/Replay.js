@@ -171,7 +171,7 @@ class Replay {
     }
 
     if (isHintActive) {
-      this.board.showHintSync();
+      this.board.boardHint.showHintSync();
     }
   }
 

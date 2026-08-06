@@ -1122,7 +1122,7 @@
         v-if="variant !== 'zini explorer'"
       >
         <q-btn
-          @click="game.board.toggleHint()"
+          @click="game.board.boardHint.toggleHint()"
           color="secondary"
           icon="percent"
           label="Hint (H)"
@@ -3430,7 +3430,7 @@ function handleKeyDown(event) {
     if (!checkFocusForKeyPress(event)) {
       return;
     }
-    game.board.toggleHint();
+    game.board.boardHint.toggleHint();
   }
   if (event.key === "q") {
     if (!checkFocusForKeyPress(event)) {
