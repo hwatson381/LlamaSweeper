@@ -1130,7 +1130,7 @@
         >
         </q-btn>
         <q-btn
-          @click="game.board.toggleQuickPaint()"
+          @click="game.board.quickPaint.toggleQuickPaint()"
           color="secondary"
           icon="brush"
           label="QuickPaint (Q)"
@@ -1140,12 +1140,15 @@
         <template v-if="showQuickPaintOptions">
           <q-btn
             v-if="!quickPaintMinimalMode"
-            @click="game.board.cycleQuickPaintMode()"
+            @click="game.board.quickPaint.cycleQuickPaintMode()"
             color="secondary"
           >
             {{ quickPaintModeDisplay }} (w)
           </q-btn>
-          <q-btn @click="game.board.clearClearableMarkings()" color="secondary">
+          <q-btn
+            @click="game.board.quickPaint.clearClearableMarkings()"
+            color="secondary"
+          >
             {{ quickPaintClearable }} (scrollclick)
           </q-btn>
           <q-btn @click="quickPaintHelpModal = true" color="secondary"
@@ -3436,14 +3439,14 @@ function handleKeyDown(event) {
     if (!checkFocusForKeyPress(event)) {
       return;
     }
-    game.board.toggleQuickPaint();
+    game.board.quickPaint.toggleQuickPaint();
     //event.preventDefault();
   }
   if (event.key === "w") {
     if (!checkFocusForKeyPress(event)) {
       return;
     }
-    game.board.handleCycleQuickPaintModeKeypress();
+    game.board.quickPaint.handleCycleQuickPaintModeKeypress();
     //event.preventDefault();
   }
   if (event.key === "ArrowLeft") {

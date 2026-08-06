@@ -612,3 +612,5 @@ Try adding high dpi canvas support? Although after refactoring
 For refactoring -
 next we need to split up the board class.
 BoardImportExport is probably easiest, and could be done by hand, and then try AI for the rest?
+
+Can any this.X properties in the Board class (e.g. in constructor or possibly resetBoard) be moved into their appropriate class.
