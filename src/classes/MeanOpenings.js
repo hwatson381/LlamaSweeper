@@ -138,18 +138,24 @@ class MeanOpenings {
     //Do a final pass to make sure number states are updated and squares with means mines are revealed
 
     for (let zero of this.board.unprocessedMeanZeros) {
-      this.board.meanMineStates[zero.x][zero.y].isActive = true;
-      this.board.meanMineStates[zero.x][zero.y].isLocked = true;
-
       if (this.board.meanMineStates[zero.x][zero.y].isMine) {
+        let shouldMineBeFlagged;
+        if (this.board.meanMineStates[zero.x][zero.y].isLocked) {
+          //Square was locked from before so used saved value (e.g. we are in a replay)
+          shouldMineBeFlagged = this.board.meanMineStates[zero.x][zero.y].startsFlagged;
+        } else {
+          //Square was not locked, so randomly choose whether to flag
+          shouldMineBeFlagged = Math.random() < meanOpeningFlagDensity.value
+        }
+
         //Close squares with mean mines, or change to flag
-        if (Math.random() < meanOpeningFlagDensity.value) {
+        if (shouldMineBeFlagged) {
           this.board.tilesArray[zero.x][zero.y].state = CONSTANTS.FLAG;
-          this.board.meanMineStates[zero.x][zero.y].startsFlagged = true;
+          this.board.meanMineStates[zero.x][zero.y].startsFlagged = true; //harmless if this is locked and already flagged
         } else {
           this.board.unflagged++;
           this.board.tilesArray[zero.x][zero.y].state = CONSTANTS.UNREVEALED;
-          this.board.meanMineStates[zero.x][zero.y].startsFlagged = false;
+          this.board.meanMineStates[zero.x][zero.y].startsFlagged = false; //harmless if this is locked and already unflagged
         }
       }
 
@@ -164,6 +170,9 @@ class MeanOpenings {
           }
         }
       }
+
+      this.board.meanMineStates[zero.x][zero.y].isActive = true;
+      this.board.meanMineStates[zero.x][zero.y].isLocked = true;
     }
 
     //De-duplicate the list of cellsThatNeedNumber
