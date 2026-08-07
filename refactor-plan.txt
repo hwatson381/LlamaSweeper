@@ -289,18 +289,53 @@ module that operates on a Board instance. Two viable mechanics:
 Cohesive groups inside Board (line ranges are RELATIVE offsets from the class
 start at 4717; add ~4716 for absolute), roughly:
 
-  BoardInput (mouse/touch/keyboard)        ~ methods handleMouseDown..
-    handleMouseDown/Up/Move, handleTouchStart/End/Move/Cancel, sendKeyboardClick,
-    handlePageScroll, handlePointerInput (huge ~360 lines), eventTo*Coords,
-    updateDepressedSquares, clearAllDepressedSquares, mouseMove
-    -> ~1000+ lines. Biggest single carve-out. HIGH payoff.
+  BoardInput = the input/interaction layer (device normalization + gesture/
+  dispatch). This is layers A+B of the A+B|C split (see boardinput_boardactions
+  memory / repo note). It owns the pointer/press/hover/chord-button state and
+  decides which BoardActions method to call; it never mutates tile state itself.
+    A) Normalization (raw DOM event -> coords + intent):
+       handleMouseDown/Up/Move, handleTouchStart/End/Move/Cancel,
+       sendKeyboardClick, handlePageScroll,
+       eventToCanvasCoord, eventToUnflooredTileCoords, eventToFlooredTileCoords
+       (NOTE: unflooredToFlooredTileCoords is a shared coord helper used by
+        BoardActions too -> leave it in the Board core/spine, not here.)
+    B) Interaction / gesture (press/hover tracking + the dispatch decision):
+       handlePointerInput (huge ~360 lines; dispatcher, only ever called by
+         input methods), mouseMove (input bookkeeping despite the name),
+       updateDepressedSquares, clearAllDepressedSquares,
+       holdDownDig/Flag/TouchFlag, releaseFlag,
+       attemptFaceClick (canvas hit-test on the smiley)
+    Touch-only helpers (only handleTouchStart calls into these):
+       isTileEnclosed, getMinesConfirmedByTile,
+       canTileBeUsedForMobileScrollConditions
+       (NOTE: canTileBeUsedForMobileScrollConditions calls
+        board.meanOpenings.getSimplifiedTilesArray() -> that one stays in
+        MeanOpenings; fine as a cross-object call.)
+    -> ~1500 lines. Biggest single carve-out. HIGH payoff.
+    Why B lives here and not in Actions: everything that calls handlePointerInput
+    is input; B's state (lrChordingState, hoveredSquare, isLeftMouseDown,
+    touchDepressedSquaresMap) is pointer state, not game state; and the A/B seam
+    is blurry (handleTouchStart parses the event AND drives gesture state AND
+    calls the dispatcher) while the B/C seam is clean. If a future variant makes
+    hover/press cause a real board change, that B method does it by CALLING a
+    BoardActions method (as handlePointerInput already does today) -- B does not
+    need to live inside Actions to gain that power.
 
-  BoardActions (gameplay mutations)
+  BoardActions (gameplay mutations = layer C)
+    The game-state command API: the actual tile mutations, also invoked
+    externally by Replay.js and ZiniExplore.js (openTile/chord/attemptFlag/
+    markRemainingFlags), which is what makes this a coherent public surface.
     attemptFlag, attemptChordOrDig, attemptChordOnly, attemptDigOnly,
-    attemptFlagOrChord, holdDownDig/Flag/TouchFlag, releaseFlag, openTile,
-    chord, getNumberSurroundingMines/Flags, doLose, blast, doWin,
-    markRemainingFlags, checkWin, attemptFaceClick
-    -> ~700 lines. HIGH payoff, but tightly coupled to tile state + draw().
+    attemptFlagOrChord, openTile, chord, getNumberSurroundingMines/Flags,
+    doLose, blast, doWin, markRemainingFlags, checkWin
+    (MOVED to BoardInput vs the original plan: holdDownDig/Flag/TouchFlag,
+     releaseFlag [thin wrappers over updateDepressedSquares = press feedback],
+     and attemptFaceClick [canvas hit-testing].)
+    -> ~600 lines. HIGH payoff, but tightly coupled to tile state + draw().
+    Note: doLose/doWin call back into input (clearAllDepressedSquares) and the
+    renderer/hint sub-objects. That Actions->Input cross-call is fine under the
+    composition pattern -- both reference each other via this.board, so there is
+    no circular *import*, only runtime references (matches ZiniExplore).
 
   BoardRenderer (all canvas drawing)
     draw, drawTiles, drawTilesPaint/Hint/ZiniDelta/ExploreAnalysis/AndAnalysis,
