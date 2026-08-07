@@ -614,3 +614,7 @@ next we need to split up the board class.
 BoardImportExport is probably easiest, and could be done by hand, and then try AI for the rest?
 
 Can any this.X properties in the Board class (e.g. in constructor or possibly resetBoard) be moved into their appropriate class.
+
+MeanOpenings to consider - should this really be another class?
+
+makeOpeningMean, resetMeanMinesActiveness, getSimplifiedTilesArray. Only has three methods

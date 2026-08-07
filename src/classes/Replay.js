@@ -102,7 +102,7 @@ class Replay {
       this.board.unflagged = this.board.mineCount;
 
       if (this.board.variant === "mean openings") {
-        this.board.resetMeanMinesActiveness();
+        this.board.meanOpenings.resetMeanMinesActiveness();
       }
 
       needToPlaySound = false;
@@ -157,7 +157,7 @@ class Replay {
         this.board.variant === "mean openings" &&
         this.board.unprocessedMeanZeros?.length !== 0
       ) {
-        this.board.makeOpeningMean();
+        this.board.meanOpenings.makeOpeningMean();
       }
     }
 
