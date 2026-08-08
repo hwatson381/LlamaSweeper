@@ -620,3 +620,5 @@ Need to test out BoardActions change.
 Also consider renaming stuff to reduce the amount of BoardX. Could even just rename the property on Board, like how we have board.stats instead of board.boardStats
 
 Once Board stuff is done we can also split out components
+
+Writing a good agents.md should also be done

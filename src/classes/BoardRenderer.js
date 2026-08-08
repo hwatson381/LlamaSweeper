@@ -32,7 +32,7 @@ class BoardRenderer {
     } else {
       this.drawTiles();
     }
-    if (this.board.quickPaintActive) {
+    if (this.board.quickPaint.quickPaintActive) {
       this.drawTilesPaint();
     }
     if (this.board.hintActive) {
@@ -305,7 +305,7 @@ class BoardRenderer {
   }
 
   drawTopBar() {
-    if (this.board.quickPaintActive) {
+    if (this.board.quickPaint.quickPaintActive) {
       this.drawQuickPaintTopBar();
     } else {
       this.drawStandardTopBar();
@@ -425,13 +425,13 @@ class BoardRenderer {
     //Draw red counter
     ctx.fillStyle = skinManager.getRedCounterTextColour();
     ctx.textAlign = "left";
-    ctx.fillText(this.board.redCount, redStartX, counterStartY, redMaxWidth);
+    ctx.fillText(this.board.quickPaint.redCount, redStartX, counterStartY, redMaxWidth);
 
     //Draw orange counter
     if (!noSpaceForOrangeCounter) {
       ctx.fillStyle = skinManager.getOrangeCounterTextColour();
       ctx.fillText(
-        this.board.orangeCount,
+        this.board.quickPaint.orangeCount,
         orangeStartX,
         counterStartY,
         smallMaxWidth
@@ -441,7 +441,7 @@ class BoardRenderer {
     //Draw dots count
     ctx.textAlign = "right";
     ctx.fillStyle = skinManager.getDotsCounterTextColour();
-    ctx.fillText(this.board.dotCount, dotStartX, counterStartY, largeMaxWidth);
+    ctx.fillText(this.board.quickPaint.dotCount, dotStartX, counterStartY, largeMaxWidth);
 
     //Draw face
     ctx.drawImage(

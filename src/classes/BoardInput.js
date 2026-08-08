@@ -26,6 +26,28 @@ import {
 class BoardInput {
   constructor(board) {
     this.board = board;
+
+    this.isLeftMouseDown = false;
+
+    this.lrChordingState = {
+      leftDown: false,
+      rightDown: false,
+      hoverType: "single", //block/single/empty (how the hover shows when left mouse down)
+      lastDrawnHoverType: "single",
+    };
+
+    this.hoveredSquare = { x: null, y: null }; //Square that is being hovered over
+    this.touchDepressedSquaresMap = new Map(); //Map from touch identifiers to depressed squares (for depressing squares on mobile)
+    this.ongoingTouches = new Map(); //Track info about touches such as start location, time started etc.
+
+    this.lastClientCoords = { clientX: 0, clientY: 0 }; //Coords used by keyboard clicks
+    this.keyboardClickIsDigDown = false; //Used to help ignore repeating keys
+    this.keyboardClickIsFlagDown = false; //Used to help ignore repeating keys
+  }
+
+  resetInteractionState() {
+    this.hoveredSquare = { x: null, y: null }; //Square that is being hovered over
+    this.touchDepressedSquaresMap = new Map(); //Map from touch identifiers to depressed squares (for depressing squares on mobile)
   }
 
   handleMouseDown(event) {
@@ -104,14 +126,14 @@ class BoardInput {
     }
 
     //Update coords as would be used by keyboard clicks
-    this.board.lastClientCoords.clientX = event.clientX;
-    this.board.lastClientCoords.clientY = event.clientY;
+    this.lastClientCoords.clientX = event.clientX;
+    this.lastClientCoords.clientY = event.clientY;
 
     if (this.board.gameStage !== "pregame" && this.board.gameStage !== "running") {
       return; //only track mouse when game is running or just before
     }
 
-    if (this.board.quickPaintActive) {
+    if (this.board.quickPaint.quickPaintActive) {
       //Do nothing as quickpaint
       return;
     }
@@ -125,11 +147,11 @@ class BoardInput {
     //checks if left mouse button down
     const isLeftDown =
       Boolean(event.buttons & 1) ||
-      (this.board.keyboardClickIsDigDown && !keyboardClickOpenOnKeyDown.value);
+      (this.keyboardClickIsDigDown && !keyboardClickOpenOnKeyDown.value);
 
     //checks if right mouse button down
     const isRightDown =
-      Boolean(event.buttons & 2) || this.board.keyboardClickIsFlagDown;
+      Boolean(event.buttons & 2) || this.keyboardClickIsFlagDown;
 
     const requiresRedraw = this.mouseMove(
       unflooredCoords.tileX,
@@ -243,7 +265,7 @@ class BoardInput {
         y: touch.screenY,
       };
 
-      this.board.ongoingTouches.set(touchIdentifier, {
+      this.ongoingTouches.set(touchIdentifier, {
         startTime: event.timeStamp,
         startCoordsData: structuredClone(coordsData), //Ugly, but just in case it gets changed in boardInput.handlePointerInput function.
         startScreenCoords: screenCoords,
@@ -269,7 +291,7 @@ class BoardInput {
 
       if (touchRevealTiming.value === "start") {
         //Since we already processed the touch on the start, we deactivate so it doesn't get processed again
-        this.board.ongoingTouches.get(touchIdentifier).active = false;
+        this.ongoingTouches.get(touchIdentifier).active = false;
       }
     }
 
@@ -302,8 +324,8 @@ class BoardInput {
 
     for (let touch of touches) {
       //Get touch entry and delete it (whilst hanging onto reference inside this function)
-      let thisTouch = this.board.ongoingTouches.get(touch.identifier);
-      this.board.ongoingTouches.delete(touch.identifier);
+      let thisTouch = this.ongoingTouches.get(touch.identifier);
+      this.ongoingTouches.delete(touch.identifier);
 
       if (thisTouch.isScrollingTouch) {
         shouldPreventDefault = false;
@@ -435,7 +457,7 @@ class BoardInput {
     if (this.board.gameStage !== "pregame" && this.board.gameStage !== "running") {
       return; //only track touch moves when game is running or just before
     }
-    if (this.board.quickPaintActive) {
+    if (this.board.quickPaint.quickPaintActive) {
       //Do nothing as quickpaint
       return;
     }
@@ -460,7 +482,7 @@ class BoardInput {
     }
 
     for (let touch of touches) {
-      let thisTouch = this.board.ongoingTouches.get(touch.identifier);
+      let thisTouch = this.ongoingTouches.get(touch.identifier);
 
       if (thisTouch.isScrollingTouch) {
         shouldPreventDefault = false;
@@ -550,8 +572,8 @@ class BoardInput {
     }
 
     for (let touch of touches) {
-      let thisTouch = this.board.ongoingTouches.get(touch.identifier);
-      this.board.ongoingTouches.delete(touch.identifier);
+      let thisTouch = this.ongoingTouches.get(touch.identifier);
+      this.ongoingTouches.delete(touch.identifier);
 
       if (thisTouch.isScrollingTouch) {
         shouldPreventDefault = false;
@@ -599,27 +621,27 @@ class BoardInput {
 
     if (isDigInput) {
       //defend against repeating keys
-      if (isDown && this.board.keyboardClickIsDigDown) {
+      if (isDown && this.keyboardClickIsDigDown) {
         return;
       }
       if (isDown) {
-        this.board.keyboardClickIsDigDown = true;
+        this.keyboardClickIsDigDown = true;
       }
       if (!isDown) {
-        this.board.keyboardClickIsDigDown = false;
+        this.keyboardClickIsDigDown = false;
       }
     }
 
     if (isFlagInput) {
       //defend against repeating keys
-      if (isDown && this.board.keyboardClickIsFlagDown) {
+      if (isDown && this.keyboardClickIsFlagDown) {
         return;
       }
       if (isDown) {
-        this.board.keyboardClickIsFlagDown = true;
+        this.keyboardClickIsFlagDown = true;
       }
       if (!isDown) {
-        this.board.keyboardClickIsFlagDown = false;
+        this.keyboardClickIsFlagDown = false;
       }
     }
 
@@ -636,8 +658,8 @@ class BoardInput {
     }
 
     let fakeEvent = {
-      clientX: this.board.lastClientCoords.clientX,
-      clientY: this.board.lastClientCoords.clientY,
+      clientX: this.lastClientCoords.clientX,
+      clientY: this.lastClientCoords.clientY,
       timeStamp: timeStamp,
     };
 
@@ -674,7 +696,7 @@ class BoardInput {
 
     let redrawRequired = false;
 
-    for (let touch of this.board.ongoingTouches.values()) {
+    for (let touch of this.ongoingTouches.values()) {
       if (!touch.active) {
         continue; //Touch already cancelled, so skip it
       }
@@ -764,32 +786,32 @@ class BoardInput {
       //Update states for l+r chord
       if (isDigInput) {
         //Track whether left click is up or down
-        this.board.lrChordingState.leftDown = isDown;
+        this.lrChordingState.leftDown = isDown;
       }
       if (isFlagInput) {
         //Track whether right click is up or down
-        this.board.lrChordingState.rightDown = isDown;
+        this.lrChordingState.rightDown = isDown;
       }
 
       //Update whether the hover is a 3x3 block or a single square, but only if there has been a new click event
       if (isDigInput || isFlagInput) {
-        if (this.board.lrChordingState.leftDown && this.board.lrChordingState.rightDown) {
+        if (this.lrChordingState.leftDown && this.lrChordingState.rightDown) {
           //Both down => hover should be 3x3 block
-          this.board.lrChordingState.hoverType = "block";
+          this.lrChordingState.hoverType = "block";
         } else if (
-          this.board.lrChordingState.leftDown &&
-          !this.board.lrChordingState.rightDown &&
-          this.board.lrChordingState.hoverType !== "empty"
+          this.lrChordingState.leftDown &&
+          !this.lrChordingState.rightDown &&
+          this.lrChordingState.hoverType !== "empty"
         ) {
           //Only left down => hover should be single square
-          this.board.lrChordingState.hoverType = "single";
+          this.lrChordingState.hoverType = "single";
         } else if (
-          !this.board.lrChordingState.leftDown &&
-          !this.board.lrChordingState.rightDown &&
-          this.board.lrChordingState.hoverType !== "empty"
+          !this.lrChordingState.leftDown &&
+          !this.lrChordingState.rightDown &&
+          this.lrChordingState.hoverType !== "empty"
         ) {
           //If nothing is down then reset to default behaviour of single square hover
-          this.board.lrChordingState.hoverType = "single";
+          this.lrChordingState.hoverType = "single";
         }
       }
     }
@@ -816,7 +838,7 @@ class BoardInput {
     // ############### Section for mostly mouse down stuff #################
 
     //Handle clicks in quickpaint, and exit early
-    if (this.board.quickPaintActive && this.board.gameStage === "running") {
+    if (this.board.quickPaint.quickPaintActive && this.board.gameStage === "running") {
       if (mouseDownOrTouchUp) {
         this.board.quickPaint.handleQuickPaintClick(
           flooredCoords.tileX,
@@ -924,7 +946,7 @@ class BoardInput {
       !(
         touchIdentifier === "mouse" &&
         chordingButtons.value === "l+r" &&
-        this.board.lrChordingState.leftDown
+        this.lrChordingState.leftDown
       )
     ) {
       this.board.boardActions.attemptFlag(
@@ -993,8 +1015,8 @@ class BoardInput {
     if (
       this.board.gameStage === "running" &&
       !isDown &&
-      ((isDigInput && this.board.lrChordingState.rightDown) || //Lift up left whilst right down
-        (isFlagInput && this.board.lrChordingState.leftDown)) && //Or lift up right whilst left down
+      ((isDigInput && this.lrChordingState.rightDown) || //Lift up left whilst right down
+        (isFlagInput && this.lrChordingState.leftDown)) && //Or lift up right whilst left down
       touchIdentifier === "mouse" &&
       chordingButtons.value === "l+r"
     ) {
@@ -1013,10 +1035,10 @@ class BoardInput {
       this.board.gameStage === "running" &&
       !isDown &&
       isDigInput &&
-      !this.board.lrChordingState.rightDown &&
+      !this.lrChordingState.rightDown &&
       touchIdentifier === "mouse" &&
       chordingButtons.value === "l+r" &&
-      this.board.lrChordingState.hoverType !== "empty"
+      this.lrChordingState.hoverType !== "empty"
     ) {
       this.board.boardActions.attemptDigOnly(
         unflooredCoords.tileX,
@@ -1064,12 +1086,12 @@ class BoardInput {
       touchIdentifier === "mouse" &&
       chordingButtons.value === "l+r" &&
       (isDigInput || isFlagInput) &&
-      !this.board.lrChordingState.leftDown &&
-      !this.board.lrChordingState.rightDown &&
-      this.board.lrChordingState.hoverType === "empty"
+      !this.lrChordingState.leftDown &&
+      !this.lrChordingState.rightDown &&
+      this.lrChordingState.hoverType === "empty"
     ) {
       //If nothing is down then reset to default behaviour of single square hover
-      this.board.lrChordingState.hoverType = "single";
+      this.lrChordingState.hoverType = "single";
     }
 
     //Check if an opening has occured on mean openings
@@ -1113,37 +1135,37 @@ class BoardInput {
     if (chordingButtons.value === "l+r") {
       //Update states for l+r chord
       let buttonsChanged = false;
-      if (this.board.lrChordingState.leftDown !== isLeftDown) {
+      if (this.lrChordingState.leftDown !== isLeftDown) {
         //left button changed, possibly off canvas
-        this.board.lrChordingState.leftDown = isLeftDown;
+        this.lrChordingState.leftDown = isLeftDown;
         buttonsChanged = true;
       }
 
-      if (this.board.lrChordingState.rightDown !== isRightDown) {
+      if (this.lrChordingState.rightDown !== isRightDown) {
         //right button changed, possibly off canvas
-        this.board.lrChordingState.rightDown = isRightDown;
+        this.lrChordingState.rightDown = isRightDown;
         buttonsChanged = true;
       }
 
       //Update whether the hover is a 3x3 block or a single square, but only if there has been a new click event
       if (buttonsChanged) {
-        if (this.board.lrChordingState.leftDown && this.board.lrChordingState.rightDown) {
+        if (this.lrChordingState.leftDown && this.lrChordingState.rightDown) {
           //Both down => hover should be 3x3 block
-          this.board.lrChordingState.hoverType = "block";
+          this.lrChordingState.hoverType = "block";
         } else if (
-          this.board.lrChordingState.leftDown &&
-          !this.board.lrChordingState.rightDown &&
-          this.board.lrChordingState.hoverType !== "empty"
+          this.lrChordingState.leftDown &&
+          !this.lrChordingState.rightDown &&
+          this.lrChordingState.hoverType !== "empty"
         ) {
           //Only left down => hover should be single square
-          this.board.lrChordingState.hoverType = "single";
+          this.lrChordingState.hoverType = "single";
         } else if (
-          !this.board.lrChordingState.leftDown &&
-          !this.board.lrChordingState.rightDown &&
-          this.board.lrChordingState.hoverType !== "empty"
+          !this.lrChordingState.leftDown &&
+          !this.lrChordingState.rightDown &&
+          this.lrChordingState.hoverType !== "empty"
         ) {
           //If nothing is down then reset to default behaviour of single square hover
-          this.board.lrChordingState.hoverType = "single";
+          this.lrChordingState.hoverType = "single";
         }
       }
     }
@@ -1188,12 +1210,12 @@ class BoardInput {
     let currentLocation;
 
     if (touchIdentifier === "mouse") {
-      isCurrentlyDown = this.board.isLeftMouseDown;
-      currentLocation = this.board.hoveredSquare;
+      isCurrentlyDown = this.isLeftMouseDown;
+      currentLocation = this.hoveredSquare;
     } else {
-      isCurrentlyDown = this.board.touchDepressedSquaresMap.has(touchIdentifier);
+      isCurrentlyDown = this.touchDepressedSquaresMap.has(touchIdentifier);
       if (isCurrentlyDown) {
-        currentLocation = this.board.touchDepressedSquaresMap.get(touchIdentifier);
+        currentLocation = this.touchDepressedSquaresMap.get(touchIdentifier);
       } else {
         currentLocation = { x: null, y: null };
       }
@@ -1204,8 +1226,8 @@ class BoardInput {
       tileX !== currentLocation.x || tileY !== currentLocation.y;
 
     const hoverTypeChanged =
-      this.board.lrChordingState.hoverType !==
-      this.board.lrChordingState.lastDrawnHoverType;
+      this.lrChordingState.hoverType !==
+      this.lrChordingState.lastDrawnHoverType;
 
     if (
       !hoveredSquareMoved &&
@@ -1220,7 +1242,7 @@ class BoardInput {
       return requiresRedraw;
     }
 
-    this.board.lrChordingState.lastDrawnHoverType = this.board.lrChordingState.hoverType; //for l+r chord only
+    this.lrChordingState.lastDrawnHoverType = this.lrChordingState.hoverType; //for l+r chord only
 
     //Maybe slightly excessive and inefficient, but easier to clear out hover and reapply each time rather than going through all cases
 
@@ -1237,14 +1259,14 @@ class BoardInput {
     //Clear out old hover (3x3 block so we don't have to check whether it was a chord or singleton)
     //clear mouse hover
     if (
-      this.board.hoveredSquare.x !== null &&
-      this.board.hoveredSquare.y !== null &&
-      this.board.isLeftMouseDown
+      this.hoveredSquare.x !== null &&
+      this.hoveredSquare.y !== null &&
+      this.isLeftMouseDown
     ) {
-      clearHover(this.board.hoveredSquare.x, this.board.hoveredSquare.y);
+      clearHover(this.hoveredSquare.x, this.hoveredSquare.y);
     }
     //clear touch hover
-    for (let touchedSquare of this.board.touchDepressedSquaresMap.values()) {
+    for (let touchedSquare of this.touchDepressedSquaresMap.values()) {
       if (touchedSquare.x !== null && touchedSquare.y !== null) {
         clearHover(touchedSquare.x, touchedSquare.y);
       }
@@ -1253,20 +1275,20 @@ class BoardInput {
     //Update which squares we store as being hovered
     if (touchIdentifier === "mouse") {
       //for mouse
-      this.board.hoveredSquare.x = tileX;
-      this.board.hoveredSquare.y = tileY;
-      this.board.isLeftMouseDown = newIsLeftMouseDownValue;
+      this.hoveredSquare.x = tileX;
+      this.hoveredSquare.y = tileY;
+      this.isLeftMouseDown = newIsLeftMouseDownValue;
     } else {
       //for touch
       if (newIsLeftMouseDownValue) {
         //add if newly touched square
-        this.board.touchDepressedSquaresMap.set(touchIdentifier, {
+        this.touchDepressedSquaresMap.set(touchIdentifier, {
           x: tileX,
           y: tileY,
         });
       } else {
         //remove if no longer touched
-        this.board.touchDepressedSquaresMap.delete(touchIdentifier);
+        this.touchDepressedSquaresMap.delete(touchIdentifier);
       }
     }
 
@@ -1277,9 +1299,9 @@ class BoardInput {
 
       if (touchIdentifier === "mouse" && chordingButtons.value === "l+r") {
         //l+r chord does hover based on what buttons are depressed
-        if (this.board.lrChordingState.hoverType === "single") {
+        if (this.lrChordingState.hoverType === "single") {
           doSingleHover = true;
-        } else if (this.board.lrChordingState.hoverType === "block") {
+        } else if (this.lrChordingState.hoverType === "block") {
           doBlockHover = true;
         } else {
           //empty or something else, so don't hover anything
@@ -1316,14 +1338,14 @@ class BoardInput {
 
     //apply mouse hover
     if (
-      this.board.hoveredSquare.x !== null &&
-      this.board.hoveredSquare.y !== null &&
-      this.board.isLeftMouseDown
+      this.hoveredSquare.x !== null &&
+      this.hoveredSquare.y !== null &&
+      this.isLeftMouseDown
     ) {
-      applyHover(this.board.hoveredSquare.x, this.board.hoveredSquare.y);
+      applyHover(this.hoveredSquare.x, this.hoveredSquare.y);
     }
     //apply touch hover
-    for (let touchedSquare of this.board.touchDepressedSquaresMap.values()) {
+    for (let touchedSquare of this.touchDepressedSquaresMap.values()) {
       if (touchedSquare.x !== null && touchedSquare.y !== null) {
         applyHover(touchedSquare.x, touchedSquare.y);
       }
@@ -1334,15 +1356,15 @@ class BoardInput {
   }
 
   clearAllDepressedSquares() {
-    this.board.hoveredSquare = { x: null, y: null };
-    this.board.isLeftMouseDown = false;
-    this.board.lrChordingState = {
+    this.hoveredSquare = { x: null, y: null };
+    this.isLeftMouseDown = false;
+    this.lrChordingState = {
       leftDown: false,
       rightDown: false,
       hoverType: "single", //single, block, empty
       lastDrawnHoverType: "single", //for l+r chord only
     };
-    this.board.touchDepressedSquaresMap.clear();
+    this.touchDepressedSquaresMap.clear();
   }
 
 
@@ -1366,7 +1388,7 @@ class BoardInput {
     const requiresRedraw = this.updateDepressedSquares(
       tileX,
       tileY,
-      this.board.lrChordingState.leftDown,
+      this.lrChordingState.leftDown,
       touchIdentifier
     );
 
@@ -1380,7 +1402,7 @@ class BoardInput {
     const requiresRedraw = this.updateDepressedSquares(
       tileX,
       tileY,
-      this.board.lrChordingState.leftDown,
+      this.lrChordingState.leftDown,
       touchIdentifier
     );
 

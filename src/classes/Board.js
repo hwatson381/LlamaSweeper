@@ -58,21 +58,6 @@ class Board {
 
     this.gameStage = "uninitialised";
     this.updateTimerSetTimeoutHandle = null; //Handle for starting/stopping setTimeOut process that checks whether timer needs updating
-    this.isLeftMouseDown = false;
-
-    this.lrChordingState = {
-      leftDown: false,
-      rightDown: false,
-      hoverType: "single", //block/single/empty (how the hover shows when left mouse down)
-      lastDrawnHoverType: "single",
-    };
-
-    this.touchDepressedSquaresMap = new Map(); //Map from touch identifiers to depressed squares (for depressing squares on mobile)
-    this.ongoingTouches = new Map(); //Track info about touches such as start location, time started etc.
-
-    this.lastClientCoords = { clientX: 0, clientY: 0 }; //Coords used by keyboard clicks
-    this.keyboardClickIsDigDown = false; //Used to help ignore repeating keys
-    this.keyboardClickIsFlagDown = false; //Used to help ignore repeating keys
 
     //Boards used for "edit board" variant and "zini board" variant. These persist across resets.
     this.boardEditorMines = new Array(9)
@@ -172,8 +157,7 @@ class Board {
       isCurrentlyEditModeDisplay.value = false;
     }
 
-    this.hoveredSquare = { x: null, y: null }; //Square that is being hovered over
-    this.touchDepressedSquaresMap = new Map(); //Map from touch identifiers to depressed squares (for depressing squares on mobile)
+    this.boardInput.resetInteractionState();
 
     this.resetTiles();
 
@@ -207,15 +191,10 @@ class Board {
     this.boardRenderer.clearTimerTimeout();
 
     showStatsBlock.value = false;
-    this.quickPaintActive = false;
+
     showQuickPaintOptions.value = false;
-    this.quickPaintMode = "known"; //modes are 'known' for drawing red/green, 'guess' for orange/white, 'dots' for marking possible clicks
     quickPaintModeDisplay.value = "Known";
-    this.isFirstQuickPaint = true;
-    this.redCount = 0;
-    this.orangeCount = 0;
-    this.dotCount = 0;
-    this.whiteOrangeCount = 0; //orange + white
+    this.quickPaint.resetQuickPaintState();
 
     this.hintActive = false;
     this.lastSquaresChangedForAutoHint = [];

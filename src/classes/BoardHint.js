@@ -100,7 +100,7 @@ class BoardHint {
 
     //apply hint to board
     this.board.hintActive = true;
-    this.board.quickPaintActive = false; //hide quickpaint at the same time as otherwise they visually compete
+    this.board.quickPaint.quickPaintActive = false; //hide quickpaint at the same time as otherwise they visually compete
     showQuickPaintOptions.value = false;
     this.board.boardInput.clearAllDepressedSquares();
 
@@ -139,7 +139,7 @@ class BoardHint {
 
     //apply hint to board
     this.board.hintActive = true;
-    this.board.quickPaintActive = false; //hide quickpaint at the same time as otherwise they visually compete
+    this.board.quickPaint.quickPaintActive = false; //hide quickpaint at the same time as otherwise they visually compete
     showQuickPaintOptions.value = false;
     this.board.boardInput.clearAllDepressedSquares();
 

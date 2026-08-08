@@ -12,6 +12,24 @@ import {
 class QuickPaint {
   constructor(board) {
     this.board = board;
+
+    this.quickPaintActive = false;
+    this.quickPaintMode = "known"; //modes are 'known' for drawing red/green, 'guess' for orange/white, 'dots' for marking possible clicks
+    this.isFirstQuickPaint = true;
+    this.redCount = 0;
+    this.orangeCount = 0;
+    this.dotCount = 0;
+    this.whiteOrangeCount = 0; //orange + white
+  }
+
+  resetQuickPaintState() {
+    this.quickPaintActive = false;
+    this.quickPaintMode = "known";
+    this.isFirstQuickPaint = true;
+    this.redCount = 0;
+    this.orangeCount = 0;
+    this.dotCount = 0;
+    this.whiteOrangeCount = 0;
   }
 
   toggleQuickPaint() {
@@ -20,18 +38,18 @@ class QuickPaint {
       return;
     }
 
-    this.board.quickPaintActive = !this.board.quickPaintActive;
-    showQuickPaintOptions.value = this.board.quickPaintActive;
+    this.quickPaintActive = !this.quickPaintActive;
+    showQuickPaintOptions.value = this.quickPaintActive;
 
-    if (this.board.quickPaintActive) {
+    if (this.quickPaintActive) {
       this.board.boardInput.clearAllDepressedSquares();
 
       this.board.boardHint.hideHint(true); //hide probabilities as otherwise they visually compete
 
-      if (this.board.isFirstQuickPaint) {
-        this.board.quickPaintMode = "guess";
+      if (this.isFirstQuickPaint) {
+        this.quickPaintMode = "guess";
         quickPaintModeDisplay.value = "Guess";
-        this.board.isFirstQuickPaint = false;
+        this.isFirstQuickPaint = false;
         //First quick paint, so prepopulate the "obvious" mines
         this.paintObviousSquares();
       } else {
@@ -47,7 +65,7 @@ class QuickPaint {
 
   handleCycleQuickPaintModeKeypress() {
     //W key does stuff when QuickPaint is active
-    if (!this.board.quickPaintActive) {
+    if (!this.quickPaintActive) {
       return;
     }
 
@@ -96,10 +114,10 @@ class QuickPaint {
       }
     }
 
-    this.board.redCount = redCount;
-    this.board.orangeCount = orangeCount;
-    this.board.dotCount = dotCount;
-    this.board.whiteOrangeCount = whiteOrangeCount;
+    this.redCount = redCount;
+    this.orangeCount = orangeCount;
+    this.dotCount = dotCount;
+    this.whiteOrangeCount = whiteOrangeCount;
   }
 
   paintObviousSquares() {
@@ -346,7 +364,7 @@ class QuickPaint {
 
   cycleQuickPaintMode(forwardDirection = true) {
     let modesList = ["known", "guess", "dots"];
-    let modeIndex = modesList.indexOf(this.board.quickPaintMode);
+    let modeIndex = modesList.indexOf(this.quickPaintMode);
     if (modeIndex === -1) {
       modeIndex = 0;
     }
@@ -357,16 +375,16 @@ class QuickPaint {
       modeIndex = (modeIndex - 1 + modesList.length) % modesList.length;
     }
 
-    this.board.quickPaintMode = modesList[modeIndex];
+    this.quickPaintMode = modesList[modeIndex];
     quickPaintModeDisplay.value =
-      this.board.quickPaintMode[0].toUpperCase() + this.board.quickPaintMode.slice(1);
+      this.quickPaintMode[0].toUpperCase() + this.quickPaintMode.slice(1);
   }
 
   updateQuickPaintClearableDisplay() {
-    if (this.board.dotCount > 0) {
+    if (this.dotCount > 0) {
       quickPaintClearable.value = "Clear dots";
       return;
-    } else if (this.board.whiteOrangeCount > 0) {
+    } else if (this.whiteOrangeCount > 0) {
       quickPaintClearable.value = "Clear guesses";
     } else {
       quickPaintClearable.value = "Reset knowns";
@@ -375,9 +393,9 @@ class QuickPaint {
 
   clearClearableMarkings() {
     let thingBeingCleared;
-    if (this.board.dotCount > 0) {
+    if (this.dotCount > 0) {
       thingBeingCleared = "dots";
-    } else if (this.board.whiteOrangeCount > 0) {
+    } else if (this.whiteOrangeCount > 0) {
       thingBeingCleared = "guesses";
     } else {
       thingBeingCleared = "knowns";
@@ -460,12 +478,12 @@ class QuickPaint {
         }
 
         if (oldColour === "orange") {
-          this.board.orangeCount++; //unorange the square
-          this.board.whiteOrangeCount--;
+          this.orangeCount++; //unorange the square
+          this.whiteOrangeCount--;
           thisTile.paintColour = null;
         } else if (oldColour === null) {
-          this.board.orangeCount--; //orange the square
-          this.board.whiteOrangeCount++;
+          this.orangeCount--; //orange the square
+          this.whiteOrangeCount++;
           thisTile.paintColour = "orange";
         }
       }
@@ -474,28 +492,28 @@ class QuickPaint {
         let newDots;
         newDots = (oldDots + 1) % 3; //cycle dots forward
 
-        this.board.dotCount += newDots - oldDots;
+        this.dotCount += newDots - oldDots;
         thisTile.paintDots = newDots;
       }
     } else if (
-      this.board.quickPaintMode === "known" ||
-      this.board.quickPaintMode === "guess"
+      this.quickPaintMode === "known" ||
+      this.quickPaintMode === "guess"
     ) {
       if (tileState !== CONSTANTS.UNREVEALED) {
         return;
       }
 
       let newColour;
-      if (this.board.quickPaintMode === "known" && isFlagInput) {
+      if (this.quickPaintMode === "known" && isFlagInput) {
         newColour = "red";
       }
-      if (this.board.quickPaintMode === "known" && isDigInput) {
+      if (this.quickPaintMode === "known" && isDigInput) {
         newColour = "green";
       }
-      if (this.board.quickPaintMode === "guess" && isFlagInput) {
+      if (this.quickPaintMode === "guess" && isFlagInput) {
         newColour = "orange";
       }
-      if (this.board.quickPaintMode === "guess" && isDigInput) {
+      if (this.quickPaintMode === "guess" && isDigInput) {
         newColour = "white";
       }
 
@@ -505,31 +523,31 @@ class QuickPaint {
       }
 
       if (oldColour === "red") {
-        this.board.redCount++; //unredding a square
-        this.board.orangeCount++;
+        this.redCount++; //unredding a square
+        this.orangeCount++;
       }
       if (oldColour === "orange") {
-        this.board.orangeCount++; //unoranging a square
-        this.board.whiteOrangeCount--;
+        this.orangeCount++; //unoranging a square
+        this.whiteOrangeCount--;
       }
       if (oldColour === "white") {
-        this.board.whiteOrangeCount--; //unwhiting a square
+        this.whiteOrangeCount--; //unwhiting a square
       }
 
       if (newColour === "red") {
-        this.board.redCount--; //redding a square
-        this.board.orangeCount--;
+        this.redCount--; //redding a square
+        this.orangeCount--;
       }
       if (newColour === "orange") {
-        this.board.orangeCount--; //oranging a square
-        this.board.whiteOrangeCount++;
+        this.orangeCount--; //oranging a square
+        this.whiteOrangeCount++;
       }
       if (newColour === "white") {
-        this.board.whiteOrangeCount++; //whiting a square
+        this.whiteOrangeCount++; //whiting a square
       }
 
       thisTile.paintColour = newColour;
-    } else if (this.board.quickPaintMode === "dots") {
+    } else if (this.quickPaintMode === "dots") {
       let newDots;
       if (isDigInput) {
         newDots = (oldDots + 1) % 3; //cycle dots forward
@@ -537,7 +555,7 @@ class QuickPaint {
         newDots = (oldDots + 2) % 3; //cycle dots backward
       }
 
-      this.board.dotCount += newDots - oldDots;
+      this.dotCount += newDots - oldDots;
       thisTile.paintDots = newDots;
     }
 
@@ -545,7 +563,7 @@ class QuickPaint {
   }
 
   confirmBoardResetIfQuickPaint() {
-    if (!this.board.quickPaintActive) {
+    if (!this.quickPaintActive) {
       return true;
     }
 

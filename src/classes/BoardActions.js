@@ -154,7 +154,7 @@ class BoardActions {
 
     //expire the chord for l+r so that releasing let click afterwards doesn't do a dig
     if (touchIdentifier === "mouse" && chordingButtons.value === "l+r") {
-      this.board.lrChordingState.hoverType = "empty";
+      this.board.boardInput.lrChordingState.hoverType = "empty";
     }
 
     if (!this.board.checkCoordsInBounds(tileX, tileY)) {
