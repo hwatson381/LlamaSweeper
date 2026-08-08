@@ -622,3 +622,5 @@ Also consider renaming stuff to reduce the amount of BoardX. Could even just ren
 Once Board stuff is done we can also split out components
 
 Writing a good agents.md should also be done
+
+Also split out/clean up text docs

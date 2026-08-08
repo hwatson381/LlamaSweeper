@@ -55,7 +55,7 @@ class BoardImportExport {
     if (this.board.variant === "mean openings") {
       //Remove flags which were place on mean mines
       pathWithoutWasted = pathWithoutWasted.filter((c) => {
-        if (c.type === "right" && this.board.meanMineStates[c.x][c.y].isMine) {
+        if (c.type === "right" && this.board.meanOpenings.meanMineStates[c.x][c.y].isMine) {
           return false;
         } else {
           return true;

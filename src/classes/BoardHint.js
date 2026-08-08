@@ -18,6 +18,9 @@ import {
 class BoardHint {
   constructor(board) {
     this.board = board;
+
+    this.hintActive = false;
+    this.lastSquaresChangedForAutoHint = [];
   }
 
   toggleHint() {
@@ -34,7 +37,7 @@ class BoardHint {
       return;
     }
 
-    if (!this.board.hintActive) {
+    if (!this.hintActive) {
       this.showHintSync();
     } else {
       this.hideHint();
@@ -99,7 +102,7 @@ class BoardHint {
     }
 
     //apply hint to board
-    this.board.hintActive = true;
+    this.hintActive = true;
     this.board.quickPaint.quickPaintActive = false; //hide quickpaint at the same time as otherwise they visually compete
     showQuickPaintOptions.value = false;
     this.board.boardInput.clearAllDepressedSquares();
@@ -138,7 +141,7 @@ class BoardHint {
     );
 
     //apply hint to board
-    this.board.hintActive = true;
+    this.hintActive = true;
     this.board.quickPaint.quickPaintActive = false; //hide quickpaint at the same time as otherwise they visually compete
     showQuickPaintOptions.value = false;
     this.board.boardInput.clearAllDepressedSquares();
@@ -188,7 +191,7 @@ class BoardHint {
     let meanMinesRemovedTotal = 0;
     let meanMineAdjustments = new Map(); //Track how much numbers need to be adjusted by for removing newly revealed mean mines
 
-    if (isLossHint && this.board.lastSquaresChangedForAutoHint.length > 0) {
+    if (isLossHint && this.lastSquaresChangedForAutoHint.length > 0) {
       let reversedMoveData =
         this.reverseLastMoveForLossHintOnProbCalcBoard(probCalcBoard);
       meanMinesRemovedTotal = reversedMoveData.meanMinesRemovedTotal;
@@ -243,14 +246,14 @@ class BoardHint {
 
     //Do a pass to calculate effect of mean mines we need to remove
     //And exclude numbers revealed from affected probability calculation
-    for (let changedSquare of this.board.lastSquaresChangedForAutoHint) {
+    for (let changedSquare of this.lastSquaresChangedForAutoHint) {
       //Squares revealed by final chord shouldn't influence the probability calculation
       probCalcBoard[changedSquare.x][changedSquare.y] = 10;
 
       const isMeanMine =
         this.board.variant === "mean openings" &&
-        this.board.meanMineStates[changedSquare.x][changedSquare.y].isMine &&
-        this.board.meanMineStates[changedSquare.x][changedSquare.y].isActive;
+        this.board.meanOpenings.meanMineStates[changedSquare.x][changedSquare.y].isMine &&
+        this.board.meanOpenings.meanMineStates[changedSquare.x][changedSquare.y].isActive;
 
       if (isMeanMine) {
         meanMinesRemovedTotal++;
@@ -270,7 +273,7 @@ class BoardHint {
             //also manually subtract from probCalcBoard in the very special case when a newly
             //revealed mean mine changes the value of a number that is already on the board
             if (
-              !this.board.lastSquaresChangedForAutoHint.some(
+              !this.lastSquaresChangedForAutoHint.some(
                 (sq) => sq.x === i && sq.y === j
               ) &&
               typeof this.board.tilesArray[i][j].state === "number" &&
@@ -298,7 +301,7 @@ class BoardHint {
 
     //Patch tiles based on undoing the last move in the case that this is a lossHint
 
-    for (let changedSquare of this.board.lastSquaresChangedForAutoHint) {
+    for (let changedSquare of this.lastSquaresChangedForAutoHint) {
       //Any changed squares from the last move (e.g. a wrong chord) should be changed as follows:
       // Make any numbers revealed transparent
       // reverse the effects of any mean mines revealed from last move
@@ -307,8 +310,8 @@ class BoardHint {
 
       const isMeanMine =
         this.board.variant === "mean openings" &&
-        this.board.meanMineStates[changedSquare.x][changedSquare.y].isMine &&
-        this.board.meanMineStates[changedSquare.x][changedSquare.y].isActive;
+        this.board.meanOpenings.meanMineStates[changedSquare.x][changedSquare.y].isMine &&
+        this.board.meanOpenings.meanMineStates[changedSquare.x][changedSquare.y].isActive;
 
       if (typeof thisTile.state === "number") {
         //Make tiles revealed on blast chord transparent
@@ -331,7 +334,7 @@ class BoardHint {
       const [i, j] = key.split("-").map(Number);
       const thisTile = this.board.tilesArray[i][j];
       if (
-        !this.board.lastSquaresChangedForAutoHint.some(
+        !this.lastSquaresChangedForAutoHint.some(
           (sq) => sq.x === i && sq.y === j
         ) &&
         typeof thisTile.state === "number"
@@ -484,12 +487,12 @@ class BoardHint {
       statsWorkerManager.incrementAutoHintLock();
     }
 
-    if (!this.board.hintActive) {
+    if (!this.hintActive) {
       //already hidden, do nothing
       return;
     }
 
-    this.board.hintActive = false;
+    this.hintActive = false;
 
     //Not really needed as setting hintActive is sufficient to hide, but just in case.
     for (let x = 0; x < this.board.width; x++) {

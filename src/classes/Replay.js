@@ -83,7 +83,7 @@ class Replay {
       return;
     }
 
-    const isHintActive = this.board.hintActive;
+    const isHintActive = this.board.boardHint.hintActive;
 
     let clickHead = this.currentClickIndex;
 
@@ -155,7 +155,7 @@ class Replay {
 
       if (
         this.board.variant === "mean openings" &&
-        this.board.unprocessedMeanZeros?.length !== 0
+        this.board.meanOpenings.unprocessedMeanZeros?.length !== 0
       ) {
         this.board.meanOpenings.makeOpeningMean();
       }

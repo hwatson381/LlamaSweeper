@@ -779,7 +779,7 @@ class BoardInput {
     let canvasCoords = coordsData.canvasCoords;
 
     if (this.board.gameStage === "running") {
-      this.board.lastSquaresChangedForAutoHint = [];
+      this.board.boardHint.lastSquaresChangedForAutoHint = [];
     }
 
     if (touchIdentifier === "mouse" && chordingButtons.value === "l+r") {
@@ -1097,7 +1097,7 @@ class BoardInput {
     //Check if an opening has occured on mean openings
     if (
       this.board.variant === "mean openings" &&
-      this.board.unprocessedMeanZeros?.length !== 0
+      this.board.meanOpenings.unprocessedMeanZeros?.length !== 0
     ) {
       this.board.meanOpenings.makeOpeningMean(event.timeStamp);
     }
@@ -1509,8 +1509,8 @@ class BoardInput {
         }
         const isMeanMine =
           this.board.variant === "mean openings" &&
-          this.board.meanMineStates[x][y].isMine &&
-          this.board.meanMineStates[x][y].isActive;
+          this.board.meanOpenings.meanMineStates[x][y].isMine &&
+          this.board.meanOpenings.meanMineStates[x][y].isActive;
 
         const isNormalOrMeanMine = this.board.mines[x][y] || isMeanMine;
 
@@ -1632,8 +1632,8 @@ class BoardInput {
 
         const isMeanMine =
           this.board.variant === "mean openings" &&
-          this.board.meanMineStates[x][y].isMine &&
-          this.board.meanMineStates[x][y].isActive;
+          this.board.meanOpenings.meanMineStates[x][y].isMine &&
+          this.board.meanOpenings.meanMineStates[x][y].isActive;
 
         const isNormalOrMeanMine = this.board.mines[x][y] || isMeanMine;
 

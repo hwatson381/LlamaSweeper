@@ -22,6 +22,8 @@ import {
 class BoardRenderer {
   constructor(board) {
     this.board = board;
+
+    this.updateTimerSetTimeoutHandle = null; //Handle for starting/stopping setTimeOut process that checks whether timer needs updating
   }
 
   draw() {
@@ -35,7 +37,7 @@ class BoardRenderer {
     if (this.board.quickPaint.quickPaintActive) {
       this.drawTilesPaint();
     }
-    if (this.board.hintActive) {
+    if (this.board.boardHint.hintActive) {
       this.drawTilesHint();
     }
     this.drawBorders();
@@ -538,7 +540,7 @@ class BoardRenderer {
       this.drawTopBar();
     }
 
-    this.board.updateTimerSetTimeoutHandle = setTimeout(
+    this.updateTimerSetTimeoutHandle = setTimeout(
       this.updateIntegerTimerIfNeeded.bind(this),
       100
     );
@@ -546,8 +548,8 @@ class BoardRenderer {
 
   clearTimerTimeout() {
     //May refactor in future. Disables setTimeout for timer
-    if (this.board.updateTimerSetTimeoutHandle !== null) {
-      clearTimeout(this.board.updateTimerSetTimeoutHandle);
+    if (this.updateTimerSetTimeoutHandle !== null) {
+      clearTimeout(this.updateTimerSetTimeoutHandle);
     }
   }
 }

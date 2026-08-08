@@ -8,35 +8,50 @@ import {
 class MeanOpenings {
   constructor(board) {
     this.board = board;
+
+    /*
+      this.meanMineStates gets set elsewhere to start of as the below shape
+      
+      [[{
+        isMine: false, //all squares start off with no mean mines
+        changedToMineTimestamp: null,
+        startsFlagged: null, //if revealed, should be a flag or unrevealed?
+        isActive: false, //used during replays - whether the square is "in play" (e.g. acts like a mine if it is one)
+        isLocked: false, //whether the square's final state has been decided
+      }]]
+    */
+    this.meanMineStates = null;
+
+    this.unprocessedMeanZeros = [];
   }
 
   makeOpeningMean(eventTimestamp) {
     //Runs through newly opened zeros and attempts to make them a mine.
 
     //Randomly set some of these squares to be provisional mines
-    for (let zero of this.board.unprocessedMeanZeros) {
-      if (this.board.meanMineStates[zero.x][zero.y].isLocked) {
+    for (let zero of this.unprocessedMeanZeros) {
+      if (this.meanMineStates[zero.x][zero.y].isLocked) {
         //Locked mines have their state set from before
         continue;
       }
 
       if (Math.random() < meanOpeningMineDensity.value) {
-        this.board.meanMineStates[zero.x][zero.y].isMine = true;
-        this.board.meanMineStates[zero.x][zero.y].changedToMineTimestamp =
+        this.meanMineStates[zero.x][zero.y].isMine = true;
+        this.meanMineStates[zero.x][zero.y].changedToMineTimestamp =
           eventTimestamp;
       }
     }
 
     //https://stackoverflow.com/a/31054543
-    let shuffledUnprocessedUnlockedZeros = this.board.unprocessedMeanZeros
-      .filter((n) => !this.board.meanMineStates[n.x][n.y].isLocked)
+    let shuffledUnprocessedUnlockedZeros = this.unprocessedMeanZeros
+      .filter((n) => !this.meanMineStates[n.x][n.y].isLocked)
       .map((n) => [Math.random(), n])
       .sort()
       .map((n) => n[1]);
 
     //Do another pass to make sure each new mine can be deduced from basic logic
     for (let zero of shuffledUnprocessedUnlockedZeros) {
-      if (!this.board.meanMineStates[zero.x][zero.y].isMine) {
+      if (!this.meanMineStates[zero.x][zero.y].isMine) {
         continue;
       }
 
@@ -58,7 +73,7 @@ class MeanOpenings {
 
       //Check number neighbours to see if any of them can determine this square to be a mine
       for (let neighbour of neighbours) {
-        if (this.board.meanMineStates[neighbour.x][neighbour.y].isMine) {
+        if (this.meanMineStates[neighbour.x][neighbour.y].isMine) {
           //If the neighbour is a mine then it gives no info, keep looking.
           continue;
         }
@@ -86,7 +101,7 @@ class MeanOpenings {
             this.board.tilesArray[neighbourNeighbour.x][neighbourNeighbour.y]
               .state === CONSTANTS.UNREVEALED &&
             !this.board.mines[neighbourNeighbour.x][neighbourNeighbour.y] &&
-            !this.board.meanMineStates[neighbourNeighbour.x][neighbourNeighbour.y]
+            !this.meanMineStates[neighbourNeighbour.x][neighbourNeighbour.y]
               .isMine
           ) {
             foundUnrevealedSafe = true;
@@ -112,7 +127,7 @@ class MeanOpenings {
       }
 
       const mineNeighbours = neighbours.filter(
-        (n) => this.board.meanMineStates[n.x][n.y].isMine
+        (n) => this.meanMineStates[n.x][n.y].isMine
       );
 
       if (mineNeighbours.length !== 0) {
@@ -120,16 +135,16 @@ class MeanOpenings {
         const randomMineNeighbour =
           mineNeighbours[Math.floor(Math.random() * mineNeighbours.length)];
 
-        this.board.meanMineStates[randomMineNeighbour.x][
+        this.meanMineStates[randomMineNeighbour.x][
           randomMineNeighbour.y
         ].isMine = false;
-        this.board.meanMineStates[randomMineNeighbour.x][
+        this.meanMineStates[randomMineNeighbour.x][
           randomMineNeighbour.y
         ].changedToMineTimestamp = null;
       } else {
         //Very bad case - change the square itself to be a non-mine
-        this.board.meanMineStates[zero.x][zero.y].isMine = false;
-        this.board.meanMineStates[zero.x][zero.y].changedToMineTimestamp = null;
+        this.meanMineStates[zero.x][zero.y].isMine = false;
+        this.meanMineStates[zero.x][zero.y].changedToMineTimestamp = null;
       }
     }
 
@@ -137,12 +152,12 @@ class MeanOpenings {
 
     //Do a final pass to make sure number states are updated and squares with means mines are revealed
 
-    for (let zero of this.board.unprocessedMeanZeros) {
-      if (this.board.meanMineStates[zero.x][zero.y].isMine) {
+    for (let zero of this.unprocessedMeanZeros) {
+      if (this.meanMineStates[zero.x][zero.y].isMine) {
         let shouldMineBeFlagged;
-        if (this.board.meanMineStates[zero.x][zero.y].isLocked) {
+        if (this.meanMineStates[zero.x][zero.y].isLocked) {
           //Square was locked from before so used saved value (e.g. we are in a replay)
-          shouldMineBeFlagged = this.board.meanMineStates[zero.x][zero.y].startsFlagged;
+          shouldMineBeFlagged = this.meanMineStates[zero.x][zero.y].startsFlagged;
         } else {
           //Square was not locked, so randomly choose whether to flag
           shouldMineBeFlagged = Math.random() < meanOpeningFlagDensity.value
@@ -151,11 +166,11 @@ class MeanOpenings {
         //Close squares with mean mines, or change to flag
         if (shouldMineBeFlagged) {
           this.board.tilesArray[zero.x][zero.y].state = CONSTANTS.FLAG;
-          this.board.meanMineStates[zero.x][zero.y].startsFlagged = true; //harmless if this is locked and already flagged
+          this.meanMineStates[zero.x][zero.y].startsFlagged = true; //harmless if this is locked and already flagged
         } else {
           this.board.unflagged++;
           this.board.tilesArray[zero.x][zero.y].state = CONSTANTS.UNREVEALED;
-          this.board.meanMineStates[zero.x][zero.y].startsFlagged = false; //harmless if this is locked and already unflagged
+          this.meanMineStates[zero.x][zero.y].startsFlagged = false; //harmless if this is locked and already unflagged
         }
       }
 
@@ -164,15 +179,15 @@ class MeanOpenings {
         for (let y = zero.y - 1; y <= zero.y + 1; y++) {
           if (
             this.board.checkCoordsInBounds(x, y) &&
-            !this.board.meanMineStates[x][y].isMine
+            !this.meanMineStates[x][y].isMine
           ) {
             cellsThatNeedNumber.push({ x, y });
           }
         }
       }
 
-      this.board.meanMineStates[zero.x][zero.y].isActive = true;
-      this.board.meanMineStates[zero.x][zero.y].isLocked = true;
+      this.meanMineStates[zero.x][zero.y].isActive = true;
+      this.meanMineStates[zero.x][zero.y].isLocked = true;
     }
 
     //De-duplicate the list of cellsThatNeedNumber
@@ -196,7 +211,7 @@ class MeanOpenings {
     }
 
     //Truncate as all squares have been processed
-    this.board.unprocessedMeanZeros = [];
+    this.unprocessedMeanZeros = [];
   }
 
   resetMeanMinesActiveness() {
@@ -205,7 +220,7 @@ class MeanOpenings {
 
     for (let x = 0; x < this.board.width; x++) {
       for (let y = 0; y < this.board.height; y++) {
-        this.board.meanMineStates[x][y].isActive = false;
+        this.meanMineStates[x][y].isActive = false;
       }
     }
   }
@@ -217,8 +232,8 @@ class MeanOpenings {
     for (let x = 0; x < this.board.width; x++) {
       for (let y = 0; y < this.board.height; y++) {
         if (
-          this.board.meanMineStates[x][y].isMine &&
-          this.board.meanMineStates[x][y].isActive
+          this.meanMineStates[x][y].isMine &&
+          this.meanMineStates[x][y].isActive
         ) {
           //Flip square to having state = 0 and also subtract 1 from neighbours
           simplifiedTilesArray[x][y].state = 0;

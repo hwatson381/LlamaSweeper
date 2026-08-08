@@ -43,7 +43,7 @@ class BoardActions {
       if (
         this.board.mines[tileX][tileY] ||
         (this.board.variant === "mean openings" &&
-          this.board.meanMineStates[tileX][tileY].isMine)
+          this.board.meanOpenings.meanMineStates[tileX][tileY].isMine)
       ) {
         //Flags on correct square count towards effective clicks
         includeInStats &&
@@ -66,7 +66,7 @@ class BoardActions {
           );
       }
 
-      if (this.board.hintActive) {
+      if (this.board.boardHint.hintActive) {
         const suppressDraw = true;
         this.board.boardHint.hideHint(suppressDraw);
       }
@@ -84,7 +84,7 @@ class BoardActions {
           time
         );
 
-      if (this.board.hintActive) {
+      if (this.board.boardHint.hintActive) {
         const suppressDraw = true;
         this.board.boardHint.hideHint(suppressDraw);
       }
@@ -210,7 +210,7 @@ class BoardActions {
 
       if (
         this.board.variant === "mean openings" &&
-        this.board.meanMineStates[tileX][tileY].isMine
+        this.board.meanOpenings.meanMineStates[tileX][tileY].isMine
       ) {
         //Clicked on a mean mine. So this either blasts, flags, shields or ignores depending on settings
 
@@ -233,7 +233,7 @@ class BoardActions {
           //Waste if click occurred within 0.5s, otherwise blast
           if (
             eventTimestamp <=
-            this.board.meanMineStates[tileX][tileY].changedToMineTimestamp + 500
+            this.board.meanOpenings.meanMineStates[tileX][tileY].changedToMineTimestamp + 500
           ) {
             //Click occured soon after mean mine was placed, click just gets wasted
             doDig = false;
@@ -329,8 +329,8 @@ class BoardActions {
     const isNormalMine = this.board.mines[x][y];
     const isMeanMine =
       this.board.variant === "mean openings" &&
-      this.board.meanMineStates[x][y].isMine &&
-      this.board.meanMineStates[x][y].isActive;
+      this.board.meanOpenings.meanMineStates[x][y].isMine &&
+      this.board.meanOpenings.meanMineStates[x][y].isActive;
 
     if (isNormalMine || isMeanMine) {
       this.board.tilesArray[x][y].state = CONSTANTS.MINERED;
@@ -355,17 +355,17 @@ class BoardActions {
 
       if (number === 0) {
         if (this.board.variant === "mean openings") {
-          this.board.unprocessedMeanZeros.push({ x, y });
+          this.board.meanOpenings.unprocessedMeanZeros.push({ x, y });
         }
         this.chord(x, y, false);
       }
 
       if (this.board.gameStage === "running") {
-        this.board.lastSquaresChangedForAutoHint.push({ x, y });
+        this.board.boardHint.lastSquaresChangedForAutoHint.push({ x, y });
       }
     }
 
-    if (this.board.hintActive) {
+    if (this.board.boardHint.hintActive) {
       const suppressDraw = true;
       this.board.boardHint.hideHint(suppressDraw);
     }
@@ -421,8 +421,8 @@ class BoardActions {
           const isChordableMeanMine =
             this.board.variant === "mean openings" &&
             meanMineClickBehaviour.value === "chordable" &&
-            this.board.meanMineStates[i][j].isMine &&
-            this.board.meanMineStates[i][j].isActive;
+            this.board.meanOpenings.meanMineStates[i][j].isMine &&
+            this.board.meanOpenings.meanMineStates[i][j].isActive;
           if (
             this.board.tilesArray[i][j].state === CONSTANTS.UNREVEALED &&
             !isChordableMeanMine
@@ -460,8 +460,8 @@ class BoardActions {
         const isNormalMine = this.board.mines[i][j];
         const isMeanMine =
           includeMeanMines &&
-          this.board.meanMineStates[i][j].isMine &&
-          this.board.meanMineStates[i][j].isActive;
+          this.board.meanOpenings.meanMineStates[i][j].isMine &&
+          this.board.meanOpenings.meanMineStates[i][j].isActive;
         if (isNormalMine || isMeanMine) {
           count++;
         }
@@ -485,8 +485,8 @@ class BoardActions {
         const isChordableMeanMine =
           this.board.variant === "mean openings" &&
           meanMineClickBehaviour.value === "chordable" &&
-          this.board.meanMineStates[i][j].isMine &&
-          this.board.meanMineStates[i][j].isActive;
+          this.board.meanOpenings.meanMineStates[i][j].isMine &&
+          this.board.meanOpenings.meanMineStates[i][j].isActive;
 
         if (
           this.board.tilesArray[i][j].state === CONSTANTS.FLAG ||
@@ -508,7 +508,7 @@ class BoardActions {
     this.board.stats.addEndTime(finalTime, false);
     this.board.stats.makeRepeatFlagsWasted();
     if (this.board.variant === "mean openings") {
-      this.board.stats.addMeanMines(this.board.meanMineStates);
+      this.board.stats.addMeanMines(this.board.meanOpenings.meanMineStates);
     }
     this.board.boardInput.clearAllDepressedSquares();
     this.board.boardRenderer.clearTimerTimeout();
@@ -531,8 +531,8 @@ class BoardActions {
         const isNormalMine = this.board.mines[x][y];
         const isMeanMine =
           this.board.variant === "mean openings" &&
-          this.board.meanMineStates[x][y].isMine &&
-          this.board.meanMineStates[x][y].isActive;
+          this.board.meanOpenings.meanMineStates[x][y].isMine &&
+          this.board.meanOpenings.meanMineStates[x][y].isActive;
 
         if (
           (isNormalMine || isMeanMine) &&
@@ -560,7 +560,7 @@ class BoardActions {
     this.board.stats.addEndTime(finalTime, true);
     this.board.stats.makeRepeatFlagsWasted();
     if (this.board.variant === "mean openings") {
-      this.board.stats.addMeanMines(this.board.meanMineStates);
+      this.board.stats.addMeanMines(this.board.meanOpenings.meanMineStates);
     }
     this.board.boardInput.clearAllDepressedSquares();
     this.board.boardRenderer.clearTimerTimeout();
@@ -582,8 +582,8 @@ class BoardActions {
         const isNormalMine = this.board.mines[x][y];
         const isMeanMine =
           this.board.variant === "mean openings" &&
-          this.board.meanMineStates[x][y].isMine &&
-          this.board.meanMineStates[x][y].isActive;
+          this.board.meanOpenings.meanMineStates[x][y].isMine &&
+          this.board.meanOpenings.meanMineStates[x][y].isActive;
 
         if (
           (isNormalMine || isMeanMine) &&

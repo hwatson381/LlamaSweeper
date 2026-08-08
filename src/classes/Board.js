@@ -57,7 +57,6 @@ class Board {
     this.router = router;
 
     this.gameStage = "uninitialised";
-    this.updateTimerSetTimeoutHandle = null; //Handle for starting/stopping setTimeOut process that checks whether timer needs updating
 
     //Boards used for "edit board" variant and "zini board" variant. These persist across resets.
     this.boardEditorMines = new Array(9)
@@ -131,8 +130,8 @@ class Board {
     } else if (this.variant === "zini explorer") {
       this.mines = this.ziniExplorerMines;
     } else {
-      this.unprocessedMeanZeros = [];
-      this.meanMineStates = null; //Only matters for mean openings variant
+      this.meanOpenings.unprocessedMeanZeros = [];
+      this.meanOpenings.meanMineStates = null; //Only matters for mean openings variant
       this.mines = null;
     }
 
@@ -196,8 +195,8 @@ class Board {
     quickPaintModeDisplay.value = "Known";
     this.quickPaint.resetQuickPaintState();
 
-    this.hintActive = false;
-    this.lastSquaresChangedForAutoHint = [];
+    this.boardHint.hintActive = false;
+    this.boardHint.lastSquaresChangedForAutoHint = [];
 
     this.boardRenderer.updateBoardPixelDimensions();
 
@@ -458,7 +457,7 @@ class Board {
       //Do nothing as this.mines is constant on these modes, so doesn't need to be regenerated?
     } else if (this.variant === "mean openings") {
       //meanMineStates 2d array tracks which squares contain mines that will only show once an opening is opened
-      this.meanMineStates = new Array(this.width).fill(0).map(() =>
+      this.meanOpenings.meanMineStates = new Array(this.width).fill(0).map(() =>
         new Array(this.height).fill(0).map(() => {
           let singleMeanSquare = {
             isMine: false, //all squares start off with no mean mines
@@ -470,7 +469,7 @@ class Board {
           return singleMeanSquare;
         })
       );
-      this.unprocessedMeanZeros = []; //List of recently opened coords that need processing to check if they can have a mean mine.
+      this.meanOpenings.unprocessedMeanZeros = []; //List of recently opened coords that need processing to check if they can have a mean mine.
 
       if (noGuessing.value) {
         const ngResult = BoardGenerator.ngShuffle(
@@ -527,7 +526,7 @@ class Board {
     this.stats.addVariantAttribute(this.variant);
     this.boardStartTime = performance.now();
     this.boardRenderer.clearTimerTimeout(); //defensive as it should already be disabled since we reset board.
-    this.updateTimerSetTimeoutHandle = setTimeout(
+    this.boardRenderer.updateTimerSetTimeoutHandle = setTimeout(
       this.boardRenderer.updateIntegerTimerIfNeeded.bind(this.boardRenderer),
       100
     );
@@ -815,7 +814,7 @@ class Board {
       this.stats.killDeepChainZiniRunner();
     }
 
-    if (this.hintActive) {
+    if (this.boardHint.hintActive) {
       this.boardHint.hideHint(true);
     }
 
