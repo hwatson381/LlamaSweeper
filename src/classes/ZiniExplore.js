@@ -735,7 +735,7 @@ class ZiniExplore {
     let isChordable = isRevealed &&
       !isZero &&
       isPotentiallyChordable &&
-      this.board.getNumberSurroundingFlags(tileX, tileY) === this.board.getNumberSurroundingMines(tileX, tileY, false);
+      this.board.boardActions.getNumberSurroundingFlags(tileX, tileY) === this.board.boardActions.getNumberSurroundingMines(tileX, tileY, false);
 
     return {
       isMine,
@@ -803,16 +803,16 @@ class ZiniExplore {
       let clickToDo = this.classicPath[clickPointer];
 
       if (clickToDo.type === 'left') {
-        this.board.openTile(clickToDo.x, clickToDo.y);
+        this.board.boardActions.openTile(clickToDo.x, clickToDo.y);
       } else if (clickToDo.type === 'right') {
-        this.board.attemptFlag(clickToDo.x, clickToDo.y, false);
+        this.board.boardActions.attemptFlag(clickToDo.x, clickToDo.y, false);
       } else if (clickToDo.type === 'chord') {
         //For chords, we need to verify that they are chordable before taking
         const isChordable = this.board.tilesArray[clickToDo.x][clickToDo.y].state !== CONSTANTS.UNREVEALED &&
-          this.board.getNumberSurroundingFlags(clickToDo.x, clickToDo.y) === this.board.getNumberSurroundingMines(clickToDo.x, clickToDo.y, false);
+          this.board.boardActions.getNumberSurroundingFlags(clickToDo.x, clickToDo.y) === this.board.boardActions.getNumberSurroundingMines(clickToDo.x, clickToDo.y, false);
 
         if (isChordable) {
-          this.board.chord(clickToDo.x, clickToDo.y, false);
+          this.board.boardActions.chord(clickToDo.x, clickToDo.y, false);
         } else {
           invalidChordIndices.push(clickPointer);
         }

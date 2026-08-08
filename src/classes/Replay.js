@@ -122,23 +122,23 @@ class Replay {
 
       switch (clickToDo.type) {
         case "left":
-          this.board.openTile(clickToDo.x, clickToDo.y, needToPlaySound);
+          this.board.boardActions.openTile(clickToDo.x, clickToDo.y, needToPlaySound);
           break;
         case "wasted_left":
           //Do nothing
           break;
         case "chord":
-          this.board.chord(clickToDo.x, clickToDo.y, false, 0, undefined, undefined, needToPlaySound);
+          this.board.boardActions.chord(clickToDo.x, clickToDo.y, false, 0, undefined, undefined, needToPlaySound);
           break;
         case "wasted_chord":
           //Do nothing
           break;
         case "right":
-          this.board.attemptFlag(clickToDo.x, clickToDo.y, false, needToPlaySound);
+          this.board.boardActions.attemptFlag(clickToDo.x, clickToDo.y, false, needToPlaySound);
           break;
         case "wasted_right":
           //Do something as it may be an unflag
-          this.board.attemptFlag(clickToDo.x, clickToDo.y, false, needToPlaySound);
+          this.board.boardActions.attemptFlag(clickToDo.x, clickToDo.y, false, needToPlaySound);
           break;
         default:
           throw new Error("Disallowed click type seen in replay");
@@ -164,8 +164,8 @@ class Replay {
     //Pause if we have hit the end, also, blast if lost, flagged all if won
     if (newClickIndex === this.clicks.length - 1) {
       if (this.isComplete) {
-        this.isWin && this.board.markRemainingFlags();
-        !this.isWin && this.board.blast();
+        this.isWin && this.board.boardActions.markRemainingFlags();
+        !this.isWin && this.board.boardActions.blast();
       }
       !replayIsPanning.value && !replayIsInputting.value && this.pause();
     }

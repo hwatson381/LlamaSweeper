@@ -188,7 +188,7 @@ class MeanOpenings {
 
     //Compute numbers to show for all cells that need this
     for (let cell of cellsThatNeedNumber) {
-      this.board.tilesArray[cell.x][cell.y].state = this.board.getNumberSurroundingMines(
+      this.board.tilesArray[cell.x][cell.y].state = this.board.boardActions.getNumberSurroundingMines(
         cell.x,
         cell.y,
         true

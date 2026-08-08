@@ -927,7 +927,7 @@ class BoardInput {
         this.board.lrChordingState.leftDown
       )
     ) {
-      this.board.attemptFlag(
+      this.board.boardActions.attemptFlag(
         unflooredCoords.tileX,
         unflooredCoords.tileY,
         true,
@@ -950,7 +950,7 @@ class BoardInput {
         //Slightly hacky, but we also optionally change where the first click is if the board
         //received requires a different first click
         if (generationResult.rewrittenFirstClick) {
-          //unflooredCoords as these are what attemptChordOrDig uses.
+          //unflooredCoords as these are what boardActions.attemptChordOrDig uses.
           unflooredCoords.tileX = generationResult.rewrittenFirstClick.x;
           unflooredCoords.tileY = generationResult.rewrittenFirstClick.y;
         }
@@ -978,7 +978,7 @@ class BoardInput {
       isDigInput &&
       !(touchIdentifier === "mouse" && chordingButtons.value === "l+r")
     ) {
-      this.board.attemptChordOrDig(
+      this.board.boardActions.attemptChordOrDig(
         unflooredCoords.tileX,
         unflooredCoords.tileY,
         touchIdentifier,
@@ -998,7 +998,7 @@ class BoardInput {
       touchIdentifier === "mouse" &&
       chordingButtons.value === "l+r"
     ) {
-      this.board.attemptChordOnly(
+      this.board.boardActions.attemptChordOnly(
         unflooredCoords.tileX,
         unflooredCoords.tileY,
         touchIdentifier
@@ -1018,7 +1018,7 @@ class BoardInput {
       chordingButtons.value === "l+r" &&
       this.board.lrChordingState.hoverType !== "empty"
     ) {
-      this.board.attemptDigOnly(
+      this.board.boardActions.attemptDigOnly(
         unflooredCoords.tileX,
         unflooredCoords.tileY,
         touchIdentifier,
@@ -1035,7 +1035,7 @@ class BoardInput {
       !isDown &&
       isTouchInput
     ) {
-      this.board.attemptFlagOrChord(
+      this.board.boardActions.attemptFlagOrChord(
         unflooredCoords.tileX,
         unflooredCoords.tileY,
         touchIdentifier
@@ -1083,9 +1083,9 @@ class BoardInput {
     //Check if board is complete (note that checking gameStage is redundant but defensive)
     if (this.board.gameStage === "running" && needToCheckForWinOrLoss) {
       if (this.board.blasted) {
-        this.board.doLose();
-      } else if (this.board.checkWin()) {
-        this.board.doWin();
+        this.board.boardActions.doLose();
+      } else if (this.board.boardActions.checkWin()) {
+        this.board.boardActions.doWin();
       }
     }
 

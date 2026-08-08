@@ -615,6 +615,8 @@ BoardImportExport is probably easiest, and could be done by hand, and then try A
 
 Can any this.X properties in the Board class (e.g. in constructor or possibly resetBoard) be moved into their appropriate class.
 
-MeanOpenings to consider - should this really be another class?
+Need to test out BoardActions change.
 
-makeOpeningMean, resetMeanMinesActiveness, getSimplifiedTilesArray. Only has three methods
+Also consider renaming stuff to reduce the amount of BoardX. Could even just rename the property on Board, like how we have board.stats instead of board.boardStats
+
+Once Board stuff is done we can also split out components
