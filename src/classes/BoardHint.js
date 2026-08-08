@@ -102,7 +102,7 @@ class BoardHint {
     this.board.hintActive = true;
     this.board.quickPaintActive = false; //hide quickpaint at the same time as otherwise they visually compete
     showQuickPaintOptions.value = false;
-    this.board.clearAllDepressedSquares();
+    this.board.boardInput.clearAllDepressedSquares();
 
     this.updateTilesArrayForHint(
       probCalcBoard,
@@ -141,7 +141,7 @@ class BoardHint {
     this.board.hintActive = true;
     this.board.quickPaintActive = false; //hide quickpaint at the same time as otherwise they visually compete
     showQuickPaintOptions.value = false;
-    this.board.clearAllDepressedSquares();
+    this.board.boardInput.clearAllDepressedSquares();
 
     this.updateTilesArrayForHint(
       probCalcBoard,

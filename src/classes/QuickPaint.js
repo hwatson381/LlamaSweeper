@@ -24,7 +24,7 @@ class QuickPaint {
     showQuickPaintOptions.value = this.board.quickPaintActive;
 
     if (this.board.quickPaintActive) {
-      this.board.clearAllDepressedSquares();
+      this.board.boardInput.clearAllDepressedSquares();
 
       this.board.boardHint.hideHint(true); //hide probabilities as otherwise they visually compete
 

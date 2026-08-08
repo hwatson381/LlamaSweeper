@@ -3413,14 +3413,14 @@ function handleKeyDown(event) {
     if (!checkFocusForKeyPress(event)) {
       return;
     }
-    game.board.sendKeyboardClick(true, false, true, event.timeStamp);
+    game.board.boardInput.sendKeyboardClick(true, false, true, event.timeStamp);
     return;
   }
   if (event.key.toLowerCase() === keyboardClickFlagKey.value.toLowerCase()) {
     if (!checkFocusForKeyPress(event)) {
       return;
     }
-    game.board.sendKeyboardClick(false, true, true, event.timeStamp);
+    game.board.boardInput.sendKeyboardClick(false, true, true, event.timeStamp);
     return;
   }
   if (event.key === " " || event.key === "F2") {
@@ -3467,10 +3467,20 @@ function handleKeyDown(event) {
 
 function handleKeyUp(event) {
   if (event.key.toLowerCase() === keyboardClickDigKey.value.toLowerCase()) {
-    game.board.sendKeyboardClick(true, false, false, event.timeStamp);
+    game.board.boardInput.sendKeyboardClick(
+      true,
+      false,
+      false,
+      event.timeStamp
+    );
   }
   if (event.key.toLowerCase() === keyboardClickFlagKey.value.toLowerCase()) {
-    game.board.sendKeyboardClick(false, true, false, event.timeStamp);
+    game.board.boardInput.sendKeyboardClick(
+      false,
+      true,
+      false,
+      event.timeStamp
+    );
   }
 }
 
@@ -3506,7 +3516,7 @@ function handlePageScroll(event) {
     return;
   }
 
-  game.board.handlePageScroll(event);
+  game.board.boardInput.handlePageScroll(event);
 }
 
 function scrollToBoard() {
@@ -4267,7 +4277,7 @@ class Game {
       return;
     }
 
-    this.board.handleMouseDown(event);
+    this.board.boardInput.handleMouseDown(event);
   }
 
   handleMouseUp(event) {
@@ -4275,7 +4285,7 @@ class Game {
       return;
     }
 
-    this.board.handleMouseUp(event);
+    this.board.boardInput.handleMouseUp(event);
   }
 
   handleMouseMove(event) {
@@ -4283,7 +4293,7 @@ class Game {
       return;
     }
 
-    this.board.handleMouseMove(event, false, false);
+    this.board.boardInput.handleMouseMove(event, false, false);
   }
 
   handleMouseEnter(event) {
@@ -4291,7 +4301,7 @@ class Game {
       return;
     }
 
-    this.board.handleMouseMove(event, true, false);
+    this.board.boardInput.handleMouseMove(event, true, false);
   }
 
   handleMouseLeave(event) {
@@ -4299,7 +4309,7 @@ class Game {
       return;
     }
 
-    this.board.handleMouseMove(event, false, true);
+    this.board.boardInput.handleMouseMove(event, false, true);
   }
 
   handleTouchStart(event) {
@@ -4307,7 +4317,7 @@ class Game {
       return;
     }
 
-    this.board.handleTouchStart(event);
+    this.board.boardInput.handleTouchStart(event);
   }
 
   handleTouchEnd(event) {
@@ -4315,7 +4325,7 @@ class Game {
       return;
     }
 
-    this.board.handleTouchEnd(event);
+    this.board.boardInput.handleTouchEnd(event);
   }
 
   handleTouchMove(event) {
@@ -4323,7 +4333,7 @@ class Game {
       return;
     }
 
-    this.board.handleTouchMove(event);
+    this.board.boardInput.handleTouchMove(event);
   }
 
   handleTouchCancel(event) {
@@ -4331,7 +4341,7 @@ class Game {
       return;
     }
 
-    this.board.handleTouchCancel(event);
+    this.board.boardInput.handleTouchCancel(event);
   }
 }
 
