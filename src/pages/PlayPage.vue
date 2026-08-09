@@ -451,25 +451,10 @@
           class="side-panel"
         />
 
-        <q-card
-          square
+        <DeepChainRunnerPanel
           v-if="variant === 'zini explorer' && ziniRunnerActive"
-          style="float: left; margin-bottom: 10px"
           class="side-panel"
-        >
-          <q-card-section>
-            <span class="text-h6">Running DeepChain ZiNi</span><br />
-            Expected Duration: {{ ziniRunnerExpectedDuration }}<br />
-            Expected Finish Time: {{ ziniRunnerExpectedFinishTime }}<br />
-            {{ ziniRunnerIterationsDisplay }}<br />
-            <br />
-            <q-btn
-              @click="game.board.ziniExplore.killDeepChainZiniRunner()"
-              color="negative"
-              label="Cancel"
-            ></q-btn>
-          </q-card-section>
-        </q-card>
+        />
       </div>
       <div
         class="flex q-ma-md flex-centreable"
@@ -1047,6 +1032,7 @@ import EffBoardsHiddenSettingsModal from "src/components/modals/EffBoardsHiddenS
 import SettingsPanel from "src/components/SettingsPanel.vue";
 import StatsPanel from "src/components/StatsPanel.vue";
 import ZiniAnalysisPanel from "src/components/ZiniAnalysisPanel.vue";
+import DeepChainRunnerPanel from "src/components/DeepChainRunnerPanel.vue";
 
 const DevBlock = defineAsyncComponent(() =>
   import("src/components/DevBlock.vue")
@@ -1290,9 +1276,6 @@ import {
   replayIsPanning,
   replayIsInputting,
   ziniRunnerActive,
-  ziniRunnerExpectedDuration,
-  ziniRunnerExpectedFinishTime,
-  ziniRunnerIterationsDisplay,
   keyboardClickDigKey,
   keyboardClickFlagKey,
   filterStyleProperty,

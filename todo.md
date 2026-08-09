@@ -626,5 +626,6 @@ Writing a good agents.md should also be done
 Also split out/clean up text docs
 
 For splitting out components -
-Do the "DevBlock/Panel" to get rid of bulkRun functions etc
-Then go back to refactor-plan
+go back to refactor-plan
+
+Ask AI what should be moved into a component
