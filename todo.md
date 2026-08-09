@@ -624,3 +624,7 @@ Once Board stuff is done we can also split out components
 Writing a good agents.md should also be done
 
 Also split out/clean up text docs
+
+For splitting out components -
+Do the "DevBlock/Panel" to get rid of bulkRun functions etc
+Then go back to refactor-plan
