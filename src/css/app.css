@@ -56,3 +56,7 @@ body.body--dark .q-dialog a:visited {
 body:not(.body--dark) {
   --q-info: #005567;
 }
+
+.screenshot-active .screenshot-hidden {
+  display: none !important;
+}
