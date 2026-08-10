@@ -315,24 +315,6 @@ if (typeof window.navigator.hardwareConcurrency === "number") {
   effWebWorkerCountOptions = [1];
 }
 
-/* KEEP IN PLAY PAGE
-watchEffect(() => {
-  if (variant.value === "eff boards" && generateEffBoardsInBackground.value) {
-    effShuffleManager && effShuffleManager.activateBackgroundGeneration();
-  } else {
-    effShuffleManager && effShuffleManager.deactivateBackgroundGeneration();
-  }
-});
-watch(
-  [boardWidth, boardHeight, boardMines, minimumEff, effBoardsMaxStoredCount],
-  () => {
-    if (variant.value === "eff boards" && generateEffBoardsInBackground.value) {
-      effShuffleManager && effShuffleManager.sendWorkersCurrentTaskDebounced();
-    }
-  }
-);
-*/
-
 let showQuickPaintOptions = ref(false);
 let quickPaintModeDisplay = ref("Guess");
 let quickPaintClearable = ref("guesses");

@@ -56,344 +56,24 @@
           />
         </div>
       </div>
-      <div
-        class="flex q-gutter-sm flex-centreable q-px-md"
-        style="margin: 5px"
-        v-if="variant !== 'board editor' && variant !== 'zini explorer'"
-      >
-        <q-radio
-          dense
-          v-model="boardSizePreset"
-          val="beg"
-          label="Beg"
-          @update:model-value="game.resetAndUnfocus()"
-        />
-        <q-radio
-          dense
-          v-model="boardSizePreset"
-          val="int"
-          label="Int"
-          @update:model-value="game.resetAndUnfocus()"
-        />
-        <q-radio
-          dense
-          v-model="boardSizePreset"
-          val="exp"
-          label="Exp"
-          @update:model-value="game.resetAndUnfocus()"
-        />
-        <q-radio
-          dense
-          v-model="boardSizePreset"
-          val="custom"
-          label="Custom"
-          @update:model-value="game.resetAndUnfocus()"
-        />
-        <q-badge
-          rounded
-          color="pink"
-          label="No Guess"
-          v-if="noGuessing && variant !== 'eff boards'"
-        />
-      </div>
-      <template
-        v-if="
-          boardSizePreset === 'custom' &&
-          variant !== 'board editor' &&
-          variant !== 'zini explorer'
-        "
-      >
-        <div
-          class="flex flex-centreable q-px-md"
-          style="gap: 10px; margin: 5px; align-items: center"
-        >
-          <q-input
-            debounce="100"
-            v-model.number="customWidth"
-            label="Width"
-            type="number"
-            dense
-            min="1"
-            max="100"
-            @update:model-value="game.reset()"
-          />
-          <q-input
-            debounce="100"
-            v-model.number="customHeight"
-            label="Height"
-            type="number"
-            dense
-            min="1"
-            max="100"
-            @update:model-value="game.reset()"
-          />
-          <q-input
-            debounce="100"
-            v-model.number="customMines"
-            label="Mines"
-            type="number"
-            dense
-            min="0"
-            max="2500"
-            @update:model-value="game.reset()"
-          />
-          <div>
-            <q-badge outline color="info"
-              >{{
-                ((customMines / (customWidth * customHeight)) * 100).toFixed(2)
-              }}%</q-badge
-            >
-          </div>
-        </div>
-        <p class="text-centreable q-px-md">{{ customWarning }}</p>
-      </template>
 
-      <div class="q-mx-md">
-        <q-card
-          flat
-          bordered
-          style="max-width: 550px"
-          class="margin-centreable"
-          v-if="variant === 'board editor' || variant === 'zini explorer'"
-        >
-          <q-card-section>
-            <div class="flex q-mb-md" style="gap: 15px">
-              <q-input
-                debounce="100"
-                v-model.number="editBoardUnappliedWidth"
-                label="Width"
-                type="number"
-                dense
-                min="1"
-                max="100"
-              />
-              <q-input
-                debounce="100"
-                v-model.number="editBoardUnappliedHeight"
-                label="Height"
-                type="number"
-                dense
-                min="1"
-                max="100"
-              />
-              <q-btn-group>
-                <q-btn
-                  color="primary"
-                  label="Beg"
-                  @click="
-                    editBoardUnappliedWidth = 9;
-                    editBoardUnappliedHeight = 9;
-                  "
-                />
-                <q-btn
-                  color="primary"
-                  label="Int"
-                  @click="
-                    editBoardUnappliedWidth = 16;
-                    editBoardUnappliedHeight = 16;
-                  "
-                />
-                <q-btn
-                  color="primary"
-                  label="Exp"
-                  @click="
-                    () => {
-                      if (verticalExpert) {
-                        editBoardUnappliedWidth = 16;
-                        editBoardUnappliedHeight = 30;
-                      } else {
-                        editBoardUnappliedWidth = 30;
-                        editBoardUnappliedHeight = 16;
-                      }
-                    }
-                  "
-                />
-              </q-btn-group>
-              <q-btn-dropdown
-                @click="pttaImportModal = true"
-                color="secondary"
-                label="ptt import"
-                split
-              >
-                <q-list>
-                  <q-item
-                    clickable
-                    v-close-popup
-                    @click="mbfImportModal = true"
-                  >
-                    <q-item-section>
-                      <q-item-label>MBF Import</q-item-label>
-                    </q-item-section>
-                  </q-item>
-                </q-list>
-              </q-btn-dropdown>
-            </div>
-            <div class="flex" style="gap: 15px">
-              <q-btn
-                @click="game.board.applyEditBoardWidthHeight()"
-                color="positive"
-                label="new board"
-              />
-              <q-btn-toggle
-                v-if="variant === 'board editor'"
-                v-model="isCurrentlyEditModeDisplay"
-                push
-                glossy
-                toggle-color="primary"
-                :options="[
-                  { label: 'Edit', value: true },
-                  { label: 'Play', value: false },
-                ]"
-                @update:model-value="
-                  (val) => {
-                    val
-                      ? game.board.switchToEditMode()
-                      : game.board.switchToPlayMode();
-                  }
-                "
-              />
-              <q-btn-toggle
-                v-if="variant === 'zini explorer'"
-                v-model="isCurrentlyEditModeDisplay"
-                push
-                glossy
-                toggle-color="primary"
-                :options="[
-                  { label: 'Edit', value: true },
-                  { label: 'Analyse', value: false },
-                ]"
-                @update:model-value="
-                  (val) => {
-                    val
-                      ? game.board.switchToEditMode()
-                      : game.board.switchToAnalyseMode();
-                  }
-                "
-              />
-              <q-btn
-                v-if="variant === 'zini explorer'"
-                @click="
-                  game.board.switchToAnalyseMode(true);
-                  game.board.ziniExplore.runDefaultAlgorithmOrPromptForInfo();
-                "
-                color="primary"
-                label="DeepChain ZiNi"
-              />
-            </div>
-          </q-card-section>
-        </q-card>
-      </div>
-      <div class="text-centreable q-mx-md" v-if="variant === 'eff boards'">
-        Generating boards with target eff: {{ minimumEff }}% (change this in
-        settings below the board)
-        <span v-if="generateEffBoardsInBackground" class="text-info"
-          ><span
-            class="hidden-link"
-            @click="effBoardsHiddenSettingsModal = true"
-            >{{ effBoardsStoredDisplayCount }}/{{
-              effBoardsMaxStoredCount
-            }}</span
-          >
-          (click: {{ effBoardsStoredFirstClickDisplay }})
-          <q-icon name="sym_o_help" size="xs">
-            <q-tooltip max-width="500px">
-              When "Generate in background" is enabled, it will generate boards
-              that meet the target efficiency whilst you play and store these
-              for later. The "x/{{ effBoardsMaxStoredCount }}" indicates how
-              many of these boards are currently stored and ready to play.
-              Because these boards are generated in advance, the first click
-              will not line up with where you clicked on the board. The "click:
-              xxx" shows where the first click will be for the next stored
-              board, the location of the first click can be changed with the
-              settings below the board, but this will only affect future
-              generated boards and not any boards that are already stored.
-              Clicking on the "x/{{ effBoardsMaxStoredCount }}" will show
-              additional settings where the storage limit can be raised.
-            </q-tooltip>
-          </q-icon>
-        </span>
-      </div>
+      <BoardConfigBar />
+
       <div
-        v-if="variant === 'mean openings'"
-        class="flex q-mt-md flex-centreable q-mx-md"
+        v-if="variant === 'board editor' || variant === 'zini explorer'"
+        class="q-mx-md"
       >
-        <q-select
-          class="q-mx-md q-mb-md"
-          outlined
-          options-dense
-          dense
-          transition-duration="100"
-          input-debounce="0"
-          v-model="meanOpeningMineDensity"
-          style="width: 200px; flex-shrink: 0"
-          :options="[
-            { label: '10%', value: 0.1 },
-            { label: '20%', value: 0.2 },
-            { label: '30%', value: 0.3 },
-            { label: '40%', value: 0.4 },
-            { label: '50%', value: 0.5 },
-            { label: '60%', value: 0.6 },
-            { label: '70%', value: 0.7 },
-            { label: '80%', value: 0.8 },
-            { label: '90%', value: 0.9 },
-            { label: '100%', value: 1 },
-          ]"
-          emit-value
-          map-options
-          stack-label
-          label="Opening target mine density"
-          @update:model-value="game.reset()"
-        ></q-select>
-        <q-select
-          class="q-mx-md q-mb-md"
-          outlined
-          options-dense
-          dense
-          transition-duration="100"
-          input-debounce="0"
-          v-model="meanOpeningFlagDensity"
-          style="width: 175px; flex-shrink: 0"
-          :options="[
-            { label: '0%', value: 0 },
-            { label: '10%', value: 0.1 },
-            { label: '20%', value: 0.2 },
-            { label: '30%', value: 0.3 },
-            { label: '40%', value: 0.4 },
-            { label: '50%', value: 0.5 },
-            { label: '60%', value: 0.6 },
-            { label: '70%', value: 0.7 },
-            { label: '80%', value: 0.8 },
-            { label: '100%', value: 1 },
-          ]"
-          emit-value
-          map-options
-          stack-label
-          label="Flag density"
-          @update:model-value="game.reset()"
-        ></q-select>
-        <q-select
-          class="q-mx-md q-mb-md"
-          outlined
-          options-dense
-          dense
-          transition-duration="100"
-          input-debounce="0"
-          v-model="meanMineClickBehaviour"
-          style="width: 175px; flex-shrink: 0"
-          :options="[
-            { label: 'Flag', value: 'flag' },
-            { label: 'Blast', value: 'blast' },
-            { label: 'Shield for 0.5s', value: 'shield' },
-            { label: 'Ignore clicks', value: 'ignore' },
-            { label: 'Ignore + chordable', value: 'chordable' },
-          ]"
-          emit-value
-          map-options
-          stack-label
-          label="Mean mine click action"
-          @update:model-value="game.reset()"
-        ></q-select>
+        <EditorControls class="margin-centreable" />
       </div>
+      <EffBoardsStatusBar
+        v-if="variant === 'eff boards'"
+        class="text-centreable"
+      />
+
+      <MeanOpeningsConfig
+        v-if="variant === 'mean openings'"
+        class="flex-centreable"
+      />
 
       <div
         ref="game-container"
@@ -456,52 +136,14 @@
           class="side-panel"
         />
       </div>
-      <div
-        class="flex q-ma-md flex-centreable"
-        style="gap: 10px"
-        v-if="variant !== 'zini explorer'"
-      >
-        <q-btn
-          @click="game.board.boardHint.toggleHint()"
-          color="secondary"
-          icon="percent"
-          label="Hint (H)"
-          :disabled="variant === 'board editor' && isCurrentlyEditModeDisplay"
-        >
-        </q-btn>
-        <q-btn
-          @click="game.board.quickPaint.toggleQuickPaint()"
-          color="secondary"
-          icon="brush"
-          label="QuickPaint (Q)"
-          :disabled="variant === 'board editor' && isCurrentlyEditModeDisplay"
-        >
-        </q-btn>
-        <template v-if="showQuickPaintOptions">
-          <q-btn
-            v-if="!quickPaintMinimalMode"
-            @click="game.board.quickPaint.cycleQuickPaintMode()"
-            color="secondary"
-          >
-            {{ quickPaintModeDisplay }} (w)
-          </q-btn>
-          <q-btn
-            @click="game.board.quickPaint.clearClearableMarkings()"
-            color="secondary"
-          >
-            {{ quickPaintClearable }} (scrollclick)
-          </q-btn>
-          <q-btn @click="quickPaintHelpModal = true" color="secondary"
-            >Help</q-btn
-          >
-        </template>
-      </div>
 
-      <div class="q-mx-md">
-        <EffBoardsConfig
-          class="q-my-md margin-centreable"
-          v-if="variant === 'eff boards'"
-        />
+      <BoardToolsBar
+        v-if="variant !== 'zini explorer'"
+        class="flex-centreable"
+      />
+
+      <div v-if="variant === 'eff boards'" class="q-mx-md">
+        <EffBoardsConfig class="q-my-md margin-centreable" />
       </div>
 
       <SettingsPanel
@@ -630,6 +272,11 @@ import DeepChainRunnerPanel from "src/components/DeepChainRunnerPanel.vue";
 import EffBoardsConfig from "src/components/EffBoardsConfig.vue";
 import MobileFlagButton from "src/components/MobileFlagButton.vue";
 import QuickStatsBox from "src/components/QuickStatsBox.vue";
+import EditorControls from "src/components/EditorControls.vue";
+import BoardConfigBar from "src/components/BoardConfigBar.vue";
+import MeanOpeningsConfig from "src/components/MeanOpeningsConfig.vue";
+import EffBoardsStatusBar from "src/components/EffBoardsStatusBar.vue";
+import BoardToolsBar from "src/components/BoardToolsBar.vue";
 
 const DevBlock = defineAsyncComponent(() =>
   import("src/components/DevBlock.vue")
@@ -650,41 +297,19 @@ import {
   gameTopPadding,
   gameBottomPadding,
   centreInterface,
-  boardSizePreset,
-  customWidth,
-  customHeight,
-  customMines,
   boardWidth,
   boardHeight,
   boardMines,
-  customWarning,
   variant,
-  noGuessing,
   generateEffBoardsInBackground,
-  effBoardsHiddenSettingsModal,
-  effBoardsStoredDisplayCount,
   effBoardsMaxStoredCount,
-  effBoardsStoredFirstClickDisplay,
   minimumEff,
-  showQuickPaintOptions,
-  quickPaintModeDisplay,
-  quickPaintClearable,
-  quickPaintMinimalMode,
-  quickPaintHelpModal,
-  editBoardUnappliedWidth,
-  editBoardUnappliedHeight,
-  pttaImportModal,
-  mbfImportModal,
   isCurrentlyEditModeDisplay,
   flagToggleShowReset,
   mobileModeEnabled,
   mobileScrollSetting,
-  verticalExpert,
   touchActionOverride,
   showQuickStats,
-  meanOpeningMineDensity,
-  meanOpeningFlagDensity,
-  meanMineClickBehaviour,
   replayProgress,
   replayProgressRounded,
   replayIsPlaying,
