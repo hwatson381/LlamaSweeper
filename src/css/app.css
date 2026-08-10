@@ -60,3 +60,16 @@ body:not(.body--dark) {
 .screenshot-active .screenshot-hidden {
   display: none !important;
 }
+
+.centre-interface .flex-centreable {
+  justify-content: center !important;
+}
+
+.centre-interface .margin-centreable {
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.centre-interface .text-centreable {
+  text-align: center !important;
+}

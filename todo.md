@@ -629,3 +629,20 @@ For splitting out components -
 go back to refactor-plan
 
 Ask AI what should be moved into a component
+
+Also can any refs in useSettings instead be moved into relevant components?
+
+1. BoardEditorConfigCard.vue — the shared editor/zini box (your idea — yes, do it)
+   The <q-card> shown when variant === 'board editor' || 'zini explorer' (width/height inputs, Beg/Int/Exp buttons, ptt/MBF import dropdown, "new board", the Edit/Play & Edit/Analyse toggles, DeepChain ZiNi button). It's ~120 lines, self-contained, and cohesive. Reads editBoardUnappliedWidth/Height, verticalExpert, isCurrentlyEditModeDisplay, variant, pttaImportModal, mbfImportModal; calls game.board.applyEditBoardWidthHeight(), switchToEditMode/PlayMode/AnalyseMode(), ziniExplore.runDefaultAlgorithmOrPromptForInfo(). High payoff, low risk — best next target.
+
+2. BoardConfigBar.vue — the one you skipped
+   This is the beg/int/exp/custom radio row + No Guess badge and the custom width/height/mines inputs block (the two adjacent chunks near the top, roughly the <div class="flex q-gutter-sm flex-centreable"> radio row through the customWarning paragraph). The old plan's line numbers were stale which is why they confused you — just anchor on those two markers instead. Reads boardSizePreset, customWidth/Height/Mines, boardWidth/Height/Mines, noGuessing, variant, customWarning; calls game.reset() / game.resetAndUnfocus(). Medium size, declarative, low logic risk.
+
+3. MeanOpeningsConfig.vue
+   The three q-selects shown for variant === 'mean openings' (mine density / flag density / mine-click behaviour). ~90 lines, isolated, only reads its three refs + calls game.reset(). Easy.
+
+4. EffBoardsStatusText.vue — the top strip you skipped
+   The "Generating boards with target eff…" text block (v-if="variant === 'eff boards'") with the stored-count/first-click display. You did the bottom EffBoardsConfig panel but left this. Smallish; pairs conceptually with the existing eff component.
+
+5. HintQuickPaintBar.vue
+   The Hint / QuickPaint button row + the conditional quickpaint-mode buttons (showQuickPaintOptions), shown when variant !== 'zini explorer'. Calls game.board.boardHint.toggleHint(), game.board.quickPaint.\*. Cohesive toolbar.

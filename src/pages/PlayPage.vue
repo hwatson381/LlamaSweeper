@@ -540,44 +540,7 @@
 
   <MobileFlagButton v-if="mobileModeEnabled && !replayIsShown" />
 
-  <div
-    v-if="flagToggleShowReset && showQuickStats"
-    class="quick-stats"
-    :style="{ fontSize: quickStatsFontSize }"
-  >
-    <div>Time: {{ statsObject.time }}s</div>
-    <div v-if="!statsObject.isWonGame">
-      Est. Time: {{ statsObject.estTime }}s
-    </div>
-    <div v-if="statsObject.isWonGame">3bv: {{ statsObject.total3bv }}</div>
-    <div v-else>
-      3bv: {{ statsObject.solved3bv }}/{{ statsObject.total3bv }}
-    </div>
-    <div>3bv/s: {{ statsObject.bbbvs }}</div>
-    <div>Ce/s: {{ statsObject.clicks.effectiveClicksPerSecond }}</div>
-    <div>eff: {{ statsObject.eff }}%</div>
-    <div v-if="statsShowMaxEff && statsObject.maxEff !== null">
-      max eff:
-      <span
-        :style="{
-          'text-decoration':
-            statsObject.deepMaxEff !== null &&
-            parseInt(statsObject.deepMaxEff) > parseInt(statsObject.maxEff)
-              ? 'line-through'
-              : 'none',
-        }"
-        >{{ statsObject.maxEff }}%</span
-      >
-      <span
-        v-if="
-          statsObject.deepMaxEff !== null &&
-          parseInt(statsObject.deepMaxEff) > parseInt(statsObject.maxEff)
-        "
-        class="text-info"
-        >&nbsp;{{ statsObject.deepMaxEff }}%</span
-      >
-    </div>
-  </div>
+  <QuickStatsBox v-if="flagToggleShowReset && showQuickStats" />
 
   <div style="height: 150px"></div>
 
@@ -630,36 +593,6 @@
 .side-panel {
   user-select: text;
 }
-
-.centre-interface .flex-centreable {
-  justify-content: center !important;
-}
-
-.centre-interface .margin-centreable {
-  margin-left: auto !important;
-  margin-right: auto !important;
-}
-
-.centre-interface .text-centreable {
-  text-align: center !important;
-}
-
-.quick-stats {
-  position: fixed;
-  top: 10px;
-  left: 10px;
-  /*background-color: rgba(124, 128, 131, 0.7);*/
-  background-color: #d3d3d3d1;
-  color: black;
-  padding: 5px 10px;
-  border-radius: 10px;
-  user-select: none;
-  font-size: 10px;
-  pointer-events: none;
-  font-family: monospace;
-  z-index: 10000;
-  box-shadow: 3px 4px 10px #000000ad;
-}
 </style>
 
 <script setup>
@@ -696,6 +629,7 @@ import ZiniAnalysisPanel from "src/components/ZiniAnalysisPanel.vue";
 import DeepChainRunnerPanel from "src/components/DeepChainRunnerPanel.vue";
 import EffBoardsConfig from "src/components/EffBoardsConfig.vue";
 import MobileFlagButton from "src/components/MobileFlagButton.vue";
+import QuickStatsBox from "src/components/QuickStatsBox.vue";
 
 const DevBlock = defineAsyncComponent(() =>
   import("src/components/DevBlock.vue")
@@ -709,8 +643,6 @@ import { debounce } from "quasar";
 
 import {
   showStatsBlock,
-  statsObject,
-  statsShowMaxEff,
   settingsModal,
   variantsHelpModal,
   gameCalculatedMarginLeft,
@@ -750,7 +682,6 @@ import {
   verticalExpert,
   touchActionOverride,
   showQuickStats,
-  quickStatsFontSize,
   meanOpeningMineDensity,
   meanOpeningFlagDensity,
   meanMineClickBehaviour,
