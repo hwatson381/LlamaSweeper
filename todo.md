@@ -557,11 +557,7 @@ selection tool for board editor/zini explorer (and safe resizing). Also drag cli
 Do we also allow specifying starting squares for board editor with link taking you straight to play screen to avoid spoilers?
 [done] send to strangedust replay analyzer option?
 
-Ask LLM to look for bugs in all the files in classes folder
-
-======= what is left? =======
-
-refactoring hint + maybe quickpaint into own class
+Ask LLM to look for bugs in all the files in classes folder?
 
 ================
 
@@ -576,7 +572,6 @@ Might as well add starting timestamp to the attributes of BoardStats?
 
 Add mouseDown tracking to llamasweeper so that click timing can be seen in the replay analyser?
 
-rework replay/send to menus?
 Strict mode (see ipad notes)
 
 Also can we use "more" from mstoollib now? Like generating denser boards
@@ -584,22 +579,16 @@ laymine_solvable_adjust can't be used because the boards it creates are unintere
 
 =====
 
-What to do?
-Change default to be instant + no mines.
-
 Small bug - mobile ms sometimes causes tiles to remain depressed if tapped at the same time (e.g. corners at the start)
 
-Then what next? Refactoring? Or maybe small enhancements to the board editor? probably just refactoring tbh...
+Small enhancements to the board editor?
 Strict mode might be too far away.
 Or can we fix the mobile bug
 
 =====
 
-refactoring next.
+refactoring next (done).
 Bonus board editor stuff can happen after
-
-Reducing file size of main file is critically important
-Extract board logic, input handling, hint calc, drawing into classes
 
 Possible improvements we may want to do for export image but will probably never get around to:
 High dpi canvas support (we need to do this in the first place), better styling (rounded corners, gradient bg, hairline border around stats panel)
@@ -609,20 +598,8 @@ Have maximum or minimum sizes for things to prevent too large relative size diff
 
 Try adding high dpi canvas support? Although after refactoring
 
-For refactoring -
-next we need to split up the board class.
-BoardImportExport is probably easiest, and could be done by hand, and then try AI for the rest?
-
-Can any this.X properties in the Board class (e.g. in constructor or possibly resetBoard) be moved into their appropriate class.
-
-Need to test out BoardActions change.
-
 Also consider renaming stuff to reduce the amount of BoardX. Could even just rename the property on Board, like how we have board.stats instead of board.boardStats
-
-Once Board stuff is done we can also split out components
 
 Writing a good agents.md should also be done
 
 Also split out/clean up text docs
-
-Also can any refs in useSettings instead be moved into relevant components?

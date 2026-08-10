@@ -63,11 +63,11 @@
 </template>
 
 <script setup>
+import { ref } from "vue";
 import {
   boardWidth,
   boardHeight,
   boardMines,
-  effBoardsBenchmarkIterations,
   effBoardsBenchmarkModal,
   minimumEff,
 } from "src/composables/useSettings";
@@ -77,4 +77,6 @@ import effShuffleManager from "src/classes/EffShuffleManager";
 defineOptions({
   name: "EffBoardsBenchmarkModal",
 });
+
+const effBoardsBenchmarkIterations = ref(1000);
 </script>

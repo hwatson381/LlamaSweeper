@@ -57,7 +57,6 @@ let statsObject = ref({
     hintsUsed: false,
   },
 });
-let showStatsClicksTable = ref(false);
 let statsShow8Way = useLocalStorage("ls_statsShow8Way", true);
 let statsShowChain = useLocalStorage("ls_statsShowChain", true);
 let statsShowWomZini = useLocalStorage("ls_statsShowWomZini", true);
@@ -118,9 +117,6 @@ let topPanelHeight = computed(() => {
   return showBorders.value ? Math.floor(tileSizeSlider.value * 2) : 0;
 });
 
-let pttaUrl = ref("");
-let mbfStringToImport = ref("");
-let mbfFileToImport = ref(null);
 let boardSizePreset = useLocalStorage("ls_boardSizePreset", "beg"); //beg/int/exp. Mainly just used for showing correct thing in dropdown
 let customWidth = useLocalStorage("ls_customWidth", 8);
 let customHeight = useLocalStorage("ls_customHeight", 8);
@@ -213,7 +209,6 @@ let browserSupportsWebWorkers = window.Worker ? true : false;
 let browserSupportsConcurrency =
   browserSupportsWebWorkers && window.navigator.hardwareConcurrency > 2;
 let effBoardsImplementation = ref(Utils.isWasmSupported() ? "wasm" : "js");
-let effBoardsBenchmarkIterations = ref(1000);
 let effBoardsBenchmarkModal = ref(false);
 let effBoardsHiddenSettingsModal = ref(false);
 let effBoardsStoredDisplayCount = ref(0);
@@ -545,17 +540,11 @@ function resetTransientSettings() {
   //Stats panel
   showStatsBlock.value = false;
   //statsObject.value = <default shape goes here> //Is it bad to leave this as is? Other it's messy to reset
-  showStatsClicksTable.value = false;
 
   //QuickPaint UI
   showQuickPaintOptions.value = false;
   quickPaintModeDisplay.value = "Guess";
   quickPaintClearable.value = "guesses";
-
-  //Values used for inputs
-  pttaUrl.value = ""
-  mbfStringToImport.value = ""
-  mbfFileToImport.value = null
 
   //Replay state
   replayIsShown.value = false;
@@ -593,7 +582,6 @@ export {
   wasmAvailable,
   showStatsBlock,
   statsObject,
-  showStatsClicksTable,
   statsShow8Way,
   statsShowChain,
   statsShowWomZini,
@@ -630,9 +618,6 @@ export {
   boardBottomPadding,
   topPanelTopAndBottomBorder,
   topPanelHeight,
-  pttaUrl,
-  mbfStringToImport,
-  mbfFileToImport,
   boardSizePreset,
   customWidth,
   customHeight,
@@ -669,7 +654,6 @@ export {
   browserSupportsWebWorkers,
   browserSupportsConcurrency,
   effBoardsImplementation,
-  effBoardsBenchmarkIterations,
   effBoardsBenchmarkModal,
   effBoardsHiddenSettingsModal,
   effBoardsStoredDisplayCount,

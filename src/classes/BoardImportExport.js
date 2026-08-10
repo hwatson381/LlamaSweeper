@@ -10,12 +10,7 @@ import { Dialog, Notify, copyToClipboard, exportFile, Dark } from "quasar"
 
 import {
   statsObject,
-  pttaUrl,
-  mbfStringToImport,
-  mbfFileToImport,
   variant,
-  pttaImportModal,
-  mbfImportModal,
 } from "src/composables/useSettings";
 
 class BoardImportExport {
@@ -161,12 +156,12 @@ class BoardImportExport {
     }
   }
 
-  importPttaBoard() {
+  importPttaBoard(pttaUrl) {
     if (this.board.variant !== "board editor" && this.board.variant !== "zini explorer") {
-      return;
+      return false;
     }
 
-    let pttMines = BoardGenerator.readFromPtta(pttaUrl.value);
+    let pttMines = BoardGenerator.readFromPtta(pttaUrl);
 
     if (this.board.variant === "board editor") {
       this.board.boardEditorMines = pttMines;
@@ -180,27 +175,26 @@ class BoardImportExport {
 
     this.board.switchToEditMode();
 
-    pttaImportModal.value = false;
-    pttaUrl.value = "";
+    return true;
   }
 
-  async importMbfBoard() {
+  async importMbfBoard(mbfStringToImport, mbfFileToImport) {
     if (this.board.variant !== "board editor" && this.board.variant !== "zini explorer") {
-      return;
+      return false;
     }
 
     let mbfMines;
 
-    if (mbfStringToImport.value.trim() !== "") {
-      mbfMines = BoardGenerator.readFromMbfString(mbfStringToImport.value);
-    } else if (mbfFileToImport.value) {
-      mbfMines = await BoardGenerator.readFromMbfFile(mbfFileToImport.value);
+    if (mbfStringToImport.trim() !== "") {
+      mbfMines = BoardGenerator.readFromMbfString(mbfStringToImport);
+    } else if (mbfFileToImport) {
+      mbfMines = await BoardGenerator.readFromMbfFile(mbfFileToImport);
     } else {
       Dialog.create({
         title: "Alert",
         message: "Please provide either a MBF Hex string or file to import",
       });
-      return;
+      return false;
     }
 
     if (this.board.variant === "board editor") {
@@ -215,9 +209,7 @@ class BoardImportExport {
 
     this.board.switchToEditMode();
 
-    mbfImportModal.value = false;
-    mbfStringToImport.value = "";
-    mbfFileToImport.value = null;
+    return true;
   }
 
   downloadRawVf() {

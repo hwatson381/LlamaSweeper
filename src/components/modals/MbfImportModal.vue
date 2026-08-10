@@ -21,7 +21,7 @@
           label="MBF Hex String"
           autofocus
           @update:model-value="mbfFileToImport = null"
-          @keyup.enter="game.board.boardImportExport.importMbfBoard()"
+          @keyup.enter="importMbfBoard"
         /><br />
         <q-file
           outlined
@@ -39,11 +39,7 @@
           </template>
         </q-file>
         <br />
-        <q-btn
-          @click="game.board.boardImportExport.importMbfBoard()"
-          color="primary"
-          >Load</q-btn
-        >
+        <q-btn @click="importMbfBoard" color="primary">Load</q-btn>
       </q-card-section>
 
       <q-card-actions align="right" class="text-primary">
@@ -54,16 +50,27 @@
 </template>
 
 <script setup>
-import {
-  mbfStringToImport,
-  mbfFileToImport,
-  mbfImportModal,
-} from "src/composables/useSettings";
+import { ref, inject } from "vue";
+import { mbfImportModal } from "src/composables/useSettings";
 
 defineOptions({
   name: "MbfImportModal",
 });
 
-import { inject } from "vue";
 const game = inject("game");
+const mbfStringToImport = ref("");
+const mbfFileToImport = ref(null);
+
+async function importMbfBoard() {
+  if (
+    await game.board.boardImportExport.importMbfBoard(
+      mbfStringToImport.value,
+      mbfFileToImport.value
+    )
+  ) {
+    mbfImportModal.value = false;
+    mbfStringToImport.value = "";
+    mbfFileToImport.value = null;
+  }
+}
 </script>

@@ -21,13 +21,9 @@
           v-model="pttaUrl"
           label="PTT URL"
           autofocus
-          @keyup.enter="game.board.boardImportExport.importPttaBoard()"
+          @keyup.enter="importPttaBoard"
         /><br />
-        <q-btn
-          @click="game.board.boardImportExport.importPttaBoard()"
-          color="primary"
-          >Load</q-btn
-        >
+        <q-btn @click="importPttaBoard" color="primary">Load</q-btn>
         <br /><br />Importing from minesweeper.online? Try enable the
         <RouterLink to="/wom-setting">LlamaSweeper ZiNi setting</RouterLink>.
       </q-card-section>
@@ -40,12 +36,20 @@
 </template>
 
 <script setup>
-import { pttaUrl, pttaImportModal } from "src/composables/useSettings";
+import { ref, inject } from "vue";
+import { pttaImportModal } from "src/composables/useSettings";
 
 defineOptions({
   name: "PttaImportModal",
 });
 
-import { inject } from "vue";
 const game = inject("game");
+const pttaUrl = ref("");
+
+function importPttaBoard() {
+  if (game.board.boardImportExport.importPttaBoard(pttaUrl.value)) {
+    pttaImportModal.value = false;
+    pttaUrl.value = "";
+  }
+}
 </script>

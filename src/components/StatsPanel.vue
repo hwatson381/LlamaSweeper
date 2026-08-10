@@ -455,9 +455,9 @@ body.body--dark .stats-click-table-container {
 </style>
 
 <script setup>
+import { ref, inject } from "vue";
 import {
   statsObject,
-  showStatsClicksTable,
   statsShow8Way,
   statsShowChain,
   statsShowWomZini,
@@ -479,6 +479,6 @@ defineOptions({
   name: "StatsPanel",
 });
 
-import { inject } from "vue";
 const game = inject("game");
+const showStatsClicksTable = ref(false);
 </script>
