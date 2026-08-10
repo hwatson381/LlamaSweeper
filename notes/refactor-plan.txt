@@ -1,3 +1,7 @@
+
+ # NOTICE
+This has largely been completed, and is just kept around for reference.
+
 ================================================================================
 PLAYPAGE.VUE REFACTORING PLAN
 ================================================================================
