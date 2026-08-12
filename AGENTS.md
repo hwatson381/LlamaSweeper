@@ -29,7 +29,7 @@ There are also a lot of quality of life features for advanced minesweeper player
 
 ## build notes
 
-Refer to scripts in package.json. Note some have :js for skipping the wasm recompilation. The primary dev has an unusual configuration with the project sitting in windows, but the vscode terminal using a bash shell in WSL2, other contributors will naturally have different setups.
+Refer to scripts in package.json. Note some have :js for skipping the wasm recompilation. The primary developer has an unusual configuration with the project sitting in windows, but the vscode terminal using a bash shell in WSL2, other contributors will naturally have different setups.
 
 ## validation
 
@@ -46,7 +46,7 @@ Notable directories
 - `/notes` messy personal notes on planned features, may be inaccurate.
 - `/public` static files (primarily images) to be served without additional compilation
 - `/src/assets` nothing particularly important in here
-- `/src/classes` bulk of the javascript code. `Board.js` is a key file that includes many of the others
+- `/src/classes` bulk of the javascript code. `Board.js` is a key file that imports many of the others
 - `/src/components` vue components, the majority will be used on `PlayPage.vue`
 - `/src/composables` vue composables, `useSettings.js` is a singleton module containing the majority of refs and saved localStorage settings
 - `/src/css` global css
@@ -62,7 +62,7 @@ Notable directories
 - `BoardInput.js` owns DOM-event normalisation, pointer and gesture state, and input dispatch.
 - `BoardActions.js` owns tile-state mutations, opening, flagging, chording, and win/loss handling.
 - `BoardRenderer.js`, `Tile.js`, and `SkinManager.js` own canvas drawing and board-skin assets.
-- `useSettings.js` owns persisted settings; `SettingsPanel.vue` exposes most board-related settings.
+- `useSettings.js` owns persisted settings and resets transient settings on PlayPage mount. `SettingsPanel.vue` exposes most board-related settings.
 - `PlayPage.vue` coordinates variants and the main board UI.
 
 ## Development preferences
