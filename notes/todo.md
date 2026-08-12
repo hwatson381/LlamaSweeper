@@ -600,6 +600,4 @@ Try adding high dpi canvas support? Although after refactoring
 
 Also consider renaming stuff to reduce the amount of BoardX. Could even just rename the property on Board, like how we have board.stats instead of board.boardStats
 
-Writing a good agents.md should also be done
-
-Also split out/clean up text docs
+Write a good agents.md

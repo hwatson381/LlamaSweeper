@@ -8,3 +8,5 @@ fixed readability issues on probability display and changed default settings
 Add more options for displaying, default is now alphabetical x-axis.
 
 Add option to export image (including stats panel)
+
+A lot of refactoring (probably broken something)
