@@ -26,6 +26,7 @@ class BoardStats {
       noGuess: false,
       hintsUsed: false,
       variant: null,
+      superClick: false, //superClick is the term used in rawvf for l-chord
     };
     this.statsWorkerManager = statsWorkerManager;
   }
@@ -133,6 +134,10 @@ class BoardStats {
 
   addVariantAttribute(variantInternalName) {
     this.attributes.variant = variantInternalName;
+  }
+
+  addSuperClickAttribute() {
+    this.attributes.superClick = true;
   }
 
   makeRepeatFlagsWasted() {

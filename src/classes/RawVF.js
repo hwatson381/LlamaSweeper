@@ -12,6 +12,8 @@ class RawVF {
     const boardWidth = boardStats.mines.length;
     const boardHeight = boardStats.mines[0].length
 
+    const isSuperClick = boardStats.attributes.superClick;
+
     let rawVfText = "";
 
     let description = "";
@@ -23,7 +25,7 @@ class RawVF {
     description += `Width: ${boardWidth}\n`
     description += `Height: ${boardHeight}\n`
     description += "Marks: Off\n"
-    description += "SuperClick: Off\n" //Off since we send chord as middle click even with the left click chord setting.
+    description += `SuperClick: ${isSuperClick ? "On" : "Off"}\n`
     description += `SquareSize: ${RAWVF_SQUARE_SIZE}\n` //May differ from real square size
     description += `Time: ${boardStats.endTime.toFixed(3)}\n`
     description += `Status: ${boardStats.isWin ? "won" : "loss"}\n`
@@ -81,7 +83,7 @@ class RawVF {
 
       if (clickNext) {
         //Take the current click and increment
-        events += this.getMouseClickEventLine(maybeClick, boardWidth, boardHeight);
+        events += this.getMouseClickEventLine(maybeClick, boardWidth, boardHeight, isSuperClick);
         clicksIndex++;
       } else {
         events += this.getMouseMoveEventLine(maybeMove, boardWidth, boardHeight);
@@ -211,15 +213,15 @@ class RawVF {
     <right_pressed> ::= r
     <middle_pressed> ::= m
   */
-  static getMouseClickEventLine(click, boardWidth, boardHeight) {
+  static getMouseClickEventLine(click, boardWidth, boardHeight, isSuperClick) {
     const elapsedTime = click.time.toFixed(3);
 
     //Our click events map to multiple rawVF events because we don't store mouseup/down currently
     const typeMap = {
       left: ['lc', 'lr'],
       wasted_left: ['lc', 'lr'],
-      chord: ['mc', 'mr'], //Use middle click for chords, previously we sent left clicks, but on l+r this meant chord on unrevealed mine would blast
-      wasted_chord: ['mc', 'mr'],
+      chord: isSuperClick ? ['lc', 'lr'] : ['mc', 'mr'], //Send chords as left click for l-chord and middle for l+r (this preserves properties of each, as we've had bugs before where l+r was sent as left and then blasted on top of mines instead of protecting)
+      wasted_chord: isSuperClick ? ['lc', 'lr'] : ['mc', 'mr'],
       right: ['rc', 'rr'],
       wasted_right: ['rc', 'rr']
     }

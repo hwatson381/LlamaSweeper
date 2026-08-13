@@ -180,7 +180,7 @@ let customWarning = computed(() => {
 
 let variant = ref("normal"); //Declare to safe value here, but in PlayPage.vue we initialise it based on the route
 
-let chordingButtons = useLocalStorage("ls_chordingButtons", "l");
+let chordingButtons = useLocalStorage("ls_chordingButtons", "l"); //l|l+r
 let zeroStart = useLocalStorage("ls_zeroStart", true);
 let noGuessing = useLocalStorage("ls_noGuessing", false);
 let noGuessingMaxAttempts = useLocalStorage("ls_noGuessingMaxAttempts", 10000);

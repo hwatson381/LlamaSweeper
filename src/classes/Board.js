@@ -45,6 +45,7 @@ import {
   replayIsShown,
   reorderZini,
   ziniRunnerActive,
+  chordingButtons
 } from "src/composables/useSettings";
 
 class Board {
@@ -524,6 +525,9 @@ class Board {
       this.stats.addNoGuessAttribute();
     }
     this.stats.addVariantAttribute(this.variant);
+    if (chordingButtons.value === 'l') {
+      this.stats.addSuperClickAttribute(); //they could just change during a game, but not important enough for that to force a reset
+    }
     this.boardStartTime = performance.now();
     this.boardRenderer.clearTimerTimeout(); //defensive as it should already be disabled since we reset board.
     this.boardRenderer.updateTimerSetTimeoutHandle = setTimeout(
