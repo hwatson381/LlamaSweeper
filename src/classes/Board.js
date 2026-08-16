@@ -521,7 +521,7 @@ class Board {
     this.resetTiles();
 
     this.stats = new BoardStats(this.mines, statsWorkerManager);
-    if (noGuessing.value && this.variant !== "eff boards") {
+    if (noGuessing.value && this.variant !== "eff boards" && this.variant !== "board editor") {
       this.stats.addNoGuessAttribute();
     }
     this.stats.addVariantAttribute(this.variant);
