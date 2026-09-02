@@ -738,101 +738,80 @@ class Algorithms {
       //Square outside board
       return;
     }
+
     if (openingLabels[x][y] === newLabel) {
       //Square has already been included in this opening
       return;
     }
 
-    if (numbersArray[x][y] !== 0) {
-      openingLabels[x][y] = "+"; //Squares that are on the edge of an opening
-      //Also add as an edge to preprocessedOpenings
-      const preprocessedOpening = preprocessedOpenings.get(newLabel);
-      //Add to edges of the opening provided it hasn't already been included
-      if (
-        !preprocessedOpening.edges.some(
-          (edgeSquare) => edgeSquare.x === x && edgeSquare.y === y
-        )
-      ) {
-        preprocessedOpening.edges.push({ x, y });
+    const queueX = [x];
+    const queueY = [y];
+    let queueIndex = 0;
+
+    const preprocessedOpening = preprocessedOpenings.get(newLabel);
+
+    while (queueIndex < queueX.length) {
+      const currentX = queueX[queueIndex];
+      const currentY = queueY[queueIndex];
+      queueIndex++;
+
+      if (openingLabels[currentX]?.[currentY] === undefined) {
+        //Square outside board
+        continue;
       }
 
-      return;
-    } else if (numbersArray[x][y] === 0) {
-      openingLabels[x][y] = newLabel;
-      const preprocessedOpening = preprocessedOpenings.get(newLabel);
-      preprocessedOpening.zeros.push({ x, y });
-      //Flood square
-      this.floodOpeningForProcessing(
-        x - 1,
-        y - 1,
-        mines,
-        openingLabels,
-        numbersArray,
-        preprocessedOpenings,
-        newLabel
+      if (openingLabels[currentX][currentY] === newLabel) {
+        //Square has already been included in this opening
+        continue;
+      }
+
+      if (numbersArray[currentX][currentY] !== 0) {
+        openingLabels[currentX][currentY] = "+";
+
+        //Add to edges of the opening provided it hasn't already been included
+        if (
+          !preprocessedOpening.edges.some(
+            (edgeSquare) =>
+              edgeSquare.x === currentX && edgeSquare.y === currentY
+          )
+        ) {
+          preprocessedOpening.edges.push({
+            x: currentX,
+            y: currentY,
+          });
+        }
+
+        continue;
+      }
+
+      //Zero square
+      openingLabels[currentX][currentY] = newLabel;
+      preprocessedOpening.zeros.push({
+        x: currentX,
+        y: currentY,
+      });
+
+      // Preserve the same eight-neighbour connectivity.
+      queueX.push(
+        currentX - 1,
+        currentX - 1,
+        currentX - 1,
+        currentX,
+        currentX,
+        currentX + 1,
+        currentX + 1,
+        currentX + 1
       );
-      this.floodOpeningForProcessing(
-        x - 1,
-        y,
-        mines,
-        openingLabels,
-        numbersArray,
-        preprocessedOpenings,
-        newLabel
-      );
-      this.floodOpeningForProcessing(
-        x - 1,
-        y + 1,
-        mines,
-        openingLabels,
-        numbersArray,
-        preprocessedOpenings,
-        newLabel
-      );
-      this.floodOpeningForProcessing(
-        x,
-        y - 1,
-        mines,
-        openingLabels,
-        numbersArray,
-        preprocessedOpenings,
-        newLabel
-      );
-      this.floodOpeningForProcessing(
-        x,
-        y + 1,
-        mines,
-        openingLabels,
-        numbersArray,
-        preprocessedOpenings,
-        newLabel
-      );
-      this.floodOpeningForProcessing(
-        x + 1,
-        y - 1,
-        mines,
-        openingLabels,
-        numbersArray,
-        preprocessedOpenings,
-        newLabel
-      );
-      this.floodOpeningForProcessing(
-        x + 1,
-        y,
-        mines,
-        openingLabels,
-        numbersArray,
-        preprocessedOpenings,
-        newLabel
-      );
-      this.floodOpeningForProcessing(
-        x + 1,
-        y + 1,
-        mines,
-        openingLabels,
-        numbersArray,
-        preprocessedOpenings,
-        newLabel
+
+      queueY.push(
+        currentY - 1,
+        currentY,
+        currentY + 1,
+        currentY - 1,
+        currentY + 1,
+        currentY - 1,
+        currentY,
+        currentY + 1
       );
     }
   }
@@ -1695,7 +1674,7 @@ class Algorithms {
     //Create board structure needed by mstoollib
     /*
       https://docs.rs/ms_toollib/latest/ms_toollib/index.html
-      
+
       numbers (translated)
       0   Represents empty
       1   to 8represent the numbers 1 to 8

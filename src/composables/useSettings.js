@@ -172,9 +172,9 @@ let customWarning = computed(() => {
   if (customMines.value > customWidth.value * customHeight.value - 1) {
     return "Too many mines!";
   }
-  if (customWidth.value * customHeight.value >= 900) {
-    return "Large board! May be laggy - sorry! Hope to fix eventually...";
-  }
+  // if (customWidth.value * customHeight.value >= 900) {
+  //   return "Large board! May be laggy - sorry! Hope to fix eventually...";
+  // }
   return "";
 });
 

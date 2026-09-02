@@ -316,7 +316,7 @@ class BoardActions {
     }
   }
 
-  openTile(x, y, hasSoundEffect = false) {
+  openTile(x, y, hasSoundEffect = false, deferZeroExpansion = false) {
     if (!this.board.checkCoordsInBounds(x, y)) {
       return; //ignore squares outside board
     }
@@ -357,7 +357,10 @@ class BoardActions {
         if (this.board.variant === "mean openings") {
           this.board.meanOpenings.unprocessedMeanZeros.push({ x, y });
         }
-        this.chord(x, y, false);
+        // this.chord(x, y, false);
+        if (!deferZeroExpansion) {
+          this.openZeroArea(x, y);
+        }
       }
 
       if (this.board.gameStage === "running") {
@@ -368,6 +371,57 @@ class BoardActions {
     if (this.board.boardHint.hintActive) {
       const suppressDraw = true;
       this.board.boardHint.hideHint(suppressDraw);
+    }
+  }
+
+  openZeroArea(startX, startY) {
+    const width = this.board.tilesArray.length;
+    const height = this.board.tilesArray[0].length;
+
+    const queue = [startX * height + startY];
+    let head = 0;
+
+    while (head < queue.length) {
+      const index = queue[head++];
+      const x = Math.floor(index / height);
+      const y = index % height;
+
+      for (let i = x - 1; i <= x + 1; i++) {
+        if (i < 0 || i >= width) {
+          continue;
+        }
+
+        for (let j = y - 1; j <= y + 1; j++) {
+          if (j < 0 || j >= height || (i === x && j === y)) {
+            continue;
+          }
+
+          const tile = this.board.tilesArray[i][j];
+
+          if (tile.state === CONSTANTS.FLAG) {
+            tile.state = CONSTANTS.UNREVEALED;
+            this.board.unflagged++;
+          }
+
+          const isChordableMeanMine =
+            this.board.variant === "mean openings" &&
+            meanMineClickBehaviour.value === "chordable" &&
+            this.board.meanOpenings.meanMineStates[i][j].isMine &&
+            this.board.meanOpenings.meanMineStates[i][j].isActive;
+
+          if (
+            tile.state === CONSTANTS.UNREVEALED &&
+            !isChordableMeanMine
+          ) {
+            // Prevent openTile() from recursively starting another zero expansion.
+            this.openTile(i, j, false, true);
+
+            if (this.board.tilesArray[i][j].state === 0) {
+              queue.push(i * height + j);
+            }
+          }
+        }
+      }
     }
   }
 
