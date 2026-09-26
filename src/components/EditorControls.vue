@@ -1,5 +1,5 @@
 <template>
-  <q-card flat bordered style="max-width: 550px">
+  <q-card flat bordered style="max-width: 650px">
     <q-card-section>
       <div class="flex q-mb-md" style="gap: 15px">
         <q-input
@@ -118,6 +118,13 @@
           "
           color="primary"
           label="DeepChain ZiNi"
+        />
+        <q-btn
+          v-if="variant === 'zini explorer'"
+          @click="game.board.boardImportExport.sendToOptimalZiNi()"
+          color="secondary"
+          label="Optimal ZiNi"
+          icon-right="open_in_new"
         />
       </div>
     </q-card-section>

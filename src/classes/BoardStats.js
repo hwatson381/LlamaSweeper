@@ -214,6 +214,24 @@ class BoardStats {
     return link.href;
   }
 
+  getOptimalZiNiLink() {
+    let link = new URL(
+      "https://min-clicks.netlify.app/"
+    );
+
+    let boardDimensions = Algorithms.getPttaDimensionString(this.mines);
+
+    link.searchParams.set("b", boardDimensions);
+
+    const totalMines = this.mines.flat().filter((s) => s).length;
+
+    if (totalMines != 0) {
+      link.searchParams.set("m", Algorithms.getPttaMinesString(this.mines));
+    }
+
+    return link.href;
+  }
+
   calcStats(isWin, tilesArray) {
     const time = this.endTime;
     this.calc3bv(tilesArray);
@@ -276,6 +294,7 @@ class BoardStats {
     const corr = totalEffectiveClicks / totalClicks;
 
     const pttaLink = this.getPttaLink();
+    const optimalZiNiLink = this.getOptimalZiNiLink();
 
     statsObject.value = {};
 
@@ -295,6 +314,7 @@ class BoardStats {
       statsObject.value.cWomZini = null;
       statsObject.value.cWomHzini = null;
       statsObject.value.pttaLink = pttaLink;
+      statsObject.value.optimalZiNiLink = optimalZiNiLink;
       statsObject.value.deepZini = null;
       statsObject.value.stnb = stnb !== null ? stnb.toFixed(3) : null;
       statsObject.value.thrp = Math.round(thrp);
@@ -318,6 +338,7 @@ class BoardStats {
       statsObject.value.cWomZini = null;
       statsObject.value.cWomHzini = null;
       statsObject.value.pttaLink = pttaLink;
+      statsObject.value.optimalZiNiLink = optimalZiNiLink;
       statsObject.value.deepZini = null;
       statsObject.value.stnb = stnb !== null ? stnb.toFixed(3) : null;
       statsObject.value.thrp = Math.round(thrp);

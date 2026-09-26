@@ -46,6 +46,7 @@ let statsObject = ref({
   cWomHzini: null, //not really used
   bestZini: null,
   pttaLink: null,
+  optimalZiNiLink: null,
   deepZini: null,
   stnb: null,
   thrp: null,

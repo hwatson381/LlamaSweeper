@@ -78,6 +78,16 @@ class BoardImportExport {
     }
   }
 
+  sendToOptimalZiNi() {
+    if (this.board.variant === "zini explorer") {
+      //Need to compute optimal ZiNi link. Kinda hacky for zini explorer...
+      let tempBoardStats = new BoardStats(this.board.mines, null);
+      window.open(tempBoardStats.getOptimalZiNiLink(), "_blank").focus();
+    } else {
+      window.open(statsObject.value.optimalZiNiLink, "_blank").focus();
+    }
+  }
+
   sendToMsCoach() {
     let msCoachParams = Algorithms.getCompressedData(
       this.board.tilesArray,
