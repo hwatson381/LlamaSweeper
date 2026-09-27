@@ -28,6 +28,8 @@ pub struct ChordModel {
     /// Border candidates of each opening. Chording any of them opens the whole opening,
     /// which reveals every other border cell too.
     pub opening_borders: Vec<Vec<usize>>,
+    /// Openings each candidate borders (the inverse of `opening_borders`).
+    pub openings_bordered: Vec<Vec<usize>>,
     pub mine_cells: Vec<usize>,
     /// For each mine, the candidates whose chord needs that mine flagged.
     pub flag_needed_by: Vec<Vec<usize>>,
@@ -103,6 +105,13 @@ impl ChordModel {
         }
 
         let mine_cells: Vec<usize> = (0..cells).filter(|&cell| mines[cell]).collect();
+        let mut openings_bordered: Vec<Vec<usize>> = vec![Vec::new(); candidate_cells.len()];
+        for (opening, border) in opening_borders.iter().enumerate() {
+            for &candidate in border {
+                openings_bordered[candidate].push(opening);
+            }
+        }
+
         let flag_needed_by: Vec<Vec<usize>> = mine_cells
             .iter()
             .map(|&mine| cells_to_candidates(adjacent_cells[mine].iter().copied(), &candidate_of_cell))
@@ -132,6 +141,7 @@ impl ChordModel {
             candidate_of_cell,
             adjacent_candidates,
             opening_borders,
+            openings_bordered,
             mine_cells,
             flag_needed_by,
             bbbv_solved_by,
@@ -160,6 +170,7 @@ impl ChordModel {
         }
         result.adjacent_candidates = order.iter().map(|&old| remap(&self.adjacent_candidates[old])).collect();
         result.opening_borders = remap_all(&self.opening_borders);
+        result.openings_bordered = order.iter().map(|&old| self.openings_bordered[old].clone()).collect();
         result.flag_needed_by = remap_all(&self.flag_needed_by);
         result.bbbv_solved_by = remap_all(&self.bbbv_solved_by);
         result

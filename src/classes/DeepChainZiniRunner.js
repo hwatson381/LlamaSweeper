@@ -32,8 +32,8 @@ class DeepChainZiniRunner {
     ziniRunnerTitle.value = isDoms
       ? "Running DOMS ZiNi"
       : "Running DeepChain ZiNi";
-    ziniRunnerExpectedDuration.value = isDoms ? "unknown" : "calculating...";
-    ziniRunnerExpectedFinishTime.value = isDoms ? "unknown" : "calculating...";
+    ziniRunnerExpectedDuration.value = "calculating...";
+    ziniRunnerExpectedFinishTime.value = "calculating...";
     ziniRunnerIterationsDisplay.value = "";
     ziniRunnerPercentageProgress.value = "0%";
 
@@ -92,6 +92,9 @@ class DeepChainZiniRunner {
       case "timing-run-done":
         this.timingRunDone(message.timingRun);
         break;
+      case "eta-update":
+        this.etaUpdate(message.totalSeconds, message.remainingSeconds);
+        break;
       case "board-progress":
         this.updateBoardProgress(message.clicks);
         break;
@@ -118,6 +121,11 @@ class DeepChainZiniRunner {
   timingRunDone(timingRun) {
     ziniRunnerExpectedDuration.value = Utils.formatTime(timingRun);
     ziniRunnerExpectedFinishTime.value = Utils.timeInFuture(timingRun);
+  }
+
+  etaUpdate(totalSeconds, remainingSeconds) {
+    ziniRunnerExpectedDuration.value = Utils.formatTime(totalSeconds);
+    ziniRunnerExpectedFinishTime.value = Utils.timeInFuture(remainingSeconds);
   }
 
   updateBoardProgress(clicks) {

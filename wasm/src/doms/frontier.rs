@@ -15,10 +15,10 @@
 //! * +1 when a chain can no longer grow (its seed left click).
 
 use super::model::ChordModel;
-use super::order::choose_sweep_order;
+use super::order::{choose_sweep_order, coverage, cut_widths};
 use super::prune::prune_dominated;
-use super::table::{set_bit, test_bit, ConnectivityPool, StateTable};
-use super::DomsError;
+use super::table::{set_bit, test_bit, ConnectivityPool, Lookup, StateTable};
+use super::{DomsError, DomsProgress};
 
 pub struct FrontierOutcome {
     /// Chorded candidates, as indexes into the original (unordered) model.
@@ -83,12 +83,6 @@ impl FactorLayout {
 /// other borders of any opening it borders.
 fn later_reveals(model: &ChordModel, candidate_words: usize) -> Vec<u64> {
     let candidate_count = model.candidate_cells.len();
-    let mut openings_bordered: Vec<Vec<usize>> = vec![Vec::new(); candidate_count];
-    for (opening, border) in model.opening_borders.iter().enumerate() {
-        for &candidate in border {
-            openings_bordered[candidate].push(opening);
-        }
-    }
     let mut reveals = vec![0u64; candidate_count * candidate_words];
     for candidate in 0..candidate_count {
         let row = &mut reveals[candidate * candidate_words..(candidate + 1) * candidate_words];
@@ -97,7 +91,7 @@ fn later_reveals(model: &ChordModel, candidate_words: usize) -> Vec<u64> {
                 set_bit(row, other);
             }
         }
-        for &opening in &openings_bordered[candidate] {
+        for &opening in &model.openings_bordered[candidate] {
             for &other in &model.opening_borders[opening] {
                 if other > candidate {
                     set_bit(row, other);
@@ -188,7 +182,7 @@ pub fn solve_frontier(
     original: &ChordModel,
     max_states: usize,
     dominance_comparisons: u64,
-    progress: &mut dyn FnMut(usize, usize, usize),
+    progress: &mut dyn FnMut(DomsProgress),
 ) -> Result<FrontierOutcome, DomsError> {
     let (model, sweep_order) = choose_sweep_order(original);
     let candidate_count = model.candidate_cells.len();
@@ -196,24 +190,30 @@ pub fn solve_frontier(
     let factors = FactorLayout::new(&model);
     let factor_words = factors.factor_words;
     let reveals = later_reveals(&model, candidate_words);
+    progress(DomsProgress::Plan { cut_widths: &cut_widths(&model) });
 
-    // Frontier width after each candidate, only used for reporting.
-    let last_adjacent: Vec<usize> = (0..candidate_count)
-        .map(|c| model.adjacent_candidates[c].iter().copied().filter(|&other| other > c).max().unwrap_or(c))
+    // Candidates still waiting on an adjacent candidate, plus partly decided openings, after each
+    // candidate. Only used for reporting.
+    let mut boundary_intervals: Vec<(usize, usize)> = (0..candidate_count)
+        .filter_map(|c| {
+            let last = model.adjacent_candidates[c].iter().copied().filter(|&other| other > c).max()?;
+            Some((c, last - 1))
+        })
         .collect();
-    let boundary_size = |candidate: usize| -> usize {
-        let waiting_candidates = (0..=candidate).filter(|&c| last_adjacent[c] > candidate).count();
-        let open_openings = model
+    boundary_intervals.extend(
+        model
             .opening_borders
             .iter()
-            .filter(|border| !border.is_empty() && border[0] <= candidate && candidate < border[border.len() - 1])
-            .count();
-        waiting_candidates + open_openings
-    };
+            .filter(|border| border.len() > 1 && border[0] < border[border.len() - 1])
+            .map(|border| (border[0], border[border.len() - 1] - 1)),
+    );
+    let boundary_sizes = coverage(&boundary_intervals, candidate_count);
 
     let mut table = StateTable::new(factor_words, candidate_words);
     table.reserve(16);
-    table.insert(0, &vec![0u64; factor_words], model.bbbv() as i32, &vec![0u64; candidate_words]);
+    if let Lookup::Vacant(slot) = table.lookup(0, &vec![0u64; factor_words]) {
+        table.insert_vacant(slot, 0, &vec![0u64; factor_words], model.bbbv() as i32, &vec![0u64; candidate_words]);
+    }
     let mut pool = ConnectivityPool::with_capacity(1);
     let mut peak_states = 1usize;
     let mut max_boundary = 0usize;
@@ -272,14 +272,15 @@ pub fn solve_frontier(
                 }
                 let (next_connectivity, finished_chains) = transition[chorded];
                 let next_cost = old_cost + chorded as i32 + finished_chains + factor_delta;
-                match next.find(next_connectivity, &next_hits) {
-                    None => {
-                        let inserted = next.insert(next_connectivity, &next_hits, next_cost, table.chords(entry));
+                match next.lookup(next_connectivity, &next_hits) {
+                    Lookup::Vacant(slot) => {
+                        let inserted =
+                            next.insert_vacant(slot, next_connectivity, &next_hits, next_cost, table.chords(entry));
                         if chorded == 1 {
                             set_bit(next.chords_mut(inserted), candidate);
                         }
                     }
-                    Some(found) => {
+                    Lookup::Found(found) => {
                         if next_cost < next.cost(found) {
                             next.set_cost(found, next_cost);
                             next.chords_mut(found).copy_from_slice(table.chords(entry));
@@ -302,9 +303,9 @@ pub fn solve_frontier(
         pool = next_pool;
 
         peak_states = peak_states.max(table.len());
-        max_boundary = max_boundary.max(boundary_size(candidate));
+        max_boundary = max_boundary.max(boundary_sizes[candidate] as usize);
         max_active_factors = max_active_factors.max(active.iter().map(|word| word.count_ones() as usize).sum());
-        progress(candidate + 1, candidate_count, table.len());
+        progress(DomsProgress::Layer { processed: candidate + 1, total: candidate_count, states: table.len() });
 
         if table.len() > max_states {
             return Err(DomsError::StateLimitExceeded {

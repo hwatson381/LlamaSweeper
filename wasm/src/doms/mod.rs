@@ -32,7 +32,7 @@ pub enum DomsError {
     StateLimitExceeded { states: usize, processed: usize, candidates: usize },
     /// Bad input, such as a mine layout that doesn't match the board size.
     Invalid(String),
-    /// A self-check failed, which indicates a solver bug.
+    /// A self-check or board setup failed, which indicates a bug.
     Internal(String),
 }
 
@@ -52,8 +52,16 @@ impl fmt::Display for DomsError {
 
 impl From<String> for DomsError {
     fn from(message: String) -> Self {
-        DomsError::Invalid(message)
+        DomsError::Internal(message)
     }
+}
+
+pub enum DomsProgress<'a> {
+    /// Sent once before the DP starts: frontier width after each candidate, which predicts
+    /// where the slow part of the sweep will be.
+    Plan { cut_widths: &'a [i32] },
+    /// Sent after each candidate is decided.
+    Layer { processed: usize, total: usize, states: usize },
 }
 
 #[derive(Debug, Default, Clone)]
@@ -105,11 +113,10 @@ fn to_result(board: &Board, model: &ChordModel, solution: solution::Solution) ->
 }
 
 /// Board must already have been through `initialize_all`.
-/// `progress(processed, total, states)` is called after each candidate is decided.
 pub fn solve_board(
     board: &Board,
     max_states: usize,
-    progress: &mut dyn FnMut(usize, usize, usize),
+    progress: &mut dyn FnMut(DomsProgress),
 ) -> Result<DomsResult, DomsError> {
     let model = ChordModel::from_board(board);
     let outcome = frontier::solve_frontier(&model, max_states, DEFAULT_DOMINANCE_COMPARISONS, progress)?;
@@ -135,7 +142,7 @@ pub fn solve_mines(
     height: usize,
     mines: &[u8],
     max_states: usize,
-    progress: &mut dyn FnMut(usize, usize, usize),
+    progress: &mut dyn FnMut(DomsProgress),
 ) -> Result<DomsResult, DomsError> {
     if width == 0 || height == 0 || mines.len() != width * height {
         return Err(DomsError::Invalid(format!(

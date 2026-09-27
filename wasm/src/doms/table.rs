@@ -4,8 +4,6 @@
 //! set of candidates chorded to get there. Bitset widths are fixed for a whole solve, so states
 //! live in flat fixed-stride arrays rather than as individually allocated bitsets.
 
-use rustc_hash::FxHashMap;
-
 /// SplitMix64-style mixing, matching the reference implementation.
 pub fn hash_combine(seed: u64, mut value: u64) -> u64 {
     value ^= value >> 30;
@@ -19,6 +17,19 @@ pub fn hash_combine(seed: u64, mut value: u64) -> u64 {
         .wrapping_add(seed >> 2)
 }
 
+fn hash_words(seed: u64, words: &[u64]) -> usize {
+    words.iter().fold(hash_combine(0, seed), |hash, &word| hash_combine(hash, word)) as usize
+}
+
+/// Smallest power-of-two slot count that keeps `count` entries under 3/4 load.
+fn slot_capacity(count: usize) -> usize {
+    let mut capacity = 8usize;
+    while capacity - capacity / 4 < count {
+        capacity *= 2;
+    }
+    capacity
+}
+
 pub fn set_bit(bits: &mut [u64], position: usize) {
     bits[position / 64] |= 1u64 << (position % 64);
 }
@@ -27,46 +38,88 @@ pub fn test_bit(bits: &[u64], position: usize) -> bool {
     (bits[position / 64] >> (position % 64)) & 1 == 1
 }
 
+const EMPTY: u32 = u32::MAX;
+
 /// Interns connectivity signatures so each state only stores a `u32` id.
 ///
 /// A signature has one bitset per unfinished chain: the undecided candidates that chain can
 /// still reveal. The bitsets are sorted and concatenated so equal chain sets compare equal.
 /// Id 0 is always the empty signature (no unfinished chains).
 pub struct ConnectivityPool {
-    ids: FxHashMap<Vec<u64>, u32>,
-    by_id: Vec<Vec<u64>>,
+    /// All signatures back to back; id `i` is `words[starts[i]..starts[i + 1]]`.
+    words: Vec<u64>,
+    starts: Vec<usize>,
+    /// Open-addressed index of ids by signature.
+    slots: Vec<u32>,
 }
 
 impl ConnectivityPool {
     pub fn with_capacity(capacity: usize) -> Self {
+        let mut starts = Vec::with_capacity(capacity + 1);
+        starts.push(0);
         let mut pool = ConnectivityPool {
-            ids: FxHashMap::with_capacity_and_hasher(capacity, Default::default()),
-            by_id: Vec::with_capacity(capacity),
+            words: Vec::new(),
+            starts,
+            slots: vec![EMPTY; slot_capacity(capacity)],
         };
         pool.intern(&[]);
         pool
     }
 
+    fn hash(signature: &[u64]) -> usize {
+        hash_words(signature.len() as u64, signature)
+    }
+
     pub fn intern(&mut self, signature: &[u64]) -> u32 {
-        if let Some(&id) = self.ids.get(signature) {
-            return id;
+        if (self.len() + 1) * 4 > self.slots.len() * 3 {
+            self.rehash(self.slots.len() * 2);
         }
-        let id = self.by_id.len() as u32;
-        self.by_id.push(signature.to_vec());
-        self.ids.insert(signature.to_vec(), id);
+        let mask = self.slots.len() - 1;
+        let mut slot = Self::hash(signature) & mask;
+        loop {
+            let id = self.slots[slot];
+            if id == EMPTY {
+                break;
+            }
+            if self.get(id) == signature {
+                return id;
+            }
+            slot = (slot + 1) & mask;
+        }
+        let id = self.len() as u32;
+        self.words.extend_from_slice(signature);
+        self.starts.push(self.words.len());
+        self.slots[slot] = id;
         id
     }
 
     pub fn get(&self, id: u32) -> &[u64] {
-        &self.by_id[id as usize]
+        &self.words[self.starts[id as usize]..self.starts[id as usize + 1]]
     }
 
     pub fn len(&self) -> usize {
-        self.by_id.len()
+        self.starts.len() - 1
+    }
+
+    fn rehash(&mut self, capacity: usize) {
+        let mut slots = vec![EMPTY; capacity];
+        let mask = capacity - 1;
+        for id in 0..self.len() as u32 {
+            let mut slot = Self::hash(self.get(id)) & mask;
+            while slots[slot] != EMPTY {
+                slot = (slot + 1) & mask;
+            }
+            slots[slot] = id;
+        }
+        self.slots = slots;
     }
 }
 
-const EMPTY: u32 = u32::MAX;
+pub enum Lookup {
+    Found(usize),
+    /// Slot to pass to `insert_vacant`.
+    Vacant(usize),
+}
 
 /// Open-addressed hash table of `(connectivity id, factor hits) -> (cost, chords)`.
 /// States are only inserted before pruning and only erased during it, so erasing just marks the
@@ -145,21 +198,18 @@ impl StateTable {
         self.alive.reserve(count);
         self.factor_hits.reserve(count.saturating_mul(self.factor_words));
         self.chords.reserve(count.saturating_mul(self.candidate_words));
-        let mut capacity = 8usize;
-        while capacity - capacity / 4 < count {
-            capacity *= 2;
-        }
+        let capacity = slot_capacity(count);
         if capacity > self.slots.len() {
             self.rehash(capacity);
         }
     }
 
     fn hash(connectivity_id: u32, factor_hits: &[u64]) -> usize {
-        let mut hash = hash_combine(0, connectivity_id as u64);
-        for &word in factor_hits {
-            hash = hash_combine(hash, word);
-        }
-        hash as usize
+        hash_words(connectivity_id as u64, factor_hits)
+    }
+
+    fn matches(&self, entry: usize, connectivity_id: u32, factor_hits: &[u64]) -> bool {
+        self.alive[entry] && self.connectivity_ids[entry] == connectivity_id && self.factor_hits(entry) == factor_hits
     }
 
     pub fn find(&self, connectivity_id: u32, factor_hits: &[u64]) -> Option<usize> {
@@ -173,36 +223,42 @@ impl StateTable {
             if entry == EMPTY {
                 return None;
             }
-            let entry = entry as usize;
-            if self.alive[entry]
-                && self.connectivity_ids[entry] == connectivity_id
-                && self.factor_hits(entry) == factor_hits
-            {
-                return Some(entry);
+            if self.matches(entry as usize, connectivity_id, factor_hits) {
+                return Some(entry as usize);
             }
             slot = (slot + 1) & mask;
         }
     }
 
-    /// Callers must check `find` first; duplicates are not detected here.
-    pub fn insert(&mut self, connectivity_id: u32, factor_hits: &[u64], cost: i32, chords: &[u64]) -> usize {
+    /// Like `find`, but grows the table first so a `Vacant` slot can be filled straight away.
+    pub fn lookup(&mut self, connectivity_id: u32, factor_hits: &[u64]) -> Lookup {
         if self.slots.is_empty() {
             self.rehash(8);
         } else if (self.used_slots + 1) * 4 > self.slots.len() * 3 {
             self.rehash(self.slots.len() * 2);
         }
+        let mask = self.slots.len() - 1;
+        let mut slot = Self::hash(connectivity_id, factor_hits) & mask;
+        loop {
+            let entry = self.slots[slot];
+            if entry == EMPTY {
+                return Lookup::Vacant(slot);
+            }
+            if self.matches(entry as usize, connectivity_id, factor_hits) {
+                return Lookup::Found(entry as usize);
+            }
+            slot = (slot + 1) & mask;
+        }
+    }
+
+    /// `slot` must come from the immediately preceding `lookup` for this state.
+    pub fn insert_vacant(&mut self, slot: usize, connectivity_id: u32, factor_hits: &[u64], cost: i32, chords: &[u64]) -> usize {
         let entry = self.connectivity_ids.len();
         self.connectivity_ids.push(connectivity_id);
         self.costs.push(cost);
         self.factor_hits.extend_from_slice(factor_hits);
         self.chords.extend_from_slice(chords);
         self.alive.push(true);
-
-        let mask = self.slots.len() - 1;
-        let mut slot = Self::hash(connectivity_id, factor_hits) & mask;
-        while self.slots[slot] != EMPTY {
-            slot = (slot + 1) & mask;
-        }
         self.slots[slot] = entry as u32;
         self.used_slots += 1;
         self.live += 1;

@@ -78,39 +78,54 @@ fn connectivity_coarsens(coarse: &[u64], fine: &[u64], signature_words: usize) -
     if coarse_count == 0 {
         return fine_count == 0;
     }
-    let range = |index: usize| index * signature_words..(index + 1) * signature_words;
-    let contains = |c: usize, f: usize| is_subset(&fine[range(f)], &coarse[range(c)]);
-
     if fine_count <= 64 {
-        let mut eligible = vec![0u64; coarse_count];
-        let mut represented = 0u64;
-        for c in 0..coarse_count {
-            for f in 0..fine_count {
-                if contains(c, f) {
-                    eligible[c] |= 1u64 << f;
-                }
+        coarsens_by_mask(coarse, fine, signature_words)
+    } else {
+        coarsens_general(coarse, fine, signature_words)
+    }
+}
+
+fn chain_contains(coarse: &[u64], fine: &[u64], signature_words: usize, c: usize, f: usize) -> bool {
+    let range = |index: usize| index * signature_words..(index + 1) * signature_words;
+    is_subset(&fine[range(f)], &coarse[range(c)])
+}
+
+/// Matching with each coarse chain's eligible fine chains as a bitmask (at most 64 fine chains).
+fn coarsens_by_mask(coarse: &[u64], fine: &[u64], signature_words: usize) -> bool {
+    let coarse_count = coarse.len() / signature_words;
+    let fine_count = fine.len() / signature_words;
+    let mut eligible = vec![0u64; coarse_count];
+    let mut represented = 0u64;
+    for c in 0..coarse_count {
+        for f in 0..fine_count {
+            if chain_contains(coarse, fine, signature_words, c, f) {
+                eligible[c] |= 1u64 << f;
             }
-            represented |= eligible[c];
         }
-        let all_fine = if fine_count == 64 { u64::MAX } else { (1u64 << fine_count) - 1 };
-        if represented != all_fine {
+        represented |= eligible[c];
+    }
+    let all_fine = if fine_count == 64 { u64::MAX } else { (1u64 << fine_count) - 1 };
+    if represented != all_fine {
+        return false;
+    }
+    let mut fine_match = vec![-1i32; fine_count];
+    for c in 0..coarse_count {
+        let mut seen = 0u64;
+        if !kuhn_augment_mask(c, &eligible, &mut seen, &mut fine_match) {
             return false;
         }
-        let mut fine_match = vec![-1i32; fine_count];
-        for c in 0..coarse_count {
-            let mut seen = 0u64;
-            if !kuhn_augment_mask(c, &eligible, &mut seen, &mut fine_match) {
-                return false;
-            }
-        }
-        return true;
     }
+    true
+}
 
+fn coarsens_general(coarse: &[u64], fine: &[u64], signature_words: usize) -> bool {
+    let coarse_count = coarse.len() / signature_words;
+    let fine_count = fine.len() / signature_words;
     let mut eligible = vec![vec![false; fine_count]; coarse_count];
     for f in 0..fine_count {
         let mut represented = false;
         for c in 0..coarse_count {
-            eligible[c][f] = contains(c, f);
+            eligible[c][f] = chain_contains(coarse, fine, signature_words, c, f);
             represented |= eligible[c][f];
         }
         if !represented {
@@ -357,4 +372,76 @@ pub fn prune_dominated(
         }
     }
     removed
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::table::set_bit;
+    use super::*;
+    use rand::rngs::StdRng;
+    use rand::{Rng, SeedableRng};
+
+    /// Random fine chains, and a coarse signature made by grouping them (always a valid coarsening).
+    fn random_signatures(rng: &mut StdRng, fine_count: usize, words: usize) -> (Vec<u64>, Vec<Vec<u64>>) {
+        let mut fine = vec![0u64; fine_count * words];
+        for chain in fine.chunks_mut(words) {
+            for _ in 0..rng.random_range(1..=3) {
+                set_bit(chain, rng.random_range(0..words * 64));
+            }
+        }
+        let group_count = rng.random_range(1..=fine_count);
+        let mut groups = vec![vec![0u64; words]; group_count];
+        for chain in fine.chunks(words) {
+            let group = &mut groups[rng.random_range(0..group_count)];
+            for (word, &value) in group.iter_mut().zip(chain) {
+                *word |= value;
+            }
+        }
+        groups.retain(|group| group.iter().any(|&word| word != 0));
+        (fine, groups)
+    }
+
+    #[test]
+    fn mask_and_general_matching_agree() {
+        let mut rng = StdRng::seed_from_u64(7);
+        for _ in 0..5000 {
+            let words = rng.random_range(1..=2);
+            let fine_count = rng.random_range(1..=64);
+            let (fine, mut groups) = random_signatures(&mut rng, fine_count, words);
+            // Perturb sometimes, so both true and false answers get compared.
+            if rng.random_bool(0.5) {
+                let group = rng.random_range(0..groups.len());
+                let word = rng.random_range(0..words);
+                groups[group][word] &= groups[group][word].wrapping_sub(1);
+            }
+            let coarse: Vec<u64> = groups.concat();
+            assert_eq!(
+                coarsens_by_mask(&coarse, &fine, words),
+                coarsens_general(&coarse, &fine, words)
+            );
+        }
+    }
+
+    #[test]
+    fn general_matching_handles_more_than_64_chains() {
+        let mut rng = StdRng::seed_from_u64(11);
+        for _ in 0..200 {
+            let words = 2;
+            let fine_count = rng.random_range(65..=100);
+            let (fine, groups) = random_signatures(&mut rng, fine_count, words);
+            let coarse: Vec<u64> = groups.concat();
+            assert!(connectivity_coarsens(&coarse, &fine, words));
+
+            // An extra coarse chain that anchors no fine chain breaks the matching.
+            let mut extra = coarse.clone();
+            extra.extend(std::iter::repeat(0u64).take(words));
+            let last = extra.len() - words;
+            extra[last] = 1u64 << 63;
+            extra[last + 1] = 1u64 << 63;
+            let has_matching_fine = fine.chunks(words).any(|chain| is_subset(chain, &extra[last..]));
+            if !has_matching_fine {
+                assert!(!connectivity_coarsens(&extra, &fine, words));
+            }
+        }
+    }
 }

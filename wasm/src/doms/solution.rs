@@ -28,16 +28,6 @@ pub struct Solution {
     pub clicks: Vec<(ClickType, usize)>,
 }
 
-fn openings_bordered(model: &ChordModel) -> Vec<Vec<usize>> {
-    let mut openings = vec![Vec::new(); model.candidate_cells.len()];
-    for (opening, border) in model.opening_borders.iter().enumerate() {
-        for &candidate in border {
-            openings[candidate].push(opening);
-        }
-    }
-    openings
-}
-
 /// Click cost of chording exactly `chords` (candidate indexes).
 pub fn evaluate_chords(model: &ChordModel, chords: &[usize]) -> Evaluation {
     let candidate_count = model.candidate_cells.len();
@@ -56,7 +46,6 @@ pub fn evaluate_chords(model: &ChordModel, chords: &[usize]) -> Evaluation {
         .collect();
 
     // Chords are in the same chain when one reveals the other, directly or via a shared opening.
-    let bordered = openings_bordered(model);
     let mut unvisited = chorded.clone();
     let mut opening_unvisited = vec![true; model.opening_borders.len()];
     let mut chains = Vec::new();
@@ -75,7 +64,7 @@ pub fn evaluate_chords(model: &ChordModel, chords: &[usize]) -> Evaluation {
                     stack.push(other);
                 }
             }
-            for &opening in &bordered[candidate] {
+            for &opening in &model.openings_bordered[candidate] {
                 if !opening_unvisited[opening] {
                     continue;
                 }
@@ -117,7 +106,6 @@ fn chain_chord_order(model: &ChordModel, chain: &[usize]) -> Result<Vec<usize>, 
         .iter()
         .min_by_key(|&&candidate| model.candidate_cells[candidate])
         .ok_or_else(|| DomsError::Internal("empty chord chain".into()))?;
-    let bordered = openings_bordered(model);
     let mut opening_unvisited = vec![true; model.opening_borders.len()];
     let mut queued = vec![false; candidate_count];
     let mut queue = VecDeque::new();
@@ -134,7 +122,7 @@ fn chain_chord_order(model: &ChordModel, chain: &[usize]) -> Result<Vec<usize>, 
                 queue.push_back(other);
             }
         }
-        for &opening in &bordered[candidate] {
+        for &opening in &model.openings_bordered[candidate] {
             if !opening_unvisited[opening] {
                 continue;
             }

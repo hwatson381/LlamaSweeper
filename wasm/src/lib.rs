@@ -151,7 +151,8 @@ fn set_property(target: &Object, key: &str, value: JsValue) -> Result<(), JsValu
 /// # DOMS ZiNi
 /// * Entry point for JavaScript
 /// * `mines` is row-major (`y * width + x`), non-zero for a mine
-/// * `progress_callback(processed, total, states)` is called after each chord candidate is decided
+/// * `progress_callback(event)` receives `{ type: "plan", cutWidths }` once, then
+///   `{ type: "layer", processed, total, states }` after each chord candidate is decided
 ///
 /// Returns `{ totalClicks, bbbv, clicks: [{ type, x, y }], stats }`.
 /// Errors are `{ kind: "state-limit" | "invalid" | "internal", message }`.
@@ -160,10 +161,25 @@ pub fn doms_zini(width: usize, height: usize, mines: &[u8], max_states: u32, pro
     #[cfg(feature = "console_error_panic_hook")]
     utils::set_panic_hook();
 
-    let mut progress = |processed: usize, total: usize, states: usize| {
-        if let Some(callback) = &progress_callback {
-            let _ = callback.call3(&JsValue::NULL, &(processed as f64).into(), &(total as f64).into(), &(states as f64).into());
+    let mut progress = |event: doms::DomsProgress| {
+        let callback = match &progress_callback {
+            Some(callback) => callback,
+            None => return,
+        };
+        let js_event = Object::new();
+        match event {
+            doms::DomsProgress::Plan { cut_widths } => {
+                let _ = set_property(&js_event, "type", "plan".into());
+                let _ = set_property(&js_event, "cutWidths", js_sys::Int32Array::from(cut_widths).into());
+            }
+            doms::DomsProgress::Layer { processed, total, states } => {
+                let _ = set_property(&js_event, "type", "layer".into());
+                let _ = set_property(&js_event, "processed", (processed as f64).into());
+                let _ = set_property(&js_event, "total", (total as f64).into());
+                let _ = set_property(&js_event, "states", (states as f64).into());
+            }
         }
+        let _ = callback.call1(&JsValue::NULL, &js_event);
     };
 
     let result = match doms::solve_mines(width, height, mines, max_states as usize, &mut progress) {

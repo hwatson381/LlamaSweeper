@@ -49,7 +49,7 @@ fn strip_order(model: &ChordModel, by_columns: bool, band_size: usize) -> Vec<us
 }
 
 /// Number of `(first_cut, last_cut)` intervals covering each cut in `0..cuts`.
-fn coverage(intervals: &[(usize, usize)], cuts: usize) -> Vec<i32> {
+pub(super) fn coverage(intervals: &[(usize, usize)], cuts: usize) -> Vec<i32> {
     let mut diff = vec![0i32; cuts + 1];
     for &(lo, hi) in intervals {
         diff[lo] += 1;
@@ -65,7 +65,8 @@ fn coverage(intervals: &[(usize, usize)], cuts: usize) -> Vec<i32> {
 }
 
 /// Cut `k` sits between positions `k` and `k + 1` of the order.
-pub fn width_estimate(model: &ChordModel, order: &[usize]) -> WidthEstimate {
+/// Returns the connectivity and factor widths of every cut.
+fn cut_widths_for(model: &ChordModel, order: &[usize]) -> (Vec<i32>, Vec<i32>) {
     let candidate_count = order.len();
     let mut position = vec![0usize; candidate_count];
     for (i, &candidate) in order.iter().enumerate() {
@@ -106,11 +107,20 @@ pub fn width_estimate(model: &ChordModel, order: &[usize]) -> WidthEstimate {
         .collect();
 
     let cuts = candidate_count.saturating_sub(1);
-    let connectivity = coverage(&connectivity_intervals, cuts);
-    let factors = coverage(&factor_intervals, cuts);
+    (coverage(&connectivity_intervals, cuts), coverage(&factor_intervals, cuts))
+}
 
+/// Total frontier width (connectivity + factors) after each candidate of an already-ordered model.
+pub fn cut_widths(model: &ChordModel) -> Vec<i32> {
+    let identity: Vec<usize> = (0..model.candidate_cells.len()).collect();
+    let (connectivity, factors) = cut_widths_for(model, &identity);
+    connectivity.iter().zip(&factors).map(|(c, f)| c + f).collect()
+}
+
+pub fn width_estimate(model: &ChordModel, order: &[usize]) -> WidthEstimate {
+    let (connectivity, factors) = cut_widths_for(model, order);
     let mut estimate = WidthEstimate { max_total: 0, max_connectivity: 0, max_factors: 0, work: 0 };
-    for cut in 0..cuts {
+    for cut in 0..connectivity.len() {
         estimate.max_connectivity = estimate.max_connectivity.max(connectivity[cut]);
         estimate.max_factors = estimate.max_factors.max(factors[cut]);
         estimate.max_total = estimate.max_total.max(connectivity[cut] + factors[cut]);
