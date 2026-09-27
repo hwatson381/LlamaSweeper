@@ -1,7 +1,8 @@
 <template>
   <q-card square style="float: left; margin-bottom: 10px">
     <q-card-section>
-      <span class="text-h6">Running DeepChain ZiNi</span><br />
+      <span class="text-h6">{{ ziniRunnerTitle }}</span
+      ><br />
       Expected Duration: {{ ziniRunnerExpectedDuration }}<br />
       Expected Finish Time: {{ ziniRunnerExpectedFinishTime }}<br />
       {{ ziniRunnerIterationsDisplay }}<br />
@@ -17,6 +18,7 @@
 
 <script setup>
 import {
+  ziniRunnerTitle,
   ziniRunnerExpectedDuration,
   ziniRunnerExpectedFinishTime,
   ziniRunnerIterationsDisplay,

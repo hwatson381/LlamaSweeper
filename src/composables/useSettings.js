@@ -426,6 +426,7 @@ let analyseDeepType = ref("separate");
 let analyseDeepIterations = ref(5);
 let analyseVisualise = ref(true);
 let analyseForbid = ref(false);
+let analyseDomsMaxStates = ref(2000000);
 let classicPathBreakdown = ref({
   lefts: 0,
   rights: 0,
@@ -481,6 +482,7 @@ watchEffect(() => {
 let runZiniAlgorithmModal = ref(false);
 let ziniRunnerActive = ref(false);
 let synchronousZiniActive = ref(false);
+let ziniRunnerTitle = ref("Running DeepChain ZiNi");
 let ziniRunnerExpectedDuration = ref("calculating...");
 let ziniRunnerExpectedFinishTime = ref("calculating...");
 let ziniRunnerIterationsDisplay = ref("");
@@ -589,6 +591,7 @@ function resetTransientSettings() {
 
   ziniRunnerActive.value = false;
   synchronousZiniActive.value = false;
+  ziniRunnerTitle.value = "Running DeepChain ZiNi";
   ziniRunnerExpectedDuration.value = "calculating...";
   ziniRunnerExpectedFinishTime.value = "calculating...";
   ziniRunnerIterationsDisplay.value = "";
@@ -743,6 +746,7 @@ export {
   analyseDeepIterations,
   analyseVisualise,
   analyseForbid,
+  analyseDomsMaxStates,
   classicPathBreakdown,
   analyseZiniTotal,
   analyse3bv,
@@ -753,6 +757,7 @@ export {
   runZiniAlgorithmModal,
   ziniRunnerActive,
   synchronousZiniActive,
+  ziniRunnerTitle,
   ziniRunnerExpectedDuration,
   ziniRunnerExpectedFinishTime,
   ziniRunnerIterationsDisplay,

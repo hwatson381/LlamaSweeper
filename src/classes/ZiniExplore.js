@@ -14,6 +14,7 @@ import {
   analyseDeepIterations,
   analyseVisualise,
   analyseForbid,
+  analyseDomsMaxStates,
   classicPathBreakdown,
   analyseZiniTotal,
   analyse3bv,
@@ -1351,6 +1352,9 @@ class ZiniExplore {
       case "incexzini":
         this.runInclusionExclusionZini(true);
         break;
+      case "doms":
+        this.runDomsZini();
+        break;
       default:
         alert("disallowed algorithm");
         throw new Error("disallowed algorithm");
@@ -1562,6 +1566,64 @@ class ZiniExplore {
         deepReportProgress
       );
     }
+  }
+
+  runDomsZini() {
+    this.killDeepChainZiniRunner(); //just in case it is already running
+
+    let maxStates = analyseDomsMaxStates.value;
+    if (
+      !Number.isFinite(maxStates) ||
+      !Number.isInteger(maxStates) ||
+      maxStates < 1
+    ) {
+      analyseDomsMaxStates.value = 2000000;
+      maxStates = 2000000;
+    }
+
+    //Cap to keep worker memory use reasonable
+    if (maxStates > 20000000) {
+      analyseDomsMaxStates.value = 20000000;
+      maxStates = 20000000;
+    }
+
+    const width = this.board.mines.length;
+    const height = this.board.mines[0].length;
+    const mines = new Uint8Array(width * height);
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        mines[y * width + x] = this.board.mines[x][y] ? 1 : 0;
+      }
+    }
+
+    this.classicPathBeforeRun = structuredClone(this.classicPath);
+
+    this.ziniRunner = new DeepChainZiniRunner(
+      { width, height, mines, maxStates },
+      {
+        onCompleteRun: (result) => {
+          this.classicPath = result.clicks;
+          this.updateUiAndBoard();
+          this.ziniRunner = null;
+          this.classicPathBeforeRun = null;
+        },
+        onError: (error) => {
+          this.classicPath = structuredClone(this.classicPathBeforeRun);
+          this.updateUiAndBoard();
+          this.ziniRunner = null;
+          this.classicPathBeforeRun = null;
+          Dialog.create({
+            title: "DOMS ZiNi failed",
+            message:
+              error.kind === "state-limit"
+                ? `The search grew too large (${error.message}). Try increasing "Max states", which uses more memory.`
+                : error.message,
+          });
+        },
+      },
+      true,
+      "doms"
+    );
   }
 
   killDeepChainZiniRunner() {

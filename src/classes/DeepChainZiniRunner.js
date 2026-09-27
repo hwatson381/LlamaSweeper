@@ -2,18 +2,20 @@ import Utils from "./Utils";
 import { Dialog } from "quasar";
 import {
   ziniRunnerActive,
+  ziniRunnerTitle,
   ziniRunnerExpectedDuration,
   ziniRunnerExpectedFinishTime,
   ziniRunnerIterationsDisplay,
   ziniRunnerPercentageProgress,
 } from "src/composables/useSettings";
 
-//Class to manage running inclusion exclusion zini, and interfacing with web workers
+//Class to manage running inclusion exclusion zini (or DOMS), and interfacing with web workers
 class DeepChainZiniRunner {
   constructor(
     inclusionExclusionParameters,
     progressCallbacks,
-    deepReportProgress
+    deepReportProgress,
+    workerType = "deepchain"
   ) {
     this.inclusionExclusionParameters = inclusionExclusionParameters;
     this.progressCallbacks = progressCallbacks;
@@ -24,23 +26,40 @@ class DeepChainZiniRunner {
       throw new Error("Web workers not support for inclusion exclusion zini.");
     }
 
+    const isDoms = workerType === "doms";
+
     ziniRunnerActive.value = true;
-    ziniRunnerExpectedDuration.value = "calculating...";
-    ziniRunnerExpectedFinishTime.value = "calculating...";
+    ziniRunnerTitle.value = isDoms
+      ? "Running DOMS ZiNi"
+      : "Running DeepChain ZiNi";
+    ziniRunnerExpectedDuration.value = isDoms ? "unknown" : "calculating...";
+    ziniRunnerExpectedFinishTime.value = isDoms ? "unknown" : "calculating...";
     ziniRunnerIterationsDisplay.value = "";
     ziniRunnerPercentageProgress.value = "0%";
 
-    this.worker = new Worker(
-      new URL("../workers/deepchain-worker.js", import.meta.url),
-      {
-        type: "module",
-      }
-    );
+    //Vite needs literal worker URLs to bundle them
+    if (isDoms) {
+      this.worker = new Worker(
+        new URL("../workers/doms-worker.js", import.meta.url),
+        {
+          type: "module",
+        }
+      );
+    } else {
+      this.worker = new Worker(
+        new URL("../workers/deepchain-worker.js", import.meta.url),
+        {
+          type: "module",
+        }
+      );
+    }
 
     this.worker.onerror = (error) => {
       Dialog.create({
         title: "Alert",
-        message: "Error occurred in web worker for DeepChain ZiNi.",
+        message: isDoms
+          ? "Error occurred in web worker for DOMS ZiNi."
+          : "Error occurred in web worker for DeepChain ZiNi.",
       });
     };
 
@@ -88,6 +107,9 @@ class DeepChainZiniRunner {
       case "run-complete":
         this.completeRun(message.result);
         break;
+      case "run-error":
+        this.errorRun(message.error);
+        break;
       default:
         throw new Error("disallowed message type");
     }
@@ -124,6 +146,14 @@ class DeepChainZiniRunner {
     ziniRunnerActive.value = false;
     if (this.progressCallbacks && this.progressCallbacks.onCompleteRun) {
       this.progressCallbacks.onCompleteRun(result);
+    }
+  }
+
+  errorRun(error) {
+    this.worker.terminate();
+    ziniRunnerActive.value = false;
+    if (this.progressCallbacks && this.progressCallbacks.onError) {
+      this.progressCallbacks.onError(error);
     }
   }
 

@@ -34,6 +34,7 @@
               { label: 'WoM L ZiNi Improved', value: 'womzinifix' },
               { label: 'WoM HZiNi', value: 'womhzini' },
               { label: 'Chain ZiNi', value: 'chainzini' },
+              { label: 'DOMS (optimal)', value: 'doms' },
             ]"
             emit-value
             map-options
@@ -59,7 +60,9 @@
       </q-card-section>
       <template
         v-if="
-          analyseAlgorithm === 'chainzini' || analyseAlgorithm === 'incexzini'
+          analyseAlgorithm === 'chainzini' ||
+          analyseAlgorithm === 'incexzini' ||
+          analyseAlgorithm === 'doms'
         "
       >
         <q-separator />
@@ -133,6 +136,18 @@
               v-model="analyseVisualise"
               label="Visualise"
             />
+            <q-input
+              v-if="analyseAlgorithm === 'doms'"
+              class="q-mb-sm"
+              debounce="100"
+              v-model.number="analyseDomsMaxStates"
+              label="Max states"
+              type="number"
+              dense
+              min="1"
+              max="20000000"
+              style="width: 110px"
+            />
             <q-checkbox
               v-if="
                 (analyseAlgorithm === 'chainzini' ||
@@ -150,6 +165,10 @@
             />
             -->
           </div>
+          <p v-if="analyseAlgorithm === 'doms'" class="text-caption q-mb-none">
+            DOMS finds a provably minimal click path. Higher max states allows
+            harder boards but uses more memory. Originally by qqwref.
+          </p>
         </q-card-section>
       </template>
 
@@ -179,6 +198,7 @@ import {
   analyseDeepType,
   analyseDeepIterations,
   analyseVisualise,
+  analyseDomsMaxStates,
   analyseAlgorithmScopeOptions,
   runZiniAlgorithmModal,
 } from "src/composables/useSettings";

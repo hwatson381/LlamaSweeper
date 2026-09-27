@@ -3,6 +3,7 @@ import init, {
   eight_way_benchmark,
   laymine_solvable,
   cal_probability_onboard,
+  doms_zini,
 } from "../../wasm/pkg/llamasweeper_rust.js";
 
 /*
@@ -70,4 +71,5 @@ export {
   eight_way_benchmark,
   laymine_solvable,
   cal_probability_onboard,
+  doms_zini,
 };

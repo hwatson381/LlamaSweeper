@@ -1,7 +1,8 @@
 mod utils;
 pub mod board_gen_8way;
-use board_gen_8way::Board;
-use js_sys::Array;
+pub mod doms;
+use board_gen_8way::{Board, ClickType};
+use js_sys::{Array, Object, Reflect};
 use chrono::{Utc, Duration};
 use wasm_bindgen::prelude::*;
 
@@ -38,7 +39,7 @@ pub fn eight_way(width: usize, height: usize, mine_count: usize, first_click_coo
 
     loop {
         board.reset(); //Note that first iteration doesn't need reset, but this is harmless
-        
+
         let success;
         if use_small {
            success = board.generate_eff_board_small(target_eff / 100.0, use_first_click, first_click_row, first_click_col, true)?;
@@ -101,7 +102,7 @@ pub fn eight_way_benchmark(width: usize, height: usize, mine_count: usize, first
 
     for _i in 0..iterations {
         board.reset(); //Note that first iteration doesn't need reset, but this is harmless
-        
+
         if use_small {
             board.generate_eff_board_small(target_eff / 100.0, use_first_click, first_click_row, first_click_col, true)?;
         } else {
@@ -141,4 +142,79 @@ pub fn cal_probability_onboard(js_board: JsValue, mine_num: f64) -> Result<JsVal
     let result = ms_toollib::cal_probability_onboard(&board, mine_num)
         .map_err(|code| JsValue::from_str(&format!("cal_probability_onboard failed: {}", code)))?;
     serde_wasm_bindgen::to_value(&result).map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
+fn set_property(target: &Object, key: &str, value: JsValue) -> Result<(), JsValue> {
+    Reflect::set(target, &key.into(), &value).map(|_| ())
+}
+
+/// # DOMS ZiNi
+/// * Entry point for JavaScript
+/// * `mines` is row-major (`y * width + x`), non-zero for a mine
+/// * `progress_callback(processed, total, states)` is called after each DP layer
+///
+/// Returns `{ total, threeBV, clicks: [{ type, x, y }], stats }`.
+/// Errors are `{ kind: "state-limit" | "invalid" | "internal", message }`.
+#[wasm_bindgen]
+pub fn doms_zini(width: usize, height: usize, mines: &[u8], max_states: u32, progress_callback: Option<js_sys::Function>) -> Result<JsValue, JsValue> {
+    #[cfg(feature = "console_error_panic_hook")]
+    utils::set_panic_hook();
+
+    let mut progress = |processed: usize, total: usize, states: usize| {
+        if let Some(callback) = &progress_callback {
+            let _ = callback.call3(&JsValue::NULL, &(processed as f64).into(), &(total as f64).into(), &(states as f64).into());
+        }
+    };
+
+    let result = match doms::solve_mines(width, height, mines, max_states as usize, &mut progress) {
+        Ok(result) => result,
+        Err(error) => {
+            let kind = match error {
+                doms::DomsError::StateLimitExceeded { .. } => "state-limit",
+                doms::DomsError::Invalid(_) => "invalid",
+                doms::DomsError::Internal(_) => "internal",
+            };
+            let js_error = Object::new();
+            set_property(&js_error, "kind", kind.into())?;
+            set_property(&js_error, "message", error.to_string().into())?;
+            return Err(js_error.into());
+        }
+    };
+
+    let clicks = Array::new();
+    for click in &result.clicks {
+        let js_click = Object::new();
+        let click_type = match click.c_type {
+            ClickType::NF => "left",
+            ClickType::Flag => "right",
+            ClickType::Chord => "chord",
+        };
+        set_property(&js_click, "type", click_type.into())?;
+        set_property(&js_click, "x", click.square.col.into())?;
+        set_property(&js_click, "y", click.square.row.into())?;
+        clicks.push(&js_click);
+    }
+
+    let stats = &result.stats;
+    let js_stats = Object::new();
+    for &(key, value) in &[
+        ("candidateChords", stats.candidate_chords),
+        ("selectedChords", stats.selected_chords),
+        ("flagClicks", stats.flag_clicks),
+        ("seedClicks", stats.seed_clicks),
+        ("remaining3bvClicks", stats.remaining_3bv_clicks),
+        ("peakStates", stats.peak_states),
+        ("maxBoundary", stats.max_boundary),
+        ("maxActiveFactors", stats.max_active_factors),
+    ] {
+        set_property(&js_stats, key, (value as f64).into())?;
+    }
+    set_property(&js_stats, "order", stats.order_name.as_str().into())?;
+
+    let output = Object::new();
+    set_property(&output, "total", (result.total as f64).into())?;
+    set_property(&output, "threeBV", (stats.three_bv as f64).into())?;
+    set_property(&output, "clicks", clicks.into())?;
+    set_property(&output, "stats", js_stats.into())?;
+    Ok(output.into())
 }
