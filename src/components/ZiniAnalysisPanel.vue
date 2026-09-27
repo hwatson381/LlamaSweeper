@@ -146,6 +146,16 @@
             <q-item
               clickable
               v-close-popup
+              @click="game.board.boardImportExport.sendToOptimalZiNi()"
+            >
+              <q-item-section>
+                <q-item-label>Optimal ZiNi</q-item-label>
+              </q-item-section>
+            </q-item>
+
+            <q-item
+              clickable
+              v-close-popup
               @click="game.board.boardImportExport.sendToMsCoach()"
             >
               <q-item-section>

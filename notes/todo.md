@@ -611,3 +611,6 @@ ideas for mobile button improvement -
 For the mobile mode toggle reset guard thingy - should we change the icon whilst it's not pressable?
 
 Next is probably just improving board editor
+
+Update relevant places for optimal zini website (add to external resources?)
+Also ask for click path to be added in link?
