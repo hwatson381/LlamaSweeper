@@ -13,7 +13,7 @@ import {
   replayProgress,
   replayProgressRounded,
   replayShowHidden,
-} from 'src/composables/useSettings'
+} from "src/composables/useSettings";
 
 class Replay {
   constructor({
@@ -23,7 +23,7 @@ class Replay {
     isWin = true,
     isComplete = true,
     forceSteppy = false,
-    analysis = false
+    analysis = false,
   }) {
     this.clicks = clicks;
     this.moves = moves;
@@ -52,7 +52,10 @@ class Replay {
   }
 
   //Jump to a "steppy" time - e.g. replay stepper
-  jumpToSpecificClickLerped(newClickIndexLerped, hasSoundEffectIfCrossingIndex = false) {
+  jumpToSpecificClickLerped(
+    newClickIndexLerped,
+    hasSoundEffectIfCrossingIndex = false
+  ) {
     //Restrict based on the range of clicks that can actually happen
     newClickIndexLerped = Utils.clamp(
       newClickIndexLerped,
@@ -95,7 +98,7 @@ class Replay {
       //Full reset of tiles
       this.board.resetTiles();
 
-      if (replayShowHidden.value !== 'none') {
+      if (replayShowHidden.value !== "none") {
         this.board.populateHiddenNumbers(replayShowHidden.value);
       }
 
@@ -122,23 +125,45 @@ class Replay {
 
       switch (clickToDo.type) {
         case "left":
-          this.board.boardActions.openTile(clickToDo.x, clickToDo.y, needToPlaySound);
+          this.board.boardActions.openTile(
+            clickToDo.x,
+            clickToDo.y,
+            needToPlaySound
+          );
           break;
         case "wasted_left":
           //Do nothing
           break;
         case "chord":
-          this.board.boardActions.chord(clickToDo.x, clickToDo.y, false, 0, undefined, undefined, needToPlaySound);
+          this.board.boardActions.chord(
+            clickToDo.x,
+            clickToDo.y,
+            false,
+            0,
+            undefined,
+            undefined,
+            needToPlaySound
+          );
           break;
         case "wasted_chord":
           //Do nothing
           break;
         case "right":
-          this.board.boardActions.attemptFlag(clickToDo.x, clickToDo.y, false, needToPlaySound);
+          this.board.boardActions.attemptFlag(
+            clickToDo.x,
+            clickToDo.y,
+            false,
+            needToPlaySound
+          );
           break;
         case "wasted_right":
           //Do something as it may be an unflag
-          this.board.boardActions.attemptFlag(clickToDo.x, clickToDo.y, false, needToPlaySound);
+          this.board.boardActions.attemptFlag(
+            clickToDo.x,
+            clickToDo.y,
+            false,
+            needToPlaySound
+          );
           break;
         default:
           throw new Error("Disallowed click type seen in replay");
@@ -149,7 +174,9 @@ class Replay {
         let thisZiniDelta = this.analysis.ziniDeltas.get(clickPointer);
 
         if (thisZiniDelta !== undefined) {
-          this.board.tilesArray[clickToDo.x][clickToDo.y].addZiniDelta(thisZiniDelta.isClickGain);
+          this.board.tilesArray[clickToDo.x][clickToDo.y].addZiniDelta(
+            thisZiniDelta.isClickGain
+          );
         }
       }
 
@@ -396,7 +423,7 @@ class Replay {
     return (
       beforeIndex +
       (newRawTime - this.clicks[beforeIndex].time) /
-      (this.clicks[afterIndex].time - this.clicks[beforeIndex].time)
+        (this.clicks[afterIndex].time - this.clicks[beforeIndex].time)
     );
   }
 

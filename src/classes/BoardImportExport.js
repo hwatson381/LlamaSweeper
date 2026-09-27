@@ -6,12 +6,9 @@ import RawVF from "src/classes/RawVF";
 
 import { toBlob, toCanvas } from "html-to-image";
 
-import { Dialog, Notify, copyToClipboard, exportFile, Dark } from "quasar"
+import { Dialog, Notify, copyToClipboard, exportFile, Dark } from "quasar";
 
-import {
-  statsObject,
-  variant,
-} from "src/composables/useSettings";
+import { statsObject, variant } from "src/composables/useSettings";
 
 class BoardImportExport {
   constructor(board) {
@@ -50,7 +47,10 @@ class BoardImportExport {
     if (this.board.variant === "mean openings") {
       //Remove flags which were place on mean mines
       pathWithoutWasted = pathWithoutWasted.filter((c) => {
-        if (c.type === "right" && this.board.meanOpenings.meanMineStates[c.x][c.y].isMine) {
+        if (
+          c.type === "right" &&
+          this.board.meanOpenings.meanMineStates[c.x][c.y].isMine
+        ) {
           return false;
         } else {
           return true;
@@ -167,7 +167,10 @@ class BoardImportExport {
   }
 
   importPttaBoard(pttaUrl) {
-    if (this.board.variant !== "board editor" && this.board.variant !== "zini explorer") {
+    if (
+      this.board.variant !== "board editor" &&
+      this.board.variant !== "zini explorer"
+    ) {
       return false;
     }
 
@@ -189,7 +192,10 @@ class BoardImportExport {
   }
 
   async importMbfBoard(mbfStringToImport, mbfFileToImport) {
-    if (this.board.variant !== "board editor" && this.board.variant !== "zini explorer") {
+    if (
+      this.board.variant !== "board editor" &&
+      this.board.variant !== "zini explorer"
+    ) {
       return false;
     }
 
@@ -334,7 +340,6 @@ class BoardImportExport {
     }
   }
 
-
   showExportScreenshotDialogue() {
     Dialog.create({
       title: "Screenshot Export",
@@ -364,10 +369,7 @@ class BoardImportExport {
     const screenshotIsCopied = exportOption.startsWith("copy");
 
     if (screenshotIsCopied) {
-      if (
-        typeof ClipboardItem === "undefined" ||
-        !navigator.clipboard?.write
-      ) {
+      if (typeof ClipboardItem === "undefined" || !navigator.clipboard?.write) {
         Notify.create({
           message:
             "Copying images is not supported in this browser. Try the download option instead.",
@@ -459,9 +461,17 @@ class BoardImportExport {
     canvasWithFilters.height = this.board.mainCanvas.value.height * pixelRatio;
     const ctxWithFilters = canvasWithFilters.getContext("2d");
     if ("filter" in ctxWithFilters) {
-      ctxWithFilters.filter = getComputedStyle(this.board.mainCanvas.value).filter;
+      ctxWithFilters.filter = getComputedStyle(
+        this.board.mainCanvas.value
+      ).filter;
     }
-    ctxWithFilters.drawImage(this.board.mainCanvas.value, 0, 0, canvasWithFilters.width, canvasWithFilters.height);
+    ctxWithFilters.drawImage(
+      this.board.mainCanvas.value,
+      0,
+      0,
+      canvasWithFilters.width,
+      canvasWithFilters.height
+    );
 
     //Easy case, only copy the board. Early return
     if (!includeStats) {
@@ -498,7 +508,7 @@ class BoardImportExport {
       }
 
       //const boardCanvas = await toCanvas(this.board.mainCanvas.value); //Using html-to-image here as this.board.mainCanvas.value would miss css filters applied to canvas.
-      const boardCanvas = canvasWithFilters
+      const boardCanvas = canvasWithFilters;
 
       const gap = 15; //Gap between main canvas and side panel
       const padding = 15; //Padding around the whole image

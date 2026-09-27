@@ -188,7 +188,8 @@ class QuickPaint {
           );
           let numberNeighbours = neighbours.filter(
             (square) =>
-              typeof this.board.tilesArray[square.x][square.y].state === "number"
+              typeof this.board.tilesArray[square.x][square.y].state ===
+              "number"
           );
 
           if (thisNumber === mineNeighbours.length) {
@@ -311,8 +312,8 @@ class QuickPaint {
               //Could all onlyNeighbour unknowns be mines and all onlyThis unknowns be safe
               if (
                 onlyNeighbourMine.length +
-                onlyNeighbourUnknown.length -
-                onlyThisMine.length ===
+                  onlyNeighbourUnknown.length -
+                  onlyThisMine.length ===
                 otherNumber - thisNumber
               ) {
                 //onlyNeighbours forced high and onlyThis forced low
@@ -325,8 +326,8 @@ class QuickPaint {
                 );
               } else if (
                 onlyThisMine.length +
-                onlyThisUnknown.length -
-                onlyNeighbourMine.length ===
+                  onlyThisUnknown.length -
+                  onlyNeighbourMine.length ===
                 thisNumber - otherNumber
               ) {
                 //Could all onlyNeighbour unknowns be mines and all onlyThis unknowns be safe

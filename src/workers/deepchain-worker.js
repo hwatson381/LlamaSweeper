@@ -8,27 +8,28 @@ import Chain from "src/classes/Chain";
 //The onmessage handler above is now registered, so anything posted in response
 //to this is guaranteed to be handled (avoids a startup race that could drop the
 //first message before the module finished loading).
-postMessage({ type: 'worker-ready' });
+postMessage({ type: "worker-ready" });
 
 onmessage = function (event) {
   hydrateParameters(event.data.parameters);
 
-  if (event.data.parameters.analysisType === 'separate') {
+  if (event.data.parameters.analysisType === "separate") {
     beginNWayRun(event.data.parameters, event.data.deepReportProgress);
   } else {
     beginNormalRun(event.data.parameters, event.data.deepReportProgress);
   }
-}
+};
 
 function beginNormalRun(parameters, visualise) {
   let timingRunParameters = { ...parameters, doTimingRun: true };
 
-  let timingRunResult = ChainZini.calcInclusionExclusionZini(timingRunParameters);
+  let timingRunResult =
+    ChainZini.calcInclusionExclusionZini(timingRunParameters);
   sendTimingRunDone(timingRunResult.expectedTimeForRealRun);
 
   let realRunParameters = {
     ...parameters,
-    progressUpdateFunction: visualise ? sendProgressUpdate : false
+    progressUpdateFunction: visualise ? sendProgressUpdate : false,
   };
   let realRunResult = ChainZini.calcInclusionExclusionZini(realRunParameters);
 
@@ -39,60 +40,62 @@ function beginNWayRun(parameters, visualise) {
   //Use regular incEx for timing
   let timingRunParameters = { ...parameters, doTimingRun: true };
 
-  let timingRunResult = ChainZini.calcInclusionExclusionZini(timingRunParameters);
+  let timingRunResult =
+    ChainZini.calcInclusionExclusionZini(timingRunParameters);
   sendTimingRunDone(timingRunResult.expectedTimeForRealRun);
 
   //Do n-way incEx zini. Keep parameters the same, although this object will have extra stuff that is not used
   let realRunParameters = {
     ...parameters,
-    progressUpdateFunction: visualise ? sendProgressUpdate : false
+    progressUpdateFunction: visualise ? sendProgressUpdate : false,
   };
-  let realRunResult = ChainZini.calcNWayInclusionExclusionZini(realRunParameters);
+  let realRunResult =
+    ChainZini.calcNWayInclusionExclusionZini(realRunParameters);
 
   sendRunCompletion(realRunResult);
 }
 
 function sendTimingRunDone(timingRun) {
   postMessage({
-    type: 'timing-run-done',
+    type: "timing-run-done",
     timingRun: timingRun,
   });
 }
 
 function sendProgressUpdate(updateType, data) {
   switch (updateType) {
-    case 'board-progress':
+    case "board-progress":
       postMessage({
-        type: 'board-progress',
+        type: "board-progress",
         clicks: data,
       });
       break;
-    case 'percentage-progress':
+    case "percentage-progress":
       postMessage({
-        type: 'percentage-progress',
+        type: "percentage-progress",
         percentage: data,
       });
       break;
-    case 'iteration-update':
+    case "iteration-update":
       postMessage({
-        type: 'iteration-update',
+        type: "iteration-update",
         iterations: data,
       });
       break;
-    case 'log-update':
+    case "log-update":
       postMessage({
-        type: 'log-update',
+        type: "log-update",
         logEntry: data,
       });
       break;
     default:
-      throw new Error('Unrecognised update type: ' + updateType);
+      throw new Error("Unrecognised update type: " + updateType);
   }
 }
 
 function sendRunCompletion(result) {
   postMessage({
-    type: 'run-complete',
+    type: "run-complete",
     result: result,
   });
 }

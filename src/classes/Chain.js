@@ -14,11 +14,12 @@ class Chain {
   }
 
   addToPath(x, y) {
-    this.path.push({ x, y })
+    this.path.push({ x, y });
   }
 
   addOpeningTouched(openingId) {
-    this.openingsTouched.includes(openingId) || this.openingsTouched.push(openingId);
+    this.openingsTouched.includes(openingId) ||
+      this.openingsTouched.push(openingId);
   }
 
   mergeWithPath(arr) {
@@ -27,7 +28,8 @@ class Chain {
 
   mergeWithOpeningsTouched(arr) {
     for (let openingId of arr) {
-      this.openingsTouched.includes(openingId) || this.openingsTouched.push(openingId);
+      this.openingsTouched.includes(openingId) ||
+        this.openingsTouched.push(openingId);
     }
   }
 
@@ -46,9 +48,13 @@ class Chain {
 
   cloneChain() {
     let replicaChain = new Chain();
-    replicaChain.path = this.path.map(el => { return { x: el.x, y: el.y } });
+    replicaChain.path = this.path.map((el) => {
+      return { x: el.x, y: el.y };
+    });
     replicaChain.isFloatingSeed = this.isFloatingSeed;
-    replicaChain.seedLocationsIfFixed = this.seedLocationsIfFixed.map(el => { return { x: el.x, y: el.y } });
+    replicaChain.seedLocationsIfFixed = this.seedLocationsIfFixed.map((el) => {
+      return { x: el.x, y: el.y };
+    });
     replicaChain.isUnchordedDig = this.isUnchordedDig;
     replicaChain.positionIfUnchordedDig = this.positionIfUnchordedDig;
     replicaChain.openingsTouched = this.openingsTouched.slice();

@@ -1,5 +1,5 @@
 //Interfaces with the basic-stats-worker.js web worker
-import { Dialog } from 'quasar';
+import { Dialog } from "quasar";
 
 class StatsWorkerManager {
   constructor() {
@@ -9,8 +9,8 @@ class StatsWorkerManager {
     this.nextId = 0;
 
     if (!window.Worker) {
-      alert('Web workers not supported, please contact Llama if this happens.');
-      throw new Error('Web workers not supported for stats worker.');
+      alert("Web workers not supported, please contact Llama if this happens.");
+      throw new Error("Web workers not supported for stats worker.");
     }
 
     this.worker = new Worker(
@@ -25,7 +25,7 @@ class StatsWorkerManager {
         title: "Alert",
         message: "Error occurred in web worker for Stats calculation.",
       });
-    }
+    };
 
     this.worker.onmessage = this.handleMessage.bind(this);
   }
@@ -34,8 +34,8 @@ class StatsWorkerManager {
     this.statsLock++;
 
     this.worker.postMessage({
-      command: 'updateStatsLock',
-      statsLock: this.statsLock
+      command: "updateStatsLock",
+      statsLock: this.statsLock,
     });
   }
 
@@ -43,8 +43,8 @@ class StatsWorkerManager {
     this.autoHintLock++;
 
     this.worker.postMessage({
-      command: 'updateAutoHintLock',
-      autoHintLock: this.autoHintLock
+      command: "updateAutoHintLock",
+      autoHintLock: this.autoHintLock,
     });
   }
 
@@ -54,15 +54,16 @@ class StatsWorkerManager {
     //Find job with id
     let thisJob = this.jobsMap.get(msg.id);
 
-    if (typeof thisJob === 'undefined') {
+    if (typeof thisJob === "undefined") {
       return;
     }
 
     if (msg.success) {
       //Double check lock info hasn't changed
       if (
-        (typeof msg.statsLock === 'number' && msg.statsLock < this.statsLock) ||
-        (typeof msg.autoHintLock === 'number' && msg.autoHintLock < this.autoHintLock)
+        (typeof msg.statsLock === "number" && msg.statsLock < this.statsLock) ||
+        (typeof msg.autoHintLock === "number" &&
+          msg.autoHintLock < this.autoHintLock)
       ) {
         thisJob.reject();
       } else {
@@ -76,32 +77,47 @@ class StatsWorkerManager {
   }
 
   calc8WayZiniInWorker(mines) {
-    let jobPromise = this.createJobPromise('8-way-zini', { mines }, true, false);
+    let jobPromise = this.createJobPromise(
+      "8-way-zini",
+      { mines },
+      true,
+      false
+    );
 
     return jobPromise;
   }
 
   calc100ChainInWorker(mines) {
-    let jobPromise = this.createJobPromise('100-chain', { mines }, true, false);
+    let jobPromise = this.createJobPromise("100-chain", { mines }, true, false);
 
     return jobPromise;
   }
 
   calcWomZinisInWorker(mines) {
-    let jobPromise = this.createJobPromise('wom-zini-hzini', { mines }, true, false);
+    let jobPromise = this.createJobPromise(
+      "wom-zini-hzini",
+      { mines },
+      true,
+      false
+    );
 
     return jobPromise;
   }
 
   calcBoardProbabilityInWorker(probCalcBoard, totalMines) {
-    let jobPromise = this.createJobPromise('calc-board-probability', { probCalcBoard, totalMines }, false, true);
+    let jobPromise = this.createJobPromise(
+      "calc-board-probability",
+      { probCalcBoard, totalMines },
+      false,
+      true
+    );
 
     return jobPromise;
   }
 
   createJobPromise(jobName, params, useStatsLock, useAutoHintLock) {
     if (this.killed) {
-      return Promise.reject(new Error('Worker killed'));
+      return Promise.reject(new Error("Worker killed"));
     }
 
     let jobPromise = new Promise((resolve, reject) => {
@@ -109,10 +125,10 @@ class StatsWorkerManager {
       this.jobsMap.set(jobId, { resolve, reject });
 
       let payload = {
-        command: 'addJob',
+        command: "addJob",
         jobName: jobName,
         parameters: params,
-        id: jobId
+        id: jobId,
       };
 
       if (useStatsLock) {
@@ -134,7 +150,7 @@ class StatsWorkerManager {
     this.worker.terminate();
 
     //Also reject all remaining jobs
-    this.jobsMap.forEach(job => job.reject());
+    this.jobsMap.forEach((job) => job.reject());
 
     this.jobsMap.clear();
   }
@@ -147,7 +163,7 @@ class StatsWorkerManager {
     this.incrementAutoHintLock();
 
     //Also reject all remaining jobs
-    this.jobsMap.forEach(job => job.reject());
+    this.jobsMap.forEach((job) => job.reject());
     this.jobsMap.clear();
   }
 }

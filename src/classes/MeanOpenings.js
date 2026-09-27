@@ -157,10 +157,11 @@ class MeanOpenings {
         let shouldMineBeFlagged;
         if (this.meanMineStates[zero.x][zero.y].isLocked) {
           //Square was locked from before so used saved value (e.g. we are in a replay)
-          shouldMineBeFlagged = this.meanMineStates[zero.x][zero.y].startsFlagged;
+          shouldMineBeFlagged =
+            this.meanMineStates[zero.x][zero.y].startsFlagged;
         } else {
           //Square was not locked, so randomly choose whether to flag
-          shouldMineBeFlagged = Math.random() < meanOpeningFlagDensity.value
+          shouldMineBeFlagged = Math.random() < meanOpeningFlagDensity.value;
         }
 
         //Close squares with mean mines, or change to flag
@@ -203,11 +204,8 @@ class MeanOpenings {
 
     //Compute numbers to show for all cells that need this
     for (let cell of cellsThatNeedNumber) {
-      this.board.tilesArray[cell.x][cell.y].state = this.board.boardActions.getNumberSurroundingMines(
-        cell.x,
-        cell.y,
-        true
-      );
+      this.board.tilesArray[cell.x][cell.y].state =
+        this.board.boardActions.getNumberSurroundingMines(cell.x, cell.y, true);
     }
 
     //Truncate as all squares have been processed
@@ -239,7 +237,12 @@ class MeanOpenings {
           simplifiedTilesArray[x][y].state = 0;
           for (let i = x - 1; i <= x + 1; i++) {
             for (let j = y - 1; j <= y + 1; j++) {
-              if (i < 0 || j < 0 || i >= this.board.width || j >= this.board.height) {
+              if (
+                i < 0 ||
+                j < 0 ||
+                i >= this.board.width ||
+                j >= this.board.height
+              ) {
                 continue;
               }
               if (i === x && y === j) {

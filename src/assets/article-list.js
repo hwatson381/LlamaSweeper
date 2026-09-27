@@ -14,15 +14,15 @@
 
 let articleList = [
   {
-    articleId: 'nfEffGuide',
-    component: () => import('pages/articles/NfEffGuideArticle.vue'),
-    title: 'No Flag expert 100% efficiency game review/semi-guide',
-    slug: 'nf-eff-guide',
+    articleId: "nfEffGuide",
+    component: () => import("pages/articles/NfEffGuideArticle.vue"),
+    title: "No Flag expert 100% efficiency game review/semi-guide",
+    slug: "nf-eff-guide",
     excerptHtml: `An advanced and in-depth guide on the skill of no flag efficiency. That is, how to win an expert board without using flags and in the minimum number of clicks required. I also review one of my games where I did this.`,
-    date: '2026-06-27',
-    author: 'Llama',
-    readLength: 5
-  }
+    date: "2026-06-27",
+    author: "Llama",
+    readLength: 5,
+  },
 ];
 
 export default articleList;

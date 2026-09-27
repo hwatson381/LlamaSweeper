@@ -1,12 +1,12 @@
 const audioCtx = new AudioContext();
 
 let soundsMap = {
-  'dig': { url: '/sounds/dig.mp3', buffer: null },
-  'flag': { url: '/sounds/flag.wav', buffer: null },
-  'chord': { url: '/sounds/chord.wav', buffer: null },
-  'lose': { url: '/sounds/small-explosion.mp3', buffer: null },
-  'win': { url: '/sounds/new-notification-7.mp3', buffer: null }
-}
+  dig: { url: "/sounds/dig.mp3", buffer: null },
+  flag: { url: "/sounds/flag.wav", buffer: null },
+  chord: { url: "/sounds/chord.wav", buffer: null },
+  lose: { url: "/sounds/small-explosion.mp3", buffer: null },
+  win: { url: "/sounds/new-notification-7.mp3", buffer: null },
+};
 
 async function getFile(filepath) {
   const response = await fetch(filepath);
@@ -17,12 +17,14 @@ async function getFile(filepath) {
 
 //Save sound buffers
 for (let sound in soundsMap) {
-  getFile(soundsMap[sound].url).then((buffer) => { soundsMap[sound].buffer = buffer; });
+  getFile(soundsMap[sound].url).then((buffer) => {
+    soundsMap[sound].buffer = buffer;
+  });
 }
 
 function playSound(sound) {
   if (!soundsMap[sound].buffer) {
-    console.log('sound not yet loaded');
+    console.log("sound not yet loaded");
     return;
   }
 
@@ -34,7 +36,7 @@ function playSound(sound) {
   makeQuieter.gain.value = 0.6;
 
   audioSource.connect(makeQuieter);
-  makeQuieter.connect(audioCtx.destination)
+  makeQuieter.connect(audioCtx.destination);
 
   //audioSource.connect(audioCtx.destination);
 
@@ -53,9 +55,12 @@ let testSoundList = [
 ];
 
 window.changeWinLossSound = function (isWin, idx) {
-  let thisSound = soundsMap[isWin ? 'win' : 'lose'];
+  let thisSound = soundsMap[isWin ? "win" : "lose"];
   thisSound.url = `/sounds/test/${testSoundList[idx]}`;
-  getFile(thisSound.url).then((buffer) => { thisSound.buffer = buffer; console.log('updated') });
-}
+  getFile(thisSound.url).then((buffer) => {
+    thisSound.buffer = buffer;
+    console.log("updated");
+  });
+};
 
 export default playSound;

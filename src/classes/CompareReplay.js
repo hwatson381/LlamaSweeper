@@ -3,7 +3,9 @@ import ChainZini from "./ChainZini";
 
 class CompareReplay {
   constructor() {
-    throw new Error('CompareReplay class only has static methods, and cannot be instantiated')
+    throw new Error(
+      "CompareReplay class only has static methods, and cannot be instantiated"
+    );
   }
 
   static generate(mines, clicks, isWin) {
@@ -20,7 +22,7 @@ class CompareReplay {
     //Projected zinis with 100chain
     let ziniAtStart = ChainZini.calcNWayChainZini({
       mines: mines,
-      numberOfIterations: 100
+      numberOfIterations: 100,
     }).total;
 
     for (let i = 0; i < clicks.length; i++) {
@@ -31,7 +33,7 @@ class CompareReplay {
         initialFlagStates,
         initialChainIds,
         initialChainMap,
-        initialChainNeighbourhoodGrid
+        initialChainNeighbourhoodGrid,
       } = ChainZini.convertClickPathToChainInput(
         reducedClicks,
         mines,
@@ -45,7 +47,7 @@ class CompareReplay {
         initialChainIds,
         initialChainMap,
         initialChainNeighbourhoodGrid,
-        numberOfIterations: 100
+        numberOfIterations: 100,
       }).total;
 
       projectedZinis[i] = projectedZini;
@@ -58,9 +60,9 @@ class CompareReplay {
 
     //special case for first click
     if (projectedZinis[0] > ziniAtStart) {
-      ziniDeltas.set(0, { isClickGain: false })
+      ziniDeltas.set(0, { isClickGain: false });
     } else if (projectedZinis[0] < ziniAtStart) {
-      ziniDeltas.set(0, { isClickGain: true })
+      ziniDeltas.set(0, { isClickGain: true });
     }
 
     for (let i = 1; i < clicks.length; i++) {
@@ -72,9 +74,9 @@ class CompareReplay {
       }
 
       if (projectedZinis[i] > projectedZinis[i - 1]) {
-        ziniDeltas.set(i, { isClickGain: false })
+        ziniDeltas.set(i, { isClickGain: false });
       } else if (projectedZinis[i] < projectedZinis[i - 1]) {
-        ziniDeltas.set(i, { isClickGain: true })
+        ziniDeltas.set(i, { isClickGain: true });
       }
     }
 
@@ -83,7 +85,11 @@ class CompareReplay {
     let includeInReplay = new Array(clicks.length).fill(false);
 
     for (const clickIndex of ziniDeltas.keys()) {
-      for (let i = clickIndex - CONTEXT_AMOUNT; i <= clickIndex + CONTEXT_AMOUNT; i++) {
+      for (
+        let i = clickIndex - CONTEXT_AMOUNT;
+        i <= clickIndex + CONTEXT_AMOUNT;
+        i++
+      ) {
         if (i < 0 || i >= clicks.length) {
           continue;
         }
@@ -118,21 +124,22 @@ class CompareReplay {
 
     for (let i = 1; i < clicks.length; i++) {
       if (includeInReplay[i]) {
-        timeOfMove += MAIN_MOVE_TIME
+        timeOfMove += MAIN_MOVE_TIME;
       } else {
-        timeOfMove += BETWEEN_MOVE_TIME
+        timeOfMove += BETWEEN_MOVE_TIME;
       }
 
       clicks[i].time = timeOfMove;
     }
 
     return {
-      clicks, ziniDeltas
-    }
+      clicks,
+      ziniDeltas,
+    };
   }
 
   static stripWasted(clicks) {
-    return clicks.filter(click => !click.type.includes('wasted'));
+    return clicks.filter((click) => !click.type.includes("wasted"));
   }
 
   static getRevealedStates(latestIndex, clicks, mines) {
@@ -140,17 +147,15 @@ class CompareReplay {
     const height = mines[0].length;
 
     const { numbersArray, openingLabels, preprocessedOpenings } =
-      Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
-        mines
-      );
+      Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
 
     const revealedStates = new Array(width)
       .fill(0)
       .map(() => new Array(height).fill(false));
 
     for (let i = 0; i <= latestIndex; i++) {
-      const click = clicks[i]
-      if (click.type === 'left') {
+      const click = clicks[i];
+      if (click.type === "left") {
         this.addRevealedSquareAndPossiblyOpening(
           revealedStates,
           click.x,
@@ -161,7 +166,7 @@ class CompareReplay {
         );
         continue;
       }
-      if (click.type === 'chord') {
+      if (click.type === "chord") {
         for (let x = click.x - 1; x <= click.x + 1; x++) {
           for (let y = click.y - 1; y <= click.y + 1; y++) {
             if (x < 0 || x >= width || y < 0 || y >= height) {
@@ -181,7 +186,7 @@ class CompareReplay {
               numbersArray,
               openingLabels,
               preprocessedOpenings
-            )
+            );
           }
         }
         continue;
@@ -191,7 +196,14 @@ class CompareReplay {
     return revealedStates;
   }
 
-  static addRevealedSquareAndPossiblyOpening(revealedStates, x, y, numbersArray, openingLabels, preprocessedOpenings) {
+  static addRevealedSquareAndPossiblyOpening(
+    revealedStates,
+    x,
+    y,
+    numbersArray,
+    openingLabels,
+    preprocessedOpenings
+  ) {
     revealedStates[x][y] = true;
     if (numbersArray[x][y] === 0) {
       const thisOpeningLabel = openingLabels[x][y];
@@ -214,8 +226,8 @@ class CompareReplay {
       .map(() => new Array(height).fill(false));
 
     for (let i = 0; i <= latestIndex; i++) {
-      const click = clicks[i]
-      if (click.type === 'right') {
+      const click = clicks[i];
+      if (click.type === "right") {
         flagStates[click.x][click.y] = true;
       }
     }

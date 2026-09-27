@@ -1,6 +1,6 @@
 import Algorithms from "./Algorithms";
 import { isWasmAvailable } from "./RustWasm";
-import { Dialog } from 'quasar';
+import { Dialog } from "quasar";
 
 //Class for doing different board gen. E.g. generating boards with fisher yates or maybe selecting boards with certain properties
 class BoardGenerator {
@@ -24,25 +24,37 @@ class BoardGenerator {
     if (!isWasmAvailable()) {
       Dialog.create({
         title: "No Guessing unavailable",
-        message:
-          "No Guessing mode needs WebAssembly, which isn't supported.",
+        message: "No Guessing mode needs WebAssembly, which isn't supported.",
       });
       return false;
     }
 
-    let ngShuffleResult = Algorithms.ngShuffle(width, height, mineCount, safeCoord, maxAttempts);
+    let ngShuffleResult = Algorithms.ngShuffle(
+      width,
+      height,
+      mineCount,
+      safeCoord,
+      maxAttempts
+    );
 
     if (!ngShuffleResult) {
       Dialog.create({
         title: "Alert",
-        message: "Failed to generate board. Consider increasing No Guessing Iterations setting, or reducing the number of mines.",
+        message:
+          "Failed to generate board. Consider increasing No Guessing Iterations setting, or reducing the number of mines.",
       });
     }
 
     return ngShuffleResult;
   }
 
-  static effBoardShuffle(width, height, mineCount, firstClick, effShuffleManager) {
+  static effBoardShuffle(
+    width,
+    height,
+    mineCount,
+    firstClick,
+    effShuffleManager
+  ) {
     let effBoard = effShuffleManager.provideEffBoard(
       width,
       height,
@@ -80,22 +92,30 @@ class BoardGenerator {
         pttaUrl = "?" + pttaUrl;
       }
 
-      pttaUrl = "https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/" + pttaUrl;
+      pttaUrl =
+        "https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/" + pttaUrl;
     }
 
-    if (!pttaUrl.startsWith("https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/") &&
+    if (
+      !pttaUrl.startsWith(
+        "https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/"
+      ) &&
       !pttaUrl.startsWith("https://llamasweeper.com/#/game/zini-explorer") &&
-      !pttaUrl.startsWith("https://llamasweeper.com/#/game/board-editor")) {
+      !pttaUrl.startsWith("https://llamasweeper.com/#/game/board-editor")
+    ) {
       Dialog.create({
         title: "Alert",
-        message: "Please enter a URL of the form https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=...&m=... in the PTT URL field",
+        message:
+          "Please enter a URL of the form https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/?b=...&m=... in the PTT URL field",
       });
       throw new Error("PTTA NOT URL");
     }
 
     //Special case - for llamasweeper.com, remove the /#/ bit, as this confuses it when finding search params (since # is used for anchors)
-    if (pttaUrl.startsWith("https://llamasweeper.com/#/game/zini-explorer") ||
-      pttaUrl.startsWith("https://llamasweeper.com/#/game/board-editor")) {
+    if (
+      pttaUrl.startsWith("https://llamasweeper.com/#/game/zini-explorer") ||
+      pttaUrl.startsWith("https://llamasweeper.com/#/game/board-editor")
+    ) {
       pttaUrl = pttaUrl.replace("#/", "");
     }
 
@@ -113,7 +133,8 @@ class BoardGenerator {
       }
       Dialog.create({
         title: "Alert",
-        message: "Please make sure the PTT URL ends with ?b=...&m=... where ... is the board data. If you don't see this info, try clicking the calculate button on the PTT calculator",
+        message:
+          "Please make sure the PTT URL ends with ?b=...&m=... where ... is the board data. If you don't see this info, try clicking the calculate button on the PTT calculator",
       });
       throw new Error("PTTA MISSING PARAMS");
     }
@@ -219,7 +240,8 @@ class BoardGenerator {
     } catch (e) {
       Dialog.create({
         title: "Alert",
-        message: "Error processing MBF string. Please make sure it's in the correct format",
+        message:
+          "Error processing MBF string. Please make sure it's in the correct format",
       });
       throw e;
     }
@@ -240,7 +262,8 @@ class BoardGenerator {
     } catch (e) {
       Dialog.create({
         title: "Alert",
-        message: "Error processing MBF file. Please make sure it's in the correct format",
+        message:
+          "Error processing MBF file. Please make sure it's in the correct format",
       });
       throw e;
     }

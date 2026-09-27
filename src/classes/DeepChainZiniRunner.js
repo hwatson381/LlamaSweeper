@@ -1,30 +1,34 @@
 import Utils from "./Utils";
-import { Dialog } from 'quasar';
+import { Dialog } from "quasar";
 import {
   ziniRunnerActive,
   ziniRunnerExpectedDuration,
   ziniRunnerExpectedFinishTime,
   ziniRunnerIterationsDisplay,
   ziniRunnerPercentageProgress,
-} from 'src/composables/useSettings';
+} from "src/composables/useSettings";
 
 //Class to manage running inclusion exclusion zini, and interfacing with web workers
 class DeepChainZiniRunner {
-  constructor(inclusionExclusionParameters, progressCallbacks, deepReportProgress) {
+  constructor(
+    inclusionExclusionParameters,
+    progressCallbacks,
+    deepReportProgress
+  ) {
     this.inclusionExclusionParameters = inclusionExclusionParameters;
     this.progressCallbacks = progressCallbacks;
     this.deepReportProgress = deepReportProgress;
 
     if (!window.Worker) {
-      alert('Web workers not supported, please contact Llama if this happens.');
-      throw new Error('Web workers not support for inclusion exclusion zini.');
+      alert("Web workers not supported, please contact Llama if this happens.");
+      throw new Error("Web workers not support for inclusion exclusion zini.");
     }
 
     ziniRunnerActive.value = true;
-    ziniRunnerExpectedDuration.value = 'calculating...';
-    ziniRunnerExpectedFinishTime.value = 'calculating...';
-    ziniRunnerIterationsDisplay.value = '';
-    ziniRunnerPercentageProgress.value = '0%';
+    ziniRunnerExpectedDuration.value = "calculating...";
+    ziniRunnerExpectedFinishTime.value = "calculating...";
+    ziniRunnerIterationsDisplay.value = "";
+    ziniRunnerPercentageProgress.value = "0%";
 
     this.worker = new Worker(
       new URL("../workers/deepchain-worker.js", import.meta.url),
@@ -38,7 +42,7 @@ class DeepChainZiniRunner {
         title: "Alert",
         message: "Error occurred in web worker for DeepChain ZiNi.",
       });
-    }
+    };
 
     this.worker.onmessage = this.handleMessage.bind(this);
 
@@ -49,7 +53,7 @@ class DeepChainZiniRunner {
     this.beginPayload = {
       command: "begin",
       parameters: inclusionExclusionParameters,
-      deepReportProgress: deepReportProgress
+      deepReportProgress: deepReportProgress,
     };
   }
 
@@ -63,29 +67,29 @@ class DeepChainZiniRunner {
       Run complete
     */
     switch (message.type) {
-      case 'worker-ready':
+      case "worker-ready":
         this.worker.postMessage(this.beginPayload);
         break;
-      case 'timing-run-done':
+      case "timing-run-done":
         this.timingRunDone(message.timingRun);
         break;
-      case 'board-progress':
+      case "board-progress":
         this.updateBoardProgress(message.clicks);
         break;
-      case 'percentage-progress':
+      case "percentage-progress":
         this.updatePercentageProgress(message.percentage);
         break;
-      case 'iteration-update':
+      case "iteration-update":
         this.updateIterationDisplay(message.iterations);
         break;
-      case 'log-update':
+      case "log-update":
         this.addLogEntry(message.logEntry);
         break;
-      case 'run-complete':
+      case "run-complete":
         this.completeRun(message.result);
         break;
       default:
-        throw new Error('disallowed message type');
+        throw new Error("disallowed message type");
     }
   }
 

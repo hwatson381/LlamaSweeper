@@ -120,14 +120,21 @@ class BoardActions {
 
     if (!this.board.checkCoordsInBounds(tileX, tileY)) {
       //Click not on board, exit (doesn't count as wasted click)
-      this.board.boardInput.updateDepressedSquares(tileX, tileY, false, touchIdentifier); //Undepress square as we have just done leftMouseUp
+      this.board.boardInput.updateDepressedSquares(
+        tileX,
+        tileY,
+        false,
+        touchIdentifier
+      ); //Undepress square as we have just done leftMouseUp
       return;
     }
 
     if (typeof this.board.tilesArray[tileX][tileY].state === "number") {
       //Attempt chord tile
       this.attemptChordOnly(unflooredTileX, unflooredTileY, touchIdentifier);
-    } else if (this.board.tilesArray[tileX][tileY].state === CONSTANTS.UNREVEALED) {
+    } else if (
+      this.board.tilesArray[tileX][tileY].state === CONSTANTS.UNREVEALED
+    ) {
       //Attempt to dig tile
       this.attemptDigOnly(
         unflooredTileX,
@@ -154,7 +161,12 @@ class BoardActions {
       unflooredTileY
     );
 
-    this.board.boardInput.updateDepressedSquares(tileX, tileY, false, touchIdentifier); //Undepress square as we have just done leftMouseUp
+    this.board.boardInput.updateDepressedSquares(
+      tileX,
+      tileY,
+      false,
+      touchIdentifier
+    ); //Undepress square as we have just done leftMouseUp
 
     //expire the chord for l+r so that releasing let click afterwards doesn't do a dig
     if (touchIdentifier === "mouse" && chordingButtons.value === "l+r") {
@@ -201,7 +213,12 @@ class BoardActions {
       unflooredTileY
     );
 
-    this.board.boardInput.updateDepressedSquares(tileX, tileY, false, touchIdentifier); //Undepress square as we have just done leftMouseUp
+    this.board.boardInput.updateDepressedSquares(
+      tileX,
+      tileY,
+      false,
+      touchIdentifier
+    ); //Undepress square as we have just done leftMouseUp
 
     if (!this.board.checkCoordsInBounds(tileX, tileY)) {
       //Click not on board, exit (doesn't count as wasted click)
@@ -237,7 +254,9 @@ class BoardActions {
           //Waste if click occurred within 0.5s, otherwise blast
           if (
             eventTimestamp <=
-            this.board.meanOpenings.meanMineStates[tileX][tileY].changedToMineTimestamp + 500
+            this.board.meanOpenings.meanMineStates[tileX][tileY]
+              .changedToMineTimestamp +
+              500
           ) {
             //Click occured soon after mean mine was placed, click just gets wasted
             doDig = false;
@@ -272,7 +291,13 @@ class BoardActions {
 
       if (doDig) {
         this.openTile(tileX, tileY, true);
-        this.board.stats.addLeft(tileX, tileY, unflooredTileX, unflooredTileY, time);
+        this.board.stats.addLeft(
+          tileX,
+          tileY,
+          unflooredTileX,
+          unflooredTileY,
+          time
+        );
       }
     } else {
       this.board.stats.addWastedLeft(
@@ -295,7 +320,12 @@ class BoardActions {
 
     //Undepress square as we have just done ended a touch input
     //Note that flag touch inputs on numbers will depress surrounding squares as this does a chord
-    this.board.boardInput.updateDepressedSquares(tileX, tileY, false, touchIdentifier);
+    this.board.boardInput.updateDepressedSquares(
+      tileX,
+      tileY,
+      false,
+      touchIdentifier
+    );
 
     if (!this.board.checkCoordsInBounds(tileX, tileY)) {
       //Click not on board, exit (doesn't count as wasted click)
@@ -410,9 +440,7 @@ class BoardActions {
             this.board.unflagged++;
           }
 
-          if (
-            tile.state === CONSTANTS.UNREVEALED
-          ) {
+          if (tile.state === CONSTANTS.UNREVEALED) {
             // Prevent openTile() from recursively starting another zero expansion.
             this.openTile(i, j, false, true);
 
@@ -449,7 +477,8 @@ class BoardActions {
     }
 
     if (
-      this.board.tilesArray[x][y].state === this.getNumberSurroundingFlags(x, y) ||
+      this.board.tilesArray[x][y].state ===
+        this.getNumberSurroundingFlags(x, y) ||
       isChordedTileZero
     ) {
       let hadUnrevealedNeighbour = false;
@@ -498,7 +527,6 @@ class BoardActions {
       }
     }
   }
-
 
   getNumberSurroundingMines(x, y, includeMeanMines = false) {
     let count = 0;
@@ -574,7 +602,8 @@ class BoardActions {
     ) {
       this.board.stats.lateCalcDeepChainZini();
     }
-    const progressOver75Percent = this.board.stats.solved3bv / this.board.stats.bbbv >= 0.75;
+    const progressOver75Percent =
+      this.board.stats.solved3bv / this.board.stats.bbbv >= 0.75;
     this.flagToggleShowReset(progressOver75Percent ? 350 : 250);
     this.board.boardHint.showAutoHintIfNeeded();
   }
@@ -652,7 +681,10 @@ class BoardActions {
   }
 
   checkWin() {
-    if (this.board.width * this.board.height - this.board.mineCount === this.board.openedTiles) {
+    if (
+      this.board.width * this.board.height - this.board.mineCount ===
+      this.board.openedTiles
+    ) {
       return true;
     } else {
       return false;
@@ -662,7 +694,10 @@ class BoardActions {
   flagToggleShowReset(delay = 500) {
     flagToggleShowReset.value = true;
 
-    if (flagToggleLocationClass.value === 'toggle-hidden-reset' && mobileResetGuard.value) {
+    if (
+      flagToggleLocationClass.value === "toggle-hidden-reset" &&
+      mobileResetGuard.value
+    ) {
       this.temporarilyDisableMobileResetButton = true;
       //Note that there is a possible bug where the user could
       //reset (with face) and blast within 0.5s, and then the timeout

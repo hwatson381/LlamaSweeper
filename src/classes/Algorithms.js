@@ -1,23 +1,33 @@
 import OrganisedPremiums from "src/classes/OrganisedPremiums.js";
 import WomZini from "./WomZini";
 import CONSTANTS from "src/includes/Constants";
-import { laymine_solvable, cal_probability_onboard, isWasmAvailable } from "./RustWasm";
+import {
+  laymine_solvable,
+  cal_probability_onboard,
+  isWasmAvailable,
+} from "./RustWasm";
 
 class Algorithms {
   constructor() {
-    throw new Error('Algorithms class only has static methods, and cannot be instantiated')
+    throw new Error(
+      "Algorithms class only has static methods, and cannot be instantiated"
+    );
   }
 
-  static calcBasicZini(mines, is8Way, preprocessedData = false, initialRevealedStates = false, initialFlagStates = false) {
+  static calcBasicZini(
+    mines,
+    is8Way,
+    preprocessedData = false,
+    initialRevealedStates = false,
+    initialFlagStates = false
+  ) {
     //PreprocessedData is the result from Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines)
     //Which means that we don't have to run that function multiple times
 
     //Get various data structures which information about numbers and openings
     if (!preprocessedData) {
       preprocessedData =
-        this.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
-          mines
-        );
+        this.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
     }
 
     const { numbersArray, openingLabels, preprocessedOpenings } =
@@ -39,7 +49,7 @@ class Algorithms {
     //false for unflagged, true for flagged
     let flagStates;
     if (initialFlagStates) {
-      flagStates = initialFlagStates
+      flagStates = initialFlagStates;
     } else {
       flagStates = new Array(width)
         .fill(0)
@@ -47,7 +57,11 @@ class Algorithms {
     }
 
     //array of saved info for square about what the neighbours are
-    const squareInfo = this.computeSquareInfo(mines, numbersArray, openingLabels);
+    const squareInfo = this.computeSquareInfo(
+      mines,
+      numbersArray,
+      openingLabels
+    );
 
     //store premiums of opening + chording each cell
     const premiums = new Array(width)
@@ -169,7 +183,7 @@ class Algorithms {
 
     return {
       total: currentZiniValue,
-      clicks: currentClicksArray
+      clicks: currentClicksArray,
     };
   }
 
@@ -528,11 +542,22 @@ class Algorithms {
 
   //preprocessedData is the result from Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines)
   //Which means that we don't have to run that function multiple times
-  static calcEightWayZini(mines, preprocessedData = false, initialRevealedStates = false, initialFlagStates = false) {
+  static calcEightWayZini(
+    mines,
+    preprocessedData = false,
+    initialRevealedStates = false,
+    initialFlagStates = false
+  ) {
     //8-way zini
     const is8Way = true;
 
-    return this.calcBasicZini(mines, is8Way, preprocessedData, initialRevealedStates, initialFlagStates);
+    return this.calcBasicZini(
+      mines,
+      is8Way,
+      preprocessedData,
+      initialRevealedStates,
+      initialFlagStates
+    );
   }
 
   static calcOneWayZini(mines, preprocessedData = false) {
@@ -597,12 +622,9 @@ class Algorithms {
 
     let adjacentUnrevealedOpenings = 0;
     for (let op of thisSquare.openingsTouched) {
-      const zeroBelongingToOpening =
-        preprocessedOpenings.get(op).zeros[0];
+      const zeroBelongingToOpening = preprocessedOpenings.get(op).zeros[0];
 
-      if (
-        !revealedStates[zeroBelongingToOpening.x][zeroBelongingToOpening.y]
-      ) {
+      if (!revealedStates[zeroBelongingToOpening.x][zeroBelongingToOpening.y]) {
         adjacentUnrevealedOpenings++;
       }
     }
@@ -971,7 +993,14 @@ class Algorithms {
       return false;
     }
 
-    let boardSolvable = laymine_solvable(width, height, mineCount, safeCoord.x, safeCoord.y, maxAttempts);
+    let boardSolvable = laymine_solvable(
+      width,
+      height,
+      mineCount,
+      safeCoord.x,
+      safeCoord.y,
+      maxAttempts
+    );
 
     if (boardSolvable[1] === false) {
       //Failed to generate board, return false so we can show a message for this
@@ -1042,13 +1071,22 @@ class Algorithms {
 
       //If saving 1.15x as many clicks as one-way zini (plus 2 more) would exceed the goal then investigate further (by checking 8-way zini)
 
-      let oldCheck = bbbv / (bbbv - (bbbv - oneWayZini) * 1.15 - 2) >= targetEff / 100;
+      let oldCheck =
+        bbbv / (bbbv - (bbbv - oneWayZini) * 1.15 - 2) >= targetEff / 100;
 
-      let newCheck = bbbv / (oneWayZini - this.get99thPercentileSubzini(width, height, mineCount, bbbv, oneWayZini)) >= targetEff / 100;
+      let newCheck =
+        bbbv /
+          (oneWayZini -
+            this.get99thPercentileSubzini(
+              width,
+              height,
+              mineCount,
+              bbbv,
+              oneWayZini
+            )) >=
+        targetEff / 100;
 
-      if (
-        oldCheck
-      ) {
+      if (oldCheck) {
         passedFirstCheck++;
 
         const eightWayZini = this.calcBasicZini(
@@ -1117,13 +1155,22 @@ class Algorithms {
 
       //Same checks as effBoardShuffle
 
-      let oldCheck = bbbv / (bbbv - (bbbv - oneWayZini) * 1.15 - 2) >= targetEff / 100;
+      let oldCheck =
+        bbbv / (bbbv - (bbbv - oneWayZini) * 1.15 - 2) >= targetEff / 100;
 
-      let newCheck = bbbv / (oneWayZini - this.get99thPercentileSubzini(width, height, mineCount, bbbv, oneWayZini)) >= targetEff / 100;
+      let newCheck =
+        bbbv /
+          (oneWayZini -
+            this.get99thPercentileSubzini(
+              width,
+              height,
+              mineCount,
+              bbbv,
+              oneWayZini
+            )) >=
+        targetEff / 100;
 
-      if (
-        oldCheck
-      ) {
+      if (oldCheck) {
         //Keep the same as effBoardShuffle, so we still need to only run 8way after passing the first check
         const eightWayZini = this.calcBasicZini(
           candidateMinesArray,
@@ -1144,10 +1191,10 @@ class Algorithms {
 
     const boardKey = `${width}-${height}-${mineCount}`;
 
-    let boundaryPoints = null
+    let boundaryPoints = null;
 
     switch (boardKey) {
-      case '9-9-10': //beginner
+      case "9-9-10": //beginner
         boundaryPoints = [5, 9, 14, 25, 40, Infinity];
         // /* Old cutoffs - missed some 200s */ boundaryPoints = [7, 16, 31, 40, Infinity];
         /*
@@ -1159,7 +1206,7 @@ class Algorithms {
           41 up 3bv => 4 subzini 99% likely
         */
         break;
-      case '16-16-40': //intermediate
+      case "16-16-40": //intermediate
         boundaryPoints = [0, 0, 0, 33, 70, 90, 100, 110, 120, Infinity]; //shifted over from previous cutoffs
         // /* old cutoffs, some missed 170s */ boundaryPoints = [0, 0, 33, 70, 90, 100, 110, 120, Infinity];
         /*
@@ -1173,8 +1220,24 @@ class Algorithms {
           121 up 3bv => 8 subzini 99% likely
         */
         break;
-      case '30-16-99': //expert
-        boundaryPoints = [0, 0, 0, 0, 0, 0, 0, 170, 200, 216, 222, 227, 230, 235, Infinity]; //shifted twice from old
+      case "30-16-99": //expert
+        boundaryPoints = [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          170,
+          200,
+          216,
+          222,
+          227,
+          230,
+          235,
+          Infinity,
+        ]; //shifted twice from old
         // /* old cutoffs, some missed on 150 */ boundaryPoints = [0, 0, 0, 0, 0, 170, 200, 216, 222, 227, 230, 235, Infinity];
         /*
           The way to intepret the above is
@@ -1193,7 +1256,7 @@ class Algorithms {
     }
 
     if (boundaryPoints) {
-      let subzini99th = 0
+      let subzini99th = 0;
 
       for (let i = 0; i < boundaryPoints.length; i++) {
         if (bbbv <= boundaryPoints[i]) {
@@ -1213,9 +1276,10 @@ class Algorithms {
     //Finds a random zero cell on board to click
     //Inefficient, but only runs when we've found a good board, which isn't that often
 
-    let numbersArray = this.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
-      minesArray
-    ).numbersArray;
+    let numbersArray =
+      this.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
+        minesArray
+      ).numbersArray;
 
     let width = minesArray.length;
     let height = minesArray[0].length;
@@ -1237,7 +1301,7 @@ class Algorithms {
         let x = Math.floor(Math.random() * width);
         let y = Math.floor(Math.random() * height);
         if (!minesArray[x][y]) {
-          return { x, y }
+          return { x, y };
         }
       }
     }
@@ -1247,18 +1311,33 @@ class Algorithms {
 
   //Note - wom zini has a off-by-one error with handling premiums for opening edges
   static calcWomZiniAndHZini(mines, applyOpeningEdgeCorrection = false) {
-    const preprocessedData = this.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
-      mines
-    );
+    const preprocessedData =
+      this.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
 
     //Object with 1d arrays in correct form to input into WoM zini alg
-    let womBoardData = WomZini.createWomBoardDataObject(mines, preprocessedData, applyOpeningEdgeCorrection);
+    let womBoardData = WomZini.createWomBoardDataObject(
+      mines,
+      preprocessedData,
+      applyOpeningEdgeCorrection
+    );
     const width = mines.length;
     const height = mines[0].length;
-    const minesNumber = mines.flat().filter(val => val).length
+    const minesNumber = mines.flat().filter((val) => val).length;
 
-    let { total: zini, clicks: ziniClicks } = WomZini.c215(false, womBoardData, width, height, minesNumber);
-    let { total: hzini, clicks: hziniClicks } = WomZini.c215(true, womBoardData, width, height, minesNumber);
+    let { total: zini, clicks: ziniClicks } = WomZini.c215(
+      false,
+      womBoardData,
+      width,
+      height,
+      minesNumber
+    );
+    let { total: hzini, clicks: hziniClicks } = WomZini.c215(
+      true,
+      womBoardData,
+      width,
+      height,
+      minesNumber
+    );
 
     /*
     let ziniOut = '';
@@ -1285,13 +1364,13 @@ class Algorithms {
     return {
       womZini: {
         total: zini,
-        clicks: ziniClicks
+        clicks: ziniClicks,
       },
       womHzini: {
         total: hzini,
-        clicks: hziniClicks
-      }
-    }
+        clicks: hziniClicks,
+      },
+    };
   }
 
   static reorderZiniClicks(clicks, mines) {
@@ -1301,9 +1380,7 @@ class Algorithms {
     const height = mines[0].length;
 
     const { numbersArray, openingLabels, preprocessedOpenings } =
-      this.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
-        mines
-      );
+      this.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
 
     let clickGroupings = {
       opening: [],
@@ -1311,10 +1388,10 @@ class Algorithms {
       flags: [],
       chords: [],
       cleanup: [],
-    }
+    };
 
     for (let click of clicks) {
-      if (click.type === 'left') {
+      if (click.type === "left") {
         //Check if this is opening an opening
         if (numbersArray[click.x][click.y] === 0) {
           clickGroupings.opening.push(click);
@@ -1324,7 +1401,7 @@ class Algorithms {
         //Check if this is clicking on the edge of an opening, and if so then shift it
         let neighbourZero = null;
         for (let i = click.x - 1; i <= click.x + 1; i++) {
-          let breakOuter = false
+          let breakOuter = false;
           for (let j = click.y - 1; j <= click.y + 1; j++) {
             if (i < 0 || i >= width || j < 0 || j >= height) {
               continue;
@@ -1343,14 +1420,17 @@ class Algorithms {
 
         //If the left click is next to an opening, we instead click on the opening
         if (neighbourZero) {
-          click.x = neighbourZero.x
-          click.y = neighbourZero.y
+          click.x = neighbourZero.x;
+          click.y = neighbourZero.y;
           clickGroupings.opening.push(click);
           continue;
         }
 
-        let isChordedLater = clicks.some((otherClick) =>
-          otherClick.type === 'chord' && otherClick.x === click.x && otherClick.y === click.y
+        let isChordedLater = clicks.some(
+          (otherClick) =>
+            otherClick.type === "chord" &&
+            otherClick.x === click.x &&
+            otherClick.y === click.y
         );
 
         if (isChordedLater) {
@@ -1362,19 +1442,25 @@ class Algorithms {
         }
       }
 
-      if (click.type === 'right') {
+      if (click.type === "right") {
         clickGroupings.flags.push(click);
         continue; //Not needed, defensive incase we add more groupings
       }
 
-      if (click.type === 'chord') {
+      if (click.type === "chord") {
         clickGroupings.chords.push(click);
         continue; //Not needed, defensive incase we add more groupings
       }
     }
 
     //Combine the clicks into a new array with all the different groupings
-    clicks = [...clickGroupings.opening, ...clickGroupings.setupClick, ...clickGroupings.flags, ...clickGroupings.chords, ...clickGroupings.cleanup];
+    clicks = [
+      ...clickGroupings.opening,
+      ...clickGroupings.setupClick,
+      ...clickGroupings.flags,
+      ...clickGroupings.chords,
+      ...clickGroupings.cleanup,
+    ];
 
     return clicks;
   }
@@ -1446,21 +1532,24 @@ class Algorithms {
     let binaryStr = String.fromCharCode(...bytes);
 
     //base64 url-safe encode
-    return btoa(binaryStr).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    return btoa(binaryStr)
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
   }
 
   static decodeClicks(encoded, boardWidth, boardHeight) {
     try {
       // Restore base64 padding
-      const padded = encoded + '==='.slice((encoded.length + 3) % 4);
-      const base64 = padded.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = encoded + "===".slice((encoded.length + 3) % 4);
+      const base64 = padded.replace(/-/g, "+").replace(/_/g, "/");
       const binaryStr = atob(base64);
 
-      const bytes = Uint8Array.from(binaryStr, c => c.charCodeAt(0));
+      const bytes = Uint8Array.from(binaryStr, (c) => c.charCodeAt(0));
 
       const bitUnpacker = new BitUnpacker(bytes);
 
-      const clickTypeMap = { 0: 'left', 1: 'right', 2: 'chord' };
+      const clickTypeMap = { 0: "left", 1: "right", 2: "chord" };
       const bitsForOrder = Math.ceil(Math.log2(boardWidth * boardHeight));
 
       const clicks = [];
@@ -1491,7 +1580,7 @@ class Algorithms {
     const width = minesArray.length;
     const height = minesArray[0].length;
 
-    const totalMines = minesArray.flat().filter(val => val).length;
+    const totalMines = minesArray.flat().filter((val) => val).length;
 
     let data = "";
 
@@ -1525,7 +1614,10 @@ class Algorithms {
               if (i === x && j === y) {
                 continue; //Skip self (Not strictly needed, but for clarity)
               }
-              if (minesArray[i][j] && tilesArray[i][j].state === CONSTANTS.FLAG) {
+              if (
+                minesArray[i][j] &&
+                tilesArray[i][j].state === CONSTANTS.FLAG
+              ) {
                 //Numbers next to flags get their value reduced.
                 //Mscoach also does this for solver deducable flags, but this is overkill for us
                 reduceBy++;
@@ -1534,10 +1626,11 @@ class Algorithms {
           }
 
           if (reduceBy > originalTileNumber) {
-            throw new Error(`Tile at x: ${x}, y: ${y} has too many flags around it, can't compress invalid data`);
+            throw new Error(
+              `Tile at x: ${x}, y: ${y} has too many flags around it, can't compress invalid data`
+            );
           }
           data = data + (originalTileNumber - reduceBy);
-
         } else {
           // Anything else gets hidden (this may include wrongly placed flags)
           data = data + "H";
@@ -1555,9 +1648,16 @@ class Algorithms {
 
     let output = cWidth + cHeight + cMines + cBoard;
 
-    console.log("Compressed data length " + output.length + " analysis=" + output);
+    console.log(
+      "Compressed data length " + output.length + " analysis=" + output
+    );
 
-    return { width: width, height: height, mineCount: totalMines, analysis: output };
+    return {
+      width: width,
+      height: height,
+      mineCount: totalMines,
+      analysis: output,
+    };
   }
 
   static getMbfBinaryData(mines) {
@@ -1570,13 +1670,13 @@ class Algorithms {
       next two bytes - mine count (goes up to 65535 mines)
       rest - coords of mines. Each coord is 2 bytes, first byte is x, second byte is y.
     */
-    const totalMines = mines.flat().filter(val => val).length;
+    const totalMines = mines.flat().filter((val) => val).length;
     const mbfData = new Uint8Array(4 + totalMines * 2); //Max size needed
 
     mbfData[0] = width;
     mbfData[1] = height;
-    mbfData[2] = (totalMines >> 8) & 0xFF;
-    mbfData[3] = totalMines & 0xFF;
+    mbfData[2] = (totalMines >> 8) & 0xff;
+    mbfData[3] = totalMines & 0xff;
 
     let mineIndex = 0;
     for (let x = 0; x < width; x++) {
@@ -1599,7 +1699,7 @@ class Algorithms {
     let hexString = mbfData.toHex();
 
     //Add spaces between bytes
-    hexString = hexString.match(/.{1,2}/g).join(' ');
+    hexString = hexString.match(/.{1,2}/g).join(" ");
 
     return hexString;
   }
@@ -1624,23 +1724,29 @@ class Algorithms {
     const height = mbfData[1];
     const mineCount = (mbfData[2] << 8) | mbfData[3];
 
-    const mines = new Array(width).fill(0).map(() => new Array(height).fill(false));
+    const mines = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(false));
 
     for (let i = 4; i < mbfData.length; i += 2) {
       let x = mbfData[i];
       let y = mbfData[i + 1];
 
       if (x >= width || y >= height) {
-        throw new Error(`Coordinates found outside board when parsing MBF. Board size is ${width}x${height}, but mine found at (${x},${y})`);
+        throw new Error(
+          `Coordinates found outside board when parsing MBF. Board size is ${width}x${height}, but mine found at (${x},${y})`
+        );
       }
 
       mines[x][y] = true;
     }
 
     //validate mines are correct
-    const calculatedMineCount = mines.flat().filter(val => val).length;
+    const calculatedMineCount = mines.flat().filter((val) => val).length;
     if (calculatedMineCount !== mineCount) {
-      throw new Error(`Mine count mismatch when reading MBF string. Expected ${mineCount}, got ${calculatedMineCount}`);
+      throw new Error(
+        `Mine count mismatch when reading MBF string. Expected ${mineCount}, got ${calculatedMineCount}`
+      );
     }
 
     return mines;
@@ -1648,14 +1754,18 @@ class Algorithms {
 
   static readFromMbfString(mbfString) {
     //Remove spaces and convert from hex string to Uint8Array
-    const hexString = mbfString.replace(/\s/g, '');
+    const hexString = mbfString.replace(/\s/g, "");
 
     if (!/^(?:[a-f0-9]{2})+$/i.test(hexString)) {
-      throw new Error("Hex string contains invalid characters or has odd length");
+      throw new Error(
+        "Hex string contains invalid characters or has odd length"
+      );
     }
 
     //Convert string to Uint8Array. Could switch to https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array/fromHex when it's more widely supported
-    const mbfData = Uint8Array.from(hexString.match(/[a-f0-9]{2}/gi).map(byte => parseInt(byte, 16)));
+    const mbfData = Uint8Array.from(
+      hexString.match(/[a-f0-9]{2}/gi).map((byte) => parseInt(byte, 16))
+    );
 
     return this.readFromMbfBinaryData(mbfData);
   }
@@ -1663,7 +1773,9 @@ class Algorithms {
   static calcBoardProbability(probCalcBoard, mineCount) {
     if (!isWasmAvailable()) {
       //Throw a error so callers lack of wasm can be caught elsewhere
-      throw new Error("WebAssembly unavailable: cannot calculate probabilities");
+      throw new Error(
+        "WebAssembly unavailable: cannot calculate probabilities"
+      );
     }
 
     //Create board structure needed by mstoollib
@@ -1682,10 +1794,15 @@ class Algorithms {
       18  This indicates that in the game, cells that appear to be 0 due to double-click highlighting are highlighted.
     */
 
-    let [probabilities, mineCountInfo] = cal_probability_onboard(probCalcBoard, mineCount);
+    let [probabilities, mineCountInfo] = cal_probability_onboard(
+      probCalcBoard,
+      mineCount
+    );
 
     //Round probabilities to 12 decimal places to avoid floating point issues
-    probabilities = probabilities.map(col => col.map(p => Math.round(p * 10 ** 12) / 10 ** 12));
+    probabilities = probabilities.map((col) =>
+      col.map((p) => Math.round(p * 10 ** 12) / 10 ** 12)
+    );
 
     return probabilities;
   }
@@ -1739,11 +1856,26 @@ class BitUnpacker {
 //From https://github.com/DavidNHill/JSMinesweeper/blob/master/Minesweeper/client/Board.js
 class Compressor {
   constructor() {
-    this.BASE62 = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    this.BASE62 =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
     // this array decides how many digits to allocate to each value on the board
     // [0, 1, 2, 3, 4, 5, 6, 7, 8, hidden flag, HIDDEN, FLAG, overflagged]
-    this.VALUES = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "I", "H", "F", "O"];
+    this.VALUES = [
+      "0",
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "I",
+      "H",
+      "F",
+      "O",
+    ];
     this.BASES = [10, 7, 5, 5, 4, 3, 3, 1, 1, 4, 10, 8, 1];
     this.digits = [];
 
@@ -1754,7 +1886,6 @@ class Compressor {
     }
 
     //console.log(this.digits);
-
   }
 
   compress(input) {
@@ -1768,10 +1899,8 @@ class Compressor {
       if (prevChar == "") {
         prevChar = currChar;
         count = 1;
-
       } else if (currChar == prevChar) {
         count++;
-
       } else {
         // add the compressed data
         output = output + this.compressFragment(prevChar, count);
@@ -1788,7 +1917,6 @@ class Compressor {
     //console.log("Compressed data length " + output.length + " data: " + output);
 
     return output;
-
   }
 
   // compress 'length' characters 'char'
@@ -1797,7 +1925,11 @@ class Compressor {
 
     let index = this.VALUES.indexOf(char);
     if (index == -1) {
-      console.log("Unable to find the value '" + char + "' in the compression values array");
+      console.log(
+        "Unable to find the value '" +
+          char +
+          "' in the compression values array"
+      );
       return "";
     }
 
@@ -1812,12 +1944,10 @@ class Compressor {
     let output = "";
 
     while (length != 0) {
-
       let digit = length % base;
       output = digits[digit] + output;
 
       length = (length - digit) / base;
-
     }
 
     //console.log(output);
@@ -1831,10 +1961,11 @@ class Compressor {
     let count = 0;
     let prevChar = "";
     for (let i = 0; i < input.length; i++) {
-
       let testChar = input.charAt(i);
 
-      let index = this.digits.findIndex((element) => element.includes(testChar));
+      let index = this.digits.findIndex((element) =>
+        element.includes(testChar)
+      );
 
       // the value this character represents and the count it represents
       let currChar = this.VALUES[index];
@@ -1844,14 +1975,12 @@ class Compressor {
       if (prevChar == "") {
         prevChar = currChar;
         count = currCount;
-
       } else if (currChar == prevChar) {
         if (base == 1) {
           count++;
         } else {
           count = count * base + currCount;
         }
-
       } else {
         // add the compressed data
         output = output + prevChar.repeat(count);
@@ -1873,7 +2002,6 @@ class Compressor {
     //console.log("Decompressed data length " + output.length + " data: " + output);
 
     return output;
-
   }
 
   compressNumber(number, size) {
@@ -1881,15 +2009,12 @@ class Compressor {
 
     let output = "";
     for (let i = 0; i < size; i++) {
-
       let digit = number % base;
       output = this.BASE62[digit] + output;
       number = (number - digit) / base;
-
     }
 
     return output;
-
   }
 
   decompressNumber(value) {
@@ -1897,15 +2022,12 @@ class Compressor {
 
     let output = 0;
     for (let i = 0; i < value.length; i++) {
-
       let digit = this.BASE62.indexOf(value.charAt(i));
 
       output = output * base + digit;
-
     }
 
     return output;
-
   }
 }
 

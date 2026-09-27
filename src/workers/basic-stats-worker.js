@@ -37,26 +37,26 @@ onmessage = function (event) {
   const msg = event.data;
 
   switch (msg.command) {
-    case 'addJob':
+    case "addJob":
       jobs.push(msg);
       processNextJobAsync();
       break;
-    case 'updateStatsLock':
-      if (typeof msg.statsLock !== 'number') {
-        throw new Error('invalid payload');
+    case "updateStatsLock":
+      if (typeof msg.statsLock !== "number") {
+        throw new Error("invalid payload");
       }
       statsLock = msg.statsLock;
       break;
-    case 'updateAutoHintLock':
-      if (typeof msg.autoHintLock !== 'number') {
-        throw new Error('invalid payload');
+    case "updateAutoHintLock":
+      if (typeof msg.autoHintLock !== "number") {
+        throw new Error("invalid payload");
       }
       autoHintLock = msg.autoHintLock;
       break;
     default:
-      throw new Error('invalid payload');
+      throw new Error("invalid payload");
   }
-}
+};
 
 function processNextJobAsync() {
   if (timeoutHandle !== null) {
@@ -80,17 +80,17 @@ function processJob() {
 
   let job = jobs.shift();
 
-  if (typeof job === 'undefined') {
+  if (typeof job === "undefined") {
     return; //No jobs to process
   }
 
   if (
-    (typeof job.statsLock === 'number' && job.statsLock < statsLock) ||
-    (typeof job.autoHintLock === 'number' && job.autoHintLock < autoHintLock)
+    (typeof job.statsLock === "number" && job.statsLock < statsLock) ||
+    (typeof job.autoHintLock === "number" && job.autoHintLock < autoHintLock)
   ) {
     postMessage({
       success: false,
-      id: job.id
+      id: job.id,
     });
 
     processNextJobAsync();
@@ -101,33 +101,33 @@ function processJob() {
     let result;
 
     switch (job.jobName) {
-      case '8-way-zini':
+      case "8-way-zini":
         result = compute8Way(job.parameters);
         break;
-      case '100-chain':
+      case "100-chain":
         result = compute100Chain(job.parameters);
         break;
-      case 'wom-zini-hzini':
+      case "wom-zini-hzini":
         result = computeWomZinis(job.parameters);
         break;
-      case 'calc-board-probability':
+      case "calc-board-probability":
         result = calcBoardProbability(job.parameters);
         break;
       default:
-        throw new Error('invalid jobName');
+        throw new Error("invalid jobName");
     }
 
     let payload = {
       success: true,
       id: job.id,
-      result: result
-    }
+      result: result,
+    };
 
-    if (typeof job.statsLock === 'number') {
+    if (typeof job.statsLock === "number") {
       payload.statsLock = job.statsLock;
     }
 
-    if (typeof job.autoHintLock === 'number') {
+    if (typeof job.autoHintLock === "number") {
       payload.autoHintLock = job.autoHintLock;
     }
 
@@ -135,40 +135,31 @@ function processJob() {
   } catch (err) {
     postMessage({
       success: false,
-      id: job.id
+      id: job.id,
     });
   } finally {
     processNextJobAsync();
   }
 }
 
-function compute8Way({
-  mines
-}) {
+function compute8Way({ mines }) {
   return Algorithms.calcEightWayZini(mines);
 }
 
-function compute100Chain({
-  mines
-}) {
+function compute100Chain({ mines }) {
   const { total, clicks } = ChainZini.calcNWayChainZini({
     mines: mines,
     numberOfIterations: 100,
-    includeClickPath: true
+    includeClickPath: true,
   });
 
   //Only return total and clicks as other properties e.g. solution will lose prototypes when serialising and sending across worker boundary
   return { total, clicks };
 }
 
-function computeWomZinis({
-  mines
-}) {
+function computeWomZinis({ mines }) {
   //wom zini without correction
-  let { womZini, womHzini } = Algorithms.calcWomZiniAndHZini(
-    mines,
-    false
-  );
+  let { womZini, womHzini } = Algorithms.calcWomZiniAndHZini(mines, false);
   //wom zini with correction
   let { womZini: cWomZini, womHzini: cWomHzini } =
     Algorithms.calcWomZiniAndHZini(mines, true);
@@ -177,14 +168,11 @@ function computeWomZinis({
     womZini: womZini,
     womHzini: womHzini,
     cWomZini: cWomZini,
-    cWomHzini: cWomHzini
-  }
+    cWomHzini: cWomHzini,
+  };
 }
 
-function calcBoardProbability({
-  probCalcBoard,
-  totalMines
-}) {
+function calcBoardProbability({ probCalcBoard, totalMines }) {
   let probabilityGrid = Algorithms.calcBoardProbability(
     probCalcBoard,
     totalMines

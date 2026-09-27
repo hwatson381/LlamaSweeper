@@ -1,5 +1,5 @@
 import Algorithms from "./Algorithms";
-import { Dialog } from 'quasar';
+import { Dialog } from "quasar";
 
 import {
   minimumEff,
@@ -100,7 +100,8 @@ class EffShuffleManager {
     if (!minesArray) {
       Dialog.create({
         title: "Alert",
-        message: "Failed to generate board. Consider enabling the background generation setting. If it is already enabled, try increasing the number of workers.",
+        message:
+          "Failed to generate board. Consider enabling the background generation setting. If it is already enabled, try increasing the number of workers.",
       });
       return false;
     } else {
@@ -170,7 +171,7 @@ class EffShuffleManager {
           });
           hasReportedWorkerError = true;
         }
-      }
+      };
 
       this.workerPool.push(worker);
     }
@@ -296,7 +297,9 @@ class EffShuffleManager {
       return;
     }
 
-    if (this.workerPoolCurrentImplementationType === effBoardsImplementation.value) {
+    if (
+      this.workerPoolCurrentImplementationType === effBoardsImplementation.value
+    ) {
       //worker is already using correct implementation
       return;
     }
@@ -508,13 +511,7 @@ class EffShuffleManager {
     this.activateBackgroundGeneration();
   }
 
-  doBenchmarkingRun({
-    width,
-    height,
-    mineCount,
-    targetEff,
-    iterations
-  }) {
+  doBenchmarkingRun({ width, height, mineCount, targetEff, iterations }) {
     this.initWorkerPoolIfNotAlreadyInited();
     this.sendWorkersPauseCommand();
 
@@ -525,7 +522,7 @@ class EffShuffleManager {
       height: height,
       mineCount: mineCount,
       targetEff: targetEff,
-      iterations: iterations
+      iterations: iterations,
     });
   }
 }

@@ -31,6 +31,8 @@ There are also a lot of quality of life features for advanced minesweeper player
 
 Refer to scripts in package.json. Note some have :js for skipping the wasm recompilation. The primary developer has an unusual configuration with the project sitting in windows, but the vscode terminal using a bash shell in WSL2, other contributors will naturally have different setups.
 
+Line endings are LF, enforced by `.gitattributes`. Prettier 2 reads only `.prettierignore`, so mirror relevant `.gitignore` entries there. `/wasm` is excluded from Prettier and ESLint.
+
 ## validation
 
 - Run `npm run lint` after JavaScript or Vue changes where practical.

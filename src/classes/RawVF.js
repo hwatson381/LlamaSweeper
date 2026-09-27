@@ -26,7 +26,9 @@ class RawVF {
     description += `Level: ${this.getLevelFromSize(boardStats)}\n`;
     description += `Width: ${boardWidth}\n`;
     description += `Height: ${boardHeight}\n`;
-    description += `Mines: ${boardStats.mines.flat().filter(s => s).length}\n`;
+    description += `Mines: ${
+      boardStats.mines.flat().filter((s) => s).length
+    }\n`;
     description += "Marks: Off\n";
     description += `SuperClick: ${isSuperClick ? "On" : "Off"}\n`;
     description += `SquareSize: ${RAWVF_SQUARE_SIZE}\n`; //May differ from real square size
@@ -95,11 +97,11 @@ class RawVF {
         events += useButtonEvents
           ? this.getButtonEventLine(maybeClick)
           : this.getMouseClickEventLine(
-            maybeClick,
-            boardWidth,
-            boardHeight,
-            isSuperClick
-          );
+              maybeClick,
+              boardWidth,
+              boardHeight,
+              isSuperClick
+            );
         clicksIndex++;
       } else {
         events += this.getMouseMoveEventLine(

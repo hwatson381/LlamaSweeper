@@ -27,9 +27,17 @@ class BoardRenderer {
   }
 
   draw() {
-    this.board.mainCanvasCtx.clearRect(0, 0, this.board.mainCanvas.value.width, this.board.mainCanvas.value.height);
+    this.board.mainCanvasCtx.clearRect(
+      0,
+      0,
+      this.board.mainCanvas.value.width,
+      this.board.mainCanvas.value.height
+    );
 
-    if (this.board.gameStage === "analyse" || this.board.gameStage === "replay") {
+    if (
+      this.board.gameStage === "analyse" ||
+      this.board.gameStage === "replay"
+    ) {
       this.drawTilesAndAnalysis();
     } else {
       this.drawTiles();
@@ -255,7 +263,9 @@ class BoardRenderer {
         topPanelTopAndBottomBorder.value / 2;
 
       const xPos =
-        boardHorizontalPadding.value + this.board.tileSize / 2 + i * this.board.tileSize;
+        boardHorizontalPadding.value +
+        this.board.tileSize / 2 +
+        i * this.board.tileSize;
 
       ctx.fillText(this.coordIndexToText(i, true), xPos, yPos, maxWidth);
     }
@@ -265,7 +275,9 @@ class BoardRenderer {
       const maxWidth = boardHorizontalPadding.value;
 
       const yPos =
-        boardTopPadding.value + this.board.tileSize / 2 + i * this.board.tileSize;
+        boardTopPadding.value +
+        this.board.tileSize / 2 +
+        i * this.board.tileSize;
 
       const xPos = boardHorizontalPadding.value / 2;
 
@@ -361,7 +373,10 @@ class BoardRenderer {
     //Draw timer (or zini value if analysing on zini explorer)
     if (showTimer.value) {
       let timerOrZini = this.board.integerTimer;
-      if (this.board.variant === "zini explorer" && this.board.gameStage === "analyse") {
+      if (
+        this.board.variant === "zini explorer" &&
+        this.board.gameStage === "analyse"
+      ) {
         timerOrZini = analyseZiniTotal.value;
       }
 
@@ -427,7 +442,12 @@ class BoardRenderer {
     //Draw red counter
     ctx.fillStyle = skinManager.getRedCounterTextColour();
     ctx.textAlign = "left";
-    ctx.fillText(this.board.quickPaint.redCount, redStartX, counterStartY, redMaxWidth);
+    ctx.fillText(
+      this.board.quickPaint.redCount,
+      redStartX,
+      counterStartY,
+      redMaxWidth
+    );
 
     //Draw orange counter
     if (!noSpaceForOrangeCounter) {
@@ -443,7 +463,12 @@ class BoardRenderer {
     //Draw dots count
     ctx.textAlign = "right";
     ctx.fillStyle = skinManager.getDotsCounterTextColour();
-    ctx.fillText(this.board.quickPaint.dotCount, dotStartX, counterStartY, largeMaxWidth);
+    ctx.fillText(
+      this.board.quickPaint.dotCount,
+      dotStartX,
+      counterStartY,
+      largeMaxWidth
+    );
 
     //Draw face
     ctx.drawImage(
@@ -478,7 +503,8 @@ class BoardRenderer {
 
     const cursorStartX =
       boardHorizontalPadding.value + this.board.cursor.x * this.board.tileSize;
-    const cursorStartY = boardTopPadding.value + this.board.cursor.y * this.board.tileSize;
+    const cursorStartY =
+      boardTopPadding.value + this.board.cursor.y * this.board.tileSize;
 
     const mouseImg = skinManager.getImage("cursor");
 
@@ -499,7 +525,8 @@ class BoardRenderer {
   updateBoardPixelDimensions() {
     //Set pixel dimensions for board
     const mainCanvasWidth =
-      this.board.width * tileSizeSlider.value + 2 * boardHorizontalPadding.value;
+      this.board.width * tileSizeSlider.value +
+      2 * boardHorizontalPadding.value;
     const mainCanvasHeight =
       this.board.height * tileSizeSlider.value +
       boardTopPadding.value +
@@ -530,7 +557,6 @@ class BoardRenderer {
     this.board.tileSize = tileSizeSlider.value;
     this.draw();
   }
-
 
   updateIntegerTimerIfNeeded() {
     let newTimerValue = Math.floor(this.board.getTime());

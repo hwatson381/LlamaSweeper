@@ -1,6 +1,6 @@
 import CONSTANTS from "src/includes/Constants";
 import Algorithms from "./Algorithms";
-import { Dialog } from 'quasar'
+import { Dialog } from "quasar";
 import ChainZini from "./ChainZini";
 import DeepChainZiniRunner from "./DeepChainZiniRunner";
 import {
@@ -22,19 +22,19 @@ import {
   ziniRunnerActive,
   synchronousZiniActive,
   replayIsShown,
-} from 'src/composables/useSettings'
+} from "src/composables/useSettings";
 
 class ZiniExplore {
   constructor(board) {
-    this.board = board
+    this.board = board;
 
     this.classicPath = []; //Array of clicks {type:'left', x: 1, y: 2} etc for classic display mode
 
     this.preprocessedData = {
       numbersArray: false,
       openingLabels: false,
-      preprocessedOpenings: false
-    }
+      preprocessedOpenings: false,
+    };
   }
 
   handleZiniExploreClick(tileX, tileY, isDigInput, isFlagInput) {
@@ -43,12 +43,12 @@ class ZiniExplore {
       return;
     }
 
-    if (analyseDisplayMode.value === 'classic') {
+    if (analyseDisplayMode.value === "classic") {
       this.handleClassicClick(tileX, tileY, isDigInput, isFlagInput);
-    } else if (analyseDisplayMode.value === 'chain') {
+    } else if (analyseDisplayMode.value === "chain") {
       this.handleChainClick(tileX, tileY, isDigInput, isFlagInput);
     } else {
-      throw new Error('Unrecognised display mode');
+      throw new Error("Unrecognised display mode");
     }
 
     this.updateUiAndBoard();
@@ -60,13 +60,15 @@ class ZiniExplore {
 
     //Unflagged mine, so flag it
     if (squareProperties.isMine && !squareProperties.isFlagged) {
-      this.classicPath.push({ type: 'right', x: tileX, y: tileY })
+      this.classicPath.push({ type: "right", x: tileX, y: tileY });
       return;
     }
 
     //Flagged mine, so unflag it
     if (squareProperties.isMine && squareProperties.isFlagged) {
-      this.classicPath = this.classicPath.filter(c => !(c.type === 'right' && c.x === tileX && c.y === tileY))
+      this.classicPath = this.classicPath.filter(
+        (c) => !(c.type === "right" && c.x === tileX && c.y === tileY)
+      );
       return;
     }
 
@@ -74,31 +76,42 @@ class ZiniExplore {
 
     //Unrevealed square, so dig it
     if (!squareProperties.isRevealed) {
-      this.classicPath.push({ type: 'left', x: tileX, y: tileY })
+      this.classicPath.push({ type: "left", x: tileX, y: tileY });
       return;
     }
 
     //Revealed and chordable, so chord it
     if (squareProperties.isChordable) {
-      this.classicPath.push({ type: 'chord', x: tileX, y: tileY })
+      this.classicPath.push({ type: "chord", x: tileX, y: tileY });
       return;
     }
 
     //Was digged, but not chordable, so undig it
     if (squareProperties.isDigged && !squareProperties.isChordable) {
-      this.classicPath = this.classicPath.filter(c => !(c.type === 'left' && c.x === tileX && c.y === tileY))
+      this.classicPath = this.classicPath.filter(
+        (c) => !(c.type === "left" && c.x === tileX && c.y === tileY)
+      );
       return;
     }
 
     //Was chorded and digged, so undig + unchord it
     if (squareProperties.isDigged && squareProperties.isChorded) {
-      this.classicPath = this.classicPath.filter(c => !((c.type === 'left' || c.type === 'chord') && c.x === tileX && c.y === tileY))
+      this.classicPath = this.classicPath.filter(
+        (c) =>
+          !(
+            (c.type === "left" || c.type === "chord") &&
+            c.x === tileX &&
+            c.y === tileY
+          )
+      );
       return;
     }
 
     //Was chorded and not digged, so just unchord it
     if (!squareProperties.isDigged && squareProperties.isChorded) {
-      this.classicPath = this.classicPath.filter(c => !(c.type === 'chord' && c.x === tileX && c.y === tileY))
+      this.classicPath = this.classicPath.filter(
+        (c) => !(c.type === "chord" && c.x === tileX && c.y === tileY)
+      );
       return;
     }
 
@@ -106,22 +119,23 @@ class ZiniExplore {
     if (squareProperties.isDiggedZero) {
       const openingLabel = this.preprocessedData.openingLabels[tileX][tileY];
 
-      const sharedZeros = this.preprocessedData.preprocessedOpenings.get(openingLabel).zeros
+      const sharedZeros =
+        this.preprocessedData.preprocessedOpenings.get(openingLabel).zeros;
 
-      this.classicPath = this.classicPath.filter(c => {
-        if (c.type !== 'left') {
+      this.classicPath = this.classicPath.filter((c) => {
+        if (c.type !== "left") {
           //Keep chords/flags
           return true;
         }
 
         //Remove digs if they are on one of the zeros that would reveal the square we initially clicked on
-        return !sharedZeros.some(zero => c.x === zero.x && c.y === zero.y);
+        return !sharedZeros.some((zero) => c.x === zero.x && c.y === zero.y);
       });
     }
   }
 
   handleChainClick(tileX, tileY, isDigInput, isFlagInput) {
-    //For chain input, we have the following behaviour - 
+    //For chain input, we have the following behaviour -
     //Left click toggle chord
     //Right click toggles dig
     //Chording works even without enough flags
@@ -131,13 +145,15 @@ class ZiniExplore {
 
     //Unflagged mine, so flag it
     if (squareProperties.isMine && !squareProperties.isFlagged) {
-      this.classicPath.push({ type: 'right', x: tileX, y: tileY })
+      this.classicPath.push({ type: "right", x: tileX, y: tileY });
       return;
     }
 
     //Flagged mine, so unflag it
     if (squareProperties.isMine && squareProperties.isFlagged) {
-      this.classicPath = this.classicPath.filter(c => !(c.type === 'right' && c.x === tileX && c.y === tileY))
+      this.classicPath = this.classicPath.filter(
+        (c) => !(c.type === "right" && c.x === tileX && c.y === tileY)
+      );
       return;
     }
 
@@ -168,7 +184,7 @@ class ZiniExplore {
     let newlyDug = false;
 
     if (!squareProperties.isRevealed) {
-      this.classicPath.push({ type: 'left', x: tileX, y: tileY });
+      this.classicPath.push({ type: "left", x: tileX, y: tileY });
       newlyDug = true; //Mark that we need to try chord it next
     }
 
@@ -179,7 +195,11 @@ class ZiniExplore {
     }
 
     //Chord + flag neighbours if the square hasn't been chorded before, but could be
-    if (!squareProperties.isChorded && canAddChainChord && !squareProperties.isZero) {
+    if (
+      !squareProperties.isChorded &&
+      canAddChainChord &&
+      !squareProperties.isZero
+    ) {
       //Flag any unflagged neighbours
       for (let x = tileX - 1; x <= tileX + 1; x++) {
         for (let y = tileY - 1; y <= tileY + 1; y++) {
@@ -193,21 +213,27 @@ class ZiniExplore {
             this.board.tilesArray[x][y].state === CONSTANTS.UNREVEALED &&
             this.board.mines[x][y]
           ) {
-            this.classicPath.push({ type: 'right', x: x, y: y });
+            this.classicPath.push({ type: "right", x: x, y: y });
           }
         }
       }
 
       //Chord
-      this.classicPath.push({ type: 'chord', x: tileX, y: tileY });
+      this.classicPath.push({ type: "chord", x: tileX, y: tileY });
 
       this.optimiseChain(tileX, tileY);
       return;
     }
 
     //Was digged, but not chorded and not chordable, so undig it
-    if (squareProperties.isDigged && !squareProperties.isChorded && !canAddChainChord) {
-      this.classicPath = this.classicPath.filter(c => !(c.type === 'left' && c.x === tileX && c.y === tileY))
+    if (
+      squareProperties.isDigged &&
+      !squareProperties.isChorded &&
+      !canAddChainChord
+    ) {
+      this.classicPath = this.classicPath.filter(
+        (c) => !(c.type === "left" && c.x === tileX && c.y === tileY)
+      );
       if (squareProperties.isZero) {
         this.optimiseChainForRemoval(tileX, tileY); //Zeros could be part of a chain, so optimisation required
       }
@@ -218,18 +244,34 @@ class ZiniExplore {
     //also remove unused neighbour flags
     if (squareProperties.isChorded) {
       //Remove left/chord
-      this.classicPath = this.classicPath.filter(c => !((c.type === 'left' || c.type === 'chord') && c.x === tileX && c.y === tileY));
+      this.classicPath = this.classicPath.filter(
+        (c) =>
+          !(
+            (c.type === "left" || c.type === "chord") &&
+            c.x === tileX &&
+            c.y === tileY
+          )
+      );
       //Find and remove neighbour flags
-      this.classicPath = this.classicPath.filter(c => {
-        if (c.type === 'right' && Math.abs(c.x - tileX) <= 1 && Math.abs(c.y - tileY) <= 1) {
+      this.classicPath = this.classicPath.filter((c) => {
+        if (
+          c.type === "right" &&
+          Math.abs(c.x - tileX) <= 1 &&
+          Math.abs(c.y - tileY) <= 1
+        ) {
           //For adjacent flags, we only keep them if they belong to other chords
-          let keepAdjacentFlag = this.classicPath.some(d => d.type === 'chord' && Math.abs(d.x - c.x) <= 1 && Math.abs(d.y - c.y) <= 1);
+          let keepAdjacentFlag = this.classicPath.some(
+            (d) =>
+              d.type === "chord" &&
+              Math.abs(d.x - c.x) <= 1 &&
+              Math.abs(d.y - c.y) <= 1
+          );
           return keepAdjacentFlag;
         } else {
           //Keep lefts/digs and also flags that are not touching chord
           return true;
         }
-      })
+      });
       this.optimiseChainForRemoval(tileX, tileY);
       return;
     }
@@ -238,15 +280,16 @@ class ZiniExplore {
     if (squareProperties.isDiggedZero) {
       const openingLabel = this.preprocessedData.openingLabels[tileX][tileY];
 
-      const sharedZeros = this.preprocessedData.preprocessedOpenings.get(openingLabel).zeros
+      const sharedZeros =
+        this.preprocessedData.preprocessedOpenings.get(openingLabel).zeros;
 
-      this.classicPath = this.classicPath.filter(c => {
-        if (c.type !== 'left') {
+      this.classicPath = this.classicPath.filter((c) => {
+        if (c.type !== "left") {
           //Keep chords/flags
           return true;
         }
 
-        return !sharedZeros.some(zero => c.x === zero.x && c.y === zero.y);
+        return !sharedZeros.some((zero) => c.x === zero.x && c.y === zero.y);
       });
 
       this.optimiseChainForRemoval(tileX, tileY);
@@ -260,7 +303,7 @@ class ZiniExplore {
 
     //unrevealed, so dig it
     if (!squareProperties.isRevealed) {
-      this.classicPath.push({ type: 'left', x: tileX, y: tileY });
+      this.classicPath.push({ type: "left", x: tileX, y: tileY });
       if (squareProperties.isZero) {
         this.optimiseChain(tileX, tileY);
       }
@@ -269,7 +312,9 @@ class ZiniExplore {
 
     //digged, but not chorded, so undig it
     if (squareProperties.isDigged && !squareProperties.isChorded) {
-      this.classicPath = this.classicPath.filter(c => !(c.type === 'left' && c.x === tileX && c.y === tileY))
+      this.classicPath = this.classicPath.filter(
+        (c) => !(c.type === "left" && c.x === tileX && c.y === tileY)
+      );
       if (squareProperties.isZero) {
         this.optimiseChainForRemoval(tileX, tileY);
       }
@@ -280,15 +325,16 @@ class ZiniExplore {
     if (squareProperties.isDiggedZero) {
       const openingLabel = this.preprocessedData.openingLabels[tileX][tileY];
 
-      const sharedZeros = this.preprocessedData.preprocessedOpenings.get(openingLabel).zeros
+      const sharedZeros =
+        this.preprocessedData.preprocessedOpenings.get(openingLabel).zeros;
 
-      this.classicPath = this.classicPath.filter(c => {
-        if (c.type !== 'left') {
+      this.classicPath = this.classicPath.filter((c) => {
+        if (c.type !== "left") {
           //Keep chords/flags
           return true;
         }
 
-        return !sharedZeros.some(zero => c.x === zero.x && c.y === zero.y);
+        return !sharedZeros.some((zero) => c.x === zero.x && c.y === zero.y);
       });
 
       this.optimiseChainForRemoval(tileX, tileY);
@@ -306,12 +352,18 @@ class ZiniExplore {
     let startingMove;
     if (this.preprocessedData.numbersArray[tileX][tileY] === 0) {
       //If on a zero, then we start with a dig
-      startingMove = this.classicPath.find(c => c.type === 'left' && c.x === tileX && c.y === tileY);
+      startingMove = this.classicPath.find(
+        (c) => c.type === "left" && c.x === tileX && c.y === tileY
+      );
       seeds.push(startingMove);
     } else {
       //not a zero, so start from a chord
-      startingMove = this.classicPath.find(c => c.type === 'chord' && c.x === tileX && c.y === tileY);
-      const possibleSeed = this.classicPath.find(c => c.type === 'left' && c.x === tileX && c.y === tileY);
+      startingMove = this.classicPath.find(
+        (c) => c.type === "chord" && c.x === tileX && c.y === tileY
+      );
+      const possibleSeed = this.classicPath.find(
+        (c) => c.type === "left" && c.x === tileX && c.y === tileY
+      );
       chords.push(startingMove);
       //also look to see if this is seeded
       if (possibleSeed) {
@@ -322,7 +374,9 @@ class ZiniExplore {
     this.buildChain(startingMove, chords, smotheredDigs, seeds);
 
     //remove smothered digs
-    this.classicPath = this.classicPath.filter(c => !smotheredDigs.includes(c));
+    this.classicPath = this.classicPath.filter(
+      (c) => !smotheredDigs.includes(c)
+    );
 
     //if there is the wrong number of seeds (1) then we may need to reorder stuff and add/remove seeds
     if (seeds.length === 1) {
@@ -332,7 +386,7 @@ class ZiniExplore {
           return;
         }
       } else {
-        return
+        return;
       }
     }
 
@@ -354,46 +408,62 @@ class ZiniExplore {
     */
 
     //Remove all current seeds and chords in this chain from the path
-    this.classicPath = this.classicPath.filter(c => !chords.includes(c) && !seeds.includes(c));
+    this.classicPath = this.classicPath.filter(
+      (c) => !chords.includes(c) && !seeds.includes(c)
+    );
 
     //Find which flags should be moved into new chain
-    let flagsToMove = this.classicPath.filter(
-      c => {
-        if (c.type !== 'right') {
-          return false;
-        }
-
-        //Check if flag needed by chain
-        if (!chords.some(ch => Math.abs(ch.x - c.x) <= 1 && Math.abs(ch.y - c.y) <= 1)) {
-          return false;
-        }
-
-        //Check if flag must remain in main path due to being adjacent to a chord there
-        if (this.classicPath.some(cl => cl.type === 'chord' && Math.abs(cl.x - c.x) <= 1 && Math.abs(cl.y - c.y) <= 1)) {
-          return false;
-        }
-
-        return true; //Flag needed by chain and not needed by rest of path
+    let flagsToMove = this.classicPath.filter((c) => {
+      if (c.type !== "right") {
+        return false;
       }
-    )
+
+      //Check if flag needed by chain
+      if (
+        !chords.some(
+          (ch) => Math.abs(ch.x - c.x) <= 1 && Math.abs(ch.y - c.y) <= 1
+        )
+      ) {
+        return false;
+      }
+
+      //Check if flag must remain in main path due to being adjacent to a chord there
+      if (
+        this.classicPath.some(
+          (cl) =>
+            cl.type === "chord" &&
+            Math.abs(cl.x - c.x) <= 1 &&
+            Math.abs(cl.y - c.y) <= 1
+        )
+      ) {
+        return false;
+      }
+
+      return true; //Flag needed by chain and not needed by rest of path
+    });
 
     //Remove flagsToMove from classic path
-    this.classicPath = this.classicPath.filter(c => !flagsToMove.includes(c));
+    this.classicPath = this.classicPath.filter((c) => !flagsToMove.includes(c));
 
     //Rebuild the chord chain, seeding it from (tileX, tileY)
     let newChain = [];
 
     //tileX/tileY is always start of chain
     newChain.push({
-      type: 'left',
+      type: "left",
       x: tileX,
-      y: tileY
+      y: tileY,
     });
 
     //Then loop over chords, and add flags where needed
     for (let chord of chords) {
       //First add in any prerequisite flags
-      let requiredFlags = flagsToMove.filter(fl => !newChain.includes(fl) && Math.abs(fl.x - chord.x) <= 1 && Math.abs(fl.y - chord.y) <= 1);
+      let requiredFlags = flagsToMove.filter(
+        (fl) =>
+          !newChain.includes(fl) &&
+          Math.abs(fl.x - chord.x) <= 1 &&
+          Math.abs(fl.y - chord.y) <= 1
+      );
 
       newChain = newChain.concat(requiredFlags);
       newChain.push(chord);
@@ -415,7 +485,9 @@ class ZiniExplore {
 
     if (this.preprocessedData.numbersArray[tileX][tileY] === 0) {
       //If digging a zero, then just add it as an opening to check
-      openingsLabelsToCheck.push(this.preprocessedData.openingLabels[tileX][tileY])
+      openingsLabelsToCheck.push(
+        this.preprocessedData.openingLabels[tileX][tileY]
+      );
     } else {
       //Otherwise check neighbours
       for (let x = tileX - 1; x <= tileX + 1; x++) {
@@ -428,7 +500,7 @@ class ZiniExplore {
           }
 
           if (this.preprocessedData.numbersArray[x][y] === 0) {
-            const label = this.preprocessedData.openingLabels[x][y]
+            const label = this.preprocessedData.openingLabels[x][y];
             if (!openingsLabelsToCheck.includes(label)) {
               openingsLabelsToCheck.push(label);
             }
@@ -441,18 +513,19 @@ class ZiniExplore {
 
     //Handle new openings
     for (let openingLabel of openingsLabelsToCheck) {
-      let thisOpening = this.preprocessedData.preprocessedOpenings.get(openingLabel);
+      let thisOpening =
+        this.preprocessedData.preprocessedOpenings.get(openingLabel);
 
       //zeros could be neighbours
       for (let zero of thisOpening.zeros) {
-        if (this.classicPath.some(c => c.x === zero.x && c.y === zero.y)) {
+        if (this.classicPath.some((c) => c.x === zero.x && c.y === zero.y)) {
           possiblyDependentNeighbourCoords.push({ x: zero.x, y: zero.y });
         }
       }
 
       //edges can be processed with the other nonOpening squares
       for (let edge of thisOpening.edges) {
-        if (!nonOpeningsToCheck.some(n => n.x === edge.x && n.y === edge.y)) {
+        if (!nonOpeningsToCheck.some((n) => n.x === edge.x && n.y === edge.y)) {
           nonOpeningsToCheck.push({ x: edge.x, y: edge.y }); //Note - that just pushing edge would also work, I just did it this way incase edge gets new properties
         }
       }
@@ -461,24 +534,43 @@ class ZiniExplore {
     //Handle nonOpening squares.
     //Lots can happen with these depending on if they are chorded/digged/both
     for (let nonOpeningSquare of nonOpeningsToCheck) {
-      let hasDigClick = this.classicPath.some(c => c.type === 'left' && c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y)
-      let hasChordClick = this.classicPath.some(c => c.type === 'chord' && c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y)
+      let hasDigClick = this.classicPath.some(
+        (c) =>
+          c.type === "left" &&
+          c.x === nonOpeningSquare.x &&
+          c.y === nonOpeningSquare.y
+      );
+      let hasChordClick = this.classicPath.some(
+        (c) =>
+          c.type === "chord" &&
+          c.x === nonOpeningSquare.x &&
+          c.y === nonOpeningSquare.y
+      );
 
       //Dig, but no chord means the dig was previously smothered, but now may be needed idk?
       if (hasDigClick && !hasChordClick) {
-        possiblyDependentNeighbourCoords.push({ x: nonOpeningSquare.x, y: nonOpeningSquare.y })
+        possiblyDependentNeighbourCoords.push({
+          x: nonOpeningSquare.x,
+          y: nonOpeningSquare.y,
+        });
         continue;
       }
 
       //Chord and dig means we can spread (and likely this chain will remain the same)
       if (hasDigClick && hasChordClick) {
-        possiblyDependentNeighbourCoords.push({ x: nonOpeningSquare.x, y: nonOpeningSquare.y })
+        possiblyDependentNeighbourCoords.push({
+          x: nonOpeningSquare.x,
+          y: nonOpeningSquare.y,
+        });
         continue;
       }
 
       //Just chord also means we can spread, and possibly this chain may need a new seed
       if (!hasDigClick && hasChordClick) {
-        possiblyDependentNeighbourCoords.push({ x: nonOpeningSquare.x, y: nonOpeningSquare.y })
+        possiblyDependentNeighbourCoords.push({
+          x: nonOpeningSquare.x,
+          y: nonOpeningSquare.y,
+        });
         continue;
       }
     }
@@ -486,7 +578,11 @@ class ZiniExplore {
     //Now we loop through and optimise any chains that start from neighbouring clicks.
     //Note that we may hit chains multiple time, which is disgustingly inefficient, but may be ok in practise
     for (let neighbourCoordsToSpreadFrom of possiblyDependentNeighbourCoords) {
-      this.optimiseChain(neighbourCoordsToSpreadFrom.x, neighbourCoordsToSpreadFrom.y, true)
+      this.optimiseChain(
+        neighbourCoordsToSpreadFrom.x,
+        neighbourCoordsToSpreadFrom.y,
+        true
+      );
     }
   }
 
@@ -497,8 +593,11 @@ class ZiniExplore {
 
     //assume we are zero or chord
     //assert just incase
-    if (this.preprocessedData.numbersArray[moveX][moveY] !== 0 && moveToSpreadFrom.type !== 'chord') {
-      throw new Error('Cannot spread from tile when building opening');
+    if (
+      this.preprocessedData.numbersArray[moveX][moveY] !== 0 &&
+      moveToSpreadFrom.type !== "chord"
+    ) {
+      throw new Error("Cannot spread from tile when building opening");
     }
 
     let nonOpeningsToCheck = []; //{x: 1, y: 2} etc squares that are non-zero (so possibly chordable)
@@ -506,7 +605,9 @@ class ZiniExplore {
 
     if (this.preprocessedData.numbersArray[moveX][moveY] === 0) {
       //If digging a zero, then just add it as an opening to check
-      openingsLabelsToCheck.push(this.preprocessedData.openingLabels[moveX][moveY])
+      openingsLabelsToCheck.push(
+        this.preprocessedData.openingLabels[moveX][moveY]
+      );
     } else {
       //Otherwise check neighbours
       for (let x = moveX - 1; x <= moveX + 1; x++) {
@@ -519,7 +620,7 @@ class ZiniExplore {
           }
 
           if (this.preprocessedData.numbersArray[x][y] === 0) {
-            const label = this.preprocessedData.openingLabels[x][y]
+            const label = this.preprocessedData.openingLabels[x][y];
             if (!openingsLabelsToCheck.includes(label)) {
               openingsLabelsToCheck.push(label);
             }
@@ -532,11 +633,14 @@ class ZiniExplore {
 
     //Handle new openings
     for (let openingLabel of openingsLabelsToCheck) {
-      let thisOpening = this.preprocessedData.preprocessedOpenings.get(openingLabel);
+      let thisOpening =
+        this.preprocessedData.preprocessedOpenings.get(openingLabel);
 
       //zeros could be seeds
       for (let zero of thisOpening.zeros) {
-        let zeroClick = this.classicPath.find(c => c.x === zero.x && c.y === zero.y);
+        let zeroClick = this.classicPath.find(
+          (c) => c.x === zero.x && c.y === zero.y
+        );
         if (zeroClick && !seeds.includes(zeroClick)) {
           seeds.push(zeroClick);
         }
@@ -544,7 +648,7 @@ class ZiniExplore {
 
       //edges can be processed with the other nonOpening squares
       for (let edge of thisOpening.edges) {
-        if (!nonOpeningsToCheck.some(n => n.x === edge.x && n.y === edge.y)) {
+        if (!nonOpeningsToCheck.some((n) => n.x === edge.x && n.y === edge.y)) {
           nonOpeningsToCheck.push({ x: edge.x, y: edge.y }); //Note - that just pushing edge would also work, I just did it this way incase edge gets new properties
         }
       }
@@ -555,15 +659,31 @@ class ZiniExplore {
     for (let nonOpeningSquare of nonOpeningsToCheck) {
       //Exit early if square already accounted for
       if (
-        chords.some(c => c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y) ||
-        smotheredDigs.some(c => c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y) ||
-        seeds.some(c => c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y)
+        chords.some(
+          (c) => c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y
+        ) ||
+        smotheredDigs.some(
+          (c) => c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y
+        ) ||
+        seeds.some(
+          (c) => c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y
+        )
       ) {
         continue;
       }
 
-      let possibleDigClick = this.classicPath.find(c => c.type === 'left' && c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y)
-      let possibleChordClick = this.classicPath.find(c => c.type === 'chord' && c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y)
+      let possibleDigClick = this.classicPath.find(
+        (c) =>
+          c.type === "left" &&
+          c.x === nonOpeningSquare.x &&
+          c.y === nonOpeningSquare.y
+      );
+      let possibleChordClick = this.classicPath.find(
+        (c) =>
+          c.type === "chord" &&
+          c.x === nonOpeningSquare.x &&
+          c.y === nonOpeningSquare.y
+      );
 
       //Dig, but no chord means the dig is smothered
       if (possibleDigClick && !possibleChordClick) {
@@ -576,7 +696,7 @@ class ZiniExplore {
         seeds.push(possibleDigClick);
         chords.push(possibleChordClick);
         //Recursively add stuff from this
-        this.buildChain(possibleChordClick, chords, smotheredDigs, seeds)
+        this.buildChain(possibleChordClick, chords, smotheredDigs, seeds);
         continue;
       }
 
@@ -584,7 +704,7 @@ class ZiniExplore {
       if (!possibleDigClick && possibleChordClick) {
         chords.push(possibleChordClick);
         //Recursively add stuff from this
-        this.buildChain(possibleChordClick, chords, smotheredDigs, seeds)
+        this.buildChain(possibleChordClick, chords, smotheredDigs, seeds);
         continue;
       }
     }
@@ -622,13 +742,15 @@ class ZiniExplore {
       let nonOpeningsToCheck = []; //{x: 1, y: 2} etc squares that are non-zero (so possibly chordable)
       let openingsLabelsToCheck = [];
 
-      if (thisMove.type === 'left') {
+      if (thisMove.type === "left") {
         if (this.preprocessedData.numbersArray[thisMove.x][thisMove.y] === 0) {
-          openingsLabelsToCheck.push(this.preprocessedData.openingLabels[thisMove.x][thisMove.y])
+          openingsLabelsToCheck.push(
+            this.preprocessedData.openingLabels[thisMove.x][thisMove.y]
+          );
         } else {
           nonOpeningsToCheck.push({ x: thisMove.x, y: thisMove.y });
         }
-      } else if (thisMove.type === 'chord') {
+      } else if (thisMove.type === "chord") {
         //check neighbours
         for (let x = thisMove.x - 1; x <= thisMove.x + 1; x++) {
           for (let y = thisMove.y - 1; y <= thisMove.y + 1; y++) {
@@ -640,7 +762,7 @@ class ZiniExplore {
             }
 
             if (this.preprocessedData.numbersArray[x][y] === 0) {
-              const label = this.preprocessedData.openingLabels[x][y]
+              const label = this.preprocessedData.openingLabels[x][y];
               if (!openingsLabelsToCheck.includes(label)) {
                 openingsLabelsToCheck.push(label);
               }
@@ -655,13 +777,16 @@ class ZiniExplore {
 
       //Handle new openings
       for (let openingLabel of openingsLabelsToCheck) {
-        let thisOpening = this.preprocessedData.preprocessedOpenings.get(openingLabel);
+        let thisOpening =
+          this.preprocessedData.preprocessedOpenings.get(openingLabel);
 
         //don't need to do anything with zeros as they can't be used in future chords
 
         //edges can be processed with the other nonOpening squares
         for (let edge of thisOpening.edges) {
-          if (!nonOpeningsToCheck.some(n => n.x === edge.x && n.y === edge.y)) {
+          if (
+            !nonOpeningsToCheck.some((n) => n.x === edge.x && n.y === edge.y)
+          ) {
             nonOpeningsToCheck.push({ x: edge.x, y: edge.y }); //Note - that just pushing edge would also work, I just did it this way incase edge gets new properties
           }
         }
@@ -670,15 +795,17 @@ class ZiniExplore {
       //Handle nonOpening squares.
       //Non-openings squares unlock options for future chords
       for (let nonOpeningSquare of nonOpeningsToCheck) {
-        let chordOnSquare = chords.find(c => c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y)
+        let chordOnSquare = chords.find(
+          (c) => c.x === nonOpeningSquare.x && c.y === nonOpeningSquare.y
+        );
 
         if (chordOnSquare && !allowedMoves.includes(chordOnSquare)) {
-          allowedMoves.push(chordOnSquare)
+          allowedMoves.push(chordOnSquare);
         }
       }
     }
 
-    return true
+    return true;
   }
 
   getSquareProperties(tileX, tileY) {
@@ -687,11 +814,16 @@ class ZiniExplore {
 
     let isMine = this.board.mines[tileX][tileY];
 
-    let isFlagged = this.classicPath.some(c => c.type === 'right' && c.x === tileX && c.y === tileY);
+    let isFlagged = this.classicPath.some(
+      (c) => c.type === "right" && c.x === tileX && c.y === tileY
+    );
 
-    let isDigged = this.classicPath.some(c => c.type === 'left' && c.x === tileX && c.y === tileY);
+    let isDigged = this.classicPath.some(
+      (c) => c.type === "left" && c.x === tileX && c.y === tileY
+    );
 
-    let isRevealed = this.board.tilesArray[tileX][tileY].state !== CONSTANTS.UNREVEALED;
+    let isRevealed =
+      this.board.tilesArray[tileX][tileY].state !== CONSTANTS.UNREVEALED;
 
     let isZero = this.preprocessedData.numbersArray[tileX][tileY] === 0;
 
@@ -701,8 +833,15 @@ class ZiniExplore {
     if (isRevealed && isZero) {
       const openingLabel = this.preprocessedData.openingLabels[tileX][tileY];
 
-      const sharedZeros = this.preprocessedData.preprocessedOpenings.get(openingLabel).zeros
-      if (sharedZeros.some(zero => this.classicPath.some(c => c.type === 'left' && c.x === zero.x && c.y === zero.y))) {
+      const sharedZeros =
+        this.preprocessedData.preprocessedOpenings.get(openingLabel).zeros;
+      if (
+        sharedZeros.some((zero) =>
+          this.classicPath.some(
+            (c) => c.type === "left" && c.x === zero.x && c.y === zero.y
+          )
+        )
+      ) {
         //Shared zero was digged, so this one is also digged
         isDiggedZero = true;
       }
@@ -729,13 +868,17 @@ class ZiniExplore {
       }
     }
 
-    let isChorded = this.classicPath.some(c => c.type === 'chord' && c.x === tileX && c.y === tileY);
+    let isChorded = this.classicPath.some(
+      (c) => c.type === "chord" && c.x === tileX && c.y === tileY
+    );
 
     //Chordable if it has an unrevealed neighbour and right number of flags
-    let isChordable = isRevealed &&
+    let isChordable =
+      isRevealed &&
       !isZero &&
       isPotentiallyChordable &&
-      this.board.boardActions.getNumberSurroundingFlags(tileX, tileY) === this.board.boardActions.getNumberSurroundingMines(tileX, tileY, false);
+      this.board.boardActions.getNumberSurroundingFlags(tileX, tileY) ===
+        this.board.boardActions.getNumberSurroundingMines(tileX, tileY, false);
 
     return {
       isMine,
@@ -746,8 +889,8 @@ class ZiniExplore {
       isDiggedZero,
       isChorded,
       isChordable,
-      isPotentiallyChordable
-    }
+      isPotentiallyChordable,
+    };
   }
 
   promptForPathReset() {
@@ -771,25 +914,25 @@ class ZiniExplore {
         // Clear path
         this.clearCurrentPath();
         this.updateUiAndBoard();
-      })
+      });
   }
 
   removeInvalidDigsAndFlags() {
     const oldClassicPathLength = this.classicPath.length;
 
-    this.classicPath = this.classicPath.filter(c => {
+    this.classicPath = this.classicPath.filter((c) => {
       //remove bad flags
-      if (c.type === 'right' && !this.board.mines[c.x][c.y]) {
-        return false
+      if (c.type === "right" && !this.board.mines[c.x][c.y]) {
+        return false;
       }
       //remove bad digs
-      if (c.type === 'left' && this.board.mines[c.x][c.y]) {
-        return false
+      if (c.type === "left" && this.board.mines[c.x][c.y]) {
+        return false;
       }
-      return true
+      return true;
     });
 
-    return oldClassicPathLength !== this.classicPath.length
+    return oldClassicPathLength !== this.classicPath.length;
   }
 
   //Replays moves on tilesArray whilst also removing invalid moves
@@ -799,17 +942,31 @@ class ZiniExplore {
     //Clear moves, then replay stuff, keeping track of what to remove
     let invalidChordIndices = [];
 
-    for (let clickPointer = 0; clickPointer < this.classicPath.length; clickPointer++) {
+    for (
+      let clickPointer = 0;
+      clickPointer < this.classicPath.length;
+      clickPointer++
+    ) {
       let clickToDo = this.classicPath[clickPointer];
 
-      if (clickToDo.type === 'left') {
+      if (clickToDo.type === "left") {
         this.board.boardActions.openTile(clickToDo.x, clickToDo.y);
-      } else if (clickToDo.type === 'right') {
+      } else if (clickToDo.type === "right") {
         this.board.boardActions.attemptFlag(clickToDo.x, clickToDo.y, false);
-      } else if (clickToDo.type === 'chord') {
+      } else if (clickToDo.type === "chord") {
         //For chords, we need to verify that they are chordable before taking
-        const isChordable = this.board.tilesArray[clickToDo.x][clickToDo.y].state !== CONSTANTS.UNREVEALED &&
-          this.board.boardActions.getNumberSurroundingFlags(clickToDo.x, clickToDo.y) === this.board.boardActions.getNumberSurroundingMines(clickToDo.x, clickToDo.y, false);
+        const isChordable =
+          this.board.tilesArray[clickToDo.x][clickToDo.y].state !==
+            CONSTANTS.UNREVEALED &&
+          this.board.boardActions.getNumberSurroundingFlags(
+            clickToDo.x,
+            clickToDo.y
+          ) ===
+            this.board.boardActions.getNumberSurroundingMines(
+              clickToDo.x,
+              clickToDo.y,
+              false
+            );
 
         if (isChordable) {
           this.board.boardActions.chord(clickToDo.x, clickToDo.y, false);
@@ -819,7 +976,9 @@ class ZiniExplore {
       }
     }
 
-    let pathWithInvalidChordsRemoved = this.classicPath.filter((val, idx) => !invalidChordIndices.includes(idx));
+    let pathWithInvalidChordsRemoved = this.classicPath.filter(
+      (val, idx) => !invalidChordIndices.includes(idx)
+    );
 
     let flagIndicesToCheck = new Set(); //Use a set just because of flags being checked multiple times (though array would be fine in practise)
 
@@ -829,11 +988,13 @@ class ZiniExplore {
 
       for (let i = 0; i < this.classicPath.length; i++) {
         let possibleFlagClick = this.classicPath[i];
-        if (possibleFlagClick.type !== 'right') {
+        if (possibleFlagClick.type !== "right") {
           continue;
         }
-        if (Math.abs(possibleFlagClick.x - removedChord.x) <= 1 &&
-          Math.abs(possibleFlagClick.y - removedChord.y) <= 1) {
+        if (
+          Math.abs(possibleFlagClick.x - removedChord.x) <= 1 &&
+          Math.abs(possibleFlagClick.y - removedChord.y) <= 1
+        ) {
           flagIndicesToCheck.add(i);
           continue;
         }
@@ -846,14 +1007,16 @@ class ZiniExplore {
     for (let flagIndexToCheck of flagIndicesToCheck) {
       let flagToCheck = this.classicPath[flagIndexToCheck];
 
-      let flagHasKeptNeighbourChord = false
+      let flagHasKeptNeighbourChord = false;
       for (let i = 0; i < pathWithInvalidChordsRemoved.length; i++) {
         let possibleNeighbouringKeptChord = pathWithInvalidChordsRemoved[i];
-        if (possibleNeighbouringKeptChord.type !== 'chord') {
+        if (possibleNeighbouringKeptChord.type !== "chord") {
           continue;
         }
-        if (Math.abs(possibleNeighbouringKeptChord.x - flagToCheck.x) <= 1 &&
-          Math.abs(possibleNeighbouringKeptChord.y - flagToCheck.y) <= 1) {
+        if (
+          Math.abs(possibleNeighbouringKeptChord.x - flagToCheck.x) <= 1 &&
+          Math.abs(possibleNeighbouringKeptChord.y - flagToCheck.y) <= 1
+        ) {
           flagHasKeptNeighbourChord = true;
           break;
         }
@@ -868,32 +1031,54 @@ class ZiniExplore {
     for (let i of flagsIndicesToRemove) {
       let flagToRemove = this.classicPath[i];
 
-      this.board.tilesArray[flagToRemove.x][flagToRemove.y].state = CONSTANTS.UNREVEALED;
+      this.board.tilesArray[flagToRemove.x][flagToRemove.y].state =
+        CONSTANTS.UNREVEALED;
     }
 
     //Finally, remove the flags that are no longer needed (were only used by invalid chord)
-    this.classicPath = this.classicPath.filter((val, idx) => !invalidChordIndices.includes(idx) && !flagsIndicesToRemove.includes(idx));
+    this.classicPath = this.classicPath.filter(
+      (val, idx) =>
+        !invalidChordIndices.includes(idx) &&
+        !flagsIndicesToRemove.includes(idx)
+    );
   }
 
   updateFlagCounter() {
-    this.board.unflagged = this.board.mineCount - this.classicPath.filter(c => c.type === 'right').length
+    this.board.unflagged =
+      this.board.mineCount -
+      this.classicPath.filter((c) => c.type === "right").length;
   }
 
   updateZiniSumRefs() {
-    if (analyseDisplayMode.value === 'classic' || analyseDisplayMode.value === 'chain') {
-      classicPathBreakdown.value.lefts = this.classicPath.filter(c => c.type === 'left').length;
-      classicPathBreakdown.value.rights = this.classicPath.filter(c => c.type === 'right').length;
-      classicPathBreakdown.value.chords = this.classicPath.filter(c => c.type === 'chord').length;
+    if (
+      analyseDisplayMode.value === "classic" ||
+      analyseDisplayMode.value === "chain"
+    ) {
+      classicPathBreakdown.value.lefts = this.classicPath.filter(
+        (c) => c.type === "left"
+      ).length;
+      classicPathBreakdown.value.rights = this.classicPath.filter(
+        (c) => c.type === "right"
+      ).length;
+      classicPathBreakdown.value.chords = this.classicPath.filter(
+        (c) => c.type === "chord"
+      ).length;
 
-      const bbbv = Algorithms.calc3bv(this.board.mines, this.board.tilesArray, this.preprocessedData);
+      const bbbv = Algorithms.calc3bv(
+        this.board.mines,
+        this.board.tilesArray,
+        this.preprocessedData
+      );
       const remaining3bv = bbbv.bbbv - bbbv.solved3bv;
       classicPathBreakdown.value.remaining3bv = remaining3bv;
 
       analyseZiniTotal.value = remaining3bv + this.classicPath.length;
       analyse3bv.value = bbbv.bbbv;
-      analyseEff.value = Math.round((analyse3bv.value / analyseZiniTotal.value) * 100)
+      analyseEff.value = Math.round(
+        (analyse3bv.value / analyseZiniTotal.value) * 100
+      );
     } else {
-      throw new Error('Unrecognised display mode');
+      throw new Error("Unrecognised display mode");
     }
   }
 
@@ -952,7 +1137,7 @@ class ZiniExplore {
       initialFlagStates,
       initialChainIds,
       initialChainMap,
-      initialChainNeighbourhoodGrid
+      initialChainNeighbourhoodGrid,
     } = ChainZini.convertClickPathToChainInput(
       this.classicPath,
       this.board.mines,
@@ -1004,13 +1189,13 @@ class ZiniExplore {
 
     let highestPremium = premiums
       .flat()
-      .filter(s => s !== null)
+      .filter((s) => s !== null)
       .reduce(function (p, v) {
-        return (p > v ? p : v);
+        return p > v ? p : v;
       }, -1);
 
     if (
-      ['numbers positive', 'highlight'].includes(showPremiumsValue) &&
+      ["numbers positive", "highlight"].includes(showPremiumsValue) &&
       highestPremium === -1
     ) {
       //exit early on highlight/positive if no non-negative premiums
@@ -1030,44 +1215,45 @@ class ZiniExplore {
           continue;
         }
         //Check if there is an unopened safe neighbour cell
-        let hasUnopenedSafeNeighbour = false
+        let hasUnopenedSafeNeighbour = false;
         for (let i = x - 1; i <= x + 1; i++) {
           for (let j = y - 1; j <= y + 1; j++) {
             if (i < 0 || j < 0 || i >= width || j >= height) {
               continue;
             }
-            if (this.board.tilesArray[i][j].state === CONSTANTS.UNREVEALED && !this.board.mines[i][j]) {
+            if (
+              this.board.tilesArray[i][j].state === CONSTANTS.UNREVEALED &&
+              !this.board.mines[i][j]
+            ) {
               hasUnopenedSafeNeighbour = true;
             }
           }
         }
         if (!hasUnopenedSafeNeighbour) {
-          if (displayInputMode === 'classic') {
+          if (displayInputMode === "classic") {
             //Never chordable on normal
             continue;
-          } else if (displayInputMode === 'chain') {
+          } else if (displayInputMode === "chain") {
             //On chain, we check if this move has positive premium (note that this is very unlikely)
             if (premiums[x][y] <= 0) {
               continue;
             }
           } else {
-            throw new Error('unexpected premium type');
+            throw new Error("unexpected premium type");
           }
         }
         if (
-          showPremiumsValue === 'numbers' ||
-          (
-            showPremiumsValue === 'numbers positive' &&
-            premiums[x][y] >= 0
-          )
+          showPremiumsValue === "numbers" ||
+          (showPremiumsValue === "numbers positive" && premiums[x][y] >= 0)
         ) {
           //On numbers mode, we show the number of the premium in the cell
           this.board.tilesArray[x][y].addPremium(premiums[x][y]);
         }
         if (
-          showPremiumsValue === 'highlight' &&
-          premiums[x][y] === highestPremium) {
-          //On highlight mode, we just highlight the top cells 
+          showPremiumsValue === "highlight" &&
+          premiums[x][y] === highestPremium
+        ) {
+          //On highlight mode, we just highlight the top cells
           this.board.tilesArray[x][y].addHighlight();
         }
       }
@@ -1080,7 +1266,10 @@ class ZiniExplore {
 
   refreshForEditedBoard(skipAskForPathReset = false) {
     //This is ran when we switch to analyse mode
-    this.preprocessedData = Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(this.board.mines);
+    this.preprocessedData =
+      Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
+        this.board.mines
+      );
     if (this.removeInvalidDigsAndFlags() && !skipAskForPathReset) {
       this.promptForPathReset();
     }
@@ -1093,12 +1282,12 @@ class ZiniExplore {
     this.updateFlagCounter();
     this.updateZiniSumRefs();
     this.updateTileAnnotations();
-    if (analyseShowPremiums.value !== 'none') {
+    if (analyseShowPremiums.value !== "none") {
       let premiumsArray;
-      if (analyseDisplayMode.value === 'classic') {
+      if (analyseDisplayMode.value === "classic") {
         premiumsArray = this.calculateNormalPremiums();
       }
-      if (analyseDisplayMode.value === 'chain') {
+      if (analyseDisplayMode.value === "chain") {
         premiumsArray = this.calculateChainPremiums();
       }
 
@@ -1108,12 +1297,15 @@ class ZiniExplore {
   }
 
   updateTileAnnotations() {
-    if (analyseDisplayMode.value === 'classic' || analyseDisplayMode.value === 'chain') {
+    if (
+      analyseDisplayMode.value === "classic" ||
+      analyseDisplayMode.value === "chain"
+    ) {
       for (const click of this.classicPath) {
-        if (click.type === 'left') {
+        if (click.type === "left") {
           this.board.tilesArray[click.x][click.y].addClassicDig();
         }
-        if (click.type === 'chord') {
+        if (click.type === "chord") {
           this.board.tilesArray[click.x][click.y].addClassicChord();
         }
       }
@@ -1122,46 +1314,46 @@ class ZiniExplore {
 
   runAlgorithm() {
     switch (analyseAlgorithm.value) {
-      case '8 way':
+      case "8 way":
         synchronousZiniActive.value = true;
         this.run8way();
-        setTimeout(() => synchronousZiniActive.value = false, 100);
+        setTimeout(() => (synchronousZiniActive.value = false), 100);
         break;
-      case 'womzini':
+      case "womzini":
         synchronousZiniActive.value = true;
         this.classicPath = Algorithms.calcWomZiniAndHZini(
           this.board.mines,
           false
         ).womZini.clicks;
-        setTimeout(() => synchronousZiniActive.value = false, 100);
+        setTimeout(() => (synchronousZiniActive.value = false), 100);
         break;
-      case 'womzinifix':
+      case "womzinifix":
         synchronousZiniActive.value = true;
         this.classicPath = Algorithms.calcWomZiniAndHZini(
           this.board.mines,
           true
         ).womZini.clicks;
-        setTimeout(() => synchronousZiniActive.value = false, 100);
+        setTimeout(() => (synchronousZiniActive.value = false), 100);
         break;
-      case 'womhzini':
+      case "womhzini":
         synchronousZiniActive.value = true;
         this.classicPath = Algorithms.calcWomZiniAndHZini(
           this.board.mines,
           false
         ).womHzini.clicks;
-        setTimeout(() => synchronousZiniActive.value = false, 100);
+        setTimeout(() => (synchronousZiniActive.value = false), 100);
         break;
-      case 'chainzini':
+      case "chainzini":
         synchronousZiniActive.value = true;
         this.runChainZini();
-        setTimeout(() => synchronousZiniActive.value = false, 100);
+        setTimeout(() => (synchronousZiniActive.value = false), 100);
         break;
-      case 'incexzini':
+      case "incexzini":
         this.runInclusionExclusionZini(true);
         break;
       default:
-        alert('disallowed algorithm')
-        throw new Error('disallowed algorithm');
+        alert("disallowed algorithm");
+        throw new Error("disallowed algorithm");
     }
 
     this.updateUiAndBoard();
@@ -1182,7 +1374,8 @@ class ZiniExplore {
       //Prompt for whether to run from current or beginning
       Dialog.create({
         title: "Run from current path",
-        message: "Would you like to run DeepChain ZiNi from the current board path?",
+        message:
+          "Would you like to run DeepChain ZiNi from the current board path?",
         ok: {
           flat: true,
           label: "From current",
@@ -1200,7 +1393,7 @@ class ZiniExplore {
         .onCancel(() => {
           //Run zini from beginning
           this.runDefaultAlgorithm(false);
-        })
+        });
     }
   }
 
@@ -1210,11 +1403,16 @@ class ZiniExplore {
   }
 
   run8way() {
-    if (analyseAlgorithmScope.value === 'beginning') {
-      this.classicPath = Algorithms.calcEightWayZini(this.board.mines).clicks
+    if (analyseAlgorithmScope.value === "beginning") {
+      this.classicPath = Algorithms.calcEightWayZini(this.board.mines).clicks;
     } else {
       const { revealedStates, flagStates } = this.getRevealedAndFlagStates();
-      const pathExtension = Algorithms.calcEightWayZini(this.board.mines, false, revealedStates, flagStates).clicks;
+      const pathExtension = Algorithms.calcEightWayZini(
+        this.board.mines,
+        false,
+        revealedStates,
+        flagStates
+      ).clicks;
       this.classicPath = this.classicPath.concat(pathExtension);
     }
   }
@@ -1235,19 +1433,19 @@ class ZiniExplore {
       iterations = 1000000;
     }
 
-    if (analyseAlgorithmScope.value === 'beginning') {
+    if (analyseAlgorithmScope.value === "beginning") {
       this.classicPath = ChainZini.calcNWayChainZini({
         mines: this.board.mines,
         numberOfIterations: iterations,
-        includeClickPath: true
-      }).clicks
+        includeClickPath: true,
+      }).clicks;
     } else {
       const {
         initialRevealedStates,
         initialFlagStates,
         initialChainIds,
         initialChainMap,
-        initialChainNeighbourhoodGrid
+        initialChainNeighbourhoodGrid,
       } = ChainZini.convertClickPathToChainInput(
         this.classicPath,
         this.board.mines,
@@ -1261,17 +1459,17 @@ class ZiniExplore {
         initialChainMap,
         initialChainNeighbourhoodGrid,
         numberOfIterations: iterations,
-        includeClickPath: true
-      }).clicks
+        includeClickPath: true,
+      }).clicks;
     }
   }
 
   runInclusionExclusionZini(useRefs = true, runFromCurrentIfDefault = false) {
     this.killDeepChainZiniRunner(); //just in case it is already running
 
-    let scope = runFromCurrentIfDefault ? 'current' : 'beginning';
+    let scope = runFromCurrentIfDefault ? "current" : "beginning";
     let rewrite = false;
-    let deepType = 'separate';
+    let deepType = "separate";
     let deepIterations = 5;
     let deepReportProgress = true;
     let forbidMoves = false;
@@ -1301,14 +1499,14 @@ class ZiniExplore {
 
     this.classicPathBeforeRun = structuredClone(this.classicPath);
 
-    if (scope === 'beginning') {
+    if (scope === "beginning") {
       this.ziniRunner = new DeepChainZiniRunner(
         {
           mines: this.board.mines,
           analysisType: deepType,
           deepIterations: deepIterations,
           forbidMoves: forbidMoves,
-          progressType: 'visual',
+          progressType: "visual",
         },
         {
           onBoardProgress: (clicks) => {
@@ -1320,7 +1518,7 @@ class ZiniExplore {
             this.updateUiAndBoard();
             this.ziniRunner = null;
             this.classicPathBeforeRun = null;
-          }
+          },
         },
         deepReportProgress
       );
@@ -1330,7 +1528,7 @@ class ZiniExplore {
         initialFlagStates,
         initialChainIds,
         initialChainMap,
-        initialChainNeighbourhoodGrid
+        initialChainNeighbourhoodGrid,
       } = ChainZini.convertClickPathToChainInput(
         this.classicPath,
         this.board.mines,
@@ -1347,7 +1545,7 @@ class ZiniExplore {
           analysisType: deepType,
           deepIterations: deepIterations,
           forbidMoves: forbidMoves,
-          progressType: 'visual',
+          progressType: "visual",
         },
         {
           onBoardProgress: (clicks) => {
@@ -1359,10 +1557,10 @@ class ZiniExplore {
             this.updateUiAndBoard();
             this.ziniRunner = null;
             this.classicPathBeforeRun = null;
-          }
+          },
         },
-        deepReportProgress,
-      )
+        deepReportProgress
+      );
     }
   }
 
@@ -1393,15 +1591,15 @@ class ZiniExplore {
       for (let y = 0; y < height; y++) {
         if (this.board.tilesArray[x][y].state === CONSTANTS.FLAG) {
           flagStates[x][y] = true;
-          continue
+          continue;
         }
-        if (typeof this.board.tilesArray[x][y].state === 'number') {
-          revealedStates[x][y] = true
+        if (typeof this.board.tilesArray[x][y].state === "number") {
+          revealedStates[x][y] = true;
         }
       }
     }
 
-    return { revealedStates, flagStates }
+    return { revealedStates, flagStates };
   }
 
   getIsComplete() {
@@ -1413,7 +1611,8 @@ class ZiniExplore {
 
     for (let x = 0; x < width; x++) {
       for (let y = 0; y < height; y++) {
-        if (this.board.tilesArray[x][y].state === CONSTANTS.UNREVEALED &&
+        if (
+          this.board.tilesArray[x][y].state === CONSTANTS.UNREVEALED &&
           !this.board.mines[x][y]
         ) {
           isComplete = false;
@@ -1430,7 +1629,8 @@ class ZiniExplore {
       //No clicks done. Return false and warn user.
       Dialog.create({
         title: "Alert",
-        message: "Nothing to watch. Please either click on the board to create a manual path, or run a zini algorithm.",
+        message:
+          "Nothing to watch. Please either click on the board to create a manual path, or run a zini algorithm.",
       });
       return false;
     } else {

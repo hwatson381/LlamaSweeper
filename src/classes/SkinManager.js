@@ -2,8 +2,8 @@ import CONSTANTS from "src/includes/Constants";
 import {
   boardSkin,
   analyseHiddenStyle,
-  replayShowHidden
-} from 'src/composables/useSettings';
+  replayShowHidden,
+} from "src/composables/useSettings";
 
 class SkinManager {
   constructor() {
@@ -25,60 +25,60 @@ class SkinManager {
       [CONSTANTS.MINE, "/tiles/mine.svg"],
       [CONSTANTS.MINERED, "/tiles/mine_red.svg"],
       [CONSTANTS.MINEWRONG, "/tiles/mine_wrong.svg"],
-      ['hint_mine', '/tiles/hint_mine.svg'],
-      ['tr_flag', '/tiles_transparent/flag.svg'],
-      ['tr_mine', '/tiles_transparent/mine.svg'],
-      ['tr_0', '/tiles_transparent/type0.svg'],
-      ['tr_1', '/tiles_transparent/type1.svg'],
-      ['tr_2', '/tiles_transparent/type2.svg'],
-      ['tr_3', '/tiles_transparent/type3.svg'],
-      ['tr_4', '/tiles_transparent/type4.svg'],
-      ['tr_5', '/tiles_transparent/type5.svg'],
-      ['tr_6', '/tiles_transparent/type6.svg'],
-      ['tr_7', '/tiles_transparent/type7.svg'],
-      ['tr_8', '/tiles_transparent/type8.svg'],
-      ['tr2_mine', '/tiles_transparent2/mine.svg'],
-      ['tr2_0', '/tiles_transparent2/type0.svg'],
-      ['tr2_1', '/tiles_transparent2/type1.svg'],
-      ['tr2_2', '/tiles_transparent2/type2.svg'],
-      ['tr2_3', '/tiles_transparent2/type3.svg'],
-      ['tr2_4', '/tiles_transparent2/type4.svg'],
-      ['tr2_5', '/tiles_transparent2/type5.svg'],
-      ['tr2_6', '/tiles_transparent2/type6.svg'],
-      ['tr2_7', '/tiles_transparent2/type7.svg'],
-      ['tr2_8', '/tiles_transparent2/type8.svg'],
-      ['cl_mine', '/tiles_closed/mine.svg'],
-      ['cl_0', '/tiles_closed/type0.svg'],
-      ['cl_1', '/tiles_closed/type1.svg'],
-      ['cl_2', '/tiles_closed/type2.svg'],
-      ['cl_3', '/tiles_closed/type3.svg'],
-      ['cl_4', '/tiles_closed/type4.svg'],
-      ['cl_5', '/tiles_closed/type5.svg'],
-      ['cl_6', '/tiles_closed/type6.svg'],
-      ['cl_7', '/tiles_closed/type7.svg'],
-      ['cl_8', '/tiles_closed/type8.svg'],
-      ['dm_mine', '/tiles_dimmed/mine.svg'],
-      ['dm_0', '/tiles_dimmed/type0.svg'],
-      ['dm_1', '/tiles_dimmed/type1.svg'],
-      ['dm_2', '/tiles_dimmed/type2.svg'],
-      ['dm_3', '/tiles_dimmed/type3.svg'],
-      ['dm_4', '/tiles_dimmed/type4.svg'],
-      ['dm_5', '/tiles_dimmed/type5.svg'],
-      ['dm_6', '/tiles_dimmed/type6.svg'],
-      ['dm_7', '/tiles_dimmed/type7.svg'],
-      ['dm_8', '/tiles_dimmed/type8.svg'],
-      ['raw_open', '/raw/open.svg'],
-      ['raw_closed', '/raw/closed.svg'],
-      ['raw_0', '/raw/type0.svg'], // this is empty image, as zero tiles have no number
-      ['raw_1', '/raw/type1.svg'],
-      ['raw_2', '/raw/type2.svg'],
-      ['raw_3', '/raw/type3.svg'],
-      ['raw_4', '/raw/type4.svg'],
-      ['raw_5', '/raw/type5.svg'],
-      ['raw_6', '/raw/type6.svg'],
-      ['raw_7', '/raw/type7.svg'],
-      ['raw_8', '/raw/type8.svg'],
-      ['raw_flag', '/raw/flag.svg'],
+      ["hint_mine", "/tiles/hint_mine.svg"],
+      ["tr_flag", "/tiles_transparent/flag.svg"],
+      ["tr_mine", "/tiles_transparent/mine.svg"],
+      ["tr_0", "/tiles_transparent/type0.svg"],
+      ["tr_1", "/tiles_transparent/type1.svg"],
+      ["tr_2", "/tiles_transparent/type2.svg"],
+      ["tr_3", "/tiles_transparent/type3.svg"],
+      ["tr_4", "/tiles_transparent/type4.svg"],
+      ["tr_5", "/tiles_transparent/type5.svg"],
+      ["tr_6", "/tiles_transparent/type6.svg"],
+      ["tr_7", "/tiles_transparent/type7.svg"],
+      ["tr_8", "/tiles_transparent/type8.svg"],
+      ["tr2_mine", "/tiles_transparent2/mine.svg"],
+      ["tr2_0", "/tiles_transparent2/type0.svg"],
+      ["tr2_1", "/tiles_transparent2/type1.svg"],
+      ["tr2_2", "/tiles_transparent2/type2.svg"],
+      ["tr2_3", "/tiles_transparent2/type3.svg"],
+      ["tr2_4", "/tiles_transparent2/type4.svg"],
+      ["tr2_5", "/tiles_transparent2/type5.svg"],
+      ["tr2_6", "/tiles_transparent2/type6.svg"],
+      ["tr2_7", "/tiles_transparent2/type7.svg"],
+      ["tr2_8", "/tiles_transparent2/type8.svg"],
+      ["cl_mine", "/tiles_closed/mine.svg"],
+      ["cl_0", "/tiles_closed/type0.svg"],
+      ["cl_1", "/tiles_closed/type1.svg"],
+      ["cl_2", "/tiles_closed/type2.svg"],
+      ["cl_3", "/tiles_closed/type3.svg"],
+      ["cl_4", "/tiles_closed/type4.svg"],
+      ["cl_5", "/tiles_closed/type5.svg"],
+      ["cl_6", "/tiles_closed/type6.svg"],
+      ["cl_7", "/tiles_closed/type7.svg"],
+      ["cl_8", "/tiles_closed/type8.svg"],
+      ["dm_mine", "/tiles_dimmed/mine.svg"],
+      ["dm_0", "/tiles_dimmed/type0.svg"],
+      ["dm_1", "/tiles_dimmed/type1.svg"],
+      ["dm_2", "/tiles_dimmed/type2.svg"],
+      ["dm_3", "/tiles_dimmed/type3.svg"],
+      ["dm_4", "/tiles_dimmed/type4.svg"],
+      ["dm_5", "/tiles_dimmed/type5.svg"],
+      ["dm_6", "/tiles_dimmed/type6.svg"],
+      ["dm_7", "/tiles_dimmed/type7.svg"],
+      ["dm_8", "/tiles_dimmed/type8.svg"],
+      ["raw_open", "/raw/open.svg"],
+      ["raw_closed", "/raw/closed.svg"],
+      ["raw_0", "/raw/type0.svg"], // this is empty image, as zero tiles have no number
+      ["raw_1", "/raw/type1.svg"],
+      ["raw_2", "/raw/type2.svg"],
+      ["raw_3", "/raw/type3.svg"],
+      ["raw_4", "/raw/type4.svg"],
+      ["raw_5", "/raw/type5.svg"],
+      ["raw_6", "/raw/type6.svg"],
+      ["raw_7", "/raw/type7.svg"],
+      ["raw_8", "/raw/type8.svg"],
+      ["raw_flag", "/raw/flag.svg"],
       ["b_hor", "/borders/border_hor_2x.png"],
       ["b_vert", "/borders/border_vert_2x.png"],
       ["b_c_bot_left", "/borders/corner_bottom_left_2x.png"],
@@ -91,71 +91,66 @@ class SkinManager {
     ];
 
     //General images are consistent across all skins (e.g. cursor)
-    const generalImageMapping = [
-      ["cursor", "/img/other/cursor.svg"],
-    ];
+    const generalImageMapping = [["cursor", "/img/other/cursor.svg"]];
 
     let themePaths = {
       light: "/img/light",
       dark: "/img/dark",
-    }
+    };
 
     //Figure out how many images are priority images
     let numberOfPriorityImages = 0;
 
-    let priorityPathStarts = [
-      '/tiles/',
-      '/raw/',
-      '/borders/',
-      '/img/other/',
-    ];
+    let priorityPathStarts = ["/tiles/", "/raw/", "/borders/", "/img/other/"];
 
     switch (analyseHiddenStyle.value) {
       case "mines":
-        priorityPathStarts.push('/tiles_closed/mine.svg'); // More specific path as just closed mine is used here
+        priorityPathStarts.push("/tiles_closed/mine.svg"); // More specific path as just closed mine is used here
         break;
       case "transparent":
-        priorityPathStarts.push('/tiles_transparent/')
+        priorityPathStarts.push("/tiles_transparent/");
         break;
       case "transparent2":
-        priorityPathStarts.push('/tiles_transparent/')
-        priorityPathStarts.push('/tiles_closed/mine.svg');
+        priorityPathStarts.push("/tiles_transparent/");
+        priorityPathStarts.push("/tiles_closed/mine.svg");
         break;
       case "transparent3":
-        priorityPathStarts.push('/tiles_transparent2/')
+        priorityPathStarts.push("/tiles_transparent2/");
         break;
       case "dimmed":
-        priorityPathStarts.push('/tiles_dimmed/')
+        priorityPathStarts.push("/tiles_dimmed/");
         break;
     }
 
     switch (replayShowHidden.value) {
       case "mines":
-        priorityPathStarts.push('/tiles_closed/mine.svg'); // More specific path as just closed mine is used here
+        priorityPathStarts.push("/tiles_closed/mine.svg"); // More specific path as just closed mine is used here
         break;
       case "transparent":
-        priorityPathStarts.push('/tiles_transparent/')
+        priorityPathStarts.push("/tiles_transparent/");
         break;
       case "transparent2":
-        priorityPathStarts.push('/tiles_transparent/')
-        priorityPathStarts.push('/tiles_closed/mine.svg');
+        priorityPathStarts.push("/tiles_transparent/");
+        priorityPathStarts.push("/tiles_closed/mine.svg");
         break;
       case "transparent3":
-        priorityPathStarts.push('/tiles_transparent2/')
+        priorityPathStarts.push("/tiles_transparent2/");
         break;
       case "dimmed":
-        priorityPathStarts.push('/tiles_dimmed/')
+        priorityPathStarts.push("/tiles_dimmed/");
         break;
     }
 
     // Count how many images with a skin are priority images
-    numberOfPriorityImages += skinImageMapping.filter(skin => {
-      return priorityPathStarts.some(prefix => skin[1].startsWith(prefix));
+    numberOfPriorityImages += skinImageMapping.filter((skin) => {
+      return priorityPathStarts.some((prefix) => skin[1].startsWith(prefix));
     }).length;
 
     // Count how many general images are priority images
-    numberOfPriorityImages += generalImageMapping.filter(generalImage => {
-      return priorityPathStarts.some(prefix => generalImage[1].startsWith(prefix));
+    numberOfPriorityImages += generalImageMapping.filter((generalImage) => {
+      return priorityPathStarts.some((prefix) =>
+        generalImage[1].startsWith(prefix)
+      );
     }).length;
 
     this.imagesLoadedCount = 0;
@@ -177,13 +172,18 @@ class SkinManager {
 
         if (theme === boardSkin.value) {
           //If on the chosen theme, then check for priority images
-          if (priorityPathStarts.some(prefix => img[1].startsWith(prefix))) {
-            isPriority = true
+          if (priorityPathStarts.some((prefix) => img[1].startsWith(prefix))) {
+            isPriority = true;
           }
         }
 
         //Add the image to the correct theme
-        this.addImage(img[0], themePaths[theme] + img[1], this.images.skins[theme], isPriority);
+        this.addImage(
+          img[0],
+          themePaths[theme] + img[1],
+          this.images.skins[theme],
+          isPriority
+        );
       }
     }
 
@@ -204,13 +204,13 @@ class SkinManager {
       dotsCounterText: "#000000",
       dotMain: "white",
       dotSecondary: "black",
-      clickGain: '#C3FFA0', //previously 'green'
-      clickLoss: '#FF777A', //previous 'red'
-      clickNeutral: 'yellow',
-      classicDig: '#E5FFA5', //light yellow
-      classicChord: '#A3D1FF', //light blue
-      premium: 'black',
-      highlight: '#2FEF00',
+      clickGain: "#C3FFA0", //previously 'green'
+      clickLoss: "#FF777A", //previous 'red'
+      clickNeutral: "yellow",
+      classicDig: "#E5FFA5", //light yellow
+      classicChord: "#A3D1FF", //light blue
+      premium: "black",
+      highlight: "#2FEF00",
       hint: {
         safe: {
           hue: 120,
@@ -224,9 +224,9 @@ class SkinManager {
         },
         defaultAlpha: 1,
         floatingAlpha: 0.3,
-        floating: '#eaeaea',
-        readabilityRectangle: '#ddddf7ff',
-      }
+        floating: "#eaeaea",
+        readabilityRectangle: "#ddddf7ff",
+      },
     };
 
     this.colours.dark = {
@@ -238,13 +238,13 @@ class SkinManager {
       dotsCounterText: "#000000",
       dotMain: "white",
       dotSecondary: "black",
-      clickGain: '#346B3E', //previously 'green'
-      clickLoss: '#7C3D3D', //previous 'red'
-      clickNeutral: '#757439', //yellow
-      classicDig: '#f0ff78', //light yellow
-      classicChord: '#0056ac', //light blue (closer to purple for dark scheme)
-      premium: 'white',
-      highlight: '#2FEF00',
+      clickGain: "#346B3E", //previously 'green'
+      clickLoss: "#7C3D3D", //previous 'red'
+      clickNeutral: "#757439", //yellow
+      classicDig: "#f0ff78", //light yellow
+      classicChord: "#0056ac", //light blue (closer to purple for dark scheme)
+      premium: "white",
+      highlight: "#2FEF00",
       hint: {
         safe: {
           hue: 120,
@@ -258,10 +258,10 @@ class SkinManager {
         },
         defaultAlpha: 1,
         floatingAlpha: 0.2,
-        floating: '#898F93',
-        readabilityRectangle: '#222a3aff',
-      }
-    }
+        floating: "#898F93",
+        readabilityRectangle: "#222a3aff",
+      },
+    };
 
     //Expose globally for testing purposes
     window.darkscheme = this.colours.dark;
@@ -297,8 +297,6 @@ class SkinManager {
         });
       }
     }, timeout);
-
-
   }
 
   incrementImagesLoaded() {
@@ -420,9 +418,14 @@ class SkinManager {
       return hintSkin.floating;
     }
 
-    const hue = (1 - colourScale) * hintSkin.safe.hue + colourScale * hintSkin.mine.hue;
-    const saturation = (1 - colourScale) * hintSkin.safe.saturation + colourScale * hintSkin.mine.saturation;
-    let lightness = (1 - colourScale) * hintSkin.safe.lightness + colourScale * hintSkin.mine.lightness;
+    const hue =
+      (1 - colourScale) * hintSkin.safe.hue + colourScale * hintSkin.mine.hue;
+    const saturation =
+      (1 - colourScale) * hintSkin.safe.saturation +
+      colourScale * hintSkin.mine.saturation;
+    let lightness =
+      (1 - colourScale) * hintSkin.safe.lightness +
+      colourScale * hintSkin.mine.lightness;
     const alpha = isFloating ? hintSkin.floatingAlpha : hintSkin.defaultAlpha;
 
     return `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;

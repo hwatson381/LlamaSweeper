@@ -3,7 +3,7 @@ import statsWorkerManager from "src/classes/StatsWorkerManager";
 
 import CONSTANTS from "src/includes/Constants";
 
-import { Dialog } from "quasar"
+import { Dialog } from "quasar";
 
 import {
   wasmAvailable,
@@ -252,8 +252,10 @@ class BoardHint {
 
       const isMeanMine =
         this.board.variant === "mean openings" &&
-        this.board.meanOpenings.meanMineStates[changedSquare.x][changedSquare.y].isMine &&
-        this.board.meanOpenings.meanMineStates[changedSquare.x][changedSquare.y].isActive;
+        this.board.meanOpenings.meanMineStates[changedSquare.x][changedSquare.y]
+          .isMine &&
+        this.board.meanOpenings.meanMineStates[changedSquare.x][changedSquare.y]
+          .isActive;
 
       if (isMeanMine) {
         meanMinesRemovedTotal++;
@@ -310,8 +312,10 @@ class BoardHint {
 
       const isMeanMine =
         this.board.variant === "mean openings" &&
-        this.board.meanOpenings.meanMineStates[changedSquare.x][changedSquare.y].isMine &&
-        this.board.meanOpenings.meanMineStates[changedSquare.x][changedSquare.y].isActive;
+        this.board.meanOpenings.meanMineStates[changedSquare.x][changedSquare.y]
+          .isMine &&
+        this.board.meanOpenings.meanMineStates[changedSquare.x][changedSquare.y]
+          .isActive;
 
       if (typeof thisTile.state === "number") {
         //Make tiles revealed on blast chord transparent
@@ -409,9 +413,12 @@ class BoardHint {
             ) {
               this.board.tilesArray[x][y].hint.hintTexture = "hint_mine";
             } else {
-              this.board.tilesArray[x][y].hint.hintTexture = CONSTANTS.UNREVEALED;
+              this.board.tilesArray[x][y].hint.hintTexture =
+                CONSTANTS.UNREVEALED;
             }
-          } else if (this.board.tilesArray[x][y].state === CONSTANTS.UNREVEALED) {
+          } else if (
+            this.board.tilesArray[x][y].state === CONSTANTS.UNREVEALED
+          ) {
             this.board.tilesArray[x][y].hint.hintTexture = CONSTANTS.UNREVEALED; //Needed in case this is a replay and we need to suppress the "show hidden tiles setting"
           }
         }
@@ -556,7 +563,8 @@ class BoardHint {
   }
 
   hintProbabilityToScalePiecewise(probability) {
-    const boardDensity = this.board.mineCount / (this.board.width * this.board.height);
+    const boardDensity =
+      this.board.mineCount / (this.board.width * this.board.height);
     const greenBias = 0.15 * (1 - boardDensity);
     const greenPoint = boardDensity + greenBias;
 
@@ -595,8 +603,8 @@ class BoardHint {
         t *
         (0.254829592 +
           t *
-          (-0.284496736 +
-            t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
+            (-0.284496736 +
+              t * (1.421413741 + t * (-1.453152027 + t * 1.061405429))));
       const result = 1 - poly * Math.exp(-x * x);
       return x >= 0 ? result : -result;
     };

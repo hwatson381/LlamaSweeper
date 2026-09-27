@@ -35,646 +35,518 @@
 
 let variantList = [
   {
-    "name": "Minesweeper Online",
-    "url": "https://minesweeper.online/",
-    "desc": "The most popular minesweeper website which regularly has 2000+ people online at any time. Has rankings for lots of different categories (winstreak/time/3bvs/mastery/efficiency/difficulty...). Saves replays of every game. Has no guess mode. Has player vs player mode (multiplayer). Has a global chat. Monthly rankings, monthly events, championships once per month. Previously called World of Minesweeper (WoM). ",
-    "image": "/img/variants/wom.png",
-    "tags": [
-      "community",
-      "informational",
-      "game"
-    ],
-    "rating": 4.9,
-    "popularity": 5
+    name: "Minesweeper Online",
+    url: "https://minesweeper.online/",
+    desc: "The most popular minesweeper website which regularly has 2000+ people online at any time. Has rankings for lots of different categories (winstreak/time/3bvs/mastery/efficiency/difficulty...). Saves replays of every game. Has no guess mode. Has player vs player mode (multiplayer). Has a global chat. Monthly rankings, monthly events, championships once per month. Previously called World of Minesweeper (WoM). ",
+    image: "/img/variants/wom.png",
+    tags: ["community", "informational", "game"],
+    rating: 4.9,
+    popularity: 5,
   },
   {
-    "name": "Authoritative Minesweeper",
-    "url": "https://minesweepergame.com/",
-    "desc": "This is considered to be the official rankings for minesweeper with rankings for time, 3bv/s and density. It requires playing on specific desktop clones. It also has a mostly inactive forum (but may be of historic interest due to the age of the site). It also has archives of old minesweeper websites/resources and various informational pages.",
-    "image": "/img/variants/authms.png",
-    "tags": [
-      "community",
-      "informational"
-    ],
-    "rating": 3.8,
-    "popularity": 5
+    name: "Authoritative Minesweeper",
+    url: "https://minesweepergame.com/",
+    desc: "This is considered to be the official rankings for minesweeper with rankings for time, 3bv/s and density. It requires playing on specific desktop clones. It also has a mostly inactive forum (but may be of historic interest due to the age of the site). It also has archives of old minesweeper websites/resources and various informational pages.",
+    image: "/img/variants/authms.png",
+    tags: ["community", "informational"],
+    rating: 3.8,
+    popularity: 5,
   },
   {
-    "name": "Minesweeper Community Discord",
-    "url": "https://discord.gg/6Qz8zsquKA",
-    "desc": "Created by Kiraa96, this is the largest minesweeper Discord with 5000+ members. Has many of the fastest players, including lots of top players from minesweeper.online. ",
-    "image": "/img/variants/discord.png",
-    "tags": [
-      "community"
-    ],
-    "rating": 5,
-    "popularity": 3
+    name: "Minesweeper Community Discord",
+    url: "https://discord.gg/6Qz8zsquKA",
+    desc: "Created by Kiraa96, this is the largest minesweeper Discord with 5000+ members. Has many of the fastest players, including lots of top players from minesweeper.online. ",
+    image: "/img/variants/discord.png",
+    tags: ["community"],
+    rating: 5,
+    popularity: 3,
   },
   {
-    "name": "r/minesweeper subreddit",
-    "url": "https://www.reddit.com/r/Minesweeper",
-    "desc": "The official minesweeper community on Reddit. It's good for those who are casually interested in minesweeper (over 100s expert), although I'd consider other communities to be better for more serious minesweeper players (Minesweeper Community Discord or Minesweeper.online chat). It has been growing quickly and as of writing it has 40k Members.",
-    "image": "/img/variants/reddit.png",
-    "tags": [
-      "community"
-    ],
-    "rating": 2,
-    "popularity": 5
+    name: "r/minesweeper subreddit",
+    url: "https://www.reddit.com/r/Minesweeper",
+    desc: "The official minesweeper community on Reddit. It's good for those who are casually interested in minesweeper (over 100s expert), although I'd consider other communities to be better for more serious minesweeper players (Minesweeper Community Discord or Minesweeper.online chat). It has been growing quickly and as of writing it has 40k Members.",
+    image: "/img/variants/reddit.png",
+    tags: ["community"],
+    rating: 2,
+    popularity: 5,
   },
   {
-    "name": "Saolei",
-    "url": "http://saolei.wang/Main/Index.asp",
-    "desc": "The main ranking for Chinese players. The Chinese community is a lot more active than the international community. It's worth looking around with the aid of translation software. JZE's page is here http://saolei.wang/Player/Index.asp?Id=18290 (best player in the world).",
-    "image": "/img/variants/saolei.png",
-    "tags": [
-      "community",
-      "informational"
-    ],
-    "rating": 4.1,
-    "popularity": 3
+    name: "Saolei",
+    url: "http://saolei.wang/Main/Index.asp",
+    desc: "The main ranking for Chinese players. The Chinese community is a lot more active than the international community. It's worth looking around with the aid of translation software. JZE's page is here http://saolei.wang/Player/Index.asp?Id=18290 (best player in the world).",
+    image: "/img/variants/saolei.png",
+    tags: ["community", "informational"],
+    rating: 4.1,
+    popularity: 3,
   },
   {
-    "name": "Minesweeper Board Museum",
-    "url": "https://mzrg.com/js/mbm/",
-    "desc": "A collection of unique, interesting and important minesweeper boards curated by qqwref (USA minesweeper player)",
-    "image": "/img/variants/mbm.png",
-    "tags": [
-      "informational"
-    ],
-    "rating": 3.6,
-    "popularity": 1
+    name: "Minesweeper Board Museum",
+    url: "https://mzrg.com/js/mbm/",
+    desc: "A collection of unique, interesting and important minesweeper boards curated by qqwref (USA minesweeper player)",
+    image: "/img/variants/mbm.png",
+    tags: ["informational"],
+    rating: 3.6,
+    popularity: 1,
   },
   {
-    "name": "Open Minesweeper",
-    "url": "https://openms.top/#/",
-    "desc": "This is a new modern minesweeper website under active development. It has a ranking with support for several different clones including metasweeper. It also has a section for guides. The website is created by a team of mostly Chinese minesweeper players, although it supports several languages.",
-    "image": "/img/variants/openms.png",
-    "tags": [
-      "informational"
-    ],
-    "rating": 3.6,
-    "popularity": 1
+    name: "Open Minesweeper",
+    url: "https://openms.top/#/",
+    desc: "This is a new modern minesweeper website under active development. It has a ranking with support for several different clones including metasweeper. It also has a section for guides. The website is created by a team of mostly Chinese minesweeper players, although it supports several languages.",
+    image: "/img/variants/openms.png",
+    tags: ["informational"],
+    rating: 3.6,
+    popularity: 1,
   },
   {
-    "name": "qqwref personal website",
-    "url": "https://mzrg.com/",
-    "desc": "The personal website of qqwref (aka Michael Gottlieb). It contains links to various ms and non-ms projects he has created.",
-    "image": "/img/variants/mzrg.png",
-    "tags": [
-      "informational",
-      "game",
-      "tool"
-    ],
-    "rating": 3.5,
-    "popularity": 2
+    name: "qqwref personal website",
+    url: "https://mzrg.com/",
+    desc: "The personal website of qqwref (aka Michael Gottlieb). It contains links to various ms and non-ms projects he has created.",
+    image: "/img/variants/mzrg.png",
+    tags: ["informational", "game", "tool"],
+    rating: 3.5,
+    popularity: 2,
   },
   {
-    "name": "Sudo Sweep",
-    "url": "https://gamesforcrows.itch.io/sudo-sweep",
-    "desc": "This is a hybrid between Sudoku and Minesweeper. There is a sudoku grid on the left and a minesweeper grid on the right, and you can use information from the sudoku side to solve the minesweeper side and vice versa. Logic players will love this.",
-    "image": "/img/variants/sudosweep.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 4.7,
-    "popularity": 1
+    name: "Sudo Sweep",
+    url: "https://gamesforcrows.itch.io/sudo-sweep",
+    desc: "This is a hybrid between Sudoku and Minesweeper. There is a sudoku grid on the left and a minesweeper grid on the right, and you can use information from the sudoku side to solve the minesweeper side and vice versa. Logic players will love this.",
+    image: "/img/variants/sudosweep.png",
+    tags: ["game"],
+    rating: 4.7,
+    popularity: 1,
   },
   {
-    "name": "Minesweeper Advent Calendar",
-    "url": "https://heptaveegesimal.com/2018/advent-calendar/",
-    "desc": "A collection of many different variations on the rules of minesweeper (or as the site calls it, minesveeper). The link I've chosen for this goes to the 2018 calendar, but it also includes links to advent calendars for other years (the site is a little confusing to navigate). There are lots of different variations included in this, such as using different rules for which squares each number \"sees\" and having negative mines.",
-    "image": "/img/variants/advent.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 4.5,
-    "popularity": 2
+    name: "Minesweeper Advent Calendar",
+    url: "https://heptaveegesimal.com/2018/advent-calendar/",
+    desc: 'A collection of many different variations on the rules of minesweeper (or as the site calls it, minesveeper). The link I\'ve chosen for this goes to the 2018 calendar, but it also includes links to advent calendars for other years (the site is a little confusing to navigate). There are lots of different variations included in this, such as using different rules for which squares each number "sees" and having negative mines.',
+    image: "/img/variants/advent.png",
+    tags: ["game"],
+    rating: 4.5,
+    popularity: 2,
   },
   {
-    "name": "14 Minesweeper Variants",
-    "url": "https://store.steampowered.com/app/1865060/14_Minesweeper_Variants/",
-    "desc": "Minesweeper but with different creative twists on the rules. For example, the numbers could lie to you, or the mines could form a connected path, or have other restrictions on how the mines are placed. Some of the variants are very unique, and not like anything I've seen elsewhere. Every puzzle is procedurally generated to be no-guess and doing a move that cannot be logically deduced leads to a loss. I'd highly recommend it for puzzle gamers, I naively went into it expecting it to be easy because of my minesweeper experience, but this is decidely not the case. Aliensrock (a popular puzzle gaming youtuber) has made several videos on this. As of writing, it costs $7. It also has a sequel called 14 Minesweeper Variants 2.",
-    "image": "/img/variants/14ms.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 4.6,
-    "popularity": 4
+    name: "14 Minesweeper Variants",
+    url: "https://store.steampowered.com/app/1865060/14_Minesweeper_Variants/",
+    desc: "Minesweeper but with different creative twists on the rules. For example, the numbers could lie to you, or the mines could form a connected path, or have other restrictions on how the mines are placed. Some of the variants are very unique, and not like anything I've seen elsewhere. Every puzzle is procedurally generated to be no-guess and doing a move that cannot be logically deduced leads to a loss. I'd highly recommend it for puzzle gamers, I naively went into it expecting it to be easy because of my minesweeper experience, but this is decidely not the case. Aliensrock (a popular puzzle gaming youtuber) has made several videos on this. As of writing, it costs $7. It also has a sequel called 14 Minesweeper Variants 2.",
+    image: "/img/variants/14ms.png",
+    tags: ["game"],
+    rating: 4.6,
+    popularity: 4,
   },
   {
-    "name": "4D Minesweeper",
-    "url": "https://store.steampowered.com/app/787980/4D_Minesweeper/",
-    "desc": "Play minesweeper in higher dimensions (1D up to 4D). It displays 4D as a \"grid of grids\" and lets you hover your mouse over any square to see which ones are the neighbours. It's free on steam. I haven't played this but have seen others play it.",
-    "image": "/img/variants/4d.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 4,
-    "popularity": 2
+    name: "4D Minesweeper",
+    url: "https://store.steampowered.com/app/787980/4D_Minesweeper/",
+    desc: "Play minesweeper in higher dimensions (1D up to 4D). It displays 4D as a \"grid of grids\" and lets you hover your mouse over any square to see which ones are the neighbours. It's free on steam. I haven't played this but have seen others play it.",
+    image: "/img/variants/4d.png",
+    tags: ["game"],
+    rating: 4,
+    popularity: 2,
   },
   {
-    "name": "Mine3D",
-    "url": "http://egraether.com/mine3d/",
-    "desc": "Minesweeper in true 3D (as in solving the volume of a cube/cuboid rather than just solving the surface). This is quite mind-bending to play. It can be quite hard to tell which numbers are next to which blocks. Someone should make something like this in VR (or with crossview 3D).",
-    "image": "/img/variants/mine3d.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 4,
-    "popularity": 2
+    name: "Mine3D",
+    url: "http://egraether.com/mine3d/",
+    desc: "Minesweeper in true 3D (as in solving the volume of a cube/cuboid rather than just solving the surface). This is quite mind-bending to play. It can be quite hard to tell which numbers are next to which blocks. Someone should make something like this in VR (or with crossview 3D).",
+    image: "/img/variants/mine3d.png",
+    tags: ["game"],
+    rating: 4,
+    popularity: 2,
   },
   {
-    "name": "Square Finder",
-    "url": "https://mzrg.com/js/mine/square_finder.html",
-    "desc": "The greatest minesweeper variant to exist. This variant randomly generates almost completed minesweeper boards, and you have to find the last tile as quickly as possible. It tracks the average time of your last 5/10/100 attempts.",
-    "image": "/img/variants/squarefinder.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 4.4,
-    "popularity": 1
+    name: "Square Finder",
+    url: "https://mzrg.com/js/mine/square_finder.html",
+    desc: "The greatest minesweeper variant to exist. This variant randomly generates almost completed minesweeper boards, and you have to find the last tile as quickly as possible. It tracks the average time of your last 5/10/100 attempts.",
+    image: "/img/variants/squarefinder.png",
+    tags: ["game"],
+    rating: 4.4,
+    popularity: 1,
   },
   {
-    "name": "MultiSweeper",
-    "url": "https://mzrg.com/js/mine/multi.html",
-    "desc": "Minesweeper clone by qqwref with options for different control schemes and rule variations. Examples of the control schemes are drag (which lets you hold down click and move your mouse to uncover squares) and various modes for automatically flagging/chording. Examples of rule variations include having random colours instead of numbers, spider mode (where the board changes as you play it), free openings (where all openings are revealed at the start) and generating boards with high/low 3bv.",
-    "image": "/img/variants/multisweeper.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 4.2,
-    "popularity": 1
+    name: "MultiSweeper",
+    url: "https://mzrg.com/js/mine/multi.html",
+    desc: "Minesweeper clone by qqwref with options for different control schemes and rule variations. Examples of the control schemes are drag (which lets you hold down click and move your mouse to uncover squares) and various modes for automatically flagging/chording. Examples of rule variations include having random colours instead of numbers, spider mode (where the board changes as you play it), free openings (where all openings are revealed at the start) and generating boards with high/low 3bv.",
+    image: "/img/variants/multisweeper.png",
+    tags: ["game"],
+    rating: 4.2,
+    popularity: 1,
   },
   {
-    "name": "Simon Tatham's Mines",
-    "url": "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/js/mines.html",
-    "desc": "A solid minesweeper web clone with left click chord and the ability to generate very high density no guess boards (such as 16x16 99 mines and 30x16 170 mines). Simon Tatham also has many other fun puzzle games in his collection, and there is a mobile app to play them as well. For those who are interested in computers, Simon Tatham also created PuTTY which is a popular SSH client for windows.",
-    "image": "/img/variants/tathams.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 4.2,
-    "popularity": 5
+    name: "Simon Tatham's Mines",
+    url: "https://www.chiark.greenend.org.uk/~sgtatham/puzzles/js/mines.html",
+    desc: "A solid minesweeper web clone with left click chord and the ability to generate very high density no guess boards (such as 16x16 99 mines and 30x16 170 mines). Simon Tatham also has many other fun puzzle games in his collection, and there is a mobile app to play them as well. For those who are interested in computers, Simon Tatham also created PuTTY which is a popular SSH client for windows.",
+    image: "/img/variants/tathams.png",
+    tags: ["game"],
+    rating: 4.2,
+    popularity: 5,
   },
   {
-    "name": "Minesweeper: The Grand Master",
-    "url": "https://qqwref.github.io/minetgm/",
-    "desc": "Inspired by Tetris: The Grand Master, this variant features a series of increasingly hard minesweeper levels (with difficulty increased by adding various constraints, such as no flags or using colours instead of numbers). After clicking a mine, you will be given a grade for how well you did. There is a speed requirement to reach the later levels.",
-    "image": "/img/variants/minetgm.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 3.3,
-    "popularity": 1
+    name: "Minesweeper: The Grand Master",
+    url: "https://qqwref.github.io/minetgm/",
+    desc: "Inspired by Tetris: The Grand Master, this variant features a series of increasingly hard minesweeper levels (with difficulty increased by adding various constraints, such as no flags or using colours instead of numbers). After clicking a mine, you will be given a grade for how well you did. There is a speed requirement to reach the later levels.",
+    image: "/img/variants/minetgm.png",
+    tags: ["game"],
+    rating: 3.3,
+    popularity: 1,
   },
   {
-    "name": "DemonCrawl",
-    "url": "https://store.steampowered.com/app/1141220/DemonCrawl/",
-    "desc": "A minesweeper roguelite with many different stages, items to collect, rule modifications and more. I've never played this. As of writing, it costs $15.",
-    "image": "/img/variants/demoncrawl.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 0,
-    "popularity": 4
+    name: "DemonCrawl",
+    url: "https://store.steampowered.com/app/1141220/DemonCrawl/",
+    desc: "A minesweeper roguelite with many different stages, items to collect, rule modifications and more. I've never played this. As of writing, it costs $15.",
+    image: "/img/variants/demoncrawl.png",
+    tags: ["game"],
+    rating: 0,
+    popularity: 4,
   },
   {
-    "name": "carykh knightsweeper",
-    "url": "https://htwins.net/minesweeper/",
-    "desc": "Minesweeper, but with different rules for how the neighbouring cells are counted. For example, the numbers could count mines that are a knight's move away or that are orthogonally adjacent (no diagonals). There are lots of different rules to choose from. The rules used can be changed by clicking on the box which has the pattern (\"normal\" is the default pattern). This was made by the youtuber carykh.",
-    "image": "/img/variants/carykh.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 4.3,
-    "popularity": 3
+    name: "carykh knightsweeper",
+    url: "https://htwins.net/minesweeper/",
+    desc: 'Minesweeper, but with different rules for how the neighbouring cells are counted. For example, the numbers could count mines that are a knight\'s move away or that are orthogonally adjacent (no diagonals). There are lots of different rules to choose from. The rules used can be changed by clicking on the box which has the pattern ("normal" is the default pattern). This was made by the youtuber carykh.',
+    image: "/img/variants/carykh.png",
+    tags: ["game"],
+    rating: 4.3,
+    popularity: 3,
   },
   {
-    "name": "carykh knightsweeper qqwref mod",
-    "url": "https://mzrg.com/mines/carykh.html",
-    "desc": "A mod of Carykh minesweeper that adds additional counting rules to choose from. For example, there is the binary rule, where instead of each number being from 1-8, it now goes from 1-255 and converting a number to binary tells you exactly where the mines are (e.g. 5 -> 101 -> mine in top left and top right).",
-    "image": "/img/variants/qqwref-carykh.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 4.3,
-    "popularity": 1
+    name: "carykh knightsweeper qqwref mod",
+    url: "https://mzrg.com/mines/carykh.html",
+    desc: "A mod of Carykh minesweeper that adds additional counting rules to choose from. For example, there is the binary rule, where instead of each number being from 1-8, it now goes from 1-255 and converting a number to binary tells you exactly where the mines are (e.g. 5 -> 101 -> mine in top left and top right).",
+    image: "/img/variants/qqwref-carykh.png",
+    tags: ["game"],
+    rating: 4.3,
+    popularity: 1,
   },
   {
-    "name": "mnsw.pro",
-    "url": "https://mnsw.pro/",
-    "desc": "A multiplayer minesweeper version with versus mode and coop mode. Multiplayer allows there to be an arbitrary number of competitors (not just 1v1), it also has no guess board generation, a chat window and allows you to play in a first to x format (e.g. first to beat 5 games wins). In versus mode, competitors will receive the same boards. Coop mode sometimes gets out of sync when many people are playing the same board at the same time. mnsw.pro is used for the chord cup competition.",
-    "image": "/img/variants/mnsw-pro.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 3.7,
-    "popularity": 3
+    name: "mnsw.pro",
+    url: "https://mnsw.pro/",
+    desc: "A multiplayer minesweeper version with versus mode and coop mode. Multiplayer allows there to be an arbitrary number of competitors (not just 1v1), it also has no guess board generation, a chat window and allows you to play in a first to x format (e.g. first to beat 5 games wins). In versus mode, competitors will receive the same boards. Coop mode sometimes gets out of sync when many people are playing the same board at the same time. mnsw.pro is used for the chord cup competition.",
+    image: "/img/variants/mnsw-pro.png",
+    tags: ["game"],
+    rating: 3.7,
+    popularity: 3,
   },
   {
-    "name": "qqwref mouse control",
-    "url": "https://mzrg.com/js/mine/mouse.html",
-    "desc": "Practise your minesweeper aim by click on all the unrevealed squares as fast as possible. Made by qqwref.",
-    "image": "/img/variants/mouse.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 3.1,
-    "popularity": 1
+    name: "qqwref mouse control",
+    url: "https://mzrg.com/js/mine/mouse.html",
+    desc: "Practise your minesweeper aim by click on all the unrevealed squares as fast as possible. Made by qqwref.",
+    image: "/img/variants/mouse.png",
+    tags: ["game"],
+    rating: 3.1,
+    popularity: 1,
   },
   {
-    "name": "Tetrisweeper",
-    "url": "https://kertisjones.itch.io/tetrisweeper",
-    "desc": "A cross between minesweeper and tetris. Tetris blocks will fall, and then once they land, they will make up the space of the minesweeper board. Then to clear rows, you need to have a full row in tetris, and also have solved that row in minesweeper.",
-    "image": "/img/variants/tetrisweeper.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 4,
-    "popularity": 2
+    name: "Tetrisweeper",
+    url: "https://kertisjones.itch.io/tetrisweeper",
+    desc: "A cross between minesweeper and tetris. Tetris blocks will fall, and then once they land, they will make up the space of the minesweeper board. Then to clear rows, you need to have a full row in tetris, and also have solved that row in minesweeper.",
+    image: "/img/variants/tetrisweeper.png",
+    tags: ["game"],
+    rating: 4,
+    popularity: 2,
   },
   {
-    "name": "Mega minesweeper",
-    "url": "http://mega-minesweeper.com/",
-    "desc": "1000x1000 multiplayer minesweeper where everyone is solving the same board. shift-click or middle-click and drag to move around the board or use the minimap.",
-    "image": "/img/variants/mega.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 3.4,
-    "popularity": 2
+    name: "Mega minesweeper",
+    url: "http://mega-minesweeper.com/",
+    desc: "1000x1000 multiplayer minesweeper where everyone is solving the same board. shift-click or middle-click and drag to move around the board or use the minimap.",
+    image: "/img/variants/mega.png",
+    tags: ["game"],
+    rating: 3.4,
+    popularity: 2,
   },
   {
-    "name": "Unveiling",
-    "url": "https://butcherberries.itch.io/unveiling",
-    "desc": "A creative variant of minesweeper where you have to deduce all the squares that are safe each turn before being able to proceed. This includes squares that can be deduced to be safe through metalogic.",
-    "image": "/img/variants/unveiling.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 4.2,
-    "popularity": 2
+    name: "Unveiling",
+    url: "https://butcherberries.itch.io/unveiling",
+    desc: "A creative variant of minesweeper where you have to deduce all the squares that are safe each turn before being able to proceed. This includes squares that can be deduced to be safe through metalogic.",
+    image: "/img/variants/unveiling.png",
+    tags: ["game"],
+    rating: 4.2,
+    popularity: 2,
   },
   {
-    "name": "Minesweeper Arbiter",
-    "url": "https://minesweepergame.com/download/arbiter.php",
-    "desc": "Arbiter is an official desktop minesweeper clone that can be used for the Authoritative Minesweeper rankings. It saves replays for games played and tracks many different stats. This clone cannot be resized, so will appear small on high res screens (unless you lower screen resolution). All clones allowed for the Authoritative Minesweeper rankings have left+right chord (this is different from minesweeper.online which defaults to left-click chord). It is no longer receiving updates.",
-    "image": "/img/variants/arbiter.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 3.4,
-    "popularity": 4
+    name: "Minesweeper Arbiter",
+    url: "https://minesweepergame.com/download/arbiter.php",
+    desc: "Arbiter is an official desktop minesweeper clone that can be used for the Authoritative Minesweeper rankings. It saves replays for games played and tracks many different stats. This clone cannot be resized, so will appear small on high res screens (unless you lower screen resolution). All clones allowed for the Authoritative Minesweeper rankings have left+right chord (this is different from minesweeper.online which defaults to left-click chord). It is no longer receiving updates.",
+    image: "/img/variants/arbiter.png",
+    tags: ["game"],
+    rating: 3.4,
+    popularity: 4,
   },
   {
-    "name": "meowsweeper",
-    "url": "https://github.com/darknessgod/whitemeow/releases/latest",
-    "desc": "Meowsweeper is an unofficial desktop clone with statistics, resize-able board and recursive chording (squares that get revealed from an opening or chord automatically get chorded again). The link above takes you to the download page - to install you need to download the .rar file and extract, then run main.exe to play.",
-    "image": "/img/variants/meowsweeper.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 3,
-    "popularity": 1
+    name: "meowsweeper",
+    url: "https://github.com/darknessgod/whitemeow/releases/latest",
+    desc: "Meowsweeper is an unofficial desktop clone with statistics, resize-able board and recursive chording (squares that get revealed from an opening or chord automatically get chorded again). The link above takes you to the download page - to install you need to download the .rar file and extract, then run main.exe to play.",
+    image: "/img/variants/meowsweeper.png",
+    tags: ["game"],
+    rating: 3,
+    popularity: 1,
   },
   {
-    "name": "Metasweeper",
-    "url": "https://github.com/eee555/Metasweeper",
-    "desc": "A modern desktop minesweeper clone. It saves replays of games and has resizable cells and is capable of display game statistics including using custom formulae. It features several different types of no-guess mode (including variations where it automatically makes guesses correct). It supports English/German/Polish/Chinese. Games played on this mode can be submitted to the Open minesweeper website. The download link can be found under \"Releases\" on the github page (download + run the latest .exe file to install).",
-    "image": "/img/variants/metasweeper.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 4.5,
-    "popularity": 2
+    name: "Metasweeper",
+    url: "https://github.com/eee555/Metasweeper",
+    desc: 'A modern desktop minesweeper clone. It saves replays of games and has resizable cells and is capable of display game statistics including using custom formulae. It features several different types of no-guess mode (including variations where it automatically makes guesses correct). It supports English/German/Polish/Chinese. Games played on this mode can be submitted to the Open minesweeper website. The download link can be found under "Releases" on the github page (download + run the latest .exe file to install).',
+    image: "/img/variants/metasweeper.png",
+    tags: ["game"],
+    rating: 4.5,
+    popularity: 2,
   },
   {
-    "name": "Viennasweeper",
-    "url": "https://sweeper.wien/",
-    "desc": "Viennasweeper is an official desktop clone that can be used for the Authoritative minesweeper rankings. It is created and maintained by Ralokt. It is a fairly minimal clone that saves replays of games and tracks some statistics (although less than other clones). Whilst the latest full release of Viennasweeper does not support scaling, this is actively being worked on and there are preview versions available that do support scaling through using skins. Once this is fully out, Viennasweeper will be the only official clone that has scaling. Like all official clones, it uses left+right click to chord.",
-    "image": "/img/variants/viennasweeper.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 3.8,
-    "popularity": 3
+    name: "Viennasweeper",
+    url: "https://sweeper.wien/",
+    desc: "Viennasweeper is an official desktop clone that can be used for the Authoritative minesweeper rankings. It is created and maintained by Ralokt. It is a fairly minimal clone that saves replays of games and tracks some statistics (although less than other clones). Whilst the latest full release of Viennasweeper does not support scaling, this is actively being worked on and there are preview versions available that do support scaling through using skins. Once this is fully out, Viennasweeper will be the only official clone that has scaling. Like all official clones, it uses left+right click to chord.",
+    image: "/img/variants/viennasweeper.png",
+    tags: ["game"],
+    rating: 3.8,
+    popularity: 3,
   },
   {
-    "name": "Minesweeper GO - classic game",
-    "url": "https://play.google.com/store/apps/details?id=com.EvolveGames.MinesweeperGo",
-    "desc": "Minesweeper GO is a popular mobile app available on both Android and Apple. It is one of the best mobile apps out there for competitive-minded sweepers. It has all the usual statistics (time/3bvs/efficiency etc), saves replays of games, has competitive global leaderboards and multiplayer mode (in the style of first to x games wins). It also has a no guess campaign with 1000+ levels. It has a lot of different settings for adjusting things such as tap time and scroll behaviour and it has a setting to enable recursive chording (revealed squares get automatically chorded if they have the right number of flags). It's free, but with ads that can be disabled by paying.",
-    "image": "/img/variants/msgo.png",
-    "tags": [
-      "mobile",
-      "game"
-    ],
-    "rating": 4.7,
-    "popularity": 4
+    name: "Minesweeper GO - classic game",
+    url: "https://play.google.com/store/apps/details?id=com.EvolveGames.MinesweeperGo",
+    desc: "Minesweeper GO is a popular mobile app available on both Android and Apple. It is one of the best mobile apps out there for competitive-minded sweepers. It has all the usual statistics (time/3bvs/efficiency etc), saves replays of games, has competitive global leaderboards and multiplayer mode (in the style of first to x games wins). It also has a no guess campaign with 1000+ levels. It has a lot of different settings for adjusting things such as tap time and scroll behaviour and it has a setting to enable recursive chording (revealed squares get automatically chorded if they have the right number of flags). It's free, but with ads that can be disabled by paying.",
+    image: "/img/variants/msgo.png",
+    tags: ["mobile", "game"],
+    rating: 4.7,
+    popularity: 4,
   },
   {
-    "name": "Mastermine",
-    "url": "https://mastermine.app/",
-    "desc": "A 3D minesweeper game where you play on the outside layer of a cube. It's available on Android, Apple and also PC, although I personally think it's better on mobile (the mobile versions are free whereas the PC version costs $3). It has a range of different skins, powerups, achievements and a campaign mode where you solve cubes of increasingly large size, but go down a level if you make a mistake.",
-    "image": "/img/variants/mastermine.png",
-    "tags": [
-      "game",
-      "mobile"
-    ],
-    "rating": 2.9,
-    "popularity": 2
+    name: "Mastermine",
+    url: "https://mastermine.app/",
+    desc: "A 3D minesweeper game where you play on the outside layer of a cube. It's available on Android, Apple and also PC, although I personally think it's better on mobile (the mobile versions are free whereas the PC version costs $3). It has a range of different skins, powerups, achievements and a campaign mode where you solve cubes of increasingly large size, but go down a level if you make a mistake.",
+    image: "/img/variants/mastermine.png",
+    tags: ["game", "mobile"],
+    rating: 2.9,
+    popularity: 2,
   },
   {
-    "name": "League of Minesweeper",
-    "url": "http://tapsss.com/",
-    "desc": "An Android only mobile app designed for and by competitive minesweeper players. It has a very active community in China where many of the top players play on it (including JZE, the world record holder). It also features several other games similar to minesweeper such as nonosweeper (similar to picross/nonograms), schulte grid (finding numbers in a grid), sudoku, 2048, 15 puzzle. It has a pvp mode and a (mostly Chinese) community within the app where you can chat with people and see other records. It has a no-guess mode, as well as a mode for playing custom minesweeper puzzles created by other players. It's also available on https://www.taptap.cn/app/138188",
-    "image": "/img/variants/lom.png",
-    "tags": [
-      "game",
-      "mobile"
-    ],
-    "rating": 4.8,
-    "popularity": 3
+    name: "League of Minesweeper",
+    url: "http://tapsss.com/",
+    desc: "An Android only mobile app designed for and by competitive minesweeper players. It has a very active community in China where many of the top players play on it (including JZE, the world record holder). It also features several other games similar to minesweeper such as nonosweeper (similar to picross/nonograms), schulte grid (finding numbers in a grid), sudoku, 2048, 15 puzzle. It has a pvp mode and a (mostly Chinese) community within the app where you can chat with people and see other records. It has a no-guess mode, as well as a mode for playing custom minesweeper puzzles created by other players. It's also available on https://www.taptap.cn/app/138188",
+    image: "/img/variants/lom.png",
+    tags: ["game", "mobile"],
+    rating: 4.8,
+    popularity: 3,
   },
   {
-    "name": "Chocolate Sweeper",
-    "url": "https://nyahoon.com/products/chocolate-sweeper",
-    "desc": "A quirky mobile app with a campaign that generates some of the hardest no guess logic you'll find in all of minesweeper outside of manually created puzzles. It generates no guess puzzles with guaranteed difficult logic, and makes you lose if you tap on a square that cannot be deduced to be safe. It has a leaderboard which adjusts the time of a game based on how hard the logic was that was used to solve the game. Highly recommended for anyone that wants to get very good at logic. It's available on Apple and Android, although as of 2025 the app seems to have been taken down from both stores. It is still possible to get on Android by installing an APK file, although this must be done at your own risk and should only be done if you know what you are doing.",
-    "image": "/img/variants/chocolatesweeper.png",
-    "tags": [
-      "game",
-      "mobile"
-    ],
-    "rating": 4.6,
-    "popularity": 3
+    name: "Chocolate Sweeper",
+    url: "https://nyahoon.com/products/chocolate-sweeper",
+    desc: "A quirky mobile app with a campaign that generates some of the hardest no guess logic you'll find in all of minesweeper outside of manually created puzzles. It generates no guess puzzles with guaranteed difficult logic, and makes you lose if you tap on a square that cannot be deduced to be safe. It has a leaderboard which adjusts the time of a game based on how hard the logic was that was used to solve the game. Highly recommended for anyone that wants to get very good at logic. It's available on Apple and Android, although as of 2025 the app seems to have been taken down from both stores. It is still possible to get on Android by installing an APK file, although this must be done at your own risk and should only be done if you know what you are doing.",
+    image: "/img/variants/chocolatesweeper.png",
+    tags: ["game", "mobile"],
+    rating: 4.6,
+    popularity: 3,
   },
   {
-    "name": "qqwref probability calculator",
-    "url": "https://mzrg.com/js/mine/probability.html",
-    "desc": "A tool made by qqwref that allows you to create arbitrary minesweeper positions and shows the probability of each square being a mine. It's possible to place numbers, known mines and known safe squares.",
-    "image": "/img/variants/qqprob.png",
-    "tags": [
-      "tool"
-    ],
-    "rating": 3.8,
-    "popularity": 1
+    name: "qqwref probability calculator",
+    url: "https://mzrg.com/js/mine/probability.html",
+    desc: "A tool made by qqwref that allows you to create arbitrary minesweeper positions and shows the probability of each square being a mine. It's possible to place numbers, known mines and known safe squares.",
+    image: "/img/variants/qqprob.png",
+    tags: ["tool"],
+    rating: 3.8,
+    popularity: 1,
   },
   {
-    "name": "DavidNHill JS Minesweeper Solver",
-    "url": "https://davidnhill.github.io/JSMinesweeper",
-    "desc": "The current state of the art minesweeper solver made by MSCoach. This solver achieves the highest known win rate of any minesweeper solver program, winning 41% of the time on expert difficulty. It has two different modes. In the player mode, it will generate a game and let you play along aided by the solver. In the analyser mode, you can create your own position (clicking and using scroll wheel to change the numbers), and then see which move the solver thinks is best.",
-    "image": "/img/variants/jsminesweeper.png",
-    "tags": [
-      "tool"
-    ],
-    "rating": 5,
-    "popularity": 4
+    name: "DavidNHill JS Minesweeper Solver",
+    url: "https://davidnhill.github.io/JSMinesweeper",
+    desc: "The current state of the art minesweeper solver made by MSCoach. This solver achieves the highest known win rate of any minesweeper solver program, winning 41% of the time on expert difficulty. It has two different modes. In the player mode, it will generate a game and let you play along aided by the solver. In the analyser mode, you can create your own position (clicking and using scroll wheel to change the numbers), and then see which move the solver thinks is best.",
+    image: "/img/variants/jsminesweeper.png",
+    tags: ["tool"],
+    rating: 5,
+    popularity: 4,
   },
   {
-    "name": "PTTACGfans ZiNi Calculator",
-    "url": "https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/",
-    "desc": "This is a tool used to calculate the minimum number of clicks that a board can be solved in using flags, chords and left-clicks. Positions can either be created manually by placing the mines on the board or imported from Minesweeper Online by clicking the arrow next to the ZiNi stat that shows up next to a finished game (ZiNi may need to be enabled in settings for this). This tool was created by PTTACGfans, a well known player on Minesweeper Online. ",
-    "image": "/img/variants/ptta-zini.png",
-    "tags": [
-      "tool"
-    ],
-    "rating": 4,
-    "popularity": 3
+    name: "PTTACGfans ZiNi Calculator",
+    url: "https://pttacgfans.github.io/Minesweeper-ZiNi-Calculator/",
+    desc: "This is a tool used to calculate the minimum number of clicks that a board can be solved in using flags, chords and left-clicks. Positions can either be created manually by placing the mines on the board or imported from Minesweeper Online by clicking the arrow next to the ZiNi stat that shows up next to a finished game (ZiNi may need to be enabled in settings for this). This tool was created by PTTACGfans, a well known player on Minesweeper Online. ",
+    image: "/img/variants/ptta-zini.png",
+    tags: ["tool"],
+    rating: 4,
+    popularity: 3,
   },
   {
-    "name": "qqwref make_board",
-    "url": "https://mzrg.com/js/mine/make_board.html",
-    "desc": "A tool by qqwref for created minesweeper boards and calculating various stats about them. Stats include openings, islands, various ZiNi implementations and the amount of times each number appears. It has various controls for adjusting properties of the board.",
-    "image": "/img/variants/make_board.png",
-    "tags": [
-      "tool"
-    ],
-    "rating": 3.3,
-    "popularity": 1
+    name: "qqwref make_board",
+    url: "https://mzrg.com/js/mine/make_board.html",
+    desc: "A tool by qqwref for created minesweeper boards and calculating various stats about them. Stats include openings, islands, various ZiNi implementations and the amount of times each number appears. It has various controls for adjusting properties of the board.",
+    image: "/img/variants/make_board.png",
+    tags: ["tool"],
+    rating: 3.3,
+    popularity: 1,
   },
   {
-    "name": "Inesweeper",
-    "url": "https://www.inesweeper.com/",
-    "desc": "A modern collection of minesweeper variants that take inspiration from 14 minesweeper variants and minesweeper advent calendar as well as some others. As of writing there are 7 variants. Examples include liar where numbers are off by one and contrast where there is a red-blue checkboard pattern and the numbers give the difference between the number of mines in the red and blue squares.",
-    "image": "/img/variants/inesweeper.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 4.1,
-    "popularity": 1
+    name: "Inesweeper",
+    url: "https://www.inesweeper.com/",
+    desc: "A modern collection of minesweeper variants that take inspiration from 14 minesweeper variants and minesweeper advent calendar as well as some others. As of writing there are 7 variants. Examples include liar where numbers are off by one and contrast where there is a red-blue checkboard pattern and the numbers give the difference between the number of mines in the red and blue squares.",
+    image: "/img/variants/inesweeper.png",
+    tags: ["game"],
+    rating: 4.1,
+    popularity: 1,
   },
   {
-    "name": "GM Puzzles",
-    "url": "https://www.gmpuzzles.com/blog/category/objectplacement/minesweeper/",
-    "desc": "A collection of handcrafted logic puzzles. These puzzles each have custom rules. For example, some puzzles will be based around sudoku, some will allow multiple mines in a cell, some will use hexagonal grids, and so on. Logic players will love this.",
-    "image": "/img/variants/gm_puzzles.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 4.2,
-    "popularity": 2
+    name: "GM Puzzles",
+    url: "https://www.gmpuzzles.com/blog/category/objectplacement/minesweeper/",
+    desc: "A collection of handcrafted logic puzzles. These puzzles each have custom rules. For example, some puzzles will be based around sudoku, some will allow multiple mines in a cell, some will use hexagonal grids, and so on. Logic players will love this.",
+    image: "/img/variants/gm_puzzles.png",
+    tags: ["game"],
+    rating: 4.2,
+    popularity: 2,
   },
   {
-    "name": "Puzzle Minesweeper",
-    "url": "https://www.puzzle-minesweeper.com/",
-    "desc": "A no guess minesweeper website where a set of numbers scattered around the board is revealed at the start and you have to mark the remaining tiles as being mines or safe. Note that marking a tile as safe does not reveal a number.",
-    "image": "/img/variants/puzzle_ms.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 3.7,
-    "popularity": 2
+    name: "Puzzle Minesweeper",
+    url: "https://www.puzzle-minesweeper.com/",
+    desc: "A no guess minesweeper website where a set of numbers scattered around the board is revealed at the start and you have to mark the remaining tiles as being mines or safe. Note that marking a tile as safe does not reveal a number.",
+    image: "/img/variants/puzzle_ms.png",
+    tags: ["game"],
+    rating: 3.7,
+    popularity: 2,
   },
   {
-    "name": "Youtube Playables Minesweeper",
-    "url": "https://www.youtube.com/playables/UgkxhpR_EFQxif6EFOQZKOss5-BadJj6TIvQ",
-    "desc": "A mobile-web optimised minesweeper game with unusual rules. When you reveal a square it will also reveal the adjacent squares. This means that it is possible to win on higher densities than usual, and the decision making behind guessing is very different. I've included this variant as it may be of interest to mobile no-flag players who like high density + guessing and have a high tolerance for frustration. There are several things wrong with this clone, notably that you have to long-press to flag (even on desktop) and that you have to sit through an animation whenever you lose.",
-    "image": "/img/variants/yt-playables.png",
-    "tags": [
-      "mobile",
-      "game"
-    ],
-    "rating": 1.7,
-    "popularity": 1
+    name: "Youtube Playables Minesweeper",
+    url: "https://www.youtube.com/playables/UgkxhpR_EFQxif6EFOQZKOss5-BadJj6TIvQ",
+    desc: "A mobile-web optimised minesweeper game with unusual rules. When you reveal a square it will also reveal the adjacent squares. This means that it is possible to win on higher densities than usual, and the decision making behind guessing is very different. I've included this variant as it may be of interest to mobile no-flag players who like high density + guessing and have a high tolerance for frustration. There are several things wrong with this clone, notably that you have to long-press to flag (even on desktop) and that you have to sit through an animation whenever you lose.",
+    image: "/img/variants/yt-playables.png",
+    tags: ["mobile", "game"],
+    rating: 1.7,
+    popularity: 1,
   },
   {
-    "name": "Dragonsweeper",
-    "url": "https://danielben.itch.io/dragonsweeper",
-    "desc": "A minesweeper rpg game that will appeal to people who like strategy games and maths. Instead of mines, there are monsters which have a level that contribute to the numbers shown. And then goal is to explore the board whilst leveling up enough to be able to kill the dragon. Make sure to read through the rules before playing. The first thing to be aware of is that the hearts can (and should) go down to zero - you should not try to conserve hearts, but rather think of these as an \"exploration budget\" for how much information you can get. The second thing to be aware of is that the monsters have particular patterns to how they are arranged, you should observe these as it can help in future runs.",
-    "image": "/img/variants/dragonsweeper.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 3.6,
-    "popularity": 2
+    name: "Dragonsweeper",
+    url: "https://danielben.itch.io/dragonsweeper",
+    desc: 'A minesweeper rpg game that will appeal to people who like strategy games and maths. Instead of mines, there are monsters which have a level that contribute to the numbers shown. And then goal is to explore the board whilst leveling up enough to be able to kill the dragon. Make sure to read through the rules before playing. The first thing to be aware of is that the hearts can (and should) go down to zero - you should not try to conserve hearts, but rather think of these as an "exploration budget" for how much information you can get. The second thing to be aware of is that the monsters have particular patterns to how they are arranged, you should observe these as it can help in future runs.',
+    image: "/img/variants/dragonsweeper.png",
+    tags: ["game"],
+    rating: 3.6,
+    popularity: 2,
   },
   {
-    "name": "MineMasters",
-    "url": "https://minemasters.pro/",
-    "desc": "A modern community focused website with custom rankings and statistics for Minesweeper Online and the Chord Cup (this is a tournament ran on mnsw.pro). It was made by JSwole who is a top minesweeper player and streamer. The site can be thought of as a hub for all of his projects and he is constantly coming up with new ideas. More recently he has come up with the boardigami project (a community effort to solve every difficulty 1 board on WoM) and is using the site to support/run multiple different competitions.",
-    "image": "/img/variants/mine_masters.png",
-    "tags": [
-      "informational",
-      "game"
-    ],
-    "rating": 4.5,
-    "popularity": 2
+    name: "MineMasters",
+    url: "https://minemasters.pro/",
+    desc: "A modern community focused website with custom rankings and statistics for Minesweeper Online and the Chord Cup (this is a tournament ran on mnsw.pro). It was made by JSwole who is a top minesweeper player and streamer. The site can be thought of as a hub for all of his projects and he is constantly coming up with new ideas. More recently he has come up with the boardigami project (a community effort to solve every difficulty 1 board on WoM) and is using the site to support/run multiple different competitions.",
+    image: "/img/variants/mine_masters.png",
+    tags: ["informational", "game"],
+    rating: 4.5,
+    popularity: 2,
   },
   {
-    "name": "Minesweeper fandom wiki",
-    "url": "https://minesweeper.fandom.com/",
-    "desc": "A community wiki with information about players, clones, past competitions, strategy and more. It is a bit incomplete.",
-    "image": "/img/variants/minesweeper-wiki.png",
-    "tags": [
-      "informational"
-    ],
-    "rating": 3.3,
-    "popularity": 2
+    name: "Minesweeper fandom wiki",
+    url: "https://minesweeper.fandom.com/",
+    desc: "A community wiki with information about players, clones, past competitions, strategy and more. It is a bit incomplete.",
+    image: "/img/variants/minesweeper-wiki.png",
+    tags: ["informational"],
+    rating: 3.3,
+    popularity: 2,
   },
   {
-    "name": "sudoku-puzzles.net - sudoku mine",
-    "url": "https://sudoku-puzzles.net/sudoku-mine-hard",
-    "desc": "A large collection of \"sudoku mine\" puzzles, where mines have to be placed into a sudoku grid with exactly 3 mines in each row, column and box. The site also contains a large number of other puzzles, mostly, but not exclusively, based around sudoku. I dislike the user interface as it doesn't support using left/right click for placing mines/safes. If this is an issue, I'd recommend playing on gmpuzzles.com instead.",
-    "image": "/img/variants/sudoku-mine.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 2.7,
-    "popularity": 2
+    name: "sudoku-puzzles.net - sudoku mine",
+    url: "https://sudoku-puzzles.net/sudoku-mine-hard",
+    desc: "A large collection of \"sudoku mine\" puzzles, where mines have to be placed into a sudoku grid with exactly 3 mines in each row, column and box. The site also contains a large number of other puzzles, mostly, but not exclusively, based around sudoku. I dislike the user interface as it doesn't support using left/right click for placing mines/safes. If this is an issue, I'd recommend playing on gmpuzzles.com instead.",
+    image: "/img/variants/sudoku-mine.png",
+    tags: ["game"],
+    rating: 2.7,
+    popularity: 2,
   },
   {
-    "name": "minesweepe.rs",
-    "url": "https://minesweepe.rs/",
-    "desc": "A simple, but responsive minesweeper website that works extremely well on mobile. It is one of very few minesweeper website that support multi-touch on mobile (LlamaSweeper also has this) and has really good touch responsiveness. minesweepe.rs has clean graphics, and also resizes to take up the maximum amount of screen space. ",
-    "image": "/img/variants/minesweepe_rs.png",
-    "tags": [
-      "mobile",
-      "game"
-    ],
-    "rating": 2.8,
-    "popularity": 1
+    name: "minesweepe.rs",
+    url: "https://minesweepe.rs/",
+    desc: "A simple, but responsive minesweeper website that works extremely well on mobile. It is one of very few minesweeper website that support multi-touch on mobile (LlamaSweeper also has this) and has really good touch responsiveness. minesweepe.rs has clean graphics, and also resizes to take up the maximum amount of screen space. ",
+    image: "/img/variants/minesweepe_rs.png",
+    tags: ["mobile", "game"],
+    rating: 2.8,
+    popularity: 1,
   },
   {
-    "name": "Consecutive minesweeper",
-    "url": "https://scratch.mit.edu/projects/1221910016/",
-    "desc": "A minesweeper variant made on scratch where the mines are counted differently. It adds up the number of consecutive mines in each of the 8 directions. It uses left click to dig and space to flag, which is quite unusual. It does not have chording.",
-    "image": "/img/variants/scratch_minesweeper.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 3.0,
-    "popularity": 1
+    name: "Consecutive minesweeper",
+    url: "https://scratch.mit.edu/projects/1221910016/",
+    desc: "A minesweeper variant made on scratch where the mines are counted differently. It adds up the number of consecutive mines in each of the 8 directions. It uses left click to dig and space to flag, which is quite unusual. It does not have chording.",
+    image: "/img/variants/scratch_minesweeper.png",
+    tags: ["game"],
+    rating: 3.0,
+    popularity: 1,
   },
   {
-    "name": "KeyHunter",
-    "url": "https://keyhunter.org/",
-    "desc": "A word game that takes inspiration from both wordle and minesweeper. You have to find a target word, and are presented with a keyboard. The number of dots on each letter indicate how many of the adjacent keys are in the target word. Each guess must only differ from the last word by a single letter, although the letters can be in different positions.",
-    "image": "/img/variants/keyhunter.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 3.1,
-    "popularity": 1
+    name: "KeyHunter",
+    url: "https://keyhunter.org/",
+    desc: "A word game that takes inspiration from both wordle and minesweeper. You have to find a target word, and are presented with a keyboard. The number of dots on each letter indicate how many of the adjacent keys are in the target word. Each guess must only differ from the last word by a single letter, although the letters can be in different positions.",
+    image: "/img/variants/keyhunter.png",
+    tags: ["game"],
+    rating: 3.1,
+    popularity: 1,
   },
   {
-    "name": "Back to square one",
-    "url": "https://malfet.itch.io/square-one",
-    "desc": "A very fun and unique puzzle game where the aim is to move stuff around to get the board to show all 1s. There's 30 levels, and according to the dev it should take around 30-60 minutes to play.",
-    "image": "/img/variants/square-one.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 4.2,
-    "popularity": 2
+    name: "Back to square one",
+    url: "https://malfet.itch.io/square-one",
+    desc: "A very fun and unique puzzle game where the aim is to move stuff around to get the board to show all 1s. There's 30 levels, and according to the dev it should take around 30-60 minutes to play.",
+    image: "/img/variants/square-one.png",
+    tags: ["game"],
+    rating: 4.2,
+    popularity: 2,
   },
   {
-    "name": "MIT Puzzles",
-    "url": "https://mitpuzzles.com/",
-    "desc": "A website run by the MIT university with the aim of studying human reasoning and cognition through logic puzzles. It has a minesweeper game (essential the same as the one on puzzle-minesweeper.com) where the numbers are given at the start and you need to flag all of the mines. It also has several other puzzle games that scratch a similar itch to minesweeper along with leaderboards to compete on. I like all of the puzzles, but would most recommend checking out aquarium.",
-    "image": "/img/variants/mit-puzzles.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 3.4,
-    "popularity": 1
+    name: "MIT Puzzles",
+    url: "https://mitpuzzles.com/",
+    desc: "A website run by the MIT university with the aim of studying human reasoning and cognition through logic puzzles. It has a minesweeper game (essential the same as the one on puzzle-minesweeper.com) where the numbers are given at the start and you need to flag all of the mines. It also has several other puzzle games that scratch a similar itch to minesweeper along with leaderboards to compete on. I like all of the puzzles, but would most recommend checking out aquarium.",
+    image: "/img/variants/mit-puzzles.png",
+    tags: ["game"],
+    rating: 3.4,
+    popularity: 1,
   },
   {
-    "name": "nerdsweeper",
-    "url": "https://nerdsweeper.com/christmas",
-    "desc": "A Christmas advent calendar minesweeper made in 2025. It has 24 days with each day having a twist on the regular minesweeper rules. The minesweeper implementation isn't the best and some of the days are overly complicated, although it is clear that a lot of effort has been put into it, and there are many impressively creative ideas. I found day 19 \"musicsweeper\" to be the most interesting, although also very challenging.",
-    "image": "/img/variants/nerdsweeper.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 3.4,
-    "popularity": 2
+    name: "nerdsweeper",
+    url: "https://nerdsweeper.com/christmas",
+    desc: 'A Christmas advent calendar minesweeper made in 2025. It has 24 days with each day having a twist on the regular minesweeper rules. The minesweeper implementation isn\'t the best and some of the days are overly complicated, although it is clear that a lot of effort has been put into it, and there are many impressively creative ideas. I found day 19 "musicsweeper" to be the most interesting, although also very challenging.',
+    image: "/img/variants/nerdsweeper.png",
+    tags: ["game"],
+    rating: 3.4,
+    popularity: 2,
   },
   {
-    "name": "BroomSweeper",
-    "url": "https://store.steampowered.com/app/3473250/BroomSweeper/",
-    "desc": "A rogue-like minesweeper game with a pixel arty style. You progress through offices which get increasingly difficult and have hazards which make the game harder (allowing multiple mines per square, some tiles not giving information or lying to you and much more). There are also many items that can be obtained throughout the game to make things easier (e.g. providing more tiles at the start or boosting hp). It's very creative game with many interesting mechanics and a sense of humour. That said it does take a while to understand everything at the start, and requires reading a lot of descriptions of the items, so if you want something simple it might not be for you. It costs $25 which may be a bit steep, although understandable as the game was made by an individual developer.",
-    "image": "/img/variants/broomsweeper.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 3.9,
-    "popularity": 3
+    name: "BroomSweeper",
+    url: "https://store.steampowered.com/app/3473250/BroomSweeper/",
+    desc: "A rogue-like minesweeper game with a pixel arty style. You progress through offices which get increasingly difficult and have hazards which make the game harder (allowing multiple mines per square, some tiles not giving information or lying to you and much more). There are also many items that can be obtained throughout the game to make things easier (e.g. providing more tiles at the start or boosting hp). It's very creative game with many interesting mechanics and a sense of humour. That said it does take a while to understand everything at the start, and requires reading a lot of descriptions of the items, so if you want something simple it might not be for you. It costs $25 which may be a bit steep, although understandable as the game was made by an individual developer.",
+    image: "/img/variants/broomsweeper.png",
+    tags: ["game"],
+    rating: 3.9,
+    popularity: 3,
   },
   {
-    "name": "Multi-Minesweeper",
-    "url": "https://napero.github.io/multiminesweeper",
-    "desc": "A minesweeper website with some very unique settings for how the mines and cells behave. There are settings for negative mines and multiple mines per cell. There are also settings to change the cells to be hexagonal, triangular, irregular rectangle and random polygons. This is the only minesweeper version I know of that allows you to play on irregular rectangle or random polygon grids.",
-    "image": "/img/variants/multi-minesweeper.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 3.8,
-    "popularity": 1
+    name: "Multi-Minesweeper",
+    url: "https://napero.github.io/multiminesweeper",
+    desc: "A minesweeper website with some very unique settings for how the mines and cells behave. There are settings for negative mines and multiple mines per cell. There are also settings to change the cells to be hexagonal, triangular, irregular rectangle and random polygons. This is the only minesweeper version I know of that allows you to play on irregular rectangle or random polygon grids.",
+    image: "/img/variants/multi-minesweeper.png",
+    tags: ["game"],
+    rating: 3.8,
+    popularity: 1,
   },
   {
-    "name": "Better Minesweeper",
-    "url": "https://minesweep.ing/",
-    "desc": "Better Minesweeper is a modern minesweeper game with a plethora of settings and features for customisation. As of writing, it is currently under active development, so may change a lot and will have some bugs. It has many different features. It has a lot of statistics that can be enabled (including the ability to export games to the LlamaSweeper ZiNi explorer!); no guess mode; custom game modes such as \"aim trainer\" and \"last square search\" (similar to square finder); replays; steam leaderboards; and lastly it has extensive customisation.",
-    "image": "/img/variants/better-ms.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 4.4,
-    "popularity": 2
+    name: "Better Minesweeper",
+    url: "https://minesweep.ing/",
+    desc: 'Better Minesweeper is a modern minesweeper game with a plethora of settings and features for customisation. As of writing, it is currently under active development, so may change a lot and will have some bugs. It has many different features. It has a lot of statistics that can be enabled (including the ability to export games to the LlamaSweeper ZiNi explorer!); no guess mode; custom game modes such as "aim trainer" and "last square search" (similar to square finder); replays; steam leaderboards; and lastly it has extensive customisation.',
+    image: "/img/variants/better-ms.png",
+    tags: ["game"],
+    rating: 4.4,
+    popularity: 2,
   },
   {
-    "name": "INT Minesweeper",
-    "url": "https://t6970.codeberg.page/INT-Minesweeper/",
-    "desc": "A minesweeper site under development. Currently the only variant is minesweeper based on Hensel notation ( https://conwaylife.com/wiki/Hensel_notation ). Hensel notation is a way of describing adjacent tiles with letters (e.g. k means the mines are a knight's move from eachother, t means they are in a T shape). I'd recommend this for logic players who want to re-experience the feeling of learning something similar to minesweeper for the first time.",
-    "image": "/img/variants/int-ms.png",
-    "tags": [
-      "game"
-    ],
-    "rating": 3,
-    "popularity": 1
+    name: "INT Minesweeper",
+    url: "https://t6970.codeberg.page/INT-Minesweeper/",
+    desc: "A minesweeper site under development. Currently the only variant is minesweeper based on Hensel notation ( https://conwaylife.com/wiki/Hensel_notation ). Hensel notation is a way of describing adjacent tiles with letters (e.g. k means the mines are a knight's move from eachother, t means they are in a T shape). I'd recommend this for logic players who want to re-experience the feeling of learning something similar to minesweeper for the first time.",
+    image: "/img/variants/int-ms.png",
+    tags: ["game"],
+    rating: 3,
+    popularity: 1,
   },
   {
-    "name": "StrangeDust Replay Analyser",
-    "url": "https://strange-dust.github.io/minesweeper-replay-analyzer/",
-    "desc": "More accurately known as RATM (Replay Analysis Tool for Minesweeper). As the name implies, this is a hugely customisable tool for viewing minesweeper replays with an abundance of features. There is a wide range of statistics and graphs, with tools to analyse every aspect of a game including efficiency, mouse movement and probabilities. Replays can be imported from a variety of sources including from recorded games on Minesweeper Online with a bookmarklet that adds real mouse path. See this video for an overview of the tool https://www.youtube.com/watch?v=OXAjc2vfD20",
-    "image": "/img/variants/ratm.png",
-    "tags": [
-      "tool"
-    ],
-    "rating": 4.3,
-    "popularity": 2
+    name: "StrangeDust Replay Analyser",
+    url: "https://strange-dust.github.io/minesweeper-replay-analyzer/",
+    desc: "More accurately known as RATM (Replay Analysis Tool for Minesweeper). As the name implies, this is a hugely customisable tool for viewing minesweeper replays with an abundance of features. There is a wide range of statistics and graphs, with tools to analyse every aspect of a game including efficiency, mouse movement and probabilities. Replays can be imported from a variety of sources including from recorded games on Minesweeper Online with a bookmarklet that adds real mouse path. See this video for an overview of the tool https://www.youtube.com/watch?v=OXAjc2vfD20",
+    image: "/img/variants/ratm.png",
+    tags: ["tool"],
+    rating: 4.3,
+    popularity: 2,
   },
   {
-    "name": "IMESA",
-    "url": "https://imesa.org/",
-    "desc": "Short for the International Minesweeper E-Sports Association, IMESA is a charitable organisation with the goal of promoting minesweeper as an e-sport and enabling international competitions. As of writing, it is most known for supporting the 2025 World Championship in Madrid, which was a 2 day in person event featuring events run on ViennaSweeper/Scoreganizer, mnsw.pro and minesweeper.online. I was lucky enough to compete in it and it was an amazing experience! I've left this entry unrated as I can't give it a rating without bias, and it will mainly be of interest to competitive players rather than casual players.",
-    "image": "/img/variants/imesa.png",
-    "tags": [
-      "community",
-      "informational"
-    ],
-    "rating": 0,
-    "popularity": 3
-  }
-]
+    name: "IMESA",
+    url: "https://imesa.org/",
+    desc: "Short for the International Minesweeper E-Sports Association, IMESA is a charitable organisation with the goal of promoting minesweeper as an e-sport and enabling international competitions. As of writing, it is most known for supporting the 2025 World Championship in Madrid, which was a 2 day in person event featuring events run on ViennaSweeper/Scoreganizer, mnsw.pro and minesweeper.online. I was lucky enough to compete in it and it was an amazing experience! I've left this entry unrated as I can't give it a rating without bias, and it will mainly be of interest to competitive players rather than casual players.",
+    image: "/img/variants/imesa.png",
+    tags: ["community", "informational"],
+    rating: 0,
+    popularity: 3,
+  },
+];
 
 export default variantList;

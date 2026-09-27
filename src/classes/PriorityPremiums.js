@@ -2,10 +2,7 @@
 //This allows priorities to be set for every square. Which is used to decide tiebreaks with premiums.
 
 class PriorityPremiums {
-  constructor(
-    priorityGrid,
-    excludeNegativePremiums
-  ) {
+  constructor(priorityGrid, excludeNegativePremiums) {
     this.premiumsMap = new Map();
     //Map of numbers to arrays, where the key is the premium and the value is an array containing all squares of that premium
 
@@ -151,4 +148,4 @@ class PriorityPremiums {
   }
 }
 
-export default PriorityPremiums
+export default PriorityPremiums;

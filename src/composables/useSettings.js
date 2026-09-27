@@ -204,7 +204,10 @@ let expEffOptions = Object.freeze([150, 160, 170, "custom"]);
 let expEffCustom = useLocalStorage("ls_expEffCustom", 180);
 const expEffSlowGenPoint = 170;
 let customEffCustom = useLocalStorage("ls_customEffCustom", 150);
-let generateEffBoardsInBackground = useLocalStorage("ls_generateEffBoardsInBackground", false);
+let generateEffBoardsInBackground = useLocalStorage(
+  "ls_generateEffBoardsInBackground",
+  false
+);
 let effWebWorkerCount = useLocalStorage("ls_effWebWorkerCount", 1);
 let browserSupportsWebWorkers = window.Worker ? true : false;
 let browserSupportsConcurrency =
@@ -345,11 +348,9 @@ let flagToggleSwitchAfterStart = useLocalStorage(
   "ls_flagToggleSwitchAfterStart",
   false
 );
-let flagToggleEvent = useLocalStorage(
-  "ls_flagToggleEvent",
-  "click"
-);
-let mobileResetGuard = useLocalStorage( //delay before the reset button works
+let flagToggleEvent = useLocalStorage("ls_flagToggleEvent", "click");
+let mobileResetGuard = useLocalStorage(
+  //delay before the reset button works
   "ls_mobileResetGuard",
   true
 );
@@ -435,7 +436,10 @@ let analyseZiniTotal = ref(0);
 let analyse3bv = ref(0);
 let analyseEff = ref(0);
 let analyseShowPremiums = useLocalStorage("ls_analyseShowPremiums", "none");
-let analyseHiddenStyle = useLocalStorage("ls_analyseHiddenStyle", "transparent3");
+let analyseHiddenStyle = useLocalStorage(
+  "ls_analyseHiddenStyle",
+  "transparent3"
+);
 let analyseAlgorithmScopeOptions = computed(() => {
   const withCurrentOpts = [
     {
@@ -563,14 +567,14 @@ function resetTransientSettings() {
   replayIsShown.value = false;
   replayIsPlaying.value = false;
   replayProgress.value = -1;
-  replayProgressRounded.value = "-1.000"
-  replayBarStartValue.value = 0
-  replayBarLastValue.value = 100
-  replayTypeForceSteppy.value = false
-  replayType.value = "accurate"
-  replaySpeedMultiplier.value = 1
-  replayIsPanning.value = false
-  replayIsInputting.value = false
+  replayProgressRounded.value = "-1.000";
+  replayBarStartValue.value = 0;
+  replayBarLastValue.value = 100;
+  replayTypeForceSteppy.value = false;
+  replayType.value = "accurate";
+  replaySpeedMultiplier.value = 1;
+  replayIsPanning.value = false;
+  replayIsInputting.value = false;
 
   //ZiNi stuff
   classicPathBreakdown.value = {
@@ -579,16 +583,16 @@ function resetTransientSettings() {
     chords: 0,
     remaining3bv: 0,
   };
-  analyseZiniTotal.value = 0
-  analyse3bv.value = 0
-  analyseEff.value = 0
+  analyseZiniTotal.value = 0;
+  analyse3bv.value = 0;
+  analyseEff.value = 0;
 
-  ziniRunnerActive.value = false
-  synchronousZiniActive.value = false
-  ziniRunnerExpectedDuration.value = "calculating..."
-  ziniRunnerExpectedFinishTime.value = "calculating..."
-  ziniRunnerIterationsDisplay.value = ""
-  ziniRunnerPercentageProgress.value = "0%"
+  ziniRunnerActive.value = false;
+  synchronousZiniActive.value = false;
+  ziniRunnerExpectedDuration.value = "calculating...";
+  ziniRunnerExpectedFinishTime.value = "calculating...";
+  ziniRunnerIterationsDisplay.value = "";
+  ziniRunnerPercentageProgress.value = "0%";
 }
 
 export {
@@ -772,5 +776,5 @@ export {
   filterInvertValue,
   filterSaturateValue,
   filterStyleProperty,
-  resetTransientSettings
+  resetTransientSettings,
 };

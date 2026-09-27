@@ -1,6 +1,4 @@
-import {
-  watch,
-} from "vue";
+import { watch } from "vue";
 
 import BoardHistory from "src/classes/BoardHistory";
 import Algorithms from "src/classes/Algorithms";
@@ -23,7 +21,7 @@ import BoardActions from "src/classes/BoardActions";
 
 import CONSTANTS from "src/includes/Constants";
 
-import { Dialog } from "quasar"
+import { Dialog } from "quasar";
 
 import {
   showStatsBlock,
@@ -45,7 +43,7 @@ import {
   replayIsShown,
   reorderZini,
   ziniRunnerActive,
-  chordingButtons
+  chordingButtons,
 } from "src/composables/useSettings";
 
 class Board {
@@ -213,13 +211,14 @@ class Board {
   }
 
   resetTiles() {
-    this.tilesArray = new Array(this.width)
-      .fill(0)
-      .map(() =>
-        new Array(this.height)
-          .fill(0)
-          .map(() => new Tile(CONSTANTS.UNREVEALED, { mainCanvasCtx: this.mainCanvasCtx }))
-      );
+    this.tilesArray = new Array(this.width).fill(0).map(() =>
+      new Array(this.height).fill(0).map(
+        () =>
+          new Tile(CONSTANTS.UNREVEALED, {
+            mainCanvasCtx: this.mainCanvasCtx,
+          })
+      )
+    );
   }
 
   populateHiddenNumbers(type) {
@@ -254,7 +253,11 @@ class Board {
               break;
           }
         } else {
-          const squareNumber = this.boardActions.getNumberSurroundingMines(x, y, false);
+          const squareNumber = this.boardActions.getNumberSurroundingMines(
+            x,
+            y,
+            false
+          );
           switch (type) {
             case "mines":
               //mines only, so don't draw numbeds
@@ -522,11 +525,15 @@ class Board {
     this.resetTiles();
 
     this.stats = new BoardStats(this.mines, statsWorkerManager);
-    if (noGuessing.value && this.variant !== "eff boards" && this.variant !== "board editor") {
+    if (
+      noGuessing.value &&
+      this.variant !== "eff boards" &&
+      this.variant !== "board editor"
+    ) {
       this.stats.addNoGuessAttribute();
     }
     this.stats.addVariantAttribute(this.variant);
-    if (chordingButtons.value === 'l') {
+    if (chordingButtons.value === "l") {
       this.stats.addSuperClickAttribute(); //they could just change during a game, but not important enough for that to force a reset
     }
     this.boardStartTime = performance.now();
@@ -1060,7 +1067,10 @@ class Board {
         m: Algorithms.getPttaMinesString(this.ziniExplorerMines),
       };
 
-      if (this.route.query.b !== newQuery.b || this.route.query.m !== newQuery.m) {
+      if (
+        this.route.query.b !== newQuery.b ||
+        this.route.query.m !== newQuery.m
+      ) {
         urlPushNeeded = true;
       }
     } else if (variant.value === "board editor") {
@@ -1069,7 +1079,10 @@ class Board {
         m: Algorithms.getPttaMinesString(this.boardEditorMines),
       };
 
-      if (this.route.query.b !== newQuery.b || this.route.query.m !== newQuery.m) {
+      if (
+        this.route.query.b !== newQuery.b ||
+        this.route.query.m !== newQuery.m
+      ) {
         urlPushNeeded = true;
       }
     }

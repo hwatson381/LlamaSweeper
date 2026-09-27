@@ -4,6 +4,6 @@ const CONSTANTS = Object.freeze({
   MINE: "mine",
   MINERED: "minered",
   MINEWRONG: "minewrong",
-})
+});
 
-export default CONSTANTS
+export default CONSTANTS;

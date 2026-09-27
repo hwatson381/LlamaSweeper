@@ -1,42 +1,55 @@
-import articleList from 'src/assets/article-list';
+import articleList from "src/assets/article-list";
 
-let articlesPaths = articleList.map(a => ({
+let articlesPaths = articleList.map((a) => ({
   path: a.slug,
-  component: a.component
+  component: a.component,
 }));
 
 const routes = [
   {
-    path: '/',
-    component: () => import('layouts/MainLayout.vue'),
+    path: "/",
+    component: () => import("layouts/MainLayout.vue"),
     children: [
-      { path: '', component: () => import('pages/HomePage.vue') },
-      { name: 'play', path: 'game/:variant?', component: () => import('pages/PlayPage.vue') },
-      { path: 'others', component: () => import('pages/OthersPage.vue') },
-      { path: 'about', component: () => import('pages/AboutPage.vue') },
-      { path: 'data-entry', component: () => import('pages/DataEntryPage.vue') },
-      { path: 'bookmark', component: () => import('pages/BookmarkletPage.vue') },
-      { path: 'wom-setting', component: () => import('pages/WomSettingPage.vue') },
+      { path: "", component: () => import("pages/HomePage.vue") },
       {
-        path: 'articles',
+        name: "play",
+        path: "game/:variant?",
+        component: () => import("pages/PlayPage.vue"),
+      },
+      { path: "others", component: () => import("pages/OthersPage.vue") },
+      { path: "about", component: () => import("pages/AboutPage.vue") },
+      {
+        path: "data-entry",
+        component: () => import("pages/DataEntryPage.vue"),
+      },
+      {
+        path: "bookmark",
+        component: () => import("pages/BookmarkletPage.vue"),
+      },
+      {
+        path: "wom-setting",
+        component: () => import("pages/WomSettingPage.vue"),
+      },
+      {
+        path: "articles",
         children: [
-          { path: '', component: () => import('pages/ArticlesPage.vue') },
+          { path: "", component: () => import("pages/ArticlesPage.vue") },
           {
-            path: '',  // no extra path segment, just a layout wrapper
-            component: () => import('layouts/ArticleLayout.vue'),
-            children: articlesPaths  // these each have their own slug paths
-          }
-        ]
-      }
-    ]
+            path: "", // no extra path segment, just a layout wrapper
+            component: () => import("layouts/ArticleLayout.vue"),
+            children: articlesPaths, // these each have their own slug paths
+          },
+        ],
+      },
+    ],
   },
 
   // Always leave this as last one,
   // but you can also remove it
   {
-    path: '/:catchAll(.*)*',
-    component: () => import('pages/ErrorNotFound.vue')
-  }
-]
+    path: "/:catchAll(.*)*",
+    component: () => import("pages/ErrorNotFound.vue"),
+  },
+];
 
-export default routes
+export default routes;

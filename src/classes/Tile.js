@@ -3,7 +3,7 @@ import skinManager from "src/classes/SkinManager";
 
 class Tile {
   constructor(state, refs) {
-    this.refs = refs
+    this.refs = refs;
 
     this.state = state; //Possible values are numbers (e.g. 0, 1, 2... and stuff like CONSTANTS.UNREVEALED etc)
     this.depressed = false;
@@ -15,22 +15,22 @@ class Tile {
 
     this.ziniDelta = {
       loss: false,
-      gain: false
-    }
+      gain: false,
+    };
 
     this.explore = {
       classicDig: false,
       classicChord: false,
       premium: null,
-      highlight: false
-    }
+      highlight: false,
+    };
 
     this.hint = {
       probability: null,
       colourScale: null,
       render: "skip", //can be skip/floating/frontier/onflag/onmine/onblastmine/textureonly
       hintTexture: null, //change texture of tile used for hint (e.g. using transparent bomb texture for readability)
-      highlight: false
+      highlight: false,
     };
   }
 
@@ -46,7 +46,7 @@ class Tile {
     } else if (this.unrevealedState !== null) {
       toDraw = this.unrevealedState;
     } else {
-      toDraw = CONSTANTS.UNREVEALED
+      toDraw = CONSTANTS.UNREVEALED;
     }
 
     ctx.drawImage(skinManager.getImage(toDraw), rawX, rawY, size, size);
@@ -154,7 +154,13 @@ class Tile {
     if (this.hint.hintTexture !== null) {
       //Note - we are drawing directly on top of the normal tile texture
       //this is a bit inefficient, but seemed easier for organising code and allows possiblity of transparency
-      ctx.drawImage(skinManager.getImage(this.hint.hintTexture), rawX, rawY, size, size);
+      ctx.drawImage(
+        skinManager.getImage(this.hint.hintTexture),
+        rawX,
+        rawY,
+        size,
+        size
+      );
 
       if (this.hint.render === "textureonly") {
         return;
@@ -167,7 +173,10 @@ class Tile {
     let yText = rawY + size * 0.5 + textScale * 0.1; //Text nudged slighty down so it looks more visually centred
 
     const isFloating = this.hint.render === "floating";
-    const hintColour = skinManager.getHintColour(this.hint.colourScale, isFloating);
+    const hintColour = skinManager.getHintColour(
+      this.hint.colourScale,
+      isFloating
+    );
 
     let percent = this.hint.probability * 100;
 
@@ -180,7 +189,6 @@ class Tile {
       text = Math.round(percent);
     }
 
-
     //ctx.font = `${textScale}px monospace`;
     ctx.font = `bold ${textScale}px "Roboto", "-apple-system", "Helvetica Neue", Helvetica, Arial, sans-serif`;
 
@@ -190,9 +198,14 @@ class Tile {
     const textMeasurements = ctx.measureText(text);
     let textBgPadding = size * (window.paddingMultiplier ?? 0.04);
     const textBgWidth = textMeasurements.width + 2 * textBgPadding;
-    const textBgHeight = textMeasurements.actualBoundingBoxAscent + textMeasurements.actualBoundingBoxDescent + 2 * textBgPadding;
-    const textBgStartX = xText - textMeasurements.actualBoundingBoxLeft - textBgPadding;
-    const textBgStartY = yText - textMeasurements.actualBoundingBoxAscent - textBgPadding;
+    const textBgHeight =
+      textMeasurements.actualBoundingBoxAscent +
+      textMeasurements.actualBoundingBoxDescent +
+      2 * textBgPadding;
+    const textBgStartX =
+      xText - textMeasurements.actualBoundingBoxLeft - textBgPadding;
+    const textBgStartY =
+      yText - textMeasurements.actualBoundingBoxAscent - textBgPadding;
 
     if (this.hint.render === "onflag") {
       ctx.fillStyle = skinManager.getHintReadabilityRectangle();
@@ -213,8 +226,12 @@ class Tile {
       //green
       ctx.lineWidth = thickness;
       ctx.strokeStyle = highlightColour;
-      ctx.strokeRect(rawX + thickness * 1 / 2, rawY + thickness * 1 / 2, size - thickness, size - thickness);
-
+      ctx.strokeRect(
+        rawX + (thickness * 1) / 2,
+        rawY + (thickness * 1) / 2,
+        size - thickness,
+        size - thickness
+      );
     }
 
     ctx.fillStyle = hintColour;
@@ -258,7 +275,12 @@ class Tile {
 
       //yellow
       ctx.strokeStyle = neutralColour;
-      ctx.strokeRect(rawX + thickness * 1 / 2, rawY + thickness * 1 / 2, size - thickness, size - thickness);
+      ctx.strokeRect(
+        rawX + (thickness * 1) / 2,
+        rawY + (thickness * 1) / 2,
+        size - thickness,
+        size - thickness
+      );
       return;
     }
 
@@ -268,7 +290,12 @@ class Tile {
 
       //green
       ctx.strokeStyle = gainColour;
-      ctx.strokeRect(rawX + thickness * 1 / 2, rawY + thickness * 1 / 2, size - thickness, size - thickness);
+      ctx.strokeRect(
+        rawX + (thickness * 1) / 2,
+        rawY + (thickness * 1) / 2,
+        size - thickness,
+        size - thickness
+      );
       return;
     }
 
@@ -278,7 +305,12 @@ class Tile {
 
       //red
       ctx.strokeStyle = lossColour;
-      ctx.strokeRect(rawX + thickness * 1 / 2, rawY + thickness * 1 / 2, size - thickness, size - thickness);
+      ctx.strokeRect(
+        rawX + (thickness * 1) / 2,
+        rawY + (thickness * 1) / 2,
+        size - thickness,
+        size - thickness
+      );
       return;
     }
   }
@@ -286,11 +318,16 @@ class Tile {
   drawIncludingAnalysis(rawX, rawY, size) {
     //This both draws the tile state, and also draws anything needed by zini explorer
 
-    if (!this.explore.classicDig && !this.explore.classicChord && !this.ziniDelta.gain && !this.ziniDelta.loss) {
+    if (
+      !this.explore.classicDig &&
+      !this.explore.classicChord &&
+      !this.ziniDelta.gain &&
+      !this.ziniDelta.loss
+    ) {
       //Just draw normally
       this.draw(rawX, rawY, size);
     } else {
-      this.drawAnalysisRequiringBackground(rawX, rawY, size)
+      this.drawAnalysisRequiringBackground(rawX, rawY, size);
     }
 
     //////////////////////////////////
@@ -312,8 +349,13 @@ class Tile {
 
   //Click loss/gain or clicks/chords in zini explorer that need a background colour behind the number
   drawAnalysisRequiringBackground(rawX, rawY, size) {
-    if ((this.explore.classicDig || this.explore.classicChord) && (this.ziniDelta.gain || this.ziniDelta.loss)) {
-      throw new Error('Cannot have zini loss/gain at the same time as having zini explorer annotations');
+    if (
+      (this.explore.classicDig || this.explore.classicChord) &&
+      (this.ziniDelta.gain || this.ziniDelta.loss)
+    ) {
+      throw new Error(
+        "Cannot have zini loss/gain at the same time as having zini explorer annotations"
+      );
     }
 
     //////////////////////////////////
@@ -324,15 +366,34 @@ class Tile {
     const classicChordColour = skinManager.getClassicChordColour();
 
     if (this.explore.classicChord && this.explore.classicDig) {
-      this.drawStateWithBackgroundColors(rawX, rawY, size, true, classicChordColour, classicDigColour);
+      this.drawStateWithBackgroundColors(
+        rawX,
+        rawY,
+        size,
+        true,
+        classicChordColour,
+        classicDigColour
+      );
     }
 
     if (this.explore.classicChord && !this.explore.classicDig) {
-      this.drawStateWithBackgroundColors(rawX, rawY, size, true, classicChordColour);
+      this.drawStateWithBackgroundColors(
+        rawX,
+        rawY,
+        size,
+        true,
+        classicChordColour
+      );
     }
 
     if (!this.explore.classicChord && this.explore.classicDig) {
-      this.drawStateWithBackgroundColors(rawX, rawY, size, true, classicDigColour);
+      this.drawStateWithBackgroundColors(
+        rawX,
+        rawY,
+        size,
+        true,
+        classicDigColour
+      );
     }
 
     //////////////////////////////////
@@ -345,7 +406,14 @@ class Tile {
     const isOpen = this.state !== CONSTANTS.FLAG; //flag needs closed background instead of open one
 
     if (this.ziniDelta.gain && this.ziniDelta.loss) {
-      this.drawStateWithBackgroundColors(rawX, rawY, size, isOpen, gainColour, lossColour);
+      this.drawStateWithBackgroundColors(
+        rawX,
+        rawY,
+        size,
+        isOpen,
+        gainColour,
+        lossColour
+      );
     }
 
     if (this.ziniDelta.gain && !this.ziniDelta.loss) {
@@ -357,15 +425,22 @@ class Tile {
     }
   }
 
-  drawStateWithBackgroundColors(rawX, rawY, size, useOpenbackground, col1, col2 = null) {
+  drawStateWithBackgroundColors(
+    rawX,
+    rawY,
+    size,
+    useOpenbackground,
+    col1,
+    col2 = null
+  ) {
     const ctx = this.refs.mainCanvasCtx; //Give it a slightly shorter name...
 
     if (useOpenbackground) {
       //Draw tile base (same image as a zero tile)
-      ctx.drawImage(skinManager.getImage('raw_open'), rawX, rawY, size, size);
+      ctx.drawImage(skinManager.getImage("raw_open"), rawX, rawY, size, size);
     } else {
       //Draw tile base (same image as a closed tile)
-      ctx.drawImage(skinManager.getImage('raw_closed'), rawX, rawY, size, size);
+      ctx.drawImage(skinManager.getImage("raw_closed"), rawX, rawY, size, size);
     }
 
     //downsize slightly
@@ -411,7 +486,13 @@ class Tile {
     }
 
     //Draw number/icon on top
-    ctx.drawImage(skinManager.getImage('raw_' + this.state), rawX, rawY, size, size);
+    ctx.drawImage(
+      skinManager.getImage("raw_" + this.state),
+      rawX,
+      rawY,
+      size,
+      size
+    );
   }
 
   drawPremium(rawX, rawY, size) {
@@ -426,15 +507,16 @@ class Tile {
     if (window.box) {
       yText -= 0.01 * size;
 
-      ctx.fillStyle = 'white'
+      ctx.fillStyle = "white";
       ctx.fillRect(
         rawX,
         rawY,
-        this.explore.premium.toString().length === 2 ? 0.52 * size : 0.27 * size,
+        this.explore.premium.toString().length === 2
+          ? 0.52 * size
+          : 0.27 * size,
         0.35 * size
-      )
+      );
     }
-
 
     ctx.textBaseline = "top";
     ctx.textAlign = "left";
@@ -454,7 +536,12 @@ class Tile {
     //green
     ctx.lineWidth = thickness;
     ctx.strokeStyle = highlightColour;
-    ctx.strokeRect(rawX + thickness * 1 / 2, rawY + thickness * 1 / 2, size - thickness, size - thickness);
+    ctx.strokeRect(
+      rawX + (thickness * 1) / 2,
+      rawY + (thickness * 1) / 2,
+      size - thickness,
+      size - thickness
+    );
   }
 
   addZiniDelta(isGain) {
@@ -466,15 +553,15 @@ class Tile {
   }
 
   addClassicDig() {
-    this.explore.classicDig = true
+    this.explore.classicDig = true;
   }
 
   addClassicChord() {
-    this.explore.classicChord = true
+    this.explore.classicChord = true;
   }
 
   addPremium(premium) {
-    this.explore.premium = premium
+    this.explore.premium = premium;
   }
 
   addHighlight() {

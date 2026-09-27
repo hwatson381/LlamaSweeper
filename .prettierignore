@@ -1,0 +1,13 @@
+# Prettier 2 only reads one ignore file, so relevant .gitignore entries are repeated here
+node_modules
+.quasar
+/dist
+/quasar.config.*.temporary.compiled*
+/src-cordova
+/src-capacitor
+.vscode/launch.json
+.env.local*
+profile.json.gz
+
+package-lock.json
+/wasm

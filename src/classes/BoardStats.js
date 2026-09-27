@@ -227,9 +227,7 @@ class BoardStats {
   }
 
   getOptimalZiNiLink() {
-    let link = new URL(
-      "https://min-clicks.netlify.app/"
-    );
+    let link = new URL("https://min-clicks.netlify.app/");
 
     let boardDimensions = Algorithms.getPttaDimensionString(this.mines);
 

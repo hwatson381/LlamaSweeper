@@ -16,14 +16,19 @@ class Utils {
     //Note - this is not really needed because we now have src/classes/RustWasm.js which work with our particular wasm implementation
     //See https://stackoverflow.com/questions/47879864/how-can-i-check-if-a-browser-supports-webassembly
     try {
-      if (typeof WebAssembly === "object"
-        && typeof WebAssembly.instantiate === "function") {
-        const module = new WebAssembly.Module(Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00));
+      if (
+        typeof WebAssembly === "object" &&
+        typeof WebAssembly.instantiate === "function"
+      ) {
+        const module = new WebAssembly.Module(
+          Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00)
+        );
         if (module instanceof WebAssembly.Module)
-          return new WebAssembly.Instance(module) instanceof WebAssembly.Instance;
+          return (
+            new WebAssembly.Instance(module) instanceof WebAssembly.Instance
+          );
       }
-    } catch (e) {
-    }
+    } catch (e) {}
     return false;
   }
 
@@ -70,9 +75,9 @@ class Utils {
     const sameDay = now.toDateString() === future.toDateString();
 
     const timeString = future.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
     });
 
     if (sameDay) {
@@ -106,7 +111,7 @@ class Utils {
       "board-editor": "board editor",
       "zini-explorer": "zini explorer",
       "mean-openings": "mean openings",
-    }
+    };
 
     if (routeVariantMap[routeName]) {
       return routeVariantMap[routeName];
