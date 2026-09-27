@@ -2,8 +2,15 @@
 //! Finds a provably minimal click sequence (flags, left clicks and chords) for a board with
 //! known mines. Rust port of the algorithm by qqwref.
 //!
-//! The objective for a chosen set `S` of numbered squares to chord is
-//! `|S| + mines adjacent to S + chord components of S + 3bv units not solved by S`.
+//! For a chosen set `S` of numbered cells to chord, the total clicks are
+//! `|S|` chords + mines adjacent to `S` (right clicks) + chains of `S` (seed left clicks)
+//! + 3BV units no chain solves (left clicks). The solver finds the `S` minimising this.
+//!
+//! * `model`: the board reduced to chord candidates.
+//! * `order`: choosing the sweep order over candidates.
+//! * `frontier`: the dynamic program over chord sets.
+//! * `table` / `prune`: DP state storage and exact dominance pruning.
+//! * `solution`: turning the chosen chords into a validated click sequence.
 
 mod frontier;
 pub mod model;
@@ -13,7 +20,7 @@ pub mod solution;
 mod table;
 
 use crate::board_gen_8way::{Board, ClickInfo, ClickType, Square, SquareType};
-use model::Model;
+use model::ChordModel;
 use std::fmt;
 
 pub const DEFAULT_MAX_STATES: usize = 2_000_000;
@@ -21,8 +28,11 @@ pub const DEFAULT_DOMINANCE_COMPARISONS: u64 = 1_000_000;
 
 #[derive(Debug)]
 pub enum DomsError {
+    /// The search grew beyond `max_states`; retrying with a higher limit may succeed.
     StateLimitExceeded { states: usize, processed: usize, candidates: usize },
+    /// Bad input, such as a mine layout that doesn't match the board size.
     Invalid(String),
+    /// A self-check failed, which indicates a solver bug.
     Internal(String),
 }
 
@@ -48,26 +58,26 @@ impl From<String> for DomsError {
 
 #[derive(Debug, Default, Clone)]
 pub struct DomsStats {
-    pub three_bv: usize,
-    pub candidate_chords: usize,
-    pub selected_chords: usize,
+    pub bbbv: usize,
+    pub chord_candidates: usize,
+    pub chord_clicks: usize,
     pub flag_clicks: usize,
     pub seed_clicks: usize,
-    pub remaining_3bv_clicks: usize,
-    pub order_name: String,
+    pub remaining_bbbv_clicks: usize,
+    pub sweep_order: String,
     pub peak_states: usize,
     pub max_boundary: usize,
     pub max_active_factors: usize,
 }
 
 pub struct DomsResult {
-    pub total: usize,
+    pub total_clicks: usize,
     pub clicks: Vec<ClickInfo>,
     pub stats: DomsStats,
 }
 
-fn to_click_infos(board: &Board, actions: &[(ClickType, usize)]) -> Vec<ClickInfo> {
-    actions
+fn to_click_infos(board: &Board, clicks: &[(ClickType, usize)]) -> Vec<ClickInfo> {
+    clicks
         .iter()
         .enumerate()
         .map(|(i, &(c_type, cell))| ClickInfo {
@@ -78,33 +88,34 @@ fn to_click_infos(board: &Board, actions: &[(ClickType, usize)]) -> Vec<ClickInf
         .collect()
 }
 
-fn to_result(board: &Board, model: &Model, solution: solution::Solution) -> DomsResult {
+fn to_result(board: &Board, model: &ChordModel, solution: solution::Solution) -> DomsResult {
     DomsResult {
-        total: solution.clicks,
-        clicks: to_click_infos(board, &solution.actions),
+        total_clicks: solution.total_clicks,
+        clicks: to_click_infos(board, &solution.clicks),
         stats: DomsStats {
-            three_bv: model.three_bv(),
-            candidate_chords: model.candidates.len(),
-            selected_chords: solution.selected.len(),
+            bbbv: model.bbbv(),
+            chord_candidates: model.candidate_cells.len(),
+            chord_clicks: solution.chords.len(),
             flag_clicks: solution.flags.len(),
-            seed_clicks: solution.components.len(),
-            remaining_3bv_clicks: solution.uncovered_units.len(),
+            seed_clicks: solution.chains.len(),
+            remaining_bbbv_clicks: solution.unsolved_bbbv.len(),
             ..Default::default()
         },
     }
 }
 
 /// Board must already have been through `initialize_all`.
+/// `progress(processed, total, states)` is called after each candidate is decided.
 pub fn solve_board(
     board: &Board,
     max_states: usize,
     progress: &mut dyn FnMut(usize, usize, usize),
 ) -> Result<DomsResult, DomsError> {
-    let model = Model::from_board(board);
+    let model = ChordModel::from_board(board);
     let outcome = frontier::solve_frontier(&model, max_states, DEFAULT_DOMINANCE_COMPARISONS, progress)?;
-    let solution = solution::construct_solution(&model, &outcome.selected, Some(outcome.cost))?;
+    let solution = solution::construct_solution(&model, &outcome.chords, Some(outcome.total_clicks))?;
     let mut result = to_result(board, &model, solution);
-    result.stats.order_name = outcome.order_name;
+    result.stats.sweep_order = outcome.sweep_order;
     result.stats.peak_states = outcome.peak_states;
     result.stats.max_boundary = outcome.max_boundary;
     result.stats.max_active_factors = outcome.max_active_factors;
@@ -113,7 +124,7 @@ pub fn solve_board(
 
 /// Exhaustive reference solver for tiny boards. Board must already have been through `initialize_all`.
 pub fn solve_board_bruteforce(board: &Board, max_candidates: usize) -> Result<DomsResult, DomsError> {
-    let model = Model::from_board(board);
+    let model = ChordModel::from_board(board);
     let solution = solution::solve_bruteforce(&model, max_candidates)?;
     Ok(to_result(board, &model, solution))
 }
@@ -138,14 +149,15 @@ pub fn solve_mines(
 
     // Board::new rejects both of these, but they are trivial.
     if mine_count == mines.len() {
-        return Ok(DomsResult { total: 0, clicks: Vec::new(), stats: DomsStats::default() });
+        return Ok(DomsResult { total_clicks: 0, clicks: Vec::new(), stats: DomsStats::default() });
     }
     if mine_count == 0 {
+        // The whole board is one opening, so any single left click wins.
         let mut square = Square::new();
         square.square_type = SquareType::Opening;
         let click = ClickInfo { number: 1, c_type: ClickType::NF, square };
-        let stats = DomsStats { three_bv: 1, remaining_3bv_clicks: 1, ..Default::default() };
-        return Ok(DomsResult { total: 1, clicks: vec![click], stats });
+        let stats = DomsStats { bbbv: 1, remaining_bbbv_clicks: 1, ..Default::default() };
+        return Ok(DomsResult { total_clicks: 1, clicks: vec![click], stats });
     }
 
     let mut board = Board::new(width, height, mine_count)?;

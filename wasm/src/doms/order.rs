@@ -1,21 +1,44 @@
 //! Choosing the order in which the frontier DP sweeps the chord candidates.
-//! A good order keeps the frontier (live components + active factors) narrow.
+//!
+//! After `k` candidates have been decided, the DP state has to remember everything that links
+//! the decided candidates to the undecided ones (the "cut" between them):
+//! * connectivity: chains that could still grow into undecided candidates, and
+//! * factors: mines / 3BV units touched by candidates on both sides of the cut.
+//!
+//! State counts grow exponentially with that width, so the sweep order matters a lot. Rows,
+//! columns, "smart" per-line orders and multi-line bands are all estimated and the narrowest wins.
 
-use super::model::Model;
+use super::model::ChordModel;
 
-/// (max total width, max graph width, max factor width, estimated work)
-pub type WidthEstimate = (i32, i32, i32, u64);
+/// Frontier width of an order. Derived `Ord` compares fields in declaration order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub struct WidthEstimate {
+    pub max_total: i32,
+    pub max_connectivity: i32,
+    pub max_factors: i32,
+    /// Sum of `2^width` over all cuts, a rough proxy for DP work.
+    pub work: u64,
+}
+
+impl WidthEstimate {
+    const WORST: WidthEstimate = WidthEstimate {
+        max_total: i32::MAX,
+        max_connectivity: i32::MAX,
+        max_factors: i32::MAX,
+        work: u64::MAX,
+    };
+}
 
 pub fn estimated_cut_work(width: i32) -> u64 {
     1u64 << width.clamp(0, 60)
 }
 
-/// Sweep by rows or columns, optionally in bands of several lines.
-fn order_indices(model: &Model, by_columns: bool, band_size: usize) -> Vec<usize> {
-    let mut order: Vec<usize> = (0..model.candidates.len()).collect();
-    order.sort_by_key(|&i| {
-        let row = model.candidates[i] / model.width;
-        let col = model.candidates[i] % model.width;
+/// Sweep by rows or columns, in bands of `band_size` lines (zig-zagging inside each band).
+fn strip_order(model: &ChordModel, by_columns: bool, band_size: usize) -> Vec<usize> {
+    let mut order: Vec<usize> = (0..model.candidate_cells.len()).collect();
+    order.sort_by_key(|&candidate| {
+        let row = model.candidate_cells[candidate] / model.width;
+        let col = model.candidate_cells[candidate] % model.width;
         if by_columns {
             (col / band_size, row, col % band_size)
         } else {
@@ -25,7 +48,7 @@ fn order_indices(model: &Model, by_columns: bool, band_size: usize) -> Vec<usize
     order
 }
 
-/// Counts the intervals covering each cut `0..cuts`.
+/// Number of `(first_cut, last_cut)` intervals covering each cut in `0..cuts`.
 fn coverage(intervals: &[(usize, usize)], cuts: usize) -> Vec<i32> {
     let mut diff = vec![0i32; cuts + 1];
     for &(lo, hi) in intervals {
@@ -41,16 +64,18 @@ fn coverage(intervals: &[(usize, usize)], cuts: usize) -> Vec<i32> {
     diff
 }
 
-pub fn width_estimate(model: &Model, order: &[usize]) -> WidthEstimate {
-    let q = order.len();
-    let mut inverse = vec![0usize; q];
-    for (i, &old) in order.iter().enumerate() {
-        inverse[old] = i;
+/// Cut `k` sits between positions `k` and `k + 1` of the order.
+pub fn width_estimate(model: &ChordModel, order: &[usize]) -> WidthEstimate {
+    let candidate_count = order.len();
+    let mut position = vec![0usize; candidate_count];
+    for (i, &candidate) in order.iter().enumerate() {
+        position[candidate] = i;
     }
 
-    let span = |scope: &Vec<usize>| -> Option<(usize, usize)> {
-        let first = scope.iter().map(|&item| inverse[item]).min()?;
-        let last = scope.iter().map(|&item| inverse[item]).max()?;
+    // A set of candidates stays on the frontier from its first position until its last.
+    let span = |candidates: &Vec<usize>| -> Option<(usize, usize)> {
+        let first = candidates.iter().map(|&candidate| position[candidate]).min()?;
+        let last = candidates.iter().map(|&candidate| position[candidate]).max()?;
         if first < last {
             Some((first, last - 1))
         } else {
@@ -58,45 +83,45 @@ pub fn width_estimate(model: &Model, order: &[usize]) -> WidthEstimate {
         }
     };
 
-    let mut graph_intervals = Vec::new();
-    for &old in order {
-        let position = inverse[old];
-        let last = model.graph[old]
+    let mut connectivity_intervals = Vec::new();
+    for &candidate in order {
+        let here = position[candidate];
+        let last_adjacent = model.adjacent_candidates[candidate]
             .iter()
-            .map(|&other| inverse[other])
-            .filter(|&other| other > position)
+            .map(|&other| position[other])
+            .filter(|&other| other > here)
             .max()
-            .unwrap_or(position);
-        if last > position {
-            graph_intervals.push((position, last - 1));
+            .unwrap_or(here);
+        if last_adjacent > here {
+            connectivity_intervals.push((here, last_adjacent - 1));
         }
     }
-    graph_intervals.extend(model.zero_scopes.iter().filter_map(|scope| span(scope)));
+    connectivity_intervals.extend(model.opening_borders.iter().filter_map(|border| span(border)));
 
     let factor_intervals: Vec<(usize, usize)> = model
-        .mine_scopes
+        .flag_needed_by
         .iter()
-        .chain(model.base_scopes.iter())
-        .filter_map(|scope| span(scope))
+        .chain(model.bbbv_solved_by.iter())
+        .filter_map(|candidates| span(candidates))
         .collect();
 
-    let cuts = q.saturating_sub(1);
-    let graph = coverage(&graph_intervals, cuts);
+    let cuts = candidate_count.saturating_sub(1);
+    let connectivity = coverage(&connectivity_intervals, cuts);
     let factors = coverage(&factor_intervals, cuts);
 
-    let (mut max_graph, mut max_factors, mut max_total, mut work) = (0, 0, 0, 0u64);
+    let mut estimate = WidthEstimate { max_total: 0, max_connectivity: 0, max_factors: 0, work: 0 };
     for cut in 0..cuts {
-        max_graph = max_graph.max(graph[cut]);
-        max_factors = max_factors.max(factors[cut]);
-        max_total = max_total.max(graph[cut] + factors[cut]);
-        work = work.saturating_add(estimated_cut_work(graph[cut] + factors[cut]));
+        estimate.max_connectivity = estimate.max_connectivity.max(connectivity[cut]);
+        estimate.max_factors = estimate.max_factors.max(factors[cut]);
+        estimate.max_total = estimate.max_total.max(connectivity[cut] + factors[cut]);
+        estimate.work = estimate.work.saturating_add(estimated_cut_work(connectivity[cut] + factors[cut]));
     }
-    (max_total, max_graph, max_factors, work)
+    estimate
 }
 
-/// Subset-sum (zeta) transform: `counts[mask]` becomes the sum over all submasks.
-fn zeta(counts: &mut [i32], p: usize) {
-    for bit in 0..p {
+/// Subset-sum (zeta) transform: `counts[mask]` becomes the sum of `counts` over all submasks.
+fn zeta(counts: &mut [i32], line_len: usize) {
+    for bit in 0..line_len {
         let b = 1usize << bit;
         for mask in 0..counts.len() {
             if mask & b != 0 {
@@ -106,189 +131,196 @@ fn zeta(counts: &mut [i32], p: usize) {
     }
 }
 
-/// For every subset `mask` of the current line's candidates (already processed),
-/// count how many scopes would be split by the cut.
+/// For every subset `mask` of the current line (the part already swept), count how many of the
+/// candidate sets would have members on both sides of the cut.
 fn crossing_counts<'a, F: Fn(usize) -> usize>(
-    scopes: impl Iterator<Item = &'a Vec<usize>>,
-    primary: &F,
+    candidate_sets: impl Iterator<Item = &'a Vec<usize>>,
+    line_of: &F,
     line_number: usize,
-    local_bit: &[i32],
-    p: usize,
+    bit_in_line: &[i32],
+    line_len: usize,
 ) -> Vec<i32> {
-    let state_count = 1usize << p;
-    let all = state_count - 1;
-    let mut before_only = vec![0i32; state_count];
-    let mut after_only = vec![0i32; state_count];
-    let mut current_only = vec![0i32; state_count];
-    let (mut always, mut before_total, mut after_total, mut current_total) = (0, 0, 0, 0);
+    let subset_count = 1usize << line_len;
+    let full_line = subset_count - 1;
+    // Sets are bucketed by which other lines they touch, keyed by their members on this line.
+    let mut with_earlier = vec![0i32; subset_count];
+    let mut with_later = vec![0i32; subset_count];
+    let mut only_this_line = vec![0i32; subset_count];
+    let (mut always, mut earlier_total, mut later_total, mut this_line_total) = (0, 0, 0, 0);
 
-    for scope in scopes {
-        if scope.is_empty() {
+    for set in candidate_sets {
+        if set.is_empty() {
             continue;
         }
-        let (mut before, mut after, mut mask) = (false, false, 0usize);
-        for &candidate in scope {
-            let candidate_line = primary(candidate);
+        let (mut earlier, mut later, mut mask) = (false, false, 0usize);
+        for &candidate in set {
+            let candidate_line = line_of(candidate);
             if candidate_line < line_number {
-                before = true;
+                earlier = true;
             } else if candidate_line > line_number {
-                after = true;
+                later = true;
             } else {
-                mask |= 1 << local_bit[candidate];
+                mask |= 1 << bit_in_line[candidate];
             }
         }
-        if before && after {
+        if earlier && later {
             always += 1;
-        } else if before {
-            before_only[mask] += 1;
-            before_total += 1;
-        } else if after {
-            after_only[mask] += 1;
-            after_total += 1;
+        } else if earlier {
+            with_earlier[mask] += 1;
+            earlier_total += 1;
+        } else if later {
+            with_later[mask] += 1;
+            later_total += 1;
         } else if mask != 0 {
-            current_only[mask] += 1;
-            current_total += 1;
+            only_this_line[mask] += 1;
+            this_line_total += 1;
         }
     }
-    zeta(&mut before_only, p);
-    zeta(&mut after_only, p);
-    zeta(&mut current_only, p);
+    zeta(&mut with_earlier, line_len);
+    zeta(&mut with_later, line_len);
+    zeta(&mut only_this_line, line_len);
 
-    (0..state_count)
+    (0..subset_count)
         .map(|mask| {
             always
-                + before_total - before_only[mask]
-                + after_total - after_only[all ^ mask]
-                + current_total - current_only[mask] - current_only[all ^ mask]
+                + earlier_total - with_earlier[mask]
+                + later_total - with_later[full_line ^ mask]
+                + this_line_total - only_this_line[mask] - only_this_line[full_line ^ mask]
         })
         .collect()
 }
 
-/// Keep the global strip sweep, but choose the best order inside each row/column
-/// with an exact subset DP over the partial-line cuts.
-fn smart_line_order_indices(model: &Model, by_columns: bool) -> Vec<usize> {
-    let q = model.candidates.len();
+/// Keep the line-by-line sweep, but pick the best order inside each row/column with an exact
+/// DP over subsets of the line (only for lines of at most 20 candidates).
+fn smart_strip_order(model: &ChordModel, by_columns: bool) -> Vec<usize> {
+    let candidate_count = model.candidate_cells.len();
     let width = model.width;
     let line_count = if by_columns { model.width } else { model.height };
-    let primary = |candidate: usize| {
-        let cell = model.candidates[candidate];
+    let line_of = |candidate: usize| {
+        let cell = model.candidate_cells[candidate];
         if by_columns { cell % width } else { cell / width }
     };
-    let secondary = |candidate: usize| {
-        let cell = model.candidates[candidate];
+    let position_in_line = |candidate: usize| {
+        let cell = model.candidate_cells[candidate];
         if by_columns { cell / width } else { cell % width }
     };
 
     let mut lines: Vec<Vec<usize>> = vec![Vec::new(); line_count];
-    for candidate in 0..q {
-        lines[primary(candidate)].push(candidate);
+    for candidate in 0..candidate_count {
+        lines[line_of(candidate)].push(candidate);
     }
     for line in lines.iter_mut() {
-        line.sort_by_key(|&candidate| secondary(candidate));
+        line.sort_by_key(|&candidate| position_in_line(candidate));
     }
 
-    let mut result = Vec::with_capacity(q);
-    let mut local_bit = vec![-1i32; q];
+    let mut result = Vec::with_capacity(candidate_count);
+    let mut bit_in_line = vec![-1i32; candidate_count];
     for (line_number, line) in lines.iter().enumerate() {
-        let p = line.len();
-        // 2^p is impractical on wide lines
-        if p <= 1 || p > 20 {
+        let line_len = line.len();
+        if line_len <= 1 || line_len > 20 {
             result.extend_from_slice(line);
             continue;
         }
 
-        let state_count = 1usize << p;
-        let all = state_count - 1;
+        let subset_count = 1usize << line_len;
+        let full_line = subset_count - 1;
         for (bit, &candidate) in line.iter().enumerate() {
-            local_bit[candidate] = bit as i32;
+            bit_in_line[candidate] = bit as i32;
         }
 
-        let mut graph_cost = crossing_counts(model.zero_scopes.iter(), &primary, line_number, &local_bit, p);
-        let factor_cost = crossing_counts(
-            model.mine_scopes.iter().chain(model.base_scopes.iter()),
-            &primary,
+        let mut connectivity_width =
+            crossing_counts(model.opening_borders.iter(), &line_of, line_number, &bit_in_line, line_len);
+        let factor_width = crossing_counts(
+            model.flag_needed_by.iter().chain(model.bbbv_solved_by.iter()),
+            &line_of,
             line_number,
-            &local_bit,
-            p,
+            &bit_in_line,
+            line_len,
         );
 
-        // Connectivity vertices are live while processed but with an unprocessed graph neighbour.
-        let mut old_masks = vec![0i32; state_count];
-        let (mut old_total, mut old_always) = (0, 0);
-        for candidate in 0..q {
-            if primary(candidate) >= line_number {
+        // A swept candidate stays on the frontier while it has an unswept adjacent candidate.
+        let mut earlier_finished_by = vec![0i32; subset_count];
+        let (mut earlier_waiting, mut earlier_always) = (0, 0);
+        for candidate in 0..candidate_count {
+            if line_of(candidate) >= line_number {
                 continue;
             }
             let (mut later, mut mask) = (false, 0usize);
-            for &neighbour in &model.graph[candidate] {
-                let neighbour_line = primary(neighbour);
-                if neighbour_line > line_number {
+            for &adjacent in &model.adjacent_candidates[candidate] {
+                let adjacent_line = line_of(adjacent);
+                if adjacent_line > line_number {
                     later = true;
-                } else if neighbour_line == line_number {
-                    mask |= 1 << local_bit[neighbour];
+                } else if adjacent_line == line_number {
+                    mask |= 1 << bit_in_line[adjacent];
                 }
             }
             if later {
-                old_always += 1;
+                earlier_always += 1;
             } else if mask != 0 {
-                old_masks[mask] += 1;
-                old_total += 1;
+                earlier_finished_by[mask] += 1;
+                earlier_waiting += 1;
             }
         }
-        zeta(&mut old_masks, p);
+        zeta(&mut earlier_finished_by, line_len);
 
-        let mut same_line_neighbours = vec![0usize; p];
-        let mut has_later_neighbour = vec![false; p];
-        for bit in 0..p {
-            for &neighbour in &model.graph[line[bit]] {
-                let neighbour_line = primary(neighbour);
-                if neighbour_line > line_number {
-                    has_later_neighbour[bit] = true;
-                } else if neighbour_line == line_number {
-                    same_line_neighbours[bit] |= 1 << local_bit[neighbour];
+        let mut same_line_adjacent = vec![0usize; line_len];
+        let mut has_later_adjacent = vec![false; line_len];
+        for bit in 0..line_len {
+            for &adjacent in &model.adjacent_candidates[line[bit]] {
+                let adjacent_line = line_of(adjacent);
+                if adjacent_line > line_number {
+                    has_later_adjacent[bit] = true;
+                } else if adjacent_line == line_number {
+                    same_line_adjacent[bit] |= 1 << bit_in_line[adjacent];
                 }
             }
         }
-        for mask in 0..state_count {
-            graph_cost[mask] += old_always + old_total - old_masks[mask];
-            let mut selected = mask;
-            while selected != 0 {
-                let bit = selected.trailing_zeros() as usize;
-                selected &= selected - 1;
-                if has_later_neighbour[bit] || (same_line_neighbours[bit] & !mask & all) != 0 {
-                    graph_cost[mask] += 1;
+        for mask in 0..subset_count {
+            connectivity_width[mask] += earlier_always + earlier_waiting - earlier_finished_by[mask];
+            let mut swept = mask;
+            while swept != 0 {
+                let bit = swept.trailing_zeros() as usize;
+                swept &= swept - 1;
+                if has_later_adjacent[bit] || (same_line_adjacent[bit] & !mask & full_line) != 0 {
+                    connectivity_width[mask] += 1;
                 }
             }
         }
 
-        // Best path from the empty subset to the full line, scored by the worst cut.
-        let mut best: Vec<WidthEstimate> = vec![(i32::MAX, i32::MAX, i32::MAX, u64::MAX); state_count];
-        let mut predecessor = vec![-1i8; state_count];
-        let total0 = graph_cost[0] + factor_cost[0];
-        best[0] = (total0, graph_cost[0], factor_cost[0], estimated_cut_work(total0));
-        for mask in 1..state_count {
-            let total = graph_cost[mask] + factor_cost[mask];
+        // Cheapest path from the empty subset to the full line, adding one candidate at a time,
+        // scored by its widest cut.
+        let mut best = vec![WidthEstimate::WORST; subset_count];
+        let mut last_added = vec![-1i8; subset_count];
+        let empty_total = connectivity_width[0] + factor_width[0];
+        best[0] = WidthEstimate {
+            max_total: empty_total,
+            max_connectivity: connectivity_width[0],
+            max_factors: factor_width[0],
+            work: estimated_cut_work(empty_total),
+        };
+        for mask in 1..subset_count {
+            let total = connectivity_width[mask] + factor_width[mask];
             let mut choices = mask;
             while choices != 0 {
                 let bit = choices.trailing_zeros() as usize;
                 choices &= choices - 1;
                 let previous = best[mask ^ (1 << bit)];
-                let score = (
-                    previous.0.max(total),
-                    previous.1.max(graph_cost[mask]),
-                    previous.2.max(factor_cost[mask]),
-                    previous.3.saturating_add(estimated_cut_work(total)),
-                );
-                if predecessor[mask] < 0 || score < best[mask] {
+                let score = WidthEstimate {
+                    max_total: previous.max_total.max(total),
+                    max_connectivity: previous.max_connectivity.max(connectivity_width[mask]),
+                    max_factors: previous.max_factors.max(factor_width[mask]),
+                    work: previous.work.saturating_add(estimated_cut_work(total)),
+                };
+                if last_added[mask] < 0 || score < best[mask] {
                     best[mask] = score;
-                    predecessor[mask] = bit as i8;
+                    last_added[mask] = bit as i8;
                 }
             }
         }
-        let mut reversed = Vec::with_capacity(p);
-        let mut mask = all;
+        let mut reversed = Vec::with_capacity(line_len);
+        let mut mask = full_line;
         while mask != 0 {
-            let bit = predecessor[mask] as usize;
+            let bit = last_added[mask] as usize;
             reversed.push(line[bit]);
             mask ^= 1 << bit;
         }
@@ -298,7 +330,8 @@ fn smart_line_order_indices(model: &Model, by_columns: bool) -> Vec<usize> {
     result
 }
 
-fn candidate_band_sizes(size: usize) -> Vec<usize> {
+/// 1, powers of two below `size`, and `size`.
+fn band_sizes(size: usize) -> Vec<usize> {
     let mut values = vec![1, size];
     let mut value = 2;
     while value < size {
@@ -310,40 +343,41 @@ fn candidate_band_sizes(size: usize) -> Vec<usize> {
     values
 }
 
-/// Evaluate row, column, smart and banded orders and pick the narrowest frontier.
-pub fn choose_order(model: &Model) -> (Model, String) {
+/// Returns the reordered model and the name of the chosen sweep order.
+pub fn choose_sweep_order(model: &ChordModel) -> (ChordModel, String) {
     let mut choices: Vec<(WidthEstimate, String, Vec<usize>)> = Vec::new();
     let mut standard_best = i32::MAX;
     let mut standard_estimates = Vec::new();
     for &(name, by_columns) in &[("columns", true), ("rows", false)] {
-        let order = order_indices(model, by_columns, 1);
+        let order = strip_order(model, by_columns, 1);
         let estimate = width_estimate(model, &order);
-        standard_best = standard_best.min(estimate.0);
+        standard_best = standard_best.min(estimate.max_total);
         choices.push((estimate, name.to_string(), order));
         standard_estimates.push((name, by_columns, estimate));
     }
     for &(name, by_columns, estimate) in &standard_estimates {
-        let physical_line_size = if by_columns { model.height } else { model.width };
-        // Skip the 2^p preprocessing on long lines or clearly inferior orientations.
-        if physical_line_size > 20 || estimate.0 > standard_best.saturating_add(2) {
+        let line_size = if by_columns { model.height } else { model.width };
+        // Skip the 2^line_len preprocessing on long lines or clearly worse orientations.
+        if line_size > 20 || estimate.max_total > standard_best.saturating_add(2) {
             continue;
         }
-        let smart_order = smart_line_order_indices(model, by_columns);
+        let smart_order = smart_strip_order(model, by_columns);
         let smart_estimate = width_estimate(model, &smart_order);
         choices.push((smart_estimate, format!("{}-smart", name), smart_order));
     }
 
     let mut banded: Vec<(&str, bool, usize)> = Vec::new();
-    for &size in candidate_band_sizes(model.height).iter().skip(1) {
+    for &size in band_sizes(model.height).iter().skip(1) {
         banded.push(("rows", false, size));
     }
-    for &size in candidate_band_sizes(model.width).iter().skip(1) {
+    for &size in band_sizes(model.width).iter().skip(1) {
         banded.push(("columns", true, size));
     }
     for (name, by_columns, size) in banded {
-        let order = order_indices(model, by_columns, size);
+        let order = strip_order(model, by_columns, size);
         let estimate = width_estimate(model, &order);
-        if estimate.0 <= standard_best.saturating_sub(2) {
+        // Bands are only worth it when clearly narrower than a plain sweep.
+        if estimate.max_total <= standard_best.saturating_sub(2) {
             choices.push((estimate, format!("{}-band-{}", name, size), order));
         }
     }

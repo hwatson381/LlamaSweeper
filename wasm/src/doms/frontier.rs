@@ -1,250 +1,290 @@
 //! Frontier dynamic program over chord sets.
 //!
-//! Candidates are processed in sweep order. After each candidate the DP keeps states of
-//! * a connectivity signature: for each unfinished component of chosen chords, which later
-//!   candidates it can still reach (directly or via a shared opening), and
-//! * which still-active factors have been hit (a mine needing a flag, or a 3bv unit solved).
+//! Candidates are decided one at a time in sweep order: either chorded or not. After each
+//! decision the DP keeps one cheapest state per distinct
+//! * connectivity signature: the unfinished chains, and which undecided candidates each can
+//!   still reveal (so chording one of those would extend the chain), and
+//! * set of active factors already hit. A *mine factor* is hit when a chord needs that mine
+//!   flagged; a *3BV factor* is hit when a chord chain solves that 3BV unit.
 //!
-//! The cost starts at 3bv. Hitting a flag factor costs +1 once, hitting a base factor saves 1
-//! once, each chosen chord costs +1, and each component that can no longer grow costs +1 for
-//! its seed left click.
+//! Cost accounting, which ends up equal to the total clicks:
+//! * start at 3BV (every unit left clicked, nothing chorded),
+//! * +1 for each chord,
+//! * +1 the first time each mine factor is hit (its right click),
+//! * -1 the first time each 3BV factor is hit (that left click is no longer needed),
+//! * +1 when a chain can no longer grow (its seed left click).
 
-use super::model::Model;
-use super::order::choose_order;
+use super::model::ChordModel;
+use super::order::choose_sweep_order;
 use super::prune::prune_dominated;
-use super::table::{set_bit, test_bit, ConnectivityPool, Table};
+use super::table::{set_bit, test_bit, ConnectivityPool, StateTable};
 use super::DomsError;
 
 pub struct FrontierOutcome {
-    /// Chosen chord candidates, as indexes into the original model.
-    pub selected: Vec<usize>,
-    pub cost: i32,
-    pub order_name: String,
+    /// Chorded candidates, as indexes into the original (unordered) model.
+    pub chords: Vec<usize>,
+    pub total_clicks: i32,
+    pub sweep_order: String,
     pub peak_states: usize,
     pub max_boundary: usize,
     pub max_active_factors: usize,
 }
 
-/// Scratch buffers reused for every connectivity transition in a layer.
-struct TransitionScratch {
-    outgoing: Vec<u64>,
-    offsets: Vec<usize>,
-    merged: Vec<u64>,
-    canonical: Vec<u64>,
+/// Per-candidate factor bitsets. Mine factors come first, then 3BV factors.
+struct FactorLayout {
+    factor_words: usize,
+    bbbv_factor_mask: Vec<u64>,
+    mine_factor_mask: Vec<u64>,
+    factors_hit_by: Vec<u64>,
+    /// A factor only needs remembering while some but not all of its candidates are decided.
+    active_factors_after: Vec<u64>,
 }
 
-/// Connectivity after deciding whether to chord candidate `i`. Returns the new signature id
-/// and how many components closed (each needs one seed click).
-fn transition(
-    old_signature: &[u64],
-    selected: bool,
-    i: usize,
-    future_neighbours: &[u64],
-    scratch: &mut TransitionScratch,
-    next_pool: &mut ConnectivityPool,
-) -> (u32, i32) {
-    let words = future_neighbours.len();
-    let (word_i, bit_i) = (i / 64, 1u64 << (i % 64));
-    let mut closed = 0;
-    scratch.outgoing.clear();
-    scratch.offsets.clear();
-    if selected {
-        scratch.merged.copy_from_slice(future_neighbours);
-    } else {
-        scratch.merged.iter_mut().for_each(|word| *word = 0);
-    }
+impl FactorLayout {
+    fn new(model: &ChordModel) -> Self {
+        let candidate_count = model.candidate_cells.len();
+        let mut factors: Vec<(&Vec<usize>, bool)> = Vec::new();
+        factors.extend(model.flag_needed_by.iter().filter(|c| !c.is_empty()).map(|c| (c, true)));
+        factors.extend(model.bbbv_solved_by.iter().filter(|c| !c.is_empty()).map(|c| (c, false)));
 
-    for component in old_signature.chunks(words) {
-        let touches = component[word_i] & bit_i != 0;
-        if selected && touches {
-            for (merged, &value) in scratch.merged.iter_mut().zip(component) {
-                *merged |= value;
+        let factor_words = (factors.len() + 63) / 64;
+        let mut layout = FactorLayout {
+            factor_words,
+            bbbv_factor_mask: vec![0u64; factor_words],
+            mine_factor_mask: vec![0u64; factor_words],
+            factors_hit_by: vec![0u64; candidate_count * factor_words],
+            active_factors_after: vec![0u64; candidate_count * factor_words],
+        };
+        for (factor, &(candidates, is_mine_factor)) in factors.iter().enumerate() {
+            let mask = if is_mine_factor { &mut layout.mine_factor_mask } else { &mut layout.bbbv_factor_mask };
+            set_bit(mask, factor);
+            let row = |candidate: usize| candidate * factor_words..(candidate + 1) * factor_words;
+            for &candidate in candidates.iter() {
+                set_bit(&mut layout.factors_hit_by[row(candidate)], factor);
             }
-            continue;
+            let (first, last) = (candidates[0], candidates[candidates.len() - 1]);
+            for candidate in first..last {
+                set_bit(&mut layout.active_factors_after[row(candidate)], factor);
+            }
         }
-        let start = scratch.outgoing.len();
-        let mut nonempty = false;
-        for (word, &value) in component.iter().enumerate() {
-            let value = if word == word_i { value & !bit_i } else { value };
-            scratch.outgoing.push(value);
-            nonempty |= value != 0;
-        }
-        if nonempty {
-            scratch.offsets.push(start);
-        } else {
-            scratch.outgoing.truncate(start);
-            closed += 1;
-        }
-    }
-    if selected {
-        scratch.merged[word_i] &= !bit_i;
-        if scratch.merged.iter().any(|&word| word != 0) {
-            scratch.offsets.push(scratch.outgoing.len());
-            let merged = &scratch.merged;
-            scratch.outgoing.extend_from_slice(merged);
-        } else {
-            closed += 1;
-        }
+        layout
     }
 
-    let outgoing = &scratch.outgoing;
-    scratch.offsets.sort_by(|&a, &b| outgoing[a..a + words].cmp(&outgoing[b..b + words]));
-    scratch.canonical.clear();
-    for &offset in &scratch.offsets {
-        scratch.canonical.extend_from_slice(&outgoing[offset..offset + words]);
+    fn hit_by(&self, candidate: usize) -> &[u64] {
+        &self.factors_hit_by[candidate * self.factor_words..(candidate + 1) * self.factor_words]
     }
-    (next_pool.intern(&scratch.canonical), closed)
+
+    fn active_after(&self, candidate: usize) -> &[u64] {
+        &self.active_factors_after[candidate * self.factor_words..(candidate + 1) * self.factor_words]
+    }
 }
 
-pub fn solve_frontier(
-    original: &Model,
-    max_states: usize,
-    dominance_comparisons: u64,
-    progress: &mut dyn FnMut(usize, usize, usize),
-) -> Result<FrontierOutcome, DomsError> {
-    let (model, order_name) = choose_order(original);
-    let q = model.candidates.len();
-
-    let mut scopes: Vec<&Vec<usize>> = Vec::new();
-    let mut is_flag: Vec<bool> = Vec::new();
-    for scope in model.mine_scopes.iter().filter(|scope| !scope.is_empty()) {
-        scopes.push(scope);
-        is_flag.push(true);
-    }
-    for scope in model.base_scopes.iter().filter(|scope| !scope.is_empty()) {
-        scopes.push(scope);
-        is_flag.push(false);
-    }
-    let factor_count = scopes.len();
-    let fw = (factor_count + 63) / 64;
-    let cw = (q + 63) / 64;
-
-    let mut flag_mask = vec![0u64; fw];
-    let mut base_mask = vec![0u64; fw];
-    let mut factor_member = vec![0u64; q * fw];
-    let mut active_after = vec![0u64; q * fw];
-    for (f, scope) in scopes.iter().enumerate() {
-        set_bit(if is_flag[f] { &mut flag_mask } else { &mut base_mask }, f);
-        for &variable in scope.iter() {
-            set_bit(&mut factor_member[variable * fw..(variable + 1) * fw], f);
-        }
-        // A factor stays active from its first candidate until just before its last.
-        let (first, last) = (scope[0], scope[scope.len() - 1]);
-        for i in first..last {
-            set_bit(&mut active_after[i * fw..(i + 1) * fw], f);
+/// For each candidate, the later candidates its chord reveals: adjacent candidates, plus the
+/// other borders of any opening it borders.
+fn later_reveals(model: &ChordModel, candidate_words: usize) -> Vec<u64> {
+    let candidate_count = model.candidate_cells.len();
+    let mut openings_bordered: Vec<Vec<usize>> = vec![Vec::new(); candidate_count];
+    for (opening, border) in model.opening_borders.iter().enumerate() {
+        for &candidate in border {
+            openings_bordered[candidate].push(opening);
         }
     }
-
-    let mut zero_memberships: Vec<Vec<usize>> = vec![Vec::new(); q];
-    for (z, scope) in model.zero_scopes.iter().enumerate() {
-        for &variable in scope {
-            zero_memberships[variable].push(z);
-        }
-    }
-    let mut future_neighbours = vec![0u64; q * cw];
-    for i in 0..q {
-        let row = &mut future_neighbours[i * cw..(i + 1) * cw];
-        for &other in &model.graph[i] {
-            if other > i {
+    let mut reveals = vec![0u64; candidate_count * candidate_words];
+    for candidate in 0..candidate_count {
+        let row = &mut reveals[candidate * candidate_words..(candidate + 1) * candidate_words];
+        for &other in &model.adjacent_candidates[candidate] {
+            if other > candidate {
                 set_bit(row, other);
             }
         }
-        for &z in &zero_memberships[i] {
-            for &other in &model.zero_scopes[z] {
-                if other > i {
+        for &opening in &openings_bordered[candidate] {
+            for &other in &model.opening_borders[opening] {
+                if other > candidate {
                     set_bit(row, other);
                 }
             }
         }
     }
+    reveals
+}
 
-    // Frontier sizes, only used for reporting.
-    let last_future: Vec<usize> = (0..q)
-        .map(|i| model.graph[i].iter().copied().filter(|&other| other > i).max().unwrap_or(i))
+/// Scratch buffers reused for every connectivity transition in a layer.
+struct TransitionScratch {
+    kept_chains: Vec<u64>,
+    chain_starts: Vec<usize>,
+    merged_chain: Vec<u64>,
+    signature: Vec<u64>,
+}
+
+/// New connectivity after deciding `candidate`. Returns the new signature id and how many chains
+/// finished (each needs one seed left click).
+///
+/// Chording merges every chain that could reveal `candidate` into one chain, together with what
+/// the new chord reveals. Either way `candidate` is removed from every chain's reach, and a chain
+/// with nothing left to reach is finished.
+fn chain_transition(
+    old_signature: &[u64],
+    chorded: bool,
+    candidate: usize,
+    reveals: &[u64],
+    scratch: &mut TransitionScratch,
+    next_pool: &mut ConnectivityPool,
+) -> (u32, i32) {
+    let words = reveals.len();
+    let (word, bit) = (candidate / 64, 1u64 << (candidate % 64));
+    let mut finished_chains = 0;
+    scratch.kept_chains.clear();
+    scratch.chain_starts.clear();
+    if chorded {
+        scratch.merged_chain.copy_from_slice(reveals);
+    } else {
+        scratch.merged_chain.iter_mut().for_each(|w| *w = 0);
+    }
+
+    for chain in old_signature.chunks(words) {
+        let reaches_candidate = chain[word] & bit != 0;
+        if chorded && reaches_candidate {
+            for (merged, &value) in scratch.merged_chain.iter_mut().zip(chain) {
+                *merged |= value;
+            }
+            continue;
+        }
+        let start = scratch.kept_chains.len();
+        let mut can_grow = false;
+        for (index, &value) in chain.iter().enumerate() {
+            let value = if index == word { value & !bit } else { value };
+            scratch.kept_chains.push(value);
+            can_grow |= value != 0;
+        }
+        if can_grow {
+            scratch.chain_starts.push(start);
+        } else {
+            scratch.kept_chains.truncate(start);
+            finished_chains += 1;
+        }
+    }
+    if chorded {
+        scratch.merged_chain[word] &= !bit;
+        if scratch.merged_chain.iter().any(|&w| w != 0) {
+            scratch.chain_starts.push(scratch.kept_chains.len());
+            let merged = &scratch.merged_chain;
+            scratch.kept_chains.extend_from_slice(merged);
+        } else {
+            finished_chains += 1;
+        }
+    }
+
+    // Sort chains so the same set of chains always gives the same signature.
+    let kept = &scratch.kept_chains;
+    scratch.chain_starts.sort_by(|&a, &b| kept[a..a + words].cmp(&kept[b..b + words]));
+    scratch.signature.clear();
+    for &start in &scratch.chain_starts {
+        scratch.signature.extend_from_slice(&kept[start..start + words]);
+    }
+    (next_pool.intern(&scratch.signature), finished_chains)
+}
+
+pub fn solve_frontier(
+    original: &ChordModel,
+    max_states: usize,
+    dominance_comparisons: u64,
+    progress: &mut dyn FnMut(usize, usize, usize),
+) -> Result<FrontierOutcome, DomsError> {
+    let (model, sweep_order) = choose_sweep_order(original);
+    let candidate_count = model.candidate_cells.len();
+    let candidate_words = (candidate_count + 63) / 64;
+    let factors = FactorLayout::new(&model);
+    let factor_words = factors.factor_words;
+    let reveals = later_reveals(&model, candidate_words);
+
+    // Frontier width after each candidate, only used for reporting.
+    let last_adjacent: Vec<usize> = (0..candidate_count)
+        .map(|c| model.adjacent_candidates[c].iter().copied().filter(|&other| other > c).max().unwrap_or(c))
         .collect();
-    let boundary_size = |i: usize| -> usize {
-        let vertices = (0..=i).filter(|&v| last_future[v] > i).count();
-        let zeros = model
-            .zero_scopes
+    let boundary_size = |candidate: usize| -> usize {
+        let waiting_candidates = (0..=candidate).filter(|&c| last_adjacent[c] > candidate).count();
+        let open_openings = model
+            .opening_borders
             .iter()
-            .filter(|scope| !scope.is_empty() && scope[0] <= i && i < scope[scope.len() - 1])
+            .filter(|border| !border.is_empty() && border[0] <= candidate && candidate < border[border.len() - 1])
             .count();
-        vertices + zeros
+        waiting_candidates + open_openings
     };
 
-    let mut table = Table::new(fw, cw);
+    let mut table = StateTable::new(factor_words, candidate_words);
     table.reserve(16);
-    table.insert(0, &vec![0u64; fw], model.three_bv() as i32, &vec![0u64; cw]);
+    table.insert(0, &vec![0u64; factor_words], model.bbbv() as i32, &vec![0u64; candidate_words]);
     let mut pool = ConnectivityPool::with_capacity(1);
     let mut peak_states = 1usize;
     let mut max_boundary = 0usize;
-    let mut max_active = 0usize;
+    let mut max_active_factors = 0usize;
 
     let mut scratch = TransitionScratch {
-        outgoing: Vec::new(),
-        offsets: Vec::new(),
-        merged: vec![0u64; cw],
-        canonical: Vec::new(),
+        kept_chains: Vec::new(),
+        chain_starts: Vec::new(),
+        merged_chain: vec![0u64; candidate_words],
+        signature: Vec::new(),
     };
-    let mut new_hits = vec![0u64; fw];
+    let mut next_hits = vec![0u64; factor_words];
 
-    for i in 0..q {
-        let member = &factor_member[i * fw..(i + 1) * fw];
-        let active = &active_after[i * fw..(i + 1) * fw];
-        let future = &future_neighbours[i * cw..(i + 1) * cw];
+    for candidate in 0..candidate_count {
+        let hit_by = factors.hit_by(candidate);
+        let active = factors.active_after(candidate);
+        let candidate_reveals = &reveals[candidate * candidate_words..(candidate + 1) * candidate_words];
 
-        let mut next = Table::new(fw, cw);
+        let mut next = StateTable::new(factor_words, candidate_words);
         next.reserve(max_states.saturating_add(1).min(table.len().saturating_mul(2).saturating_add(16)));
         let mut next_pool = ConnectivityPool::with_capacity(pool.len() * 2 + 16);
+        // Indexed by old connectivity id: [not chorded, chorded] -> (new id, finished chains).
         let mut transitions: Vec<Option<[(u32, i32); 2]>> = vec![None; pool.len()];
 
         for entry in 0..table.entry_count() {
             if !table.is_alive(entry) {
                 continue;
             }
-            let old_conn = table.conn(entry) as usize;
-            let connection = match transitions[old_conn] {
-                Some(connection) => connection,
+            let connectivity_id = table.connectivity_id(entry) as usize;
+            let transition = match transitions[connectivity_id] {
+                Some(transition) => transition,
                 None => {
-                    let signature = pool.get(old_conn as u32);
+                    let signature = pool.get(connectivity_id as u32);
                     let computed = [
-                        transition(signature, false, i, future, &mut scratch, &mut next_pool),
-                        transition(signature, true, i, future, &mut scratch, &mut next_pool),
+                        chain_transition(signature, false, candidate, candidate_reveals, &mut scratch, &mut next_pool),
+                        chain_transition(signature, true, candidate, candidate_reveals, &mut scratch, &mut next_pool),
                     ];
-                    transitions[old_conn] = Some(computed);
+                    transitions[connectivity_id] = Some(computed);
                     computed
                 }
             };
 
-            let old_hits = table.hits(entry);
+            let old_hits = table.factor_hits(entry);
             let old_cost = table.cost(entry);
-            for selected in 0..2 {
-                let mut factor_cost = 0i32;
-                for word in 0..fw {
+            for chorded in 0..2 {
+                let mut factor_delta = 0i32;
+                for word in 0..factor_words {
                     let mut hits = old_hits[word];
-                    if selected == 1 {
-                        let fresh = member[word] & !old_hits[word];
-                        factor_cost += (fresh & flag_mask[word]).count_ones() as i32;
-                        factor_cost -= (fresh & base_mask[word]).count_ones() as i32;
-                        hits |= member[word];
+                    if chorded == 1 {
+                        let first_hits = hit_by[word] & !old_hits[word];
+                        factor_delta += (first_hits & factors.mine_factor_mask[word]).count_ones() as i32;
+                        factor_delta -= (first_hits & factors.bbbv_factor_mask[word]).count_ones() as i32;
+                        hits |= hit_by[word];
                     }
-                    new_hits[word] = hits & active[word];
+                    next_hits[word] = hits & active[word];
                 }
-                let (conn_id, closed) = connection[selected];
-                let new_cost = old_cost + selected as i32 + closed + factor_cost;
-                match next.find(conn_id, &new_hits) {
+                let (next_connectivity, finished_chains) = transition[chorded];
+                let next_cost = old_cost + chorded as i32 + finished_chains + factor_delta;
+                match next.find(next_connectivity, &next_hits) {
                     None => {
-                        let inserted = next.insert(conn_id, &new_hits, new_cost, table.chosen(entry));
-                        if selected == 1 {
-                            set_bit(next.chosen_mut(inserted), i);
+                        let inserted = next.insert(next_connectivity, &next_hits, next_cost, table.chords(entry));
+                        if chorded == 1 {
+                            set_bit(next.chords_mut(inserted), candidate);
                         }
                     }
                     Some(found) => {
-                        if new_cost < next.cost(found) {
-                            next.set_cost(found, new_cost);
-                            next.chosen_mut(found).copy_from_slice(table.chosen(entry));
-                            if selected == 1 {
-                                set_bit(next.chosen_mut(found), i);
+                        if next_cost < next.cost(found) {
+                            next.set_cost(found, next_cost);
+                            next.chords_mut(found).copy_from_slice(table.chords(entry));
+                            if chorded == 1 {
+                                set_bit(next.chords_mut(found), candidate);
                             }
                         }
                     }
@@ -253,44 +293,45 @@ pub fn solve_frontier(
         }
 
         // Release the previous layer before pruning allocates its temporary structures.
-        drop(std::mem::replace(&mut table, Table::new(fw, cw)));
+        drop(std::mem::replace(&mut table, StateTable::new(factor_words, candidate_words)));
         drop(std::mem::replace(&mut pool, ConnectivityPool::with_capacity(0)));
         drop(transitions);
 
-        prune_dominated(&mut next, dominance_comparisons, &base_mask, &next_pool, cw);
+        prune_dominated(&mut next, dominance_comparisons, &factors.bbbv_factor_mask, &next_pool, candidate_words);
         table = next;
         pool = next_pool;
 
         peak_states = peak_states.max(table.len());
-        max_boundary = max_boundary.max(boundary_size(i));
-        max_active = max_active.max(active.iter().map(|word| word.count_ones() as usize).sum());
-        progress(i + 1, q, table.len());
+        max_boundary = max_boundary.max(boundary_size(candidate));
+        max_active_factors = max_active_factors.max(active.iter().map(|word| word.count_ones() as usize).sum());
+        progress(candidate + 1, candidate_count, table.len());
 
         if table.len() > max_states {
             return Err(DomsError::StateLimitExceeded {
                 states: table.len(),
-                processed: i + 1,
-                candidates: q,
+                processed: candidate + 1,
+                candidates: candidate_count,
             });
         }
     }
 
+    // Everything is decided, so the answer has no unfinished chains and no active factors.
     let final_entry = table
-        .find(0, &vec![0u64; fw])
+        .find(0, &vec![0u64; factor_words])
         .ok_or_else(|| DomsError::Internal("frontier DP did not reach an empty final state".into()))?;
-    let chosen = table.chosen(final_entry);
-    let mut selected: Vec<usize> = (0..q)
-        .filter(|&i| test_bit(chosen, i))
-        .map(|i| original.candidate_index[model.candidates[i]] as usize)
+    let chord_bits = table.chords(final_entry);
+    let mut chords: Vec<usize> = (0..candidate_count)
+        .filter(|&candidate| test_bit(chord_bits, candidate))
+        .map(|candidate| original.candidate_of_cell[model.candidate_cells[candidate]] as usize)
         .collect();
-    selected.sort_unstable();
+    chords.sort_unstable();
 
     Ok(FrontierOutcome {
-        selected,
-        cost: table.cost(final_entry),
-        order_name,
+        chords,
+        total_clicks: table.cost(final_entry),
+        sweep_order,
         peak_states,
         max_boundary,
-        max_active_factors: max_active,
+        max_active_factors,
     })
 }

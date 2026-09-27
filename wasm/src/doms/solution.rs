@@ -1,182 +1,189 @@
 //! Turning a chosen chord set into an ordered, validated click sequence.
+//!
+//! Click order: every flag first, then each chain (seed left click followed by its chords in BFS
+//! order), then a left click for each 3BV unit no chain solved.
 
-use super::model::Model;
+use super::model::ChordModel;
 use super::DomsError;
 use crate::board_gen_8way::ClickType;
 use std::collections::VecDeque;
 
 pub struct Evaluation {
-    pub clicks: usize,
+    pub total_clicks: usize,
+    /// Mine cells that need flagging.
     pub flags: Vec<usize>,
-    pub components: Vec<Vec<usize>>,
-    pub uncovered: Vec<usize>,
+    /// Chorded candidates grouped into chains, each needing one seed left click.
+    pub chains: Vec<Vec<usize>>,
+    /// 3BV units that still need their own left click.
+    pub unsolved_bbbv: Vec<usize>,
 }
 
 pub struct Solution {
-    pub clicks: usize,
-    pub selected: Vec<usize>,
+    pub total_clicks: usize,
+    pub chords: Vec<usize>,
     pub flags: Vec<usize>,
-    pub components: Vec<Vec<usize>>,
-    pub uncovered_units: Vec<usize>,
-    /// (click type, cell)
-    pub actions: Vec<(ClickType, usize)>,
+    pub chains: Vec<Vec<usize>>,
+    pub unsolved_bbbv: Vec<usize>,
+    /// `(click type, cell)` in play order. `ClickType::NF` is a left click.
+    pub clicks: Vec<(ClickType, usize)>,
 }
 
-fn zero_memberships(model: &Model) -> Vec<Vec<usize>> {
-    let mut memberships = vec![Vec::new(); model.candidates.len()];
-    for (z, scope) in model.zero_scopes.iter().enumerate() {
-        for &candidate in scope {
-            memberships[candidate].push(z);
+fn openings_bordered(model: &ChordModel) -> Vec<Vec<usize>> {
+    let mut openings = vec![Vec::new(); model.candidate_cells.len()];
+    for (opening, border) in model.opening_borders.iter().enumerate() {
+        for &candidate in border {
+            openings[candidate].push(opening);
         }
     }
-    memberships
+    openings
 }
 
-/// Click cost of chording exactly `selected_indexes` (candidate indexes).
-pub fn evaluate_set(model: &Model, selected_indexes: &[usize]) -> Evaluation {
-    let q = model.candidates.len();
-    let mut selected = vec![false; q];
-    for &candidate in selected_indexes {
-        selected[candidate] = true;
+/// Click cost of chording exactly `chords` (candidate indexes).
+pub fn evaluate_chords(model: &ChordModel, chords: &[usize]) -> Evaluation {
+    let candidate_count = model.candidate_cells.len();
+    let mut chorded = vec![false; candidate_count];
+    for &candidate in chords {
+        chorded[candidate] = true;
     }
-    let hit = |scope: &Vec<usize>| scope.iter().any(|&candidate| selected[candidate]);
+    let any_chorded = |candidates: &Vec<usize>| candidates.iter().any(|&candidate| chorded[candidate]);
 
     let flags: Vec<usize> = model
-        .mine_scopes
+        .flag_needed_by
         .iter()
         .zip(&model.mine_cells)
-        .filter(|(scope, _)| hit(scope))
+        .filter(|(candidates, _)| any_chorded(candidates))
         .map(|(_, &mine)| mine)
         .collect();
 
-    let memberships = zero_memberships(model);
-    let mut unseen = selected.clone();
-    let mut unused_zero = vec![true; model.zero_scopes.len()];
-    let mut components = Vec::new();
-    for start in 0..q {
-        if !unseen[start] {
+    // Chords are in the same chain when one reveals the other, directly or via a shared opening.
+    let bordered = openings_bordered(model);
+    let mut unvisited = chorded.clone();
+    let mut opening_unvisited = vec![true; model.opening_borders.len()];
+    let mut chains = Vec::new();
+    for start in 0..candidate_count {
+        if !unvisited[start] {
             continue;
         }
-        unseen[start] = false;
-        let mut component = Vec::new();
+        unvisited[start] = false;
+        let mut chain = Vec::new();
         let mut stack = vec![start];
         while let Some(candidate) = stack.pop() {
-            component.push(candidate);
-            for &other in &model.graph[candidate] {
-                if unseen[other] {
-                    unseen[other] = false;
+            chain.push(candidate);
+            for &other in &model.adjacent_candidates[candidate] {
+                if unvisited[other] {
+                    unvisited[other] = false;
                     stack.push(other);
                 }
             }
-            for &z in &memberships[candidate] {
-                if !unused_zero[z] {
+            for &opening in &bordered[candidate] {
+                if !opening_unvisited[opening] {
                     continue;
                 }
-                unused_zero[z] = false;
-                for &other in &model.zero_scopes[z] {
-                    if unseen[other] {
-                        unseen[other] = false;
+                opening_unvisited[opening] = false;
+                for &other in &model.opening_borders[opening] {
+                    if unvisited[other] {
+                        unvisited[other] = false;
                         stack.push(other);
                     }
                 }
             }
         }
-        component.sort_unstable();
-        components.push(component);
+        chain.sort_unstable();
+        chains.push(chain);
     }
-    components.sort_by_key(|component: &Vec<usize>| model.candidates[component[0]]);
+    chains.sort_by_key(|chain: &Vec<usize>| model.candidate_cells[chain[0]]);
 
-    let uncovered: Vec<usize> = (0..model.base_scopes.len())
-        .filter(|&unit| !hit(&model.base_scopes[unit]))
+    let unsolved_bbbv: Vec<usize> = (0..model.bbbv_solved_by.len())
+        .filter(|&unit| !any_chorded(&model.bbbv_solved_by[unit]))
         .collect();
 
     Evaluation {
-        clicks: selected_indexes.len() + flags.len() + components.len() + uncovered.len(),
+        total_clicks: chords.len() + flags.len() + chains.len() + unsolved_bbbv.len(),
         flags,
-        components,
-        uncovered,
+        chains,
+        unsolved_bbbv,
     }
 }
 
-/// BFS order for chording a component, starting from its top-left candidate so every
-/// chord is already revealed when it is played.
-fn component_chord_order(model: &Model, component: &[usize]) -> Result<Vec<usize>, DomsError> {
-    let q = model.candidates.len();
-    let mut allowed = vec![false; q];
-    for &candidate in component {
-        allowed[candidate] = true;
+/// BFS chord order for a chain, seeded from its top-left candidate. Every chord after the seed
+/// is revealed by an earlier chord in the order, so it is open by the time it is played.
+fn chain_chord_order(model: &ChordModel, chain: &[usize]) -> Result<Vec<usize>, DomsError> {
+    let candidate_count = model.candidate_cells.len();
+    let mut in_chain = vec![false; candidate_count];
+    for &candidate in chain {
+        in_chain[candidate] = true;
     }
-    let seed = *component
+    let seed = *chain
         .iter()
-        .min_by_key(|&&candidate| model.candidates[candidate])
-        .ok_or_else(|| DomsError::Internal("empty chord component".into()))?;
-    let memberships = zero_memberships(model);
-    let mut unused_zero = vec![true; model.zero_scopes.len()];
-    let mut seen = vec![false; q];
+        .min_by_key(|&&candidate| model.candidate_cells[candidate])
+        .ok_or_else(|| DomsError::Internal("empty chord chain".into()))?;
+    let bordered = openings_bordered(model);
+    let mut opening_unvisited = vec![true; model.opening_borders.len()];
+    let mut queued = vec![false; candidate_count];
     let mut queue = VecDeque::new();
     queue.push_back(seed);
-    seen[seed] = true;
-    let mut order = Vec::with_capacity(component.len());
+    queued[seed] = true;
+    let mut order = Vec::with_capacity(chain.len());
     while let Some(candidate) = queue.pop_front() {
         order.push(candidate);
-        let mut adjacent = model.graph[candidate].clone();
-        adjacent.sort_by_key(|&other| model.candidates[other]);
+        let mut adjacent = model.adjacent_candidates[candidate].clone();
+        adjacent.sort_by_key(|&other| model.candidate_cells[other]);
         for other in adjacent {
-            if allowed[other] && !seen[other] {
-                seen[other] = true;
+            if in_chain[other] && !queued[other] {
+                queued[other] = true;
                 queue.push_back(other);
             }
         }
-        for &z in &memberships[candidate] {
-            if !unused_zero[z] {
+        for &opening in &bordered[candidate] {
+            if !opening_unvisited[opening] {
                 continue;
             }
-            unused_zero[z] = false;
-            let mut scope = model.zero_scopes[z].clone();
-            scope.sort_by_key(|&other| model.candidates[other]);
-            for other in scope {
-                if allowed[other] && !seen[other] {
-                    seen[other] = true;
+            opening_unvisited[opening] = false;
+            let mut border = model.opening_borders[opening].clone();
+            border.sort_by_key(|&other| model.candidate_cells[other]);
+            for other in border {
+                if in_chain[other] && !queued[other] {
+                    queued[other] = true;
                     queue.push_back(other);
                 }
             }
         }
     }
-    if order.len() != component.len() {
-        return Err(DomsError::Internal("reported chord component is disconnected".into()));
+    if order.len() != chain.len() {
+        return Err(DomsError::Internal("reported chord chain is disconnected".into()));
     }
     Ok(order)
 }
 
-/// Replay the actions on a plain board to prove they clear it.
-fn validate_actions(model: &Model, actions: &[(ClickType, usize)]) -> Result<(), DomsError> {
+/// Replay the clicks on a plain board to prove they win it.
+fn validate_clicks(model: &ChordModel, clicks: &[(ClickType, usize)]) -> Result<(), DomsError> {
     let cells = model.height * model.width;
-    let mut opened = vec![false; cells];
+    let mut revealed = vec![false; cells];
     let mut flagged = vec![false; cells];
-    let mut zero_by_cell = vec![usize::MAX; cells];
-    for (z, zero) in model.zeros.iter().enumerate() {
-        for &cell in zero {
-            zero_by_cell[cell] = z;
+    let mut opening_of_cell = vec![usize::MAX; cells];
+    for (opening, inner) in model.opening_inner_cells.iter().enumerate() {
+        for &cell in inner {
+            opening_of_cell[cell] = opening;
         }
     }
     let invalid = |message: &str| -> Result<(), DomsError> {
-        Err(DomsError::Internal(format!("invalid action sequence: {}", message)))
+        Err(DomsError::Internal(format!("invalid click sequence: {}", message)))
     };
 
-    let reveal = |start: usize, opened: &mut Vec<bool>, flagged: &Vec<bool>| -> Result<(), DomsError> {
+    let reveal = |start: usize, revealed: &mut Vec<bool>, flagged: &Vec<bool>| -> Result<(), DomsError> {
         if model.mines[start] || flagged[start] {
             return invalid("attempted to reveal a mine or flag");
         }
-        if opened[start] {
+        if revealed[start] {
             return Ok(());
         }
-        opened[start] = true;
-        if model.numbers[start] == 0 {
-            for &zero in &model.zeros[zero_by_cell[start]] {
-                opened[zero] = true;
-                for &other in &model.neighbours[zero] {
+        revealed[start] = true;
+        if model.adjacent_mines[start] == 0 {
+            for &inner in &model.opening_inner_cells[opening_of_cell[start]] {
+                revealed[inner] = true;
+                for &other in &model.adjacent_cells[inner] {
                     if !model.mines[other] {
-                        opened[other] = true;
+                        revealed[other] = true;
                     }
                 }
             }
@@ -184,98 +191,98 @@ fn validate_actions(model: &Model, actions: &[(ClickType, usize)]) -> Result<(),
         Ok(())
     };
 
-    for &(click_type, cell) in actions {
+    for &(click_type, cell) in clicks {
         match click_type {
             ClickType::Flag => {
-                if !model.mines[cell] || opened[cell] {
+                if !model.mines[cell] || revealed[cell] {
                     return invalid("illegal flag");
                 }
                 flagged[cell] = true;
             }
-            ClickType::NF => reveal(cell, &mut opened, &flagged)?,
+            ClickType::NF => reveal(cell, &mut revealed, &flagged)?,
             ClickType::Chord => {
-                if !opened[cell] || model.mines[cell] || model.numbers[cell] == 0 {
+                if !revealed[cell] || model.mines[cell] || model.adjacent_mines[cell] == 0 {
                     return invalid("illegal chord centre");
                 }
-                let flag_count = model.neighbours[cell].iter().filter(|&&other| flagged[other]).count();
-                if flag_count != model.numbers[cell] as usize {
+                let flag_count = model.adjacent_cells[cell].iter().filter(|&&other| flagged[other]).count();
+                if flag_count != model.adjacent_mines[cell] as usize {
                     return invalid("wrong adjacent flag count for chord");
                 }
-                for &other in &model.neighbours[cell] {
+                for &other in &model.adjacent_cells[cell] {
                     if !flagged[other] && !model.mines[other] {
-                        reveal(other, &mut opened, &flagged)?;
+                        reveal(other, &mut revealed, &flagged)?;
                     }
                 }
             }
         }
     }
-    let missing = (0..cells).filter(|&cell| !model.mines[cell] && !opened[cell]).count();
-    if missing != 0 {
-        return invalid(&format!("{} safe cells left covered", missing));
+    let unrevealed = (0..cells).filter(|&cell| !model.mines[cell] && !revealed[cell]).count();
+    if unrevealed != 0 {
+        return invalid(&format!("{} safe cells left unrevealed", unrevealed));
     }
     Ok(())
 }
 
 pub fn construct_solution(
-    model: &Model,
-    selected: &[usize],
+    model: &ChordModel,
+    chords: &[usize],
     expected_clicks: Option<i32>,
 ) -> Result<Solution, DomsError> {
-    let evaluation = evaluate_set(model, selected);
+    let evaluation = evaluate_chords(model, chords);
     if let Some(expected) = expected_clicks {
-        if evaluation.clicks as i32 != expected {
+        if evaluation.total_clicks as i32 != expected {
             return Err(DomsError::Internal(format!(
                 "DP cost {} disagrees with evaluated cost {}",
-                expected, evaluation.clicks
+                expected, evaluation.total_clicks
             )));
         }
     }
 
-    let mut actions: Vec<(ClickType, usize)> = evaluation.flags.iter().map(|&mine| (ClickType::Flag, mine)).collect();
-    for component in &evaluation.components {
-        let order = component_chord_order(model, component)?;
-        actions.push((ClickType::NF, model.candidates[order[0]]));
-        actions.extend(order.iter().map(|&candidate| (ClickType::Chord, model.candidates[candidate])));
+    let mut clicks: Vec<(ClickType, usize)> = evaluation.flags.iter().map(|&mine| (ClickType::Flag, mine)).collect();
+    for chain in &evaluation.chains {
+        let order = chain_chord_order(model, chain)?;
+        clicks.push((ClickType::NF, model.candidate_cells[order[0]]));
+        clicks.extend(order.iter().map(|&candidate| (ClickType::Chord, model.candidate_cells[candidate])));
     }
-    actions.extend(
+    clicks.extend(
         evaluation
-            .uncovered
+            .unsolved_bbbv
             .iter()
-            .map(|&unit| (ClickType::NF, model.base_representatives[unit])),
+            .map(|&unit| (ClickType::NF, model.bbbv_click_cells[unit])),
     );
-    if actions.len() != evaluation.clicks {
-        return Err(DomsError::Internal("constructed action count disagrees with objective".into()));
+    if clicks.len() != evaluation.total_clicks {
+        return Err(DomsError::Internal("constructed click count disagrees with objective".into()));
     }
-    validate_actions(model, &actions)?;
+    validate_clicks(model, &clicks)?;
 
     Ok(Solution {
-        clicks: evaluation.clicks,
-        selected: selected.to_vec(),
+        total_clicks: evaluation.total_clicks,
+        chords: chords.to_vec(),
         flags: evaluation.flags,
-        components: evaluation.components,
-        uncovered_units: evaluation.uncovered,
-        actions,
+        chains: evaluation.chains,
+        unsolved_bbbv: evaluation.unsolved_bbbv,
+        clicks,
     })
 }
 
 /// Exhaustive search over every chord set. Only practical for tiny boards (used by tests).
-pub fn solve_bruteforce(model: &Model, max_candidates: usize) -> Result<Solution, DomsError> {
-    let q = model.candidates.len();
-    if q > max_candidates {
+pub fn solve_bruteforce(model: &ChordModel, max_candidates: usize) -> Result<Solution, DomsError> {
+    let candidate_count = model.candidate_cells.len();
+    if candidate_count > max_candidates {
         return Err(DomsError::Invalid(format!(
             "brute force is limited to {} candidates; board has {}",
-            max_candidates, q
+            max_candidates, candidate_count
         )));
     }
-    let mut best_cost = usize::MAX;
+    let mut best_clicks = usize::MAX;
     let mut best = Vec::new();
-    for mask in 0u64..(1u64 << q) {
-        let selected: Vec<usize> = (0..q).filter(|&i| (mask >> i) & 1 == 1).collect();
-        let cost = evaluate_set(model, &selected).clicks;
-        if cost < best_cost {
-            best_cost = cost;
-            best = selected;
+    for mask in 0u64..(1u64 << candidate_count) {
+        let chords: Vec<usize> = (0..candidate_count).filter(|&i| (mask >> i) & 1 == 1).collect();
+        let clicks = evaluate_chords(model, &chords).total_clicks;
+        if clicks < best_clicks {
+            best_clicks = clicks;
+            best = chords;
         }
     }
-    construct_solution(model, &best, Some(best_cost as i32))
+    construct_solution(model, &best, Some(best_clicks as i32))
 }

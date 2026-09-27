@@ -151,9 +151,9 @@ fn set_property(target: &Object, key: &str, value: JsValue) -> Result<(), JsValu
 /// # DOMS ZiNi
 /// * Entry point for JavaScript
 /// * `mines` is row-major (`y * width + x`), non-zero for a mine
-/// * `progress_callback(processed, total, states)` is called after each DP layer
+/// * `progress_callback(processed, total, states)` is called after each chord candidate is decided
 ///
-/// Returns `{ total, threeBV, clicks: [{ type, x, y }], stats }`.
+/// Returns `{ totalClicks, bbbv, clicks: [{ type, x, y }], stats }`.
 /// Errors are `{ kind: "state-limit" | "invalid" | "internal", message }`.
 #[wasm_bindgen]
 pub fn doms_zini(width: usize, height: usize, mines: &[u8], max_states: u32, progress_callback: Option<js_sys::Function>) -> Result<JsValue, JsValue> {
@@ -198,22 +198,22 @@ pub fn doms_zini(width: usize, height: usize, mines: &[u8], max_states: u32, pro
     let stats = &result.stats;
     let js_stats = Object::new();
     for &(key, value) in &[
-        ("candidateChords", stats.candidate_chords),
-        ("selectedChords", stats.selected_chords),
+        ("chordCandidates", stats.chord_candidates),
+        ("chordClicks", stats.chord_clicks),
         ("flagClicks", stats.flag_clicks),
         ("seedClicks", stats.seed_clicks),
-        ("remaining3bvClicks", stats.remaining_3bv_clicks),
+        ("remainingBbbvClicks", stats.remaining_bbbv_clicks),
         ("peakStates", stats.peak_states),
         ("maxBoundary", stats.max_boundary),
         ("maxActiveFactors", stats.max_active_factors),
     ] {
         set_property(&js_stats, key, (value as f64).into())?;
     }
-    set_property(&js_stats, "order", stats.order_name.as_str().into())?;
+    set_property(&js_stats, "sweepOrder", stats.sweep_order.as_str().into())?;
 
     let output = Object::new();
-    set_property(&output, "total", (result.total as f64).into())?;
-    set_property(&output, "threeBV", (stats.three_bv as f64).into())?;
+    set_property(&output, "totalClicks", (result.total_clicks as f64).into())?;
+    set_property(&output, "bbbv", (stats.bbbv as f64).into())?;
     set_property(&output, "clicks", clicks.into())?;
     set_property(&output, "stats", js_stats.into())?;
     Ok(output.into())
