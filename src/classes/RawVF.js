@@ -1,5 +1,6 @@
 import { exportFile } from "quasar";
 import Utils from "./Utils.js";
+import { recordButtonEvents } from "src/composables/useSettings";
 
 const RAWVF_SQUARE_SIZE = 64; //Keep this high to make things smoother even though real square size may differ
 
@@ -62,7 +63,8 @@ class RawVF {
     let movesIndex = 0;
 
     //Touch games have no raw button events, so fall back to paired clicks
-    const useButtonEvents = boardStats.buttonEvents.length > 0;
+    const useButtonEvents =
+      recordButtonEvents.value && boardStats.buttonEvents.length > 0;
     const clicks = useButtonEvents
       ? boardStats.buttonEvents
       : boardStats.clicks;

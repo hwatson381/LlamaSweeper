@@ -416,6 +416,7 @@ let replayIsPanning = ref(false);
 let replayIsInputting = ref(false);
 let reorderZini = useLocalStorage("ls_reorderZini", false);
 let replayShowHidden = useLocalStorage("ls_replayShowHidden", "transparent3");
+let recordButtonEvents = useLocalStorage("ls_recordButtonEvents", true);
 
 let analyseDisplayMode = useLocalStorage("ls_analyseDisplayMode", "classic");
 let analyseAlgorithm = ref("incexzini");
@@ -734,6 +735,7 @@ export {
   replayIsInputting,
   reorderZini,
   replayShowHidden,
+  recordButtonEvents,
   analyseDisplayMode,
   analyseAlgorithm,
   analyseAlgorithmScope,

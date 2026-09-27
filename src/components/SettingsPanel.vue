@@ -762,6 +762,10 @@
               label="Show hidden tiles"
               @update:model-value="game?.board?.replay?.refreshAndDraw()"
             />
+            <q-checkbox
+              v-model="recordButtonEvents"
+              label="Record mouse button events for RawVF"
+            />
           </q-card-section>
         </q-card>
       </q-expansion-item>
@@ -819,6 +823,7 @@ import {
   soundEffectsEnabled,
   reorderZini,
   replayShowHidden,
+  recordButtonEvents,
   keyboardClickOpenOnKeyDown,
   keyboardClickDigKey,
   keyboardClickFlagKey,

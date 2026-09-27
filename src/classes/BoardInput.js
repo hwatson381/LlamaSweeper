@@ -22,6 +22,7 @@ import {
   touchScrollDistance,
   faceHitbox,
   keyboardClickOpenOnKeyDown,
+  recordButtonEvents,
 } from "src/composables/useSettings";
 
 class BoardInput {
@@ -736,6 +737,10 @@ class BoardInput {
   }
 
   recordOffCanvasMouseButton(event, isDown) {
+    if (!recordButtonEvents.value) {
+      return;
+    }
+
     //Recording only; off-canvas presses/releases have no game effect. Canvas events are recorded via handlePointerInput
 
     //Skip clicks that are on the canvas or not relevant for off-canvas recording
