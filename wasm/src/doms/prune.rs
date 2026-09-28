@@ -153,6 +153,8 @@ struct StateSummary {
 /// Pass 2 filter data for one connectivity id, stored contiguously in scan order.
 struct CoarseCandidate {
     id: usize,
+    bucket: usize,
+    chain_count: usize,
     first_key: DominanceKey,
     minimum_quasi: i32,
     minimum_reach_size: u32,
@@ -183,7 +185,7 @@ pub fn prune_dominated(
     // Only signatures with the same total future reach can be coarsenings of each other.
     let mut bucket_by_reach: FxHashMap<Vec<u64>, usize> =
         FxHashMap::with_capacity_and_hasher(connectivity_count, Default::default());
-    let mut bucket_ids: Vec<Vec<u32>> = Vec::new();
+    let mut bucket_count = 0;
     let mut connectivity_bucket = vec![usize::MAX; connectivity_count];
     for id in 0..connectivity_count {
         if state_counts[id] == 0 {
@@ -195,13 +197,11 @@ pub fn prune_dominated(
                 *word |= value;
             }
         }
-        let next_bucket = bucket_ids.len();
-        let bucket = *bucket_by_reach.entry(total_reach).or_insert(next_bucket);
-        if bucket == next_bucket {
-            bucket_ids.push(Vec::new());
+        let bucket = *bucket_by_reach.entry(total_reach).or_insert(bucket_count);
+        if bucket == bucket_count {
+            bucket_count += 1;
         }
         connectivity_bucket[id] = bucket;
-        bucket_ids[bucket].push(id as u32);
     }
 
     let mut summaries: Vec<StateSummary> = Vec::with_capacity(table.len());
@@ -274,19 +274,18 @@ pub fn prune_dominated(
     }
 
     // Chain counts and reach sizes, used to reject impossible coarsenings cheaply.
-    let mut first_survivor_key = vec![(i32::MAX, i32::MAX, i32::MAX); connectivity_count];
     let mut chain_counts = vec![0usize; connectivity_count];
     // Each id's chain reach sizes, sorted, at `reach_sizes[reach_start[id]..][..chain_counts[id]]`.
     let mut reach_sizes: Vec<u32> = Vec::new();
     let mut reach_start = vec![0usize; connectivity_count];
     let mut minimum_reach_size = vec![u32::MAX; connectivity_count];
     let mut maximum_reach_size = vec![0u32; connectivity_count];
+    let mut coarse_candidates: Vec<CoarseCandidate> = Vec::with_capacity(connectivity_count);
     for id in 0..connectivity_count {
         if survivors[id].is_empty() {
             continue;
         }
         let signature = pool.get(id as u32);
-        first_survivor_key[id] = summaries[survivors[id][0]].key;
         chain_counts[id] = signature.len() / signature_words;
         reach_start[id] = reach_sizes.len();
         for chain in signature.chunks(signature_words) {
@@ -296,34 +295,32 @@ pub fn prune_dominated(
             reach_sizes.push(reach_size);
         }
         reach_sizes[reach_start[id]..].sort_unstable();
-    }
-
-    // Possible coarse ids grouped by (bucket, chain count) and sorted by first key within each
-    // group, so a fine id only visits ids that can pass the chain-count and key checks.
-    let mut coarse_order: Vec<usize> = (0..connectivity_count).filter(|&id| !survivors[id].is_empty()).collect();
-    coarse_order.sort_unstable_by_key(|&id| (connectivity_bucket[id], chain_counts[id], first_survivor_key[id], id));
-    let coarse_candidates: Vec<CoarseCandidate> = coarse_order
-        .iter()
-        .map(|&id| CoarseCandidate {
+        coarse_candidates.push(CoarseCandidate {
             id,
-            first_key: first_survivor_key[id],
+            bucket: connectivity_bucket[id],
+            chain_count: chain_counts[id],
+            first_key: summaries[survivors[id][0]].key,
             minimum_quasi: minimum_quasi[id],
             minimum_reach_size: minimum_reach_size[id],
             maximum_reach_size: maximum_reach_size[id],
             reach_start: reach_start[id],
-        })
-        .collect();
+        });
+    }
+
+    // Possible coarse ids grouped by (bucket, chain count) and sorted by first key within each
+    // group, so a fine id only visits ids that can pass the chain-count and key checks.
+    coarse_candidates
+        .sort_unstable_by_key(|candidate| (candidate.bucket, candidate.chain_count, candidate.first_key, candidate.id));
     // (chain count, start, end) runs of `coarse_candidates`, and each bucket's range of runs.
     let mut count_groups: Vec<(usize, usize, usize)> = Vec::new();
-    let mut bucket_groups = vec![(0usize, 0usize); bucket_ids.len()];
+    let mut bucket_groups = vec![(0usize, 0usize); bucket_count];
     let mut start = 0;
-    while start < coarse_order.len() {
-        let first = coarse_order[start];
-        let (bucket, count) = (connectivity_bucket[first], chain_counts[first]);
+    while start < coarse_candidates.len() {
+        let (bucket, count) = (coarse_candidates[start].bucket, coarse_candidates[start].chain_count);
         let mut end = start + 1;
-        while end < coarse_order.len()
-            && connectivity_bucket[coarse_order[end]] == bucket
-            && chain_counts[coarse_order[end]] == count
+        while end < coarse_candidates.len()
+            && coarse_candidates[end].bucket == bucket
+            && coarse_candidates[end].chain_count == count
         {
             end += 1;
         }
@@ -356,9 +353,10 @@ pub fn prune_dominated(
             if count > fine_chain_count {
                 break;
             }
-            let group = &coarse_candidates[start..end];
-            let key_limit = group.partition_point(|candidate| candidate.first_key <= fine_last_key);
-            for candidate in &group[..key_limit] {
+            for candidate in &coarse_candidates[start..end] {
+                if candidate.first_key > fine_last_key {
+                    break;
+                }
                 if candidate.id == fine_id || candidate.minimum_quasi > maximum_quasi[fine_id] {
                     continue;
                 }
