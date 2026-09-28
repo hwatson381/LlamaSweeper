@@ -1,0 +1,234 @@
+Draft tooltip text for settings in src/components/SettingsPanel.vue.
+Format: UI label (ref name), then tooltip text, then "- Option: ..." lines for dropdowns.
+"[dev note]" lines are for review only and are not intended as tooltip text.
+
+
+=====================
+GENERAL SETTINGS
+=====================
+
+Chording (chordingButtons)
+  Chooses which mouse buttons are required to chord (reveal neighbours of a sufficiently flagged number).
+
+Zero Start (zeroStart)
+  Guarantees your first click gives opening. Note that Eff Boards ignores this setting.
+
+No Guessing (noGuessing)
+  Generates boards that can be fully solved with logic. Note that Eff Boards ignores this setting.
+
+No guessing iterations (noGuessingMaxAttempts)
+  Maximum attempts at generating a no guess board before giving up. 
+
+Face Hitbox (faceHitbox)
+  Which part of the top bar resets the game when clicked.
+  - Whole bar: Clicking anywhere on the top bar resets.
+  - Just face: Only clicking the face resets.
+  - Adaptive: Just the face while a game is in progress (to avoid accidental resets), and the whole bar otherwise.
+
+Keyboard Dig Key (keyboardClickDigKey)
+  Keyboard key to use as an alternative to the left mouse button. Click the box and press a key to change it.
+
+Keyboard Flag Key (keyboardClickFlagKey)
+  Keyboard key to use as an alternative to the right mouse button. Click the box and press a key to change it.
+
+Keyboard Click Reveal On Key Down (keyboardClickOpenOnKeyDown)
+  Makes the dig key reveal squares when pressed down instead of when it is released.
+
+
+=====================
+GAME STAT SETTINGS
+=====================
+
+Show 8-way ZiNi (statsShow8Way)
+  8-way ZiNi runs the classic ZiNi algorithm 8 times for rotations/reflections of the board and picks the best result.
+
+Show 100chain ZiNi (statsShowChain)
+  100chain ZiNi is a strong and fast ZiNi algorithm which runs Chain ZiNi 100 times and picks the best result.
+
+Show WoM L ZiNi and HZiNi (statsShowWomZini)
+  L ZiNi and HZiNi are the legacy ZiNi implementations used on minesweeper.online.
+
+Show WoM L ZiNi improved (statsShowWomZiniFix)
+  This is an improved version of WoM L ZiNi which corrects for how squares on opening edges are handled. 
+
+Show max eff (statsShowMaxEff)
+  Max eff = 3BV / best ZiNi. The highest efficiency the ZiNi algorithms found for this board.
+
+Run deepChain (statsRunDeepChain)
+  When to automatically run DeepChain ZiNi, a very strong but slow ZiNi algorithm.
+  - Eff Boards win: Only after winning an Eff Boards game.
+  - Eff Board win/lose: After any finished Eff Boards game.
+  - Any win: After winning in any mode.
+  - Any win/lose: After every finished game.
+  - Never: Only when you click "run" in the stats panel.
+
+Show STNB for standard sizes (statsShowStnb)
+  STNB is a measure of speed that takes into account both time and 3bv. It is balanced across Beginner, Intermediate and Expert.
+
+Show throughput (statsShowThrp)
+  Throughput = solved 3BV / effective clicks. This can be thought of as efficiency excluding wasted clicks.
+
+Show RQP (statsShowRqp)
+  RQP = (time + 1) / 3BV/s. A speed stat where lower is better. 
+
+Show Correctness (statsShowCorr)
+  Correctness = effective clicks / total clicks. The proportion of your clicks that changed the board.
+
+
+=====================
+MOBILE/TOUCH SETTINGS
+=====================
+
+Sound Effects (soundEffectsEnabled)
+  Plays sounds for board interactions. Works on desktop too.
+
+Use Mobile Mode (mobileModeEnabled)
+  Enables mobile optimised touch handling, including multi-touch support. Also exposes a lot mobile settings.
+
+Touch Scroll Behaviour (mobileScrollSetting)
+  Controls whether dragging on the board scrolls the page during a game.
+  - Enable scroll: Touches on the board can always scroll the page.
+  - Disable scroll: Touches on the board never scroll the page.
+  - Scroll on zeros: During a game, only touches that start on revealed zeros can scroll.
+  - Scroll on interior (flag version): During a game, touches can scroll from "interior" squares, where every neighbour is either revealed or an obvious mine. Mines next to numbers that could still be chorded aren't interior, so you can still flag them.
+  - Scroll on interior (nf version): Like the flag version but without the chording exception, which gives more room to scroll for NF players.
+
+Let interior clicks through (mobileEnclosedScrollLetThrough)
+  When ticked, touches on interior squares can still act on the board (e.g. flagging/digging). When unticked, they only scroll.
+  [dev note] Only affects the interior options, not Scroll on zeros.
+
+Enabling Scroll Delay (0-500ms) (mobileDelayForEnableScroll)
+  How long to wait before newly revealed squares affect the scrolling criteria. This setting is intended to prevent the risk of a surprise opening from turning your next tap into a scroll.
+
+Touch Reveal Location (touchRevealLocation)
+  Which square a tap acts on if your finger moves during the touch.
+  - Touch Start: The square where your finger first touched.
+  - Touch End: The square where your finger lifted.
+  - Block If Changed: Cancels the tap if your finger ends on a different square.
+
+Touch Reveal Timing (touchRevealTiming)
+  When a tap takes effect.
+  - Start of touch: As soon as your finger touches the screen. Fastest, but with some trade-offs. Long press won't work, also you need to be more careful where the first touch is when scrolling as it still acts on the board. For no flag players, I'd suggest setting "Touch Scroll behaviour" to the "interior (nf)" option and having "Let interior clicks through" unticked to guard against unintended actions during scrolls.
+  - End of touch: When your finger lifts.
+
+Restrict "Start of touch" timing to active games (touchStartTimingOnlyActiveGames)
+  Only uses "Start of touch" timing while a game is in progress. Other times (including the first tap) use end of touch, so scrolling the page isn't disrupted outside of gameplay.
+
+Long press time (80-400ms) (touchLongPressTime)
+  How long you need to hold a touch for it to count as a long press. A long press does the opposite of the current mode (flags in dig mode, digs in flag mode).
+
+Disable long press (touchLongPressDisabled)
+  Long presses act the same as normal taps. Use the mode toggle button to switch between digging and flagging.
+
+Max touch time (300-1500ms) (touchMaxTime)
+  Touches held longer than this are cancelled and do nothing.
+
+Max tiles moved for touch (2-5) (touchScrollDistance)
+  Touches that move further than this many tiles are cancelled and do nothing, e.g. when you're scrolling.
+
+Mode toggle location (flagToggleLocationClass)
+  Where the dig/flag mode toggle button sits on the screen. After a game ends it becomes a reset button.
+  - Bottom Right: Bottom right corner.
+  - Bottom Left: Bottom left corner.
+  - Hidden: Never shown.
+  - Show Reset Only: Hidden during games and only appears as a reset button after a game ends (bottom right).
+
+Prevent accidental mobile reset (mobileResetGuard)
+  After a game ends, the reset button ignores taps for a moment so a tap meant for the board doesn't immediately start a new game.
+
+Mode toggle size (flagToggleSizeClass)
+  Size of the mode toggle button.
+  - Small: 50px.
+  - Normal: 80px.
+  - Large: 120px.
+  - Extra Large: 160px.
+
+Switch to flag mode after start (flagToggleSwitchAfterStart)
+  Switches to flag mode automatically after your first tap starts a game.
+
+[advanced] Touch action override (touchActionOverride)
+  Sets the CSS touch-action on the board, which controls what the browser lets touches do (panning and pinch zooming). For example, pan-y can be used to lock scrolling to the vertical direction.
+  - Use other settings (recommended): "none" when scroll is disabled, otherwise "manipulation" (pan and pinch zoom allowed, no double-tap zoom).
+  - pan-x / pan-y / pinch-zoom and combinations: Allow only the listed gestures.
+  - none: The browser won't pan or zoom from touches on the board.
+
+[advanced] Mode toggle event (flagToggleEvent)
+  Which touch event activates the mode toggle button.
+  - Click (recommended): Standard button click.
+  - Touch Start: As soon as your finger touches the button. Fastest.
+  - Touch End: When your finger lifts, but only if started and ended on the button.
+
+Make expert boards portrait (verticalExpert)
+  The Expert preset becomes 16 wide by 30 tall instead of 30 by 16. Can fit better on some mobile device screens.
+
+Show Quick Stats (showQuickStats)
+  Shows a small overlay in the top left after each game with a few stats for quick reference.
+  [dev note] Works outside Mobile Mode too.
+
+Quick Stats Font Size (quickStatsFontSize)
+  Text size of the Quick Stats overlay.
+
+
+=====================
+QUICKPAINT SETTINGS
+=====================
+
+QuickPaint only solves mines (quickPaintInitialOnlyMines)
+  When QuickPaint opens, it automatically marks squares you can work out with basic logic. When ticked, it only marks known mines (red). When unticked, it also marks known safe squares (green).
+
+QuickPaint minimal mode (quickPaintMinimalMode)
+  In minimal mode, the controls only let you left click to place dots (intended to represent planned clicks) and right click to mark squares orange (intended to represent guessed mines). Untick this setting to allow cycling between known, guess and dot markings.
+
+QuickPaint only use single number logic (e.g. no 1-2 patterns) (quickPaintOnlyTrivialLogic)
+  Limits QuickPaint's automatic marking to what a single number tells you. When off, it also allows for comparing neighbouring numbers (subtraction formula, e.g. 1-2 patterns).
+
+
+=====================
+HINT SETTINGS
+=====================
+
+Show hint after loss (autoHintCriteria)
+  Whether a hint is shown automatically after you lose.
+  - Always: After every loss.
+  - Never: Only when you ask for one.
+  - Time Condition: Only if the game lasted longer than a minimum time, which avoids hints on instant losses.
+
+Hint min game time (seconds) (autoHintTime)
+  Loss hints only appear automatically if the game lasted longer than this.
+
+Loss hint gamemodes (autoHintVariants)
+  Which modes show automatic loss hints.
+  - All: Every mode.
+  - All but Eff Boards: Every mode except Eff Boards.
+
+Loss hint delay (autoHintDelay)
+  How long the mines are shown after a loss before the hint appears.
+
+Loss hint backdrop (autoHintBackdrop)
+  What is shown underneath the probabilities on a loss hint.
+  - Blast numbers: Shows where the mines were, plus faded versions of any numbers your losing click revealed (e.g. from a bad chord).
+  - Mines: Shows where the mines were, without the numbers from your losing click.
+  - No mines: Hides the mines, so the board looks like it did just before you lost.
+  - No highlight: Like No mines, and also removes the green highlight on the safest squares.
+
+
+=====================
+REPLAY SETTINGS
+=====================
+
+Reorder ZiNi Replay (reorderZini)
+  Rearranges ZiNi replays into an easier order to follow: openings first, then digs on squares that get chorded, then all flags, then all chords, then any remaining digs. The number of clicks doesn't change.
+  [dev note] Applies to 8-way, 100chain, WoM L ZiNi (incl. improved) and DeepChain replays, but not HZiNi. Clicks on the edge of an opening are moved onto the opening itself.
+
+Show hidden tiles (replayShowHidden)
+  What unrevealed squares show during replays, so you can see the rest of the board.
+  - None: Unrevealed squares look normal.
+  - Mines: Shows mines, but numbers stay hidden.
+  - Transparent: Faint numbers and mines on unrevealed squares.
+  - Very Transparent: Even fainter numbers and mines.
+  - Transparent + mines: Very faint numbers with clearly visible mines.
+  - Dimmed: Dimmed numbers and mines on unrevealed squares.
+  [dev note] Check the Transparent/Very Transparent wording. Very Transparent uses tiles_transparent and Transparent uses tiles_transparent2.
+
+Record mouse button events for RawVF (recordButtonEvents)
+  Records every individual mouse button press and releass for including in the RawVF export or when the replay is sent to StrangeDust's replay analyser. 
