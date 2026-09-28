@@ -85,33 +85,27 @@ fn connectivity_coarsens(coarse: &[u64], fine: &[u64], signature_words: usize) -
     }
 }
 
-fn chain_contains(coarse: &[u64], fine: &[u64], signature_words: usize, c: usize, f: usize) -> bool {
-    let range = |index: usize| index * signature_words..(index + 1) * signature_words;
-    is_subset(&fine[range(f)], &coarse[range(c)])
-}
-
 /// Matching with each coarse chain's eligible fine chains as a bitmask (at most 64 fine chains).
 fn coarsens_by_mask(coarse: &[u64], fine: &[u64], signature_words: usize) -> bool {
     let coarse_count = coarse.len() / signature_words;
     let fine_count = fine.len() / signature_words;
-    let mut eligible = vec![0u64; coarse_count];
-    let mut represented = 0u64;
-    for c in 0..coarse_count {
-        for f in 0..fine_count {
-            if chain_contains(coarse, fine, signature_words, c, f) {
+    let mut eligible = [0u64; 64];
+    for (f, fine_chain) in fine.chunks_exact(signature_words).enumerate() {
+        let mut represented = false;
+        for (c, coarse_chain) in coarse.chunks_exact(signature_words).enumerate() {
+            if is_subset(fine_chain, coarse_chain) {
                 eligible[c] |= 1u64 << f;
+                represented = true;
             }
         }
-        represented |= eligible[c];
+        if !represented {
+            return false;
+        }
     }
-    let all_fine = if fine_count == 64 { u64::MAX } else { (1u64 << fine_count) - 1 };
-    if represented != all_fine {
-        return false;
-    }
-    let mut fine_match = vec![-1i32; fine_count];
+    let mut fine_match = [-1i32; 64];
     for c in 0..coarse_count {
         let mut seen = 0u64;
-        if !kuhn_augment_mask(c, &eligible, &mut seen, &mut fine_match) {
+        if !kuhn_augment_mask(c, &eligible[..coarse_count], &mut seen, &mut fine_match[..fine_count]) {
             return false;
         }
     }
@@ -122,10 +116,10 @@ fn coarsens_general(coarse: &[u64], fine: &[u64], signature_words: usize) -> boo
     let coarse_count = coarse.len() / signature_words;
     let fine_count = fine.len() / signature_words;
     let mut eligible = vec![vec![false; fine_count]; coarse_count];
-    for f in 0..fine_count {
+    for (f, fine_chain) in fine.chunks_exact(signature_words).enumerate() {
         let mut represented = false;
-        for c in 0..coarse_count {
-            eligible[c][f] = chain_contains(coarse, fine, signature_words, c, f);
+        for (c, coarse_chain) in coarse.chunks_exact(signature_words).enumerate() {
+            eligible[c][f] = is_subset(fine_chain, coarse_chain);
             represented |= eligible[c][f];
         }
         if !represented {
@@ -154,6 +148,16 @@ struct StateSummary {
     mine_hits: i32,
     /// `cost + bbbv hits - mine hits`. Domination requires `quasi(dominator) <= quasi(target)`.
     quasi_score: i32,
+}
+
+/// Pass 2 filter data for one connectivity id, stored contiguously in scan order.
+struct CoarseCandidate {
+    id: usize,
+    first_key: DominanceKey,
+    minimum_quasi: i32,
+    minimum_reach_size: u32,
+    maximum_reach_size: u32,
+    reach_start: usize,
 }
 
 /// Returns the number of removed states. `comparison_limit` caps state-to-state comparisons;
@@ -222,7 +226,8 @@ pub fn prune_dominated(
             quasi_score: cost + bbbv_hits - mine_hits,
         });
     }
-    summaries.sort_by_key(|summary| (summary.bucket, summary.key));
+    // `entry` makes keys unique, so this gives the same order a stable sort would.
+    summaries.sort_unstable_by_key(|summary| (summary.bucket, summary.key, summary.entry));
 
     let dominates = |dominator: &StateSummary, target: &StateSummary| -> bool {
         let allowance = table.cost(target.entry) - table.cost(dominator.entry);
@@ -269,8 +274,11 @@ pub fn prune_dominated(
     }
 
     // Chain counts and reach sizes, used to reject impossible coarsenings cheaply.
+    let mut first_survivor_key = vec![(i32::MAX, i32::MAX, i32::MAX); connectivity_count];
     let mut chain_counts = vec![0usize; connectivity_count];
-    let mut chain_reach_sizes: Vec<Vec<u32>> = vec![Vec::new(); connectivity_count];
+    // Each id's chain reach sizes, sorted, at `reach_sizes[reach_start[id]..][..chain_counts[id]]`.
+    let mut reach_sizes: Vec<u32> = Vec::new();
+    let mut reach_start = vec![0usize; connectivity_count];
     let mut minimum_reach_size = vec![u32::MAX; connectivity_count];
     let mut maximum_reach_size = vec![0u32; connectivity_count];
     for id in 0..connectivity_count {
@@ -278,14 +286,53 @@ pub fn prune_dominated(
             continue;
         }
         let signature = pool.get(id as u32);
+        first_survivor_key[id] = summaries[survivors[id][0]].key;
         chain_counts[id] = signature.len() / signature_words;
+        reach_start[id] = reach_sizes.len();
         for chain in signature.chunks(signature_words) {
             let reach_size: u32 = chain.iter().map(|word| word.count_ones()).sum();
             minimum_reach_size[id] = minimum_reach_size[id].min(reach_size);
             maximum_reach_size[id] = maximum_reach_size[id].max(reach_size);
-            chain_reach_sizes[id].push(reach_size);
+            reach_sizes.push(reach_size);
         }
-        chain_reach_sizes[id].sort_unstable();
+        reach_sizes[reach_start[id]..].sort_unstable();
+    }
+
+    // Possible coarse ids grouped by (bucket, chain count) and sorted by first key within each
+    // group, so a fine id only visits ids that can pass the chain-count and key checks.
+    let mut coarse_order: Vec<usize> = (0..connectivity_count).filter(|&id| !survivors[id].is_empty()).collect();
+    coarse_order.sort_unstable_by_key(|&id| (connectivity_bucket[id], chain_counts[id], first_survivor_key[id], id));
+    let coarse_candidates: Vec<CoarseCandidate> = coarse_order
+        .iter()
+        .map(|&id| CoarseCandidate {
+            id,
+            first_key: first_survivor_key[id],
+            minimum_quasi: minimum_quasi[id],
+            minimum_reach_size: minimum_reach_size[id],
+            maximum_reach_size: maximum_reach_size[id],
+            reach_start: reach_start[id],
+        })
+        .collect();
+    // (chain count, start, end) runs of `coarse_candidates`, and each bucket's range of runs.
+    let mut count_groups: Vec<(usize, usize, usize)> = Vec::new();
+    let mut bucket_groups = vec![(0usize, 0usize); bucket_ids.len()];
+    let mut start = 0;
+    while start < coarse_order.len() {
+        let first = coarse_order[start];
+        let (bucket, count) = (connectivity_bucket[first], chain_counts[first]);
+        let mut end = start + 1;
+        while end < coarse_order.len()
+            && connectivity_bucket[coarse_order[end]] == bucket
+            && chain_counts[coarse_order[end]] == count
+        {
+            end += 1;
+        }
+        if bucket_groups[bucket].0 == bucket_groups[bucket].1 {
+            bucket_groups[bucket] = (count_groups.len(), count_groups.len());
+        }
+        count_groups.push((count, start, end));
+        bucket_groups[bucket].1 = count_groups.len();
+        start = end;
     }
 
     // Pass 2: coarser connectivity dominating finer connectivity. Dominated states stay
@@ -302,38 +349,43 @@ pub fn prune_dominated(
         }
         coarser.clear();
         let fine_last_key = summaries[*survivors[fine_id].last().unwrap()].key;
-        for &coarse_id in &bucket_ids[connectivity_bucket[fine_id]] {
-            let coarse_id = coarse_id as usize;
-            if coarse_id == fine_id || survivors[coarse_id].is_empty() {
-                continue;
+        let fine_chain_count = chain_counts[fine_id];
+        let fine_reach_sizes = &reach_sizes[reach_start[fine_id]..reach_start[fine_id] + fine_chain_count];
+        let (first_group, end_group) = bucket_groups[connectivity_bucket[fine_id]];
+        for &(count, start, end) in &count_groups[first_group..end_group] {
+            if count > fine_chain_count {
+                break;
             }
-            if chain_counts[coarse_id] > chain_counts[fine_id] {
-                continue;
-            }
-            if maximum_reach_size[fine_id] > maximum_reach_size[coarse_id]
-                || minimum_reach_size[fine_id] > minimum_reach_size[coarse_id]
-            {
-                continue;
-            }
-            // Each coarse chain contains a distinct fine chain, so the sorted sizes must pair up.
-            let matching_possible = (0..chain_counts[coarse_id])
-                .all(|c| chain_reach_sizes[fine_id][c] <= chain_reach_sizes[coarse_id][c]);
-            if !matching_possible {
-                continue;
-            }
-            if summaries[survivors[coarse_id][0]].key > fine_last_key {
-                continue;
-            }
-            if minimum_quasi[coarse_id] > maximum_quasi[fine_id] {
-                continue;
-            }
-            // Within a bucket, a single coarse chain already contains every fine chain.
-            let relation = chain_counts[coarse_id] == 1
-                || connectivity_coarsens(pool.get(coarse_id as u32), pool.get(fine_id as u32), signature_words);
-            if relation {
-                coarser.push(coarse_id);
+            let group = &coarse_candidates[start..end];
+            let key_limit = group.partition_point(|candidate| candidate.first_key <= fine_last_key);
+            for candidate in &group[..key_limit] {
+                if candidate.id == fine_id || candidate.minimum_quasi > maximum_quasi[fine_id] {
+                    continue;
+                }
+                if maximum_reach_size[fine_id] > candidate.maximum_reach_size
+                    || minimum_reach_size[fine_id] > candidate.minimum_reach_size
+                {
+                    continue;
+                }
+                // Each coarse chain contains a distinct fine chain, so the sorted sizes must pair up.
+                let coarse_reach_sizes = &reach_sizes[candidate.reach_start..candidate.reach_start + count];
+                if !fine_reach_sizes.iter().zip(coarse_reach_sizes).all(|(fine, coarse)| fine <= coarse) {
+                    continue;
+                }
+                // Within a bucket, a single coarse chain already contains every fine chain.
+                if count == 1
+                    || connectivity_coarsens(
+                        pool.get(candidate.id as u32),
+                        pool.get(fine_id as u32),
+                        signature_words,
+                    )
+                {
+                    coarser.push(candidate.id);
+                }
             }
         }
+        // Restore id order so dominators are tried in the same order as a plain bucket scan.
+        coarser.sort_unstable();
         if coarser.is_empty() {
             continue;
         }
