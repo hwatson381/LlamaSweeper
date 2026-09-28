@@ -1,0 +1,34 @@
+Notes:
+Each number has - flags, consequential 3bv, neighbour candidates (possibly through an opening)
+
+When do we charge chains the seed click. Does it cause problems if we do this late?
+
+Is there a reason why we expand the frontier 1-by-1 rather than doing a column at a time?
+
+Can we do an initial pass to identify "never chords?" 
+
+Does the simple dominance case (1 square in from the edge beating on edge) get handled efficiently? The rule here is that larger unfinished chains on frontier beat smaller ones.
+
+1.10 note - uses some black magic "kuhn's algorithm" to determine when unfinished chains dominate eachother
+
+Is there something later on where we apply coarsening for chains with "wider" frontiers, or is that something which naturally gets picked up because almost by definition they would have more 3bv "factor bits"
+
+But wait, does active factors include non-3bv stuff. For example, if a chord reveals an opening edge tile, since that tile could technically be chorded later? Ohhhhh, maybe the unfinished chains reach includes this! I should check though if it gets let through? Claude says this idea is valid! And highlighted in 3.7
+
+How does order.rs work? In particular, how does it find a "smart" order within each line?
+
+Can key squares be used? Would this be the idea that - if a 3bv is unopened and we are deciding the final chord that *could* open it, then always decide yes
+
+Is 3.2 too similar to 3.1? Or is the idea that 3.1 is a dynamic version of 3.2 (like 3.2 runs once at the start, whereas 3.1 can pick up more things). Actually 3.1 seems super nice, since if we spot somewhere it applies we can just entirely exclude doing the chord. We'd probably want both tbh.
+
+Minor note for 3.2 - condition (2) might be redundant?
+
+Also remember to probe for removing "overkill" datastructures, like maps instead of arrays when the size is small
+
+I don't fully understand 3.3, in particular the condition (3)
+
+3.5 has potential and is not something I'd ever think of, though I don't understand it 100%. May need further thought as to whether it is really a subcase of an even stronger optimisation?
+
+3.6 seems very niche?
+
+3.8 and 3.9 I don't understand
