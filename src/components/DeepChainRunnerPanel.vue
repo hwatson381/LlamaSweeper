@@ -5,7 +5,13 @@
       ><br />
       Expected Duration: {{ ziniRunnerExpectedDuration }}<br />
       Expected Finish Time: {{ ziniRunnerExpectedFinishTime }}<br />
-      {{ ziniRunnerIterationsDisplay }}<br />
+      <template v-if="ziniRunnerIterationsDisplay">
+        {{ ziniRunnerIterationsDisplay }}<br />
+      </template>
+      <template v-if="ziniRunnerCandidatesDisplay">
+        Candidates: {{ ziniRunnerCandidatesDisplay }}<br />
+        States: {{ ziniRunnerStatesDisplay }}<br />
+      </template>
       <br />
       <q-btn
         @click="game.board.ziniExplore.killDeepChainZiniRunner()"
@@ -22,6 +28,8 @@ import {
   ziniRunnerExpectedDuration,
   ziniRunnerExpectedFinishTime,
   ziniRunnerIterationsDisplay,
+  ziniRunnerCandidatesDisplay,
+  ziniRunnerStatesDisplay,
 } from "src/composables/useSettings";
 
 defineOptions({

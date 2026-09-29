@@ -487,6 +487,8 @@ let ziniRunnerTitle = ref("Running DeepChain ZiNi");
 let ziniRunnerExpectedDuration = ref("calculating...");
 let ziniRunnerExpectedFinishTime = ref("calculating...");
 let ziniRunnerIterationsDisplay = ref("");
+let ziniRunnerCandidatesDisplay = ref("");
+let ziniRunnerStatesDisplay = ref("");
 let ziniRunnerPercentageProgress = ref("0%");
 
 let keyboardClickOpenOnKeyDown = useLocalStorage(
@@ -596,6 +598,8 @@ function resetTransientSettings() {
   ziniRunnerExpectedDuration.value = "calculating...";
   ziniRunnerExpectedFinishTime.value = "calculating...";
   ziniRunnerIterationsDisplay.value = "";
+  ziniRunnerCandidatesDisplay.value = "";
+  ziniRunnerStatesDisplay.value = "";
   ziniRunnerPercentageProgress.value = "0%";
 }
 
@@ -763,6 +767,8 @@ export {
   ziniRunnerExpectedDuration,
   ziniRunnerExpectedFinishTime,
   ziniRunnerIterationsDisplay,
+  ziniRunnerCandidatesDisplay,
+  ziniRunnerStatesDisplay,
   ziniRunnerPercentageProgress,
   keyboardClickOpenOnKeyDown,
   keyboardClickDigKey,

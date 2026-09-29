@@ -6,6 +6,8 @@ import {
   ziniRunnerExpectedDuration,
   ziniRunnerExpectedFinishTime,
   ziniRunnerIterationsDisplay,
+  ziniRunnerCandidatesDisplay,
+  ziniRunnerStatesDisplay,
   ziniRunnerPercentageProgress,
 } from "src/composables/useSettings";
 
@@ -35,6 +37,8 @@ class DeepChainZiniRunner {
     ziniRunnerExpectedDuration.value = "calculating...";
     ziniRunnerExpectedFinishTime.value = "calculating...";
     ziniRunnerIterationsDisplay.value = "";
+    ziniRunnerCandidatesDisplay.value = "";
+    ziniRunnerStatesDisplay.value = "";
     ziniRunnerPercentageProgress.value = "0%";
 
     //Vite needs literal worker URLs to bundle them
@@ -102,7 +106,7 @@ class DeepChainZiniRunner {
         this.updatePercentageProgress(message.percentage);
         break;
       case "iteration-update":
-        this.updateIterationDisplay(message.iterations);
+        this.updateIterationDisplay(message);
         break;
       case "log-update":
         this.addLogEntry(message.logEntry);
@@ -140,8 +144,17 @@ class DeepChainZiniRunner {
     }
   }
 
-  updateIterationDisplay(iterations) {
-    ziniRunnerIterationsDisplay.value = iterations;
+  //DeepChain sends a preformatted `iterations` string, DOMS sends `candidates` and `states` separately
+  updateIterationDisplay({ iterations, candidates, states }) {
+    if (iterations !== undefined) {
+      ziniRunnerIterationsDisplay.value = iterations;
+    }
+    if (candidates) {
+      ziniRunnerCandidatesDisplay.value = `${candidates.processed}/${candidates.total}`;
+    }
+    if (states !== undefined) {
+      ziniRunnerStatesDisplay.value = states.toLocaleString();
+    }
   }
 
   addLogEntry(logEntry) {

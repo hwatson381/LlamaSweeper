@@ -108,21 +108,17 @@ onmessage = function (event) {
     lastReport = now;
 
     const eta = estimator.estimate(processed, total);
-    let percentage = "";
     if (eta) {
-      const totalSeconds = eta.elapsedSeconds + eta.remainingSeconds;
-      percentage = ` (${Math.floor(
-        (eta.elapsedSeconds / totalSeconds) * 100
-      )}%)`;
       postMessage({
         type: "eta-update",
-        totalSeconds,
+        totalSeconds: eta.elapsedSeconds + eta.remainingSeconds,
         remainingSeconds: eta.remainingSeconds,
       });
     }
     postMessage({
       type: "iteration-update",
-      iterations: `Processed ${processed}/${total} candidates, ${states.toLocaleString()} states${percentage}`,
+      candidates: { processed, total },
+      states,
     });
   };
 
