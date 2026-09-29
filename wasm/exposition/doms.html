@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>DOMS explained</title>
+    <link rel="stylesheet" href="doms.css" />
+    <script src="doms-model.js"></script>
+    <script src="doms-diagrams.js"></script>
+  </head>
+  <body>
+    <main>
+      <header class="hero">
+        <h1>DOMS explained</h1>
+        <p>How the deterministically optimal minesweeper solver in <code>wasm/src/doms</code> finds the fewest clicks, which minesweeper facts it already uses, and which it doesn't use yet.</p>
+        <p class="small">
+          The boards, numbers, optimal solutions and example DP states are all computed in the page by <code>doms-model.js</code>, a small JavaScript copy
+          of the DOMS model. Nothing is typed in by hand, so every number on every board matches its mines. The toy DP has merging and pass-1 dominance
+          but not pass 2 or the comparison cap. The self-check at the bottom compares it against brute force.
+        </p>
+      </header>
+
+      <nav class="toc">
+        <b>Contents</b>
+        <ol>
+          <li><a href="#walkthrough">How the algorithm works</a></li>
+          <li><a href="#applied">The minesweeper ideas DOMS already uses</a></li>
+          <li><a href="#potential">Minesweeper ideas not applied yet</a></li>
+          <li><a href="#appendix">Appendix: self-check</a></li>
+        </ol>
+      </nav>
+
+      <!-- ================================================================== -->
+      <h2 id="walkthrough">1. How the algorithm works</h2>
+
+      <h3>1.1 The problem</h3>
+      <p>
+        DOMS knows where every mine is and wants the shortest click sequence that clears the board. Only three kinds of click exist: left click,
+        right click (flag), and chord (clicking a revealed number whose flags are all placed, which opens all its other neighbours).
+        The yardstick is <b>3BV</b>: every opening (a connected zero region plus the numbers around it) and every <em>island</em> (a number not touching any zero)
+        needs one left click if you never chord.
+      </p>
+      <div data-diagram="problem"></div>
+
+      <h3>1.2 What a chord does</h3>
+      <p>
+        Every numbered safe cell is a <b>chord candidate</b>. For each candidate <i>c</i> DOMS precomputes three sets, and after that it never needs
+        to look at the board again:
+      </p>
+      <ul>
+        <li><b>M(c)</b>: the mines that must be flagged before chording c.</li>
+        <li><b>B(c)</b>: the 3BV units the chord solves (openings it floods, adjacent islands, and c itself if c is an island).</li>
+        <li><b>N(c)</b>: the other candidates the chord reveals, either directly or through an opening it floods. Revealed candidates can be chorded next without another left click.</li>
+      </ul>
+      <div data-diagram="chord"></div>
+
+      <h3>1.3 The objective</h3>
+      <p>
+        A solution is just a set <b>S</b> of cells to chord. Everything else follows from S: flag every mine next to S, give each connected group of chords
+        (a <b>chain</b>) one starting left click, chord the chain in reveal order, then left-click whatever 3BV is still unrevealed.
+      </p>
+      <p class="note">
+        clicks(S) = |S| chords + |mines next to S| flags + (number of chains) seed clicks + (3BV units no chord in S solves) left clicks
+      </p>
+      <div data-diagram="solution"></div>
+
+      <h3>1.4 Checking the answer</h3>
+      <p>The click list can be replayed on a real board. DOMS does this after every solve, and so does this page.</p>
+      <div data-diagram="replay"></div>
+
+      <h3>1.5 Why a sweep</h3>
+      <p>
+        Trying every S is hopeless. Instead DOMS puts the candidates in a fixed order and decides "chord or not" for one candidate at a time. The key
+        fact is that a chord only affects its 8 neighbours (plus any opening it floods). So once the sweep has moved on, most of the past can be forgotten.
+      </p>
+      <div data-diagram="sweep"></div>
+
+      <h3>1.6 The frontier state</h3>
+      <p>After deciding some prefix of the order, only two kinds of thing still link the decided cells to the undecided ones:</p>
+      <ul>
+        <li>
+          <b>Unfinished chains</b>, each recorded as the set of undecided candidates it can still reveal. If one of those is chorded later it joins the chain
+          for free. If the set runs out, the chain is finished and its seed click is charged.
+        </li>
+        <li>
+          <b>Active factors</b>: mines and 3BV units with neighbouring candidates on both sides of the sweep. For each, one bit says whether it has already been
+          flagged or solved.
+        </li>
+      </ul>
+      <p>That pair (chains, factor bits) is the DP state. Its cost is the number of clicks committed so far.</p>
+      <div data-diagram="frontier"></div>
+
+      <h3>1.7 One decision</h3>
+      <p>
+        Each state produces two children. The cost bookkeeping starts at 3BV (every unit left-clicked) and adjusts as decisions are made:
+        +1 per chord, +1 the first time each mine is needed, −1 the first time each 3BV unit is solved, and +1 when a chain can no longer grow.
+        When everything is decided the total is exactly clicks(S).
+      </p>
+      <div data-diagram="step"></div>
+
+      <h3>1.8 Merging identical states</h3>
+      <p>
+        The states are kept in a hash table keyed on (chains, factor bits). When two histories arrive at the same key, only the cheaper one is kept. This alone
+        turns an exponential number of histories into a number of states that grows with the <em>width</em> of the frontier, not the size of the board.
+      </p>
+      <div data-diagram="merge"></div>
+
+      <h3>1.9 Dominance, pass 1: same chains, different bits</h3>
+      <p>
+        Two states with the same chains but different factor bits can still be compared. The cheaper state A can only lose its lead through bits where B is
+        "ahead": a mine B has flagged but A hasn't, or a 3BV unit A has solved but B hasn't. Each of those is worth at most one click of future difference.
+        If A's lead is at least that count, B can never win and is deleted.
+      </p>
+      <div data-diagram="dominance"></div>
+
+      <h3>1.10 Dominance, pass 2: coarser chains</h3>
+      <p>
+        States can also differ in their chains. Merging chains together never costs more future seed clicks, so a state whose chains are a coarser grouping
+        of the same future reach can dominate a finer one using the same factor test. <code>prune.rs</code> buckets signatures by their total reach and
+        uses a matching test (Kuhn's algorithm) so that no coarse chain ends up needing a seed the fine state wouldn't pay.
+      </p>
+      <div data-diagram="coarsen"></div>
+
+      <h3>1.11 What merging and pruning buy</h3>
+      <div data-diagram="layers"></div>
+
+      <h3>1.12 Choosing the sweep order</h3>
+      <p>
+        The number of states grows roughly exponentially with the cut width: the number of chains that could still grow plus the number of active factors.
+        <code>order.rs</code> estimates the width of rows, columns, bands of several lines and a "smart" best order within each line, and picks the narrowest.
+        On expert boards columns (16 tall) usually beat rows (30 wide).
+      </p>
+      <div data-diagram="orders"></div>
+
+      <h3>1.13 Rebuilding the clicks</h3>
+      <p>
+        Every state carries a bitset of its chords. The final state (no chains, no active bits) holds an optimal S. <code>solution.rs</code> re-evaluates S from
+        scratch, checks the cost matches the DP, orders each chain's chords breadth-first from a seed, and replays the clicks on the board.
+      </p>
+
+      <!-- ================================================================== -->
+      <h2 id="applied">2. The minesweeper ideas DOMS already uses</h2>
+      <p>
+        Most of DOMS's speed comes from turning minesweeper facts into things the DP can forget or merge. These are the ones already in the code.
+      </p>
+
+      <h3>2.1 3BV units are the only thing a left click buys</h3>
+      <p>
+        Border numbers are not 3BV in their own right; they come free with their opening. So the model only tracks openings and islands.
+        An island counts as solved by its own chord, because a chorded island is either revealed by a neighbouring chord or is the chain's seed.
+        Either way its own left click is already paid for.
+      </p>
+      <div data-diagram="units"></div>
+
+      <h3>2.2 Openings are hubs</h3>
+      <p>
+        Flooding an opening reveals all its border numbers at once. So every border of an opening "reveals" every other border, and all chorded borders of
+        one opening are always in the same chain. This is what lets two chords on opposite sides of a big opening share a single seed click.
+      </p>
+      <div data-diagram="hub"></div>
+
+      <h3>2.3 A mine only matters while its neighbours are being decided</h3>
+      <p>
+        A flag is needed exactly when one of the mine's numbered neighbours is chorded. Before the sweep reaches the first neighbour the mine can't have been
+        flagged. After the last neighbour its cost is settled. So the "flagged yet?" bit only exists in between. 3BV units work the same way. This is the
+        biggest reason the state stays small.
+      </p>
+      <div data-diagram="window"></div>
+
+      <h3>2.4 Flags already placed and 3BV already solved</h3>
+      <p>Pass-1 dominance is the minesweeper intuition "a flag you've already placed is a discount on the future, and a 3BV you've already solved is a discount you've used up":</p>
+      <div data-diagram="liability"></div>
+
+      <h3>2.5 Chords are local, so the frontier is thin</h3>
+      <p>
+        With king-move adjacency, a decided cell stops mattering once its neighbours are decided. The live part of the past is a strip about two cells deep
+        along the sweep line. That's why sweeping the shorter dimension wins and why bands of lines are sometimes better.
+      </p>
+      <div data-diagram="geometry"></div>
+
+      <!-- ================================================================== -->
+      <h2 id="potential">3. Minesweeper ideas not applied yet</h2>
+
+      <h3>3.1 The blind spot: exchanges</h3>
+      <p>
+        DOMS's dominance only ever says "A is no worse than B <em>if both make exactly the same future chords</em>". It can't express the most natural
+        minesweeper argument: "whatever you did with chord c, chord d instead". Two histories that differ in c vs d usually have different chains and
+        different bits, so neither pass compares them. Both lines survive, often for a whole column of layers.
+      </p>
+      <div data-diagram="blindspot"></div>
+
+      <h3>3.2 Rule A: the swap rule (static, exact)</h3>
+      <p>Remove candidate c before the DP runs if some other remaining candidate d satisfies all three of:</p>
+      <ol>
+        <li><b>M(d) ⊆ M(c)</b>: d never needs a flag c doesn't,</li>
+        <li><b>B(c) ⊆ B(d)</b>: d solves every 3BV unit c does,</li>
+        <li><b>N(c) \ {d} ⊆ N(d)</b>: d reveals every candidate c does.</li>
+      </ol>
+      <details>
+        <summary>Why this is exact</summary>
+        <p>
+          Take any solution S that chords c. If S also chords d, drop c: flags can only go down, B(c) is still solved by d, and anything connected through c
+          is connected through d. If S doesn't chord d, swap c for d. Whatever revealed c is in N(c) \ {d}, so it also reveals d (if c was a seed, seed d).
+          The swap has the same chord count, a subset of the flags, a superset of the 3BV solved and a superset of the connections. Either way the result is no
+          worse. Applying the rule repeatedly is fine as long as each removal uses a d that is still present.
+        </p>
+      </details>
+      <p>The two common shapes are the board edge and a straight opening edge:</p>
+      <div data-diagram="swap-edge"></div>
+      <div data-diagram="swap-opening"></div>
+
+      <h3>3.3 Rule B: chords that reveal nothing new (static, exact)</h3>
+      <p>Remove c if:</p>
+      <ol>
+        <li>|B(c)| ≤ 2,</li>
+        <li>every candidate in N(c) also solves all of B(c), and</li>
+        <li>N(c) doesn't contain three candidates that pairwise don't reveal each other, so removing c splits its chain into at most two.</li>
+      </ol>
+      <details>
+        <summary>Why this is exact</summary>
+        <p>
+          If nothing next to c is chorded, c is a chain on its own. Dropping it saves its chord and its seed (−2) and loses at most |B(c)| ≤ 2 units.
+          Otherwise some chorded neighbour already solves B(c), dropping c saves its chord (−1), and the chain splits into at most two pieces (+1 seed at most).
+        </p>
+      </details>
+      <div data-diagram="nothing-new"></div>
+
+      <h3>3.4 How much the static rules remove</h3>
+      <p>
+        Removing a candidate means one fewer branching decision. It also shortens the window of every mine and 3BV unit next to it, and drops it from every
+        chain's reach set, so more states become identical and merge. Implementation-wise this would be a <code>reduced()</code> step in
+        <code>model.rs</code> (like <code>reordered</code>) that filters every candidate list before <code>solve_frontier</code>. Brute force should keep
+        using the unreduced model so the tests check the rules independently.
+      </p>
+      <div data-diagram="reduction-running"></div>
+      <div data-diagram="reduction-live"></div>
+
+      <h3>3.5 Opening-chain absorption (exact state equivalence)</h3>
+      <p>
+        Once the sweep has passed every chord in a chain except its link into an opening, the chain can only grow through that opening's remaining borders.
+        That state is <em>exactly</em> equivalent to a state with no chain, the opening unsolved, and one extra click. In minesweeper terms, "the opening is
+        open" is worth exactly one click, the same as clicking it.
+      </p>
+      <p>
+        Today the two versions have different chain counts and different total reach, so they land in different pass-2 buckets and are never compared.
+        States that touched a big opening a while ago and states that haven't touched it yet coexist across the opening's whole span. The fix is local: after
+        a transition, if an opening's bit is set and some chain's reach equals that opening's undecided borders, delete the chain, clear the bit and add 1.
+      </p>
+      <div data-diagram="absorb"></div>
+      <div data-diagram="absorb-chart"></div>
+
+      <h3>3.6 Factor cancellation (tighter pass 1, exact)</h3>
+      <p>
+        Pass 1 treats every "red" bit as a click the future can win back for free. But sometimes the only undecided candidates that can trigger a red bit
+        are all among those that trigger a "green" bit. Then the future can't collect the red one without also collecting the green one, and the two cancel.
+        A common case is a mine just behind the sweep next to an island just ahead of it: every remaining chord that needs that flag also opens the island.
+        The containment only depends on the layer, so it can be precomputed per layer. Any matching of red to green bits gives a valid, tighter bound.
+      </p>
+      <div data-diagram="cancel"></div>
+      <div data-diagram="cancel-chart"></div>
+
+      <h3>3.7 Coarser chains with more reach</h3>
+      <p>
+        Pass 2 only compares signatures with the same total reach. But a chain that can reach <em>more</em> undecided cells is never worse, because extra reach
+        only means more chords that don't need a seed. The most common missed pair is "chord c, extending a chain" vs "skip c". Caveat: the cells c newly
+        solves are usually still active, so the factor penalty often eats the lead unless cancellation (3.6) is also in. A cheap version would only test this
+        sibling pair at transition time, where the bits are already computed.
+      </p>
+      <div data-diagram="superset"></div>
+
+      <h3>3.8 Chains that can only cost a seed</h3>
+      <p>
+        Suppose every pair of cells in a chain's remaining reach reveal each other: one cell, two adjacent cells, or any set of borders of one opening.
+        Then the chain can join at most one future component. It can never save a seed click, only cost one. So a state without that chain is never worse
+        than the same state with it. The current matching requires every fine chain to be covered, so this case is never used. Most chains only reach this
+        condition in their last layer or two, so the gain is probably modest.
+      </p>
+      <div data-diagram="liability-chain"></div>
+
+      <h3>3.9 Seed slack: the general form</h3>
+      <div data-diagram="seed-slack"></div>
+
+      <h3>3.10 Try them together</h3>
+      <div data-diagram="experiment"></div>
+
+      <h3>3.11 Ideas considered and rejected</h3>
+      <table class="facts">
+        <tr>
+          <th>idea</th>
+          <th>why not</th>
+        </tr>
+        <tr>
+          <td>"always chord c" rules</td>
+          <td>Only provable when a 3BV unit can be solved by c alone. That almost never happens at 20% density, since islands are solved by themselves and all their numbered neighbours.</td>
+        </tr>
+        <tr>
+          <td>history-dependent "never chord both c and d" rules</td>
+          <td>Forbidding some futures for some states breaks the "every identical future" assumption that dominance relies on. Only static, history-independent removals are safe.</td>
+        </tr>
+        <tr>
+          <td>bound pruning (greedy ZiNi as an upper bound plus a lower bound per state)</td>
+          <td>The upper bound exists (<code>calculate_zini_8way</code>), but cheap per-state lower bounds are off by tens of clicks, so they would prune very little.</td>
+        </tr>
+        <tr>
+          <td>merging mines whose neighbouring candidates are identical</td>
+          <td>Their bits are always equal anyway, so this saves memory, not states.</td>
+        </tr>
+        <tr>
+          <td>splitting the board into independent regions</td>
+          <td>At normal densities the mine/3BV/reveal interactions connect essentially the whole board.</td>
+        </tr>
+        <tr>
+          <td>"never chord an 8" style rules</td>
+          <td>Too rare to matter, and the DP already discards them almost immediately.</td>
+        </tr>
+      </table>
+
+      <!-- ================================================================== -->
+      <h2 id="appendix">Appendix: self-check</h2>
+      <p>
+        Everything in part 3 is claimed to be exact. This button tests those claims against brute force on random small boards. In development it passed on
+        1,650 boards with no failures.
+      </p>
+      <div data-diagram="selfcheck"></div>
+    </main>
+  </body>
+</html>
