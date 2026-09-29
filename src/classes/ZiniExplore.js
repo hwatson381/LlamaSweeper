@@ -1353,7 +1353,7 @@ class ZiniExplore {
         this.runInclusionExclusionZini(true);
         break;
       case "doms":
-        this.runDomsZini();
+        this.runDomsZini(false);
         break;
       default:
         alert("disallowed algorithm");
@@ -1568,23 +1568,29 @@ class ZiniExplore {
     }
   }
 
-  runDomsZini() {
+  runDomsZini(useDefaultMaxStates = false) {
+    const DEFAULT_MAX_STATES = 2000000;
+    const UPPER_BOUND_MAX_STATES = 20000000;
+
     this.killDeepChainZiniRunner(); //just in case it is already running
 
-    let maxStates = analyseDomsMaxStates.value;
+    let maxStates = useDefaultMaxStates
+      ? DEFAULT_MAX_STATES
+      : analyseDomsMaxStates.value;
+
     if (
       !Number.isFinite(maxStates) ||
       !Number.isInteger(maxStates) ||
       maxStates < 1
     ) {
-      analyseDomsMaxStates.value = 2000000;
-      maxStates = 2000000;
+      analyseDomsMaxStates.value = DEFAULT_MAX_STATES;
+      maxStates = DEFAULT_MAX_STATES;
     }
 
     //Cap to keep worker memory use reasonable
-    if (maxStates > 20000000) {
-      analyseDomsMaxStates.value = 20000000;
-      maxStates = 20000000;
+    if (maxStates > UPPER_BOUND_MAX_STATES) {
+      analyseDomsMaxStates.value = UPPER_BOUND_MAX_STATES;
+      maxStates = UPPER_BOUND_MAX_STATES;
     }
 
     const width = this.board.mines.length;

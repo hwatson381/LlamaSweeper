@@ -614,3 +614,13 @@ Next is probably just improving board editor
 
 Update relevant places for optimal zini website (add to external resources?)
 Also ask for click path to be added in link?
+
+post-doms notes ======
+
+Figure out how to make it run on game end
+
+Small bug where saving an eff boards preset as "custom" causes it to become NaN in localstorage or something
+
+I noticed "filterSaturateValue" is also NaN?
+
+Fix deepchain code hijacking by DOMs

@@ -419,7 +419,7 @@ let replayShowHidden = useLocalStorage("ls_replayShowHidden", "transparent3");
 let recordButtonEvents = useLocalStorage("ls_recordButtonEvents", true);
 
 let analyseDisplayMode = useLocalStorage("ls_analyseDisplayMode", "classic");
-let analyseAlgorithm = ref("incexzini");
+let analyseAlgorithm = ref("doms");
 let analyseAlgorithmScope = ref("beginning");
 let analyseIterations = ref(100);
 let analyseHistoryRewrite = ref(true);

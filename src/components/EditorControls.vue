@@ -1,5 +1,5 @@
 <template>
-  <q-card flat bordered style="max-width: 650px">
+  <q-card flat bordered style="max-width: 550px">
     <q-card-section>
       <div class="flex q-mb-md" style="gap: 15px">
         <q-input
@@ -110,22 +110,41 @@
             }
           "
         />
-        <q-btn
+        <q-btn-dropdown
           v-if="variant === 'zini explorer'"
           @click="
             game.board.switchToAnalyseMode(true);
-            game.board.ziniExplore.runDefaultAlgorithmOrPromptForInfo();
+            game.board.ziniExplore.runDomsZini(true);
           "
           color="primary"
-          label="DeepChain ZiNi"
-        />
-        <q-btn
-          v-if="variant === 'zini explorer'"
-          @click="game.board.boardImportExport.sendToOptimalZiNi()"
-          color="secondary"
-          label="Optimal ZiNi"
-          icon-right="open_in_new"
-        />
+          label="Run DOMS"
+          split
+        >
+          <q-list>
+            <q-item
+              clickable
+              v-close-popup
+              @click="
+                game.board.switchToAnalyseMode(true);
+                game.board.ziniExplore.runDefaultAlgorithmOrPromptForInfo();
+              "
+            >
+              <q-item-section>
+                <q-item-label>Run DeepChain</q-item-label>
+              </q-item-section>
+            </q-item>
+
+            <q-item
+              clickable
+              v-close-popup
+              @click="game.board.boardImportExport.sendToOptimalZiNi()"
+            >
+              <q-item-section>
+                <q-item-label>DOMS (mpk site)</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-btn-dropdown>
       </div>
     </q-card-section>
   </q-card>

@@ -22,8 +22,9 @@
             v-model="analyseAlgorithm"
             style="width: 200px; flex-shrink: 0"
             :options="[
+              { label: 'DOMS (optimal)', value: 'doms' },
               {
-                label: 'DeepChain ZiNi (best)',
+                label: 'DeepChain ZiNi',
                 value: 'incexzini',
               },
               {
@@ -34,7 +35,6 @@
               { label: 'WoM L ZiNi Improved', value: 'womzinifix' },
               { label: 'WoM HZiNi', value: 'womhzini' },
               { label: 'Chain ZiNi', value: 'chainzini' },
-              { label: 'DOMS (optimal)', value: 'doms' },
             ]"
             emit-value
             map-options
@@ -165,9 +165,12 @@
             />
             -->
           </div>
-          <p v-if="analyseAlgorithm === 'doms'" class="text-caption q-mb-none">
-            DOMS finds a provably minimal click path. Higher max states allows
-            harder boards but uses more memory. Originally by qqwref.
+          <p v-if="analyseAlgorithm === 'doms'" class="text-info q-mb-none">
+            DOMS is an algorithm originally developed by qqwref. It finds the
+            provably minimum number of clicks to solve the board. The "Max
+            states" setting puts a limit on the number of states DOMS can
+            explore before giving up. Higher values can solve harder boards, but
+            also use more memory.
           </p>
         </q-card-section>
       </template>
