@@ -188,6 +188,21 @@ fn benchmark_slow_board() {
     benchmark(SLOW_BOARD.0, SLOW_BOARD.1, 20_000_000);
 }
 
+/// "Evil 199" board (optimal clicks, 3BV).
+const EVIL_199_BOARD: (&str, usize, usize) = (
+    "?b=3020&m=84819191d005024402p010ki1104i0a85204000g10090h8080kj092916g324h0ka00ci0o880002cs0106294ad2244408i8p968hh020304ia0g000gi0",
+    179,
+    356,
+);
+
+#[test]
+#[ignore]
+fn benchmark_evil_199_board() {
+    let (pttacg, optimal_clicks, bbbv) = EVIL_199_BOARD;
+    assert_eq!(load(pttacg).info.bbbv as usize, bbbv, "3BV for {}", pttacg);
+    benchmark(pttacg, optimal_clicks, 20_000_000);
+}
+
 /// Community-scraped expert boards with very high efficiency potential, one per line:
 /// `PTTACG optimal_clicks 3BV`, with answers from the reference C++ implementation.
 const COMMUNITY_EXPERT_BOARDS: &str = include_str!("data/community_expert_boards.txt");
