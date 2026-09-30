@@ -112,7 +112,7 @@ class DeepChainZiniRunner {
         this.addLogEntry(message.logEntry);
         break;
       case "run-complete":
-        this.completeRun(message.result);
+        this.completeRun(message.result, message.durationSeconds);
         break;
       case "run-error":
         this.errorRun(message.error);
@@ -161,7 +161,8 @@ class DeepChainZiniRunner {
     console.log(logEntry);
   }
 
-  completeRun(result) {
+  completeRun(result, durationSeconds) {
+    console.log(`Finished in ${durationSeconds.toFixed(3)} seconds`);
     console.log(result);
     this.worker.terminate();
     ziniRunnerActive.value = false;

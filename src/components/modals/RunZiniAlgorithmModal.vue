@@ -166,11 +166,11 @@
             -->
           </div>
           <p v-if="analyseAlgorithm === 'doms'" class="text-info q-mb-none">
-            DOMS is an algorithm originally developed by qqwref. It finds the
-            provably minimum number of clicks to solve the board. The "Max
-            states" setting puts a limit on the number of states DOMS can
-            explore before giving up. Higher values can solve harder boards, but
-            also use more memory.
+            Deterministically Optimal Minesweeper Solver (DOMS) is an algorithm
+            originally developed by qqwref. It finds the provably minimum number
+            of clicks to solve the board. The "Max states" setting puts a limit
+            on the number of states DOMS can explore before giving up. Higher
+            values can solve harder boards, but also use more memory.
           </p>
         </q-card-section>
       </template>

@@ -31,9 +31,10 @@ function beginNormalRun(parameters, visualise) {
     ...parameters,
     progressUpdateFunction: visualise ? sendProgressUpdate : false,
   };
+  const start = performance.now();
   let realRunResult = ChainZini.calcInclusionExclusionZini(realRunParameters);
-
-  sendRunCompletion(realRunResult);
+  const durationSeconds = (performance.now() - start) / 1000;
+  sendRunCompletion(realRunResult, durationSeconds);
 }
 
 function beginNWayRun(parameters, visualise) {
@@ -49,10 +50,12 @@ function beginNWayRun(parameters, visualise) {
     ...parameters,
     progressUpdateFunction: visualise ? sendProgressUpdate : false,
   };
+  const start = performance.now();
   let realRunResult =
     ChainZini.calcNWayInclusionExclusionZini(realRunParameters);
 
-  sendRunCompletion(realRunResult);
+  const durationSeconds = (performance.now() - start) / 1000;
+  sendRunCompletion(realRunResult, durationSeconds);
 }
 
 function sendTimingRunDone(timingRun) {
@@ -93,10 +96,11 @@ function sendProgressUpdate(updateType, data) {
   }
 }
 
-function sendRunCompletion(result) {
+function sendRunCompletion(result, durationSeconds) {
   postMessage({
     type: "run-complete",
     result: result,
+    durationSeconds: durationSeconds,
   });
 }
 

@@ -125,12 +125,8 @@ onmessage = function (event) {
   try {
     const start = performance.now();
     const result = doms_zini(width, height, mines, maxStates, reportProgress);
-    console.log(
-      `DOMS complete in ${((performance.now() - start) / 1000).toFixed(
-        2
-      )} seconds`
-    );
-    postMessage({ type: "run-complete", result: result });
+    const durationSeconds = (performance.now() - start) / 1000;
+    postMessage({ type: "run-complete", result, durationSeconds });
   } catch (error) {
     postMessage({
       type: "run-error",
