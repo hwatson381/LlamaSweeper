@@ -632,10 +632,6 @@ Fix deepchain code hijacking by DOMs
 
 Change d=1 to auto run doms instead
 
+Also ptt import should allow links with d=1 at the end?
+
 Can we do something in zini explorer (or similar) that allows doing logically guaranteed zini. Like we have a bunch of rules (static rules from DOMS exposition) like the swap rules, never doing chords that reveal nothing new, possibly rules about chords being dominated by digs, other dominance rules like exchanges (care needed), key square stuff. So like have checkboxes for which rules to use to find "never chords" and "always chords" and maybe a button to do a "never chord" pass and a button for an "always chord" pass. We can then use different coloured markings (and a key or hover tooltip) to show where a square's classification came from similar to DOMS exposition.
-
-Remember to look for simpler performance improvements, like using slower data structures (e.g. set instead of array when overkill)
-
-New idea for static improvements - "local-brute-force-mini-doms":
-For each candidate - bruteforce what it's neighbours could do. All combinations of being a chord or not being a chord. And also including whether the square itself is a chord or not. And consider all possible outcomes for whether these neighbour chords are or are not part of the same chord chain. Basically consider every possible "local neighbourhood" thing that could be going on around that square. And then look for whether we can find domination for either the candidate being a chord or being safe. And use that to then statically mark it as chordable or never chordable.
-Basically we just test every possible localneighbourhood for what could be going on around a chord and update static pre-board based on that. It's hopefully a stronger form of applying the static rules (and always-chord equivalents) that we already have. Run this on all candidates, and if a candidate changes then run the same alg on squares in it's neighbourhood (like push into a queue)
