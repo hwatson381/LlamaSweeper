@@ -65,3 +65,9 @@ Transition caching
 How pass 2 stays cheap
 
 Low priority, but could there be a speedup to static rules by re-running them based on a queue of nearby static rules that have been applied rather than a full table sweep each time?
+
+Remember to look for simpler performance improvements, like using slower data structures (e.g. set instead of array when overkill)
+
+New idea for static improvements - "local-brute-force-mini-doms":
+For each candidate - bruteforce what it's neighbours could do. All combinations of being a chord or not being a chord. And also including whether the square itself is a chord or not. And consider all possible outcomes for whether these neighbour chords are or are not part of the same chord chain. Basically consider every possible "local neighbourhood" thing that could be going on around that square. And then look for whether we can find domination for either the candidate being a chord or being safe. And use that to then statically mark it as chordable or never chordable.
+Basically we just test every possible localneighbourhood for what could be going on around a chord and update static pre-board based on that. It's hopefully a stronger form of applying the static rules (and always-chord equivalents) that we already have. Run this on all candidates, and if a candidate changes then run the same alg on squares in it's neighbourhood (like push into a queue)
