@@ -7,6 +7,7 @@
 //! + 3BV units no chain solves (left clicks). The solver finds the `S` minimising this.
 //!
 //! * `model`: the board reduced to chord candidates.
+//! * `reduce`: static rules removing candidates no optimal solution needs to chord.
 //! * `order`: choosing the sweep order over candidates.
 //! * `frontier`: the dynamic program over chord sets.
 //! * `table` / `prune`: DP state storage and exact dominance pruning.
@@ -16,6 +17,7 @@ mod frontier;
 pub mod model;
 mod order;
 mod prune;
+pub mod reduce;
 pub mod solution;
 mod table;
 
@@ -76,6 +78,8 @@ pub struct DomsStats {
     pub peak_states: usize,
     pub max_boundary: usize,
     pub max_active_factors: usize,
+    /// Chord candidates removed by the static rules; the DP decides the rest.
+    pub static_removed: usize,
 }
 
 pub struct DomsResult {
@@ -126,6 +130,7 @@ pub fn solve_board(
     result.stats.peak_states = outcome.peak_states;
     result.stats.max_boundary = outcome.max_boundary;
     result.stats.max_active_factors = outcome.max_active_factors;
+    result.stats.static_removed = outcome.static_removed;
     Ok(result)
 }
 

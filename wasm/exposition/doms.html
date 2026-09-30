@@ -26,6 +26,7 @@
           <li><a href="#walkthrough">How the algorithm works</a></li>
           <li><a href="#applied">The minesweeper ideas DOMS already uses</a></li>
           <li><a href="#potential">Minesweeper ideas not applied yet</a></li>
+          <li><a href="#ordering">Choosing the sweep order</a></li>
           <li><a href="#appendix">Appendix: self-check</a></li>
         </ol>
       </nav>
@@ -128,7 +129,7 @@
       <p>
         The number of states grows roughly exponentially with the cut width: the number of chains that could still grow plus the number of active factors.
         <code>order.rs</code> estimates the width of rows, columns, bands of several lines and a "smart" best order within each line, and picks the narrowest.
-        On expert boards columns (16 tall) usually beat rows (30 wide).
+        On expert boards columns (16 tall) usually beat rows (30 wide). <a href="#ordering">Section 4</a> explains how.
       </p>
       <div data-diagram="orders"></div>
 
@@ -316,10 +317,141 @@
       </table>
 
       <!-- ================================================================== -->
+      <h2 id="ordering">4. Choosing the sweep order</h2>
+
+      <h3>4.1 What the order changes</h3>
+      <p>
+        Any order gives the same optimal answer. The DP is exact whichever order it sweeps in, so the order only decides how many states it has to carry,
+        and therefore how long it takes and whether it fits under the state limit. <code>choose_sweep_order</code> runs once, before the DP, and only
+        looks at the board's structure. It never runs the DP to compare orders. It scores a handful of candidate orders, keeps the best, and
+        relabels the candidates (<code>ChordModel::reordered</code>) so that step <i>k</i> of the DP decides candidate <i>k</i>. Scoring every option
+        takes milliseconds, far less than the solve itself.
+      </p>
+
+      <h3>4.2 Measuring a cut</h3>
+      <p>
+        The estimate for an order is the width of every <b>cut</b>, meaning the point between decision <i>k</i> and decision <i>k</i>+1. It counts the same
+        two kinds of thing that make up the DP state (1.6), but only structurally, without knowing what was chorded:
+      </p>
+      <ul>
+        <li>
+          <b>Connectivity width</b>: decided candidates that still have an undecided neighbouring candidate (any of them could be in a chain that can still
+          grow), plus openings with border candidates on both sides (a chain through the opening can still grow through its undecided borders).
+        </li>
+        <li><b>Factor width</b>: mines and 3BV units with candidates on both sides. These are exactly the active factors, so each is one bit of the state.</li>
+      </ul>
+      <p>
+        Every item is "live" from the first to the last position of its candidates, so <code>cut_widths_for</code> turns each item into an interval and
+        counts how many intervals cover each cut, using a difference array (<code>coverage</code>). That makes scoring one order linear in the board size.
+        An opening with borders on both sides counts twice: once as connectivity and once as a 3BV factor.
+      </p>
+      <div data-diagram="cut-anatomy"></div>
+
+      <h3>4.3 Scoring an order</h3>
+      <p>Each order gets a <code>WidthEstimate</code>, and estimates are compared field by field, in this order:</p>
+      <table class="facts">
+        <tr>
+          <th>field</th>
+          <th>meaning</th>
+          <th>why</th>
+        </tr>
+        <tr>
+          <td><code>max_total</code></td>
+          <td>widest cut (connectivity + factors)</td>
+          <td>The widest layer dominates both memory and time, and it's where the state limit is hit.</td>
+        </tr>
+        <tr>
+          <td><code>max_connectivity</code></td>
+          <td>widest connectivity part</td>
+          <td>Chain signatures are more expensive than factor bits: there can be many ways to group the same boundary into chains.</td>
+        </tr>
+        <tr>
+          <td><code>max_factors</code></td>
+          <td>most active factors at once</td>
+          <td>Next tie-break.</td>
+        </tr>
+        <tr>
+          <td><code>work</code></td>
+          <td>sum of 2<sup>width</sup> over all cuts</td>
+          <td>A rough total-work estimate: between two orders with the same peak, prefer the one that spends less time near it.</td>
+        </tr>
+      </table>
+      <p>Any remaining tie goes to the alphabetically first name, so the choice is deterministic.</p>
+
+      <h3>4.4 Plain rows and columns</h3>
+      <p>
+        The baseline is the plain sweep: column by column from top to bottom, or row by row from left to right. Its frontier is roughly one line long plus
+        a one-cell step where the current line is half done (2.5), so the shorter dimension usually wins (1.12). Both are always scored, and the better of the
+        two is the benchmark the other options have to beat.
+      </p>
+
+      <h3>4.5 Smart orders within a line</h3>
+      <p>
+        The smart order keeps the line-by-line sweep but chooses the order <em>inside</em> each line. Top to bottom is just one of the <i>n</i>! ways to
+        go through a line of <i>n</i> candidates. Deciding some candidates first can close off mines and 3BV units left over from the previous line, and
+        leaving others until last delays opening new ones.
+      </p>
+      <p>
+        The key fact is that while the sweep is inside a line, every earlier line is fully decided and every later line is untouched. So the width of a
+        cut inside the line depends only on <em>which subset</em> of the line has been decided, not on the order it was decided in. That turns "best
+        order of the line" into a shortest-path problem over subsets: start from the empty set, add one candidate at a time, and minimise the widest
+        cut along the way. With <i>n</i> candidates that is 2<sup><i>n</i></sup> subsets instead of <i>n</i>! orders, and the path found has the smallest
+        possible peak within that line. Ties are broken by the same fields as 4.3.
+      </p>
+      <div data-diagram="smart-lattice"></div>
+      <p>
+        Computing the width of all 2<sup><i>n</i></sup> subsets is the fiddly part. <code>crossing_counts</code> sorts every mine, 3BV unit and opening by
+        which other lines it touches, and records its candidates on this line as a bitmask <i>m</i>:
+      </p>
+      <ul>
+        <li>touching earlier and later lines: always on the frontier,</li>
+        <li>earlier lines only: on the frontier until all of <i>m</i> is decided,</li>
+        <li>later lines only: on the frontier as soon as any of <i>m</i> is decided,</li>
+        <li>this line only: on the frontier while <i>m</i> is partly decided.</li>
+      </ul>
+      <p>
+        Each case needs "how many sets have <i>m</i> ⊆ this subset" for every subset, which a subset-sum (zeta) transform computes for all
+        2<sup><i>n</i></sup> subsets at once in <i>n</i>·2<sup><i>n</i></sup> steps. The boundary candidates of earlier lines are handled the same way, and
+        the candidates of the line itself are checked directly.
+      </p>
+      <p>
+        Because of the 2<sup><i>n</i></sup>, smart orders are only tried when lines are at most 20 cells long, and only for an orientation whose plain sweep is
+        within 2 of the best. On expert boards that means smart columns but never smart rows.
+      </p>
+      <div data-diagram="smart-expert"></div>
+
+      <h3>4.6 Bands</h3>
+      <p>
+        A <b>band</b> treats <i>b</i> neighbouring lines as one thick line. The sweep walks along the band, taking its <i>b</i> cells across at each step, then
+        moves on to the next band. <code>order.rs</code> tries bands of 2, 4, 8, … lines and one band of the full board size, in both orientations.
+      </p>
+      <div data-diagram="bands"></div>
+      <p>
+        Geometrically, bands should lose. The frontier of a band sweep runs along the previous band's edge, the band's own far edge, and a cross-section
+        <i>b</i> cells long, which is about one line plus <i>b</i> instead of one line plus one. But the widths count candidates and sets, not cells. Zeros,
+        mines and big openings make the real frontier lumpy, and on some boards a band is narrower at the point where both plain sweeps are at their widest.
+        This happens more often on intermediate boards than on expert boards. Bands are cheap to score, so they are always tried, but a band is only accepted
+        if it is at least 2 narrower than the best plain sweep, so that noise in the estimate doesn't swap in a strange order. The full-size bands are the same
+        as the plain sweeps in the other orientation, so they can never pass that test.
+      </p>
+
+      <h3>4.7 All the options on one board</h3>
+      <div data-diagram="orders-live"></div>
+
+      <h3>4.8 Other uses of the widths</h3>
+      <p>
+        Before the DP starts, <code>frontier.rs</code> sends the cut widths of the chosen order to the caller (the <code>Plan</code> progress event). The
+        site's worker (<code>doms-worker.js</code>) fits log(states) ≈ <i>a</i> + <i>b</i>·width to the layers solved so far and uses the remaining widths to
+        predict the time left. The solve also reports the chosen order's name, its widest connectivity (<code>maxBoundary</code>) and its most active
+        factors (<code>maxActiveFactors</code>).
+      </p>
+
+      <!-- ================================================================== -->
       <h2 id="appendix">Appendix: self-check</h2>
       <p>
         Everything in part 3 is claimed to be exact. This button tests those claims against brute force on random small boards. In development it passed on
-        1,650 boards with no failures.
+        1,650 boards with no failures. It also checks that the DP gets the same answer in the order section 4 would choose, and that the subset widths behind
+        smart orders agree with the plain cut widths.
       </p>
       <div data-diagram="selfcheck"></div>
     </main>

@@ -17,6 +17,7 @@
 use super::model::ChordModel;
 use super::order::{choose_sweep_order, coverage, cut_widths};
 use super::prune::prune_dominated;
+use super::reduce::{kept_candidates, STATIC_RULES};
 use super::table::{set_bit, test_bit, ConnectivityPool, Lookup, StateTable};
 use super::{DomsError, DomsProgress};
 
@@ -28,6 +29,8 @@ pub struct FrontierOutcome {
     pub peak_states: usize,
     pub max_boundary: usize,
     pub max_active_factors: usize,
+    /// Candidates removed by the static rules before the DP.
+    pub static_removed: usize,
 }
 
 /// Per-candidate factor bitsets. Mine factors come first, then 3BV factors.
@@ -184,7 +187,9 @@ pub fn solve_frontier(
     dominance_comparisons: u64,
     progress: &mut dyn FnMut(DomsProgress),
 ) -> Result<FrontierOutcome, DomsError> {
-    let (model, sweep_order) = choose_sweep_order(original);
+    let kept = kept_candidates(original, &STATIC_RULES);
+    let static_removed = original.candidate_cells.len() - kept.len();
+    let (model, sweep_order) = choose_sweep_order(&original.reordered(&kept));
     let candidate_count = model.candidate_cells.len();
     let candidate_words = (candidate_count + 63) / 64;
     let factors = FactorLayout::new(&model);
@@ -334,5 +339,6 @@ pub fn solve_frontier(
         peak_states,
         max_boundary,
         max_active_factors,
+        static_removed,
     })
 }

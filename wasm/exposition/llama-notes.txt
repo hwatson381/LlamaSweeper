@@ -40,7 +40,12 @@ Try ask for rules 3.2, 3.3.
 Can there be an additional rule for never chording when a chord is 
 equivalent to <=2 clicks? Typically an opening and an NF click. This would be an additional static rule
 
-Is it worth also having static rules for "always flags" - presumably we still ignore these until the square gets decided as otherwise it makes the frontier state confusing? Or do we?
+Followup for when static rules are added:
+(rule B is 3.3, rule C is the idea of never chording when a chord is equivalent to <=2 clicks)
+Once benchmarked, rule B does nothing when rule C is on, so B and its switch can probably be deleted.
+After this lands, the exposition page (doms.html section 3, and the "not in the Rust solver" comment in doms-model.js) will be out of date. It could get a section on rule C and private mines, as a separate task.
+
+Is it worth also having static rules for "always chords" - presumably we still ignore these until the square gets decided as otherwise it makes the frontier state confusing? Or do we?
 
 Honestly, this really wants me to make a "logically guaranteed" zini, inspired by the diagrams. Like using static rules to find "never chords", and then static rules for always chords and keep repeating
 
@@ -51,3 +56,10 @@ for example, if a square touches a whole bunch of never chords (and is one itsel
 Not necessarily, but if the "possible chord" is either already revealed (part of a chain) or is an opening edge (as far as chord sets go, we can start out with openings) then we don't have to worry about the seed click
 So then yeah, it can be forced as long as we also consider flags required to chord it? Like it must at least be neutral? Also, I guess the advantage of DOMS doing a sweeper is that any unchorded square behind the frontier is a "never chord" for that pass.
 Although Opus has warned about "never do both c & d type rules that depend on history and something about dominance assuming all future states are possible". I don't really understand this, but we should be careful I suppose.
+
+What is the effect of the comparison cap in DOMS? This is hardcoded to 1 million per layer, and determines how many dominance comparison it tries before stopping, so can potentially cause blowup in states as if it gets hit then more states get let through.
+
+There are additional things that may need exposition in the "explain ordering in exposition" chat. Notably:
+State limit and comparison cap
+Transition caching
+How pass 2 stays cheap

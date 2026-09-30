@@ -328,6 +328,214 @@
     return { connectivity: coverage(connectivity, cuts), factors: coverage(factors, cuts) };
   }
 
+  // ---- Choosing the sweep order (mirrors order.rs) ----
+
+  function adjacentCandidates(board, c) {
+    return board.neighbours[board.candidates[c]].filter((cell) => board.candOf[cell] >= 0).map((cell) => board.candOf[cell]);
+  }
+
+  // Lines of `bandSize` columns (or rows), each walked along its length, crossing the band at every step.
+  function stripOrder(board, byColumns, bandSize) {
+    const key = (c) => {
+      const { x, y } = board.xy(board.candidates[c]);
+      return byColumns ? [Math.floor(x / bandSize), y, x % bandSize] : [Math.floor(y / bandSize), x, y % bandSize];
+    };
+    return board.candidates.map((_, c) => c).sort((a, b) => compareArrays(key(a), key(b)));
+  }
+
+  function widthEstimate(board, order) {
+    const { connectivity, factors } = cutWidths(board, order);
+    const estimate = { maxTotal: 0, maxConnectivity: 0, maxFactors: 0, work: 0 };
+    connectivity.forEach((c, i) => {
+      const total = c + factors[i];
+      estimate.maxTotal = Math.max(estimate.maxTotal, total);
+      estimate.maxConnectivity = Math.max(estimate.maxConnectivity, c);
+      estimate.maxFactors = Math.max(estimate.maxFactors, factors[i]);
+      estimate.work += 2 ** Math.min(total, 60);
+    });
+    return estimate;
+  }
+
+  function compareEstimates(a, b) {
+    return a.maxTotal - b.maxTotal || a.maxConnectivity - b.maxConnectivity || a.maxFactors - b.maxFactors || a.work - b.work;
+  }
+
+  function zeta(counts, bits) {
+    for (let bit = 0; bit < bits; bit++) {
+      const b = 1 << bit;
+      for (let mask = 0; mask < counts.length; mask++) if (mask & b) counts[mask] += counts[mask ^ b];
+    }
+  }
+
+  function lineNumberOf(board, byColumns) {
+    return (c) => {
+      const { x, y } = board.xy(board.candidates[c]);
+      return byColumns ? x : y;
+    };
+  }
+
+  // Cut width for every subset `mask` of `line` already decided, with earlier lines decided and later lines not.
+  function lineWidths(board, byColumns, line) {
+    const lineOf = lineNumberOf(board, byColumns);
+    const number = lineOf(line[0]);
+    const len = line.length;
+    const count = 1 << len;
+    const full = count - 1;
+    const bitOf = new Map(line.map((c, bit) => [c, bit]));
+
+    const crossing = (sets) => {
+      const withEarlier = new Int32Array(count);
+      const withLater = new Int32Array(count);
+      const onlyHere = new Int32Array(count);
+      let always = 0;
+      let earlierTotal = 0;
+      let laterTotal = 0;
+      let hereTotal = 0;
+      for (const set of sets) {
+        let earlier = false;
+        let later = false;
+        let mask = 0;
+        for (const c of set) {
+          const l = lineOf(c);
+          if (l < number) earlier = true;
+          else if (l > number) later = true;
+          else mask |= 1 << bitOf.get(c);
+        }
+        if (earlier && later) always++;
+        else if (earlier) (withEarlier[mask]++, earlierTotal++);
+        else if (later) (withLater[mask]++, laterTotal++);
+        else if (mask) (onlyHere[mask]++, hereTotal++);
+      }
+      zeta(withEarlier, len);
+      zeta(withLater, len);
+      zeta(onlyHere, len);
+      const out = new Int32Array(count);
+      for (let mask = 0; mask < count; mask++) {
+        out[mask] = always + earlierTotal - withEarlier[mask] + laterTotal - withLater[full ^ mask] + hereTotal - onlyHere[mask] - onlyHere[full ^ mask];
+      }
+      return out;
+    };
+
+    const connectivity = crossing(board.openings.map((opening) => opening.borders.map((cell) => board.candOf[cell])));
+    const factors = crossing([...board.mineSolvers, ...board.unitSolvers]);
+
+    // A decided candidate stays on the frontier while it has an undecided adjacent candidate.
+    const finishedBy = new Int32Array(count);
+    let waiting = 0;
+    let alwaysWaiting = 0;
+    board.candidates.forEach((_, c) => {
+      if (lineOf(c) >= number) return;
+      let later = false;
+      let mask = 0;
+      for (const d of adjacentCandidates(board, c)) {
+        if (lineOf(d) > number) later = true;
+        else if (lineOf(d) === number) mask |= 1 << bitOf.get(d);
+      }
+      if (later) alwaysWaiting++;
+      else if (mask) (finishedBy[mask]++, waiting++);
+    });
+    zeta(finishedBy, len);
+    const sameLine = line.map((c) => adjacentCandidates(board, c).reduce((mask, d) => (bitOf.has(d) ? mask | (1 << bitOf.get(d)) : mask), 0));
+    const hasLater = line.map((c) => adjacentCandidates(board, c).some((d) => lineOf(d) > number));
+    for (let mask = 0; mask < count; mask++) {
+      connectivity[mask] += alwaysWaiting + waiting - finishedBy[mask];
+      for (let bit = 0; bit < len; bit++) {
+        if ((mask >> bit) & 1 && (hasLater[bit] || sameLine[bit] & ~mask & full)) connectivity[mask]++;
+      }
+    }
+    return { connectivity, factors };
+  }
+
+  // Order of `line` whose widest cut is smallest: a DP over which subset of the line is decided so far.
+  function bestLineOrder(board, byColumns, line) {
+    const { connectivity, factors } = lineWidths(board, byColumns, line);
+    const count = 1 << line.length;
+    const total = connectivity.map((c, mask) => c + factors[mask]);
+    const bestTotal = new Int32Array(count);
+    const bestConnectivity = new Int32Array(count);
+    const bestFactors = new Int32Array(count);
+    const bestWork = new Float64Array(count);
+    const lastAdded = new Int8Array(count).fill(-1);
+    bestTotal[0] = total[0];
+    bestConnectivity[0] = connectivity[0];
+    bestFactors[0] = factors[0];
+    bestWork[0] = 2 ** Math.min(total[0], 60);
+    for (let mask = 1; mask < count; mask++) {
+      const work = 2 ** Math.min(total[mask], 60);
+      let chosen = -1;
+      let t, c, f, w;
+      for (let rest = mask; rest; rest &= rest - 1) {
+        const bit = 31 - Math.clz32(rest & -rest);
+        const prev = mask ^ (1 << bit);
+        const nt = Math.max(bestTotal[prev], total[mask]);
+        const nc = Math.max(bestConnectivity[prev], connectivity[mask]);
+        const nf = Math.max(bestFactors[prev], factors[mask]);
+        const nw = bestWork[prev] + work;
+        if (chosen < 0 || nt < t || (nt === t && (nc < c || (nc === c && (nf < f || (nf === f && nw < w)))))) {
+          [chosen, t, c, f, w] = [bit, nt, nc, nf, nw];
+        }
+      }
+      [lastAdded[mask], bestTotal[mask], bestConnectivity[mask], bestFactors[mask], bestWork[mask]] = [chosen, t, c, f, w];
+    }
+    const reversed = [];
+    for (let mask = count - 1; mask; mask ^= 1 << lastAdded[mask]) reversed.push(line[lastAdded[mask]]);
+    return reversed.reverse();
+  }
+
+  // Candidates grouped by row/column, sorted along the line.
+  function sweepLines(board, byColumns) {
+    const lineOf = lineNumberOf(board, byColumns);
+    const along = (c) => (byColumns ? board.xy(board.candidates[c]).y : board.xy(board.candidates[c]).x);
+    const lines = Array.from({ length: byColumns ? board.w : board.h }, () => []);
+    board.candidates.forEach((_, c) => lines[lineOf(c)].push(c));
+    return lines.map((line) => line.sort((a, b) => along(a) - along(b)));
+  }
+
+  function smartStripOrder(board, byColumns) {
+    return sweepLines(board, byColumns).flatMap((line) => (line.length <= 1 || line.length > 20 ? line : bestLineOrder(board, byColumns, line)));
+  }
+
+  // 1, the powers of two below `size`, and `size`.
+  function bandSizes(size) {
+    const values = [1, size];
+    for (let value = 2; value < size; value *= 2) values.push(value);
+    return [...new Set(values)].sort(byNumber);
+  }
+
+  // Every order order.rs considers. Status is "chosen", "kept", "rejected" (band not narrow enough) or "skipped".
+  function chooseSweepOrder(board) {
+    const tried = [];
+    const add = (name, order) => {
+      const entry = { name, order, estimate: widthEstimate(board, order), status: "kept" };
+      tried.push(entry);
+      return entry;
+    };
+    const plain = [
+      ["columns", true],
+      ["rows", false],
+    ].map(([name, byColumns]) => [add(name, stripOrder(board, byColumns, 1)), byColumns]);
+    const standardBest = Math.min(...plain.map(([entry]) => entry.estimate.maxTotal));
+    for (const [entry, byColumns] of plain) {
+      const lineSize = byColumns ? board.h : board.w;
+      const name = entry.name + "-smart";
+      if (lineSize > 20) tried.push({ name, status: "skipped", reason: `lines are ${lineSize} cells long (limit 20)` });
+      else if (entry.estimate.maxTotal > standardBest + 2) tried.push({ name, status: "skipped", reason: "plain sweep is more than 2 wider than the best" });
+      else add(name, smartStripOrder(board, byColumns));
+    }
+    const bands = [...bandSizes(board.h).slice(1).map((size) => ["rows", false, size]), ...bandSizes(board.w).slice(1).map((size) => ["columns", true, size])];
+    for (const [name, byColumns, size] of bands) {
+      const entry = add(`${name}-band-${size}`, stripOrder(board, byColumns, size));
+      if (entry.estimate.maxTotal > standardBest - 2) {
+        entry.status = "rejected";
+        entry.reason = "not at least 2 narrower than the best plain sweep";
+      }
+    }
+    const kept = tried.filter((entry) => entry.status === "kept");
+    kept.sort((a, b) => compareEstimates(a.estimate, b.estimate) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    kept[0].status = "chosen";
+    return { chosen: kept[0], tried };
+  }
+
   // ---- Frontier DP ----
 
   function prepare(board, order) {
@@ -683,6 +891,27 @@
       if (reduced.total !== best.total) fail("static reduction", [reduced.total, best.total]);
       const reducedDp = solveDP(board, columnOrder(board, kept), { prune: "cancel", absorb: true });
       if (reducedDp.total !== best.total) fail("reduced dp", [reducedDp.total, best.total]);
+      const { chosen } = chooseSweepOrder(board);
+      if (solveDP(board, chosen.order, { prune: "basic" }).total !== best.total) fail("dp in order " + chosen.name);
+      // The per-subset widths behind smart orders must match the generic cut widths.
+      for (const byColumns of [true, false]) {
+        const smart = smartStripOrder(board, byColumns);
+        const widths = cutWidths(board, smart);
+        let start = 0;
+        for (const line of sweepLines(board, byColumns)) {
+          if (line.length) {
+            const { connectivity, factors } = lineWidths(board, byColumns, line);
+            const bitOf = new Map(line.map((c, bit) => [c, bit]));
+            let mask = 0;
+            smart.slice(start, start + line.length).forEach((c, i) => {
+              mask |= 1 << bitOf.get(c);
+              const cut = start + i;
+              if (cut < widths.connectivity.length && (widths.connectivity[cut] !== connectivity[mask] || widths.factors[cut] !== factors[mask])) fail("line widths");
+            });
+          }
+          start += line.length;
+        }
+      }
     }
     return { checked, failures };
   }
@@ -697,6 +926,14 @@
     rowOrder,
     columnOrder,
     cutWidths,
+    adjacentCandidates,
+    stripOrder,
+    widthEstimate,
+    compareEstimates,
+    lineWidths,
+    sweepLines,
+    smartStripOrder,
+    chooseSweepOrder,
     prepare,
     isActive,
     step,

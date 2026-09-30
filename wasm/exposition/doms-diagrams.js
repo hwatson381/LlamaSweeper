@@ -1492,6 +1492,291 @@
     return null;
   });
 
+  // =====================================================================
+  // Section 4: choosing the sweep order
+  // =====================================================================
+
+  const PLAIN_PATH = "#e08a00";
+  const SMART_PATH = "#2e9e57";
+  const SIZES = { expert: [30, 16, 99], intermediate: [16, 16, 40] };
+
+  function totalWidths(board, order) {
+    const widths = M.cutWidths(board, order);
+    return widths.connectivity.map((c, i) => c + widths.factors[i]);
+  }
+
+  register("cut-anatomy", () => {
+    const { board, order, prep } = running();
+    const widths = M.cutWidths(board, order);
+    const total = widths.connectivity.map((c, i) => c + widths.factors[i]);
+    const cut = total.indexOf(Math.max(...total));
+    const decided = cut + 1;
+    const isDecided = (c) => prep.posOf[c] < decided;
+    const boundary = new Set(
+      board.candidates
+        .map((_, c) => c)
+        .filter((c) => isDecided(c) && M.adjacentCandidates(board, c).some((d) => !isDecided(d)))
+        .map((c) => board.candidates[c])
+    );
+    const straddling = board.openings.filter((opening) => {
+      const sides = opening.borders.map((cell) => isDecided(board.candOf[cell]));
+      return sides.includes(true) && sides.includes(false);
+    });
+    const straddlingZeros = new Set(straddling.flatMap((opening) => opening.zeros));
+    const active = prep.factors.filter((factor) => M.isActive(factor, decided));
+    const activeMines = new Set(active.filter((f) => f.kind === "mine").map((f) => f.cell));
+    const activeIslands = new Set(active.filter((f) => f.kind === "unit" && !f.isOpening).map((f) => f.cell));
+    const activeOpenings = active.filter((f) => f.kind === "unit" && f.isOpening).length;
+    const next = board.candidates[order[decided]];
+    const merged = M.solveDP(board, order, { prune: "none" }).counts[cut];
+    const pruned = M.solveDP(board, order, { prune: "basic" }).counts[cut];
+    return figure(
+      `The widest cut of the plain column sweep on the running example, after ${decided} of ${order.length} decisions. ` +
+        `order.rs counts ${total[cut]} things that link the decided side to the undecided side and treats each as roughly one bit of state, ` +
+        `so it expects up to about 2<sup>${total[cut]}</sup> ≈ ${(2 ** total[cut]).toLocaleString()} states. The toy DP actually has ${merged} after merging and ` +
+        `${pruned} after pass-1 dominance: the estimate is very loose, but real state counts rise and fall with it (1.11), which is all that's needed to compare orders.`,
+      row(
+        renderBoard(board, {
+          axes: true,
+          decorate: (i) => {
+            const c = board.candOf[i];
+            const d = {};
+            if (straddlingZeros.has(i)) d.tint = "var(--opening)";
+            if (c >= 0 && isDecided(c)) d.tint = "var(--decided)";
+            const rings = [];
+            if (boundary.has(i)) rings.push({ colour: "#3559c7" });
+            if (activeMines.has(i)) rings.push({ colour: "#c62828" });
+            if (activeIslands.has(i)) rings.push({ colour: "var(--island)", thin: true, dashed: true });
+            if (rings.length) d.rings = rings;
+            if (i === next) d.label = "next";
+            return d;
+          },
+        }),
+        table(
+          ["", "counted", ""],
+          [
+            ["connectivity", "decided candidates with an undecided neighbouring candidate (blue)", boundary.size],
+            ["", "openings with border candidates on both sides", straddling.length],
+            ["factors", "mines with neighbouring candidates on both sides (red)", activeMines.size],
+            ["", "islands with solving candidates on both sides (orange)", activeIslands.size],
+            ["", "openings with border candidates on both sides, again as 3BV units", activeOpenings],
+            ["<b>width</b>", "", `<b>${boundary.size + straddling.length + activeMines.size + activeIslands.size + activeOpenings}</b>`],
+          ]
+        )
+      ),
+      legend([
+        [{ tint: "var(--decided)" }, "decided candidate"],
+        [{ ring: "#3559c7" }, "decided, still touching an undecided candidate"],
+        [{ ring: "#c62828" }, "active mine"],
+        [{ ring: "var(--island)", thin: true, dashed: true }, "active island"],
+        [{ tint: "var(--opening)" }, "zeros of an opening with borders on both sides"],
+      ])
+    );
+  });
+
+  register("smart-lattice", () => {
+    const { board } = running();
+    const smart = M.smartStripOrder(board, true);
+    let best = null;
+    for (const line of M.sweepLines(board, true)) {
+      if (line.length < 3 || line.length > 5) continue;
+      const { connectivity, factors } = M.lineWidths(board, true, line);
+      const width = (mask) => connectivity[mask] + factors[mask];
+      const inLine = new Set(line);
+      const bitOf = new Map(line.map((c, bit) => [c, bit]));
+      const prefixes = (list) => {
+        let mask = 0;
+        return [0, ...list.map((c) => (mask |= 1 << bitOf.get(c)))];
+      };
+      const plainPath = prefixes(line);
+      const smartPath = prefixes(smart.filter((c) => inLine.has(c)));
+      const peak = (path) => Math.max(...path.map(width));
+      const gain = peak(plainPath) - peak(smartPath);
+      if (!best || gain > best.gain) best = { line, width, plainPath, smartPath, peak, gain };
+    }
+    if (!best) return figure("No example found.");
+    const { line, width, plainPath, smartPath, peak } = best;
+    const letter = (bit) => "abcde"[bit];
+    const name = (mask) => (mask ? line.map((_, bit) => ((mask >> bit) & 1 ? letter(bit) : "")).join("") : "∅");
+    const bitCount = (mask) => mask.toString(2).replace(/0/g, "").length;
+    const onPlain = new Set(plainPath);
+    const onSmart = new Set(smartPath);
+    const layers = [];
+    for (let size = 0; size <= line.length; size++) {
+      const masks = [];
+      for (let mask = 0; mask < 1 << line.length; mask++) if (bitCount(mask) === size) masks.push(mask);
+      layers.push(
+        h(
+          "div",
+          { class: "lattice-row" },
+          masks.map((mask) =>
+            h("span", { class: "chip" + (onSmart.has(mask) ? " yes" : ""), style: onPlain.has(mask) ? { outline: `2px dashed ${PLAIN_PATH}` } : null }, `${name(mask)}: ${width(mask)}`)
+          )
+        )
+      );
+    }
+    const x = board.xy(board.candidates[line[0]]).x;
+    const letterOf = new Map(line.map((c, bit) => [board.candidates[c], letter(bit)]));
+    const smartLetters = smartPath.slice(1).map((mask, i) => letter(Math.log2(mask ^ smartPath[i])));
+    return figure(
+      `Column ${x} of the running example has ${line.length} candidates, a–${letter(line.length - 1)} from top to bottom. Each chip is one set of them already decided, ` +
+        `with the width of that cut. Columns before ${x} are fully decided and columns after it are untouched, so that set is all the width depends on. ` +
+        `Any order of the column is a path from ∅ to ${name((1 << line.length) - 1)} that adds one letter per step. Top to bottom (dashed) peaks at ${peak(plainPath)}. ` +
+        `The DP over subsets finds ${smartLetters.join(" → ")} (green), which peaks at ${peak(smartPath)}.`,
+      rowCenter(
+        renderBoard(board, {
+          axes: true,
+          cell: 26,
+          decorate: (i) => {
+            const c = board.candOf[i];
+            const d = {};
+            if (c >= 0 && board.xy(i).x < x) d.tint = "var(--decided)";
+            if (letterOf.has(i)) Object.assign(d, { label: letterOf.get(i), ring: "#3559c7" });
+            return d;
+          },
+        }),
+        h("div", {}, layers)
+      ),
+      legend([
+        [{ tint: "var(--decided)" }, "decided before the column starts"],
+        [{}, "top-to-bottom path", h("span", { style: { display: "block", width: "100%", height: "100%", outline: `2px dashed ${PLAIN_PATH}` } })],
+        [{ tint: "#e3f4e6" }, "path the DP picks"],
+      ])
+    );
+  });
+
+  register("smart-expert", () => {
+    const board = M.analyse(M.randomRows(...SIZES.expert, 1));
+    const plain = M.stripOrder(board, true, 1);
+    const smart = M.smartStripOrder(board, true);
+    const lines = M.sweepLines(board, true);
+    const rank = new Map();
+    let changed = 0;
+    let start = 0;
+    for (const line of lines) {
+      const part = smart.slice(start, start + line.length);
+      part.forEach((c, r) => rank.set(board.candidates[c], line.length > 1 ? r / (line.length - 1) : 0));
+      if (part.some((c, r) => c !== line[r])) changed++;
+      start += line.length;
+    }
+    const plainWidths = totalWidths(board, plain);
+    const smartWidths = totalWidths(board, smart);
+    const max = Math.max(...plainWidths, ...smartWidths);
+    const ratio = M.widthEstimate(board, plain).work / M.widthEstimate(board, smart).work;
+    return figure(
+      `The smart column order on a random expert board. Shading shows when each candidate is decided within its own column (light = early, dark = late), ` +
+        `so a plain column sweep would be light at the top and dark at the bottom everywhere. ${changed} of ${lines.length} columns use a different order: ` +
+        `some run bottom-up, and some start with a group in the middle or at the far end. The widest cut drops from ${Math.max(...plainWidths)} to ` +
+        `${Math.max(...smartWidths)}, and the work estimate Σ 2<sup>width</sup> falls by a factor of ${ratio.toFixed(1)}.`,
+      renderBoard(board, { cell: 18, decorate: (i) => (rank.has(i) ? { tint: `rgba(53, 89, 199, ${(0.05 + 0.55 * rank.get(i)).toFixed(2)})` } : null) }),
+      chart("plain columns", plainWidths, { max, colour: PLAIN_PATH, height: 60 }),
+      chart("smart columns", smartWidths, { max, colour: SMART_PATH, height: 60 })
+    );
+  });
+
+  register("bands", () => {
+    const { board } = running();
+    const panels = [
+      ["columns", true, 1],
+      ["columns-band-2", true, 2],
+      ["rows-band-4", false, 4],
+    ].map(([name, byColumns, size]) => {
+      const order = M.stripOrder(board, byColumns, size);
+      const position = new Map(order.map((c, p) => [board.candidates[c], p + 1]));
+      return renderBoard(board, {
+        cell: 26,
+        title: `${name}: widest cut ${M.widthEstimate(board, order).maxTotal}`,
+        decorate: (i) => (position.has(i) ? { badge: position.get(i), badgeColor: "#3559c7" } : null),
+      });
+    });
+    return figure(
+      "Sweep positions for the plain column sweep and two bands. In columns-band-2, columns 0–1 form one band: the sweep walks down it taking both columns " +
+        "at each row, then does columns 2–3, and so on. rows-band-4 walks left to right along rows 0–3 taking four cells at each step, then along rows 4–6. " +
+        `A band as big as the board is just the other plain sweep: rows-band-${board.h} here is exactly the column sweep.`,
+      row(...panels)
+    );
+  });
+
+  register("orders-live", (container) => {
+    let size = "expert";
+    const seedInput = h("input", { type: "number", value: "1", min: "1", style: { width: "70px" } });
+    const sizeLabel = h("b", {}, size);
+    const out = h("div");
+    const tallyOut = h("div", { class: "small" });
+    const statusText = (entry) => {
+      if (entry.status === "chosen") return '<span class="ok">chosen</span>';
+      if (entry.status === "kept") return "considered";
+      return `${entry.status}: ${entry.reason}`;
+    };
+    const draw = () => {
+      const board = M.analyse(M.randomRows(...SIZES[size], Number(seedInput.value) || 1));
+      const { chosen, tried } = M.chooseSweepOrder(board);
+      const rows = tried.map((entry) =>
+        entry.estimate
+          ? [entry.name, entry.estimate.maxTotal, entry.estimate.maxConnectivity, entry.estimate.maxFactors, Math.log2(entry.estimate.work).toFixed(1), statusText(entry)]
+          : [entry.name, "", "", "", "", statusText(entry)]
+      );
+      const shown = tried.filter((entry) => entry === chosen || entry.name === "columns" || entry.name === "rows").map((entry) => [entry.name, totalWidths(board, entry.order)]);
+      const max = Math.max(...shown.flatMap(([, widths]) => widths));
+      out.replaceChildren(
+        table(["order", "widest cut", "widest connectivity", "most active factors", "log₂ work", ""], rows),
+        ...shown.map(([name, widths]) => chart(name + (name === chosen.name ? " (chosen)" : ""), widths, { max, height: 50, colour: name === chosen.name ? SMART_PATH : "#6b8cff" }))
+      );
+    };
+    const tally = () => {
+      tallyOut.textContent = "Running…";
+      setTimeout(() => {
+        const count = 40;
+        const wins = new Map();
+        let narrower = 0;
+        let workBits = 0;
+        for (let seed = 1; seed <= count; seed++) {
+          const { chosen, tried } = M.chooseSweepOrder(M.analyse(M.randomRows(...SIZES[size], seed)));
+          const plain = tried.filter((entry) => entry.name === "columns" || entry.name === "rows").sort((a, b) => M.compareEstimates(a.estimate, b.estimate))[0];
+          wins.set(chosen.name, (wins.get(chosen.name) || 0) + 1);
+          narrower += plain.estimate.maxTotal - chosen.estimate.maxTotal;
+          workBits += Math.log2(plain.estimate.work / chosen.estimate.work);
+        }
+        const list = [...wins].sort((a, b) => b[1] - a[1]).map(([name, n]) => `${name} ×${n}`);
+        tallyOut.innerHTML =
+          `${size} seeds 1–${count}: chosen ${list.join(", ")}. On average the chosen order's widest cut is ${(narrower / count).toFixed(1)} narrower than the best plain sweep ` +
+          `and its work estimate is 2<sup>${(workBits / count).toFixed(1)}</sup> times smaller.`;
+      }, 20);
+    };
+    const setSize = (next) => {
+      size = next;
+      sizeLabel.textContent = next;
+      tallyOut.textContent = "";
+      draw();
+    };
+    seedInput.addEventListener("change", draw);
+    draw();
+    container.append(
+      figure(
+        "Every order order.rs tries on a random board, computed by the JavaScript copy of order.rs (which picked the same order as the Rust solver on 63 boards " +
+          "checked during development). “log₂ work” is log₂ of Σ 2<sup>width</sup> over all cuts. The charts show the chosen order against the two plain sweeps.",
+        h(
+          "div",
+          {},
+          h("button", { onclick: () => setSize("expert") }, "expert"),
+          " ",
+          h("button", { onclick: () => setSize("intermediate") }, "intermediate"),
+          " ",
+          sizeLabel,
+          ", seed ",
+          seedInput,
+          " ",
+          h("button", { onclick: () => ((seedInput.value = (Number(seedInput.value) || 1) + 1), draw()) }, "next board"),
+          " ",
+          h("button", { onclick: tally }, "tally 40 boards")
+        ),
+        tallyOut,
+        out
+      )
+    );
+    return null;
+  });
+
   // ---------- boot ----------
 
   function boot() {

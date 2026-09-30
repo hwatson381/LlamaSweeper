@@ -149,14 +149,16 @@ impl ChordModel {
         }
     }
 
-    /// Relabel candidates so that `order[new_index] == old_index`.
+    /// Relabel candidates so that `order[new_index] == old_index`. Candidates missing from `order`
+    /// are dropped (they stay numbered cells, but are never chorded).
     pub fn reordered(&self, order: &[usize]) -> ChordModel {
-        let mut new_index = vec![0usize; order.len()];
+        let mut new_index = vec![usize::MAX; self.candidate_cells.len()];
         for (next, &old) in order.iter().enumerate() {
             new_index[old] = next;
         }
         let remap = |candidates: &Vec<usize>| -> Vec<usize> {
-            let mut remapped: Vec<usize> = candidates.iter().map(|&old| new_index[old]).collect();
+            let mut remapped: Vec<usize> =
+                candidates.iter().map(|&old| new_index[old]).filter(|&new| new != usize::MAX).collect();
             remapped.sort_unstable();
             remapped
         };

@@ -625,4 +625,8 @@ I noticed "filterSaturateValue" is also NaN?
 
 Fix deepchain code hijacking by DOMs
 
+Change d=1 to auto run doms instead
+
 Can we do something in zini explorer (or similar) that allows doing logically guaranteed zini. Like we have a bunch of rules (static rules from DOMS exposition) like the swap rules, never doing chords that reveal nothing new, possibly rules about chords being dominated by digs, other dominance rules like exchanges (care needed), key square stuff. So like have checkboxes for which rules to use to find "never chords" and "always chords" and maybe a button to do a "never chord" pass and a button for an "always chord" pass. We can then use different coloured markings (and a key or hover tooltip) to show where a square's classification came from similar to DOMS exposition.
+
+Remember to look for simpler performance improvements, like using slower data structures (e.g. set instead of array when overkill)

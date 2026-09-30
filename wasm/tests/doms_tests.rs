@@ -1,5 +1,7 @@
-use llamasweeper_rust::board_gen_8way::{Board, ClickType};
-use llamasweeper_rust::doms::{self, DomsProgress, DomsResult, DEFAULT_MAX_STATES};
+use llamasweeper_rust::board_gen_8way::{Board, ClickType, SquareType};
+use llamasweeper_rust::doms::model::ChordModel;
+use llamasweeper_rust::doms::reduce::{self, StaticRules};
+use llamasweeper_rust::doms::{self, solution, DomsProgress, DomsResult, DEFAULT_MAX_STATES};
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
@@ -75,6 +77,23 @@ fn matches_reference_implementation() {
     }
 }
 
+fn random_board(rng: &mut StdRng, width: usize, height: usize, mine_count: usize) -> Board {
+    let cells = width * height;
+    let mut mines = vec![0u8; cells];
+    mines[..mine_count].iter_mut().for_each(|mine| *mine = 1);
+    mines.shuffle(rng);
+
+    let mut board = Board::new(width, height, mine_count).unwrap();
+    for (cell, &mine) in mines.iter().enumerate() {
+        if mine == 1 {
+            board.squares[cell / width][cell % width].square_type = SquareType::Mine;
+            board.mine_locations.insert((cell / width, cell % width));
+        }
+    }
+    board.initialize_all().unwrap();
+    board
+}
+
 #[test]
 fn matches_bruteforce_on_small_boards() {
     let mut rng = StdRng::seed_from_u64(20260927);
@@ -85,21 +104,8 @@ fn matches_bruteforce_on_small_boards() {
         }
         let width = 3 + (attempt % 4);
         let height = 3 + (attempt % 3);
-        let cells = width * height;
-        let mine_count = 1 + attempt % (cells / 3);
-        let mut mines = vec![0u8; cells];
-        mines[..mine_count].iter_mut().for_each(|mine| *mine = 1);
-        mines.shuffle(&mut rng);
-
-        let mut board = Board::new(width, height, mine_count).unwrap();
-        for (cell, &mine) in mines.iter().enumerate() {
-            if mine == 1 {
-                board.squares[cell / width][cell % width].square_type =
-                    llamasweeper_rust::board_gen_8way::SquareType::Mine;
-                board.mine_locations.insert((cell / width, cell % width));
-            }
-        }
-        board.initialize_all().unwrap();
+        let mine_count = 1 + attempt % (width * height / 3);
+        let board = random_board(&mut rng, width, height, mine_count);
 
         let brute = match doms::solve_board_bruteforce(&board, 16) {
             Ok(brute) => brute,
@@ -111,6 +117,48 @@ fn matches_bruteforce_on_small_boards() {
         checked += 1;
     }
     assert_eq!(checked, 150);
+}
+
+/// Brute force over the kept candidates must match brute force over all of them, for each rule
+/// on its own and for all of them together.
+#[test]
+fn static_rules_keep_the_optimum() {
+    let off = StaticRules { swap: false, nothing_new: false, left_click_equivalent: false, private_mine_credit: false };
+    let configs = [
+        ("swap", StaticRules { swap: true, ..off }),
+        ("nothing new", StaticRules { nothing_new: true, ..off }),
+        ("left click equivalent", StaticRules { left_click_equivalent: true, ..off }),
+        ("private mine credit", StaticRules { left_click_equivalent: true, private_mine_credit: true, ..off }),
+        ("all", StaticRules { swap: true, nothing_new: true, left_click_equivalent: true, private_mine_credit: true }),
+    ];
+    let mut removed = [0usize; 5];
+    let mut rng = StdRng::seed_from_u64(20260930);
+    let mut checked = 0;
+    for attempt in 0..5000usize {
+        if checked == 400 {
+            break;
+        }
+        let width = 3 + (attempt % 5);
+        let height = 3 + (attempt % 4);
+        // Up to half mines, so mines surrounded by mines (private mines) actually occur.
+        let mine_count = 1 + attempt % (width * height / 2);
+        let board = random_board(&mut rng, width, height, mine_count);
+        let model = ChordModel::from_board(&board);
+        let optimum = match solution::solve_bruteforce(&model, 16) {
+            Ok(best) => best.total_clicks,
+            Err(_) => continue,
+        };
+        for (index, (name, rules)) in configs.iter().enumerate() {
+            let kept = reduce::kept_candidates(&model, rules);
+            removed[index] += model.candidate_cells.len() - kept.len();
+            let reduced = solution::solve_bruteforce(&model.reordered(&kept), 16).unwrap();
+            assert_eq!(reduced.total_clicks, optimum, "{} on {}", name, board.generate_pttacg());
+        }
+        checked += 1;
+    }
+    assert_eq!(checked, 400);
+    assert!(removed.iter().all(|&count| count > 0), "a rule never fired: {:?}", removed);
+    assert!(removed[3] > removed[2], "private mine credit never fired: {:?}", removed);
 }
 
 #[test]
@@ -133,6 +181,16 @@ fn handles_boards_without_mines_or_safe_squares() {
 }
 
 #[test]
+fn solves_when_every_candidate_is_removed() {
+    // One corner mine: with the solver's rules all three borders are removed and the DP decides nothing.
+    let mut mines = [0u8; 9];
+    mines[0] = 1;
+    let result = doms::solve_mines(3, 3, &mines, DEFAULT_MAX_STATES, &mut |_| {}).unwrap();
+    assert_eq!(result.total_clicks, 1);
+    assert_consistent(&result);
+}
+
+#[test]
 fn reports_state_limit() {
     let board = load(REFERENCE_BOARDS[REFERENCE_BOARDS.len() - 1].0);
     let error = doms::solve_board(&board, 10, &mut |_| {}).err().expect("state limit is hit");
@@ -149,8 +207,9 @@ fn reports_progress_for_every_candidate() {
         DomsProgress::Layer { processed, total, .. } => calls.push((processed, total)),
     })
     .unwrap();
-    assert_eq!(plan_widths, Some(result.stats.chord_candidates - 1));
-    assert_eq!(calls.len(), result.stats.chord_candidates);
+    let decided = result.stats.chord_candidates - result.stats.static_removed;
+    assert_eq!(plan_widths, Some(decided - 1));
+    assert_eq!(calls.len(), decided);
     assert_eq!(calls.last().map(|&(processed, total)| processed == total), Some(true));
 }
 
