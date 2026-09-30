@@ -17,7 +17,7 @@
 use super::model::ChordModel;
 use super::order::{choose_sweep_order, coverage, cut_widths};
 use super::prune::prune_dominated;
-use super::reduce::{kept_candidates, STATIC_RULES};
+use super::reduce::kept_candidates;
 use super::table::{set_bit, test_bit, ConnectivityPool, Lookup, StateTable};
 use super::{DomsError, DomsProgress};
 
@@ -187,7 +187,7 @@ pub fn solve_frontier(
     dominance_comparisons: u64,
     progress: &mut dyn FnMut(DomsProgress),
 ) -> Result<FrontierOutcome, DomsError> {
-    let kept = kept_candidates(original, &STATIC_RULES);
+    let kept = kept_candidates(original);
     let static_removed = original.candidate_cells.len() - kept.len();
     let (model, sweep_order) = choose_sweep_order(&original.reordered(&kept));
     let candidate_count = model.candidate_cells.len();

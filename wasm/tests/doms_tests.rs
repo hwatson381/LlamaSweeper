@@ -1,6 +1,6 @@
 use llamasweeper_rust::board_gen_8way::{Board, ClickType, SquareType};
 use llamasweeper_rust::doms::model::ChordModel;
-use llamasweeper_rust::doms::reduce::{self, StaticRules};
+use llamasweeper_rust::doms::reduce;
 use llamasweeper_rust::doms::{self, solution, DomsProgress, DomsResult, DEFAULT_MAX_STATES};
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
@@ -119,19 +119,10 @@ fn matches_bruteforce_on_small_boards() {
     assert_eq!(checked, 150);
 }
 
-/// Brute force over the kept candidates must match brute force over all of them, for each rule
-/// on its own and for all of them together.
+/// Brute force over the kept candidates must match brute force over all of them.
 #[test]
-fn static_rules_keep_the_optimum() {
-    let off = StaticRules { swap: false, nothing_new: false, left_click_equivalent: false, private_mine_credit: false };
-    let configs = [
-        ("swap", StaticRules { swap: true, ..off }),
-        ("nothing new", StaticRules { nothing_new: true, ..off }),
-        ("left click equivalent", StaticRules { left_click_equivalent: true, ..off }),
-        ("private mine credit", StaticRules { left_click_equivalent: true, private_mine_credit: true, ..off }),
-        ("all", StaticRules { swap: true, nothing_new: true, left_click_equivalent: true, private_mine_credit: true }),
-    ];
-    let mut removed = [0usize; 5];
+fn static_reduction_keeps_the_optimum() {
+    let mut removed = 0usize;
     let mut rng = StdRng::seed_from_u64(20260930);
     let mut checked = 0;
     for attempt in 0..5000usize {
@@ -148,17 +139,14 @@ fn static_rules_keep_the_optimum() {
             Ok(best) => best.total_clicks,
             Err(_) => continue,
         };
-        for (index, (name, rules)) in configs.iter().enumerate() {
-            let kept = reduce::kept_candidates(&model, rules);
-            removed[index] += model.candidate_cells.len() - kept.len();
-            let reduced = solution::solve_bruteforce(&model.reordered(&kept), 16).unwrap();
-            assert_eq!(reduced.total_clicks, optimum, "{} on {}", name, board.generate_pttacg());
-        }
+        let kept = reduce::kept_candidates(&model);
+        removed += model.candidate_cells.len() - kept.len();
+        let reduced = solution::solve_bruteforce(&model.reordered(&kept), 16).unwrap();
+        assert_eq!(reduced.total_clicks, optimum, "{}", board.generate_pttacg());
         checked += 1;
     }
     assert_eq!(checked, 400);
-    assert!(removed.iter().all(|&count| count > 0), "a rule never fired: {:?}", removed);
-    assert!(removed[3] > removed[2], "private mine credit never fired: {:?}", removed);
+    assert!(removed > 0, "nothing was removed");
 }
 
 #[test]

@@ -63,3 +63,5 @@ There are additional things that may need exposition in the "explain ordering in
 State limit and comparison cap
 Transition caching
 How pass 2 stays cheap
+
+Low priority, but could there be a speedup to static rules by re-running them based on a queue of nearby static rules that have been applied rather than a full table sweep each time?

@@ -8,28 +8,13 @@
 //!
 //! Each removal is exact relative to the candidates kept at that point, so the optimum over the
 //! final kept set equals the optimum over all candidates. Rules repeat until nothing changes.
+//!
+//! Two rules: a swap rule (some kept `d` does everything `c` does for no more flags), and a
+//! left-click-equivalent rule (chording `c` never beats left clicking what it would solve, with
+//! mines no other kept candidate needs counted as a guaranteed saving).
 
 use super::model::ChordModel;
 use super::table::{set_bit, test_bit};
-
-/// On/off switches, so each rule's effect can be benchmarked.
-#[derive(Clone, Copy, Debug)]
-pub struct StaticRules {
-    /// Swap rule: some kept `d` does everything `c` does for no more flags.
-    pub swap: bool,
-    /// Nothing-new rule: every neighbour already solves `B(c)`, and dropping `c` splits its chain
-    /// into at most two.
-    pub nothing_new: bool,
-    /// Chording `c` never beats left clicking what it would solve. Contains `nothing_new`.
-    pub left_click_equivalent: bool,
-    /// Mines no other kept candidate needs are a guaranteed saving when `c` is dropped.
-    /// Only affects `left_click_equivalent`.
-    pub private_mine_credit: bool,
-}
-
-/// The rules the solver uses.
-pub const STATIC_RULES: StaticRules =
-    StaticRules { swap: true, nothing_new: true, left_click_equivalent: true, private_mine_credit: true };
 
 struct CandidateSets {
     candidate_words: usize,
@@ -137,16 +122,13 @@ fn independent_sets_within_budget(
 
 /// Dropping `c` saves its chord, and its seed if it was alone. It can lose each unit of `B(c)`
 /// no remaining chord solves, and adds a seed for each extra piece its chain splits into.
-fn can_drop(sets: &CandidateSets, candidate: usize, neighbours: &[usize], budget: u32, require_full_cover: bool) -> bool {
+fn can_drop(sets: &CandidateSets, candidate: usize, neighbours: &[usize], budget: u32) -> bool {
     let units = &sets.units[candidate];
     if units.len() as u32 > budget {
         return false;
     }
     let covers = unit_cover_masks(sets, units, neighbours);
     let all_units = (1u32 << units.len()) - 1;
-    if require_full_cover && covers.iter().any(|&cover| cover != all_units) {
-        return false;
-    }
     independent_sets_within_budget(sets, neighbours, &covers, all_units, &mut Vec::new(), 0, budget)
 }
 
@@ -173,7 +155,7 @@ fn has_swap(model: &ChordModel, sets: &CandidateSets, candidate: usize, neighbou
 }
 
 /// Candidates (sorted) that the rules can't remove.
-pub fn kept_candidates(model: &ChordModel, rules: &StaticRules) -> Vec<usize> {
+pub fn kept_candidates(model: &ChordModel) -> Vec<usize> {
     let count = model.candidate_cells.len();
     let sets = CandidateSets::new(model);
     let mut kept = vec![true; count];
@@ -186,12 +168,9 @@ pub fn kept_candidates(model: &ChordModel, rules: &StaticRules) -> Vec<usize> {
             }
             let neighbours: Vec<usize> =
                 sets.reveals[candidate].iter().copied().filter(|&other| kept[other]).collect();
-            let removable = (rules.nothing_new && can_drop(&sets, candidate, &neighbours, 2, true))
-                || (rules.left_click_equivalent && {
-                    let credit = if rules.private_mine_credit { private_mines(model, &sets, candidate, &kept) } else { 0 };
-                    can_drop(&sets, candidate, &neighbours, 2 + credit, false)
-                })
-                || (rules.swap && has_swap(model, &sets, candidate, &neighbours, &kept));
+            let credit = private_mines(model, &sets, candidate, &kept);
+            let removable = can_drop(&sets, candidate, &neighbours, 2 + credit)
+                || has_swap(model, &sets, candidate, &neighbours, &kept);
             if removable {
                 kept[candidate] = false;
                 changed = true;
