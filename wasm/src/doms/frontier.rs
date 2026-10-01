@@ -13,6 +13,8 @@
 //! * +1 the first time each mine factor is hit (its right click),
 //! * -1 the first time each 3BV factor is hit (that left click is no longer needed),
 //! * +1 when a chain can no longer grow (its seed left click).
+//! * +1 when a chain is absorbed: its reach is exactly the undecided borders of an opening that is
+//!   already solved. That state equals one with no chain and the opening unsolved, one click dearer.
 
 use super::model::ChordModel;
 use super::order::{choose_sweep_order, coverage, cut_widths};
@@ -41,6 +43,8 @@ struct FactorLayout {
     factors_hit_by: Vec<u64>,
     /// A factor only needs remembering while some but not all of its candidates are decided.
     active_factors_after: Vec<u64>,
+    /// `(factor, opening)` for every 3BV factor that is an opening.
+    opening_factors: Vec<(usize, usize)>,
 }
 
 impl FactorLayout {
@@ -48,7 +52,20 @@ impl FactorLayout {
         let candidate_count = model.candidate_cells.len();
         let mut factors: Vec<(&Vec<usize>, bool)> = Vec::new();
         factors.extend(model.flag_needed_by.iter().filter(|c| !c.is_empty()).map(|c| (c, true)));
+        let mut next_factor = factors.len();
         factors.extend(model.bbbv_solved_by.iter().filter(|c| !c.is_empty()).map(|c| (c, false)));
+
+        // Openings come first among the 3BV units.
+        let mut opening_factors = Vec::new();
+        for (unit, solvers) in model.bbbv_solved_by.iter().enumerate() {
+            if solvers.is_empty() {
+                continue;
+            }
+            if unit < model.opening_borders.len() {
+                opening_factors.push((next_factor, unit));
+            }
+            next_factor += 1;
+        }
 
         let factor_words = (factors.len() + 63) / 64;
         let mut layout = FactorLayout {
@@ -57,6 +74,7 @@ impl FactorLayout {
             mine_factor_mask: vec![0u64; factor_words],
             factors_hit_by: vec![0u64; candidate_count * factor_words],
             active_factors_after: vec![0u64; candidate_count * factor_words],
+            opening_factors,
         };
         for (factor, &(candidates, is_mine_factor)) in factors.iter().enumerate() {
             let mask = if is_mine_factor { &mut layout.mine_factor_mask } else { &mut layout.bbbv_factor_mask };
@@ -111,6 +129,60 @@ struct TransitionScratch {
     chain_starts: Vec<usize>,
     merged_chain: Vec<u64>,
     signature: Vec<u64>,
+    reduced: Vec<u64>,
+    removed_chains: Vec<usize>,
+}
+
+/// Opening factors still active after a candidate, with their undecided borders as bitsets.
+struct OpenReach {
+    factors: Vec<usize>,
+    reach: Vec<u64>,
+}
+
+/// Removing `chain` from a signature absorbs `factor`'s opening, if that factor's bit is set.
+struct Absorption {
+    factor: usize,
+    chain: usize,
+    absorbed_id: u32,
+}
+
+/// Result of deciding a candidate for one old connectivity id and one choice.
+#[derive(Clone, Copy)]
+struct Transition {
+    id: u32,
+    finished_chains: i32,
+    /// Range into the layer's absorption list.
+    absorptions: (usize, usize),
+}
+
+/// `chain_transition`, plus the absorptions that its new signature allows.
+fn full_transition(
+    old_signature: &[u64],
+    chorded: bool,
+    candidate: usize,
+    reveals: &[u64],
+    open: &OpenReach,
+    scratch: &mut TransitionScratch,
+    next_pool: &mut ConnectivityPool,
+    absorptions: &mut Vec<Absorption>,
+) -> Transition {
+    let (id, finished_chains) = chain_transition(old_signature, chorded, candidate, reveals, scratch, next_pool);
+    let words = reveals.len();
+    let start = absorptions.len();
+    for (n, &factor) in open.factors.iter().enumerate() {
+        let target = &open.reach[n * words..(n + 1) * words];
+        let Some(chain) = scratch.signature.chunks(words).position(|chain| chain == target) else {
+            continue;
+        };
+        scratch.reduced.clear();
+        for (index, other) in scratch.signature.chunks(words).enumerate() {
+            if index != chain {
+                scratch.reduced.extend_from_slice(other);
+            }
+        }
+        absorptions.push(Absorption { factor, chain, absorbed_id: next_pool.intern(&scratch.reduced) });
+    }
+    Transition { id, finished_chains, absorptions: (start, absorptions.len()) }
 }
 
 /// New connectivity after deciding `candidate`. Returns the new signature id and how many chains
@@ -229,6 +301,8 @@ pub fn solve_frontier(
         chain_starts: Vec::new(),
         merged_chain: vec![0u64; candidate_words],
         signature: Vec::new(),
+        reduced: Vec::new(),
+        removed_chains: Vec::new(),
     };
     let mut next_hits = vec![0u64; factor_words];
 
@@ -240,8 +314,22 @@ pub fn solve_frontier(
         let mut next = StateTable::new(factor_words, candidate_words);
         next.reserve(max_states.saturating_add(1).min(table.len().saturating_mul(2).saturating_add(16)));
         let mut next_pool = ConnectivityPool::with_capacity(pool.len() * 2 + 16);
-        // Indexed by old connectivity id: [not chorded, chorded] -> (new id, finished chains).
-        let mut transitions: Vec<Option<[(u32, i32); 2]>> = vec![None; pool.len()];
+        // Indexed by old connectivity id: [not chorded, chorded].
+        let mut transitions: Vec<Option<[Transition; 2]>> = vec![None; pool.len()];
+        let mut absorptions: Vec<Absorption> = Vec::new();
+
+        let mut open = OpenReach { factors: Vec::new(), reach: Vec::new() };
+        for &(factor, opening) in &factors.opening_factors {
+            if !test_bit(active, factor) {
+                continue;
+            }
+            open.factors.push(factor);
+            let start = open.reach.len();
+            open.reach.resize(start + candidate_words, 0);
+            for &border in model.opening_borders[opening].iter().filter(|&&border| border > candidate) {
+                set_bit(&mut open.reach[start..], border);
+            }
+        }
 
         for entry in 0..table.entry_count() {
             if !table.is_alive(entry) {
@@ -252,10 +340,19 @@ pub fn solve_frontier(
                 Some(transition) => transition,
                 None => {
                     let signature = pool.get(connectivity_id as u32);
-                    let computed = [
-                        chain_transition(signature, false, candidate, candidate_reveals, &mut scratch, &mut next_pool),
-                        chain_transition(signature, true, candidate, candidate_reveals, &mut scratch, &mut next_pool),
-                    ];
+                    let mut compute = |chorded| {
+                        full_transition(
+                            signature,
+                            chorded,
+                            candidate,
+                            candidate_reveals,
+                            &open,
+                            &mut scratch,
+                            &mut next_pool,
+                            &mut absorptions,
+                        )
+                    };
+                    let computed = [compute(false), compute(true)];
                     transitions[connectivity_id] = Some(computed);
                     computed
                 }
@@ -275,8 +372,37 @@ pub fn solve_frontier(
                     }
                     next_hits[word] = hits & active[word];
                 }
-                let (next_connectivity, finished_chains) = transition[chorded];
-                let next_cost = old_cost + chorded as i32 + finished_chains + factor_delta;
+                let state_transition = transition[chorded];
+                let mut next_connectivity = state_transition.id;
+                let mut next_cost = old_cost + chorded as i32 + state_transition.finished_chains + factor_delta;
+
+                let (first, end) = state_transition.absorptions;
+                if first != end {
+                    scratch.removed_chains.clear();
+                    let mut absorbed_id = next_connectivity;
+                    for absorption in &absorptions[first..end] {
+                        if test_bit(&next_hits, absorption.factor)
+                            && !scratch.removed_chains.contains(&absorption.chain)
+                        {
+                            scratch.removed_chains.push(absorption.chain);
+                            next_hits[absorption.factor / 64] &= !(1u64 << (absorption.factor % 64));
+                            absorbed_id = absorption.absorbed_id;
+                        }
+                    }
+                    let absorbed = scratch.removed_chains.len();
+                    if absorbed == 1 {
+                        next_connectivity = absorbed_id;
+                    } else if absorbed > 1 {
+                        scratch.reduced.clear();
+                        for (index, chain) in next_pool.get(next_connectivity).chunks(candidate_words).enumerate() {
+                            if !scratch.removed_chains.contains(&index) {
+                                scratch.reduced.extend_from_slice(chain);
+                            }
+                        }
+                        next_connectivity = next_pool.intern(&scratch.reduced);
+                    }
+                    next_cost += absorbed as i32;
+                }
                 match next.lookup(next_connectivity, &next_hits) {
                     Lookup::Vacant(slot) => {
                         let inserted =
