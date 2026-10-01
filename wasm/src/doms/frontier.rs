@@ -23,6 +23,13 @@ use super::reduce::kept_candidates;
 use super::table::{set_bit, test_bit, ConnectivityPool, Lookup, StateTable};
 use super::{DomsError, DomsProgress};
 
+// Sibling rules: each proves one child of a parent state is never better than the other, so it is not built.
+const FORCED_CHORD_RULE: bool = true;
+const FORCED_SKIP_RULE: bool = true;
+const EXCHANGE_RULE: bool = true;
+const MAX_PARTNERS: usize = 64;
+const MAX_EXACT_REVEALS: usize = 24;
+
 pub struct FrontierOutcome {
     /// Chorded candidates, as indexes into the original (unordered) model.
     pub chords: Vec<usize>,
@@ -33,6 +40,10 @@ pub struct FrontierOutcome {
     pub max_active_factors: usize,
     /// Candidates removed by the static rules before the DP.
     pub static_removed: usize,
+    /// Children not built, credited to the first of these rules that proved it.
+    pub skipped_by_forced_chord: usize,
+    pub skipped_by_forced_skip: usize,
+    pub skipped_by_exchange: usize,
 }
 
 /// Per-candidate factor bitsets. Mine factors come first, then 3BV factors.
@@ -121,6 +132,223 @@ fn later_reveals(model: &ChordModel, candidate_words: usize) -> Vec<u64> {
         }
     }
     reveals
+}
+
+fn bit_row(bits: &[u64], index: usize, words: usize) -> &[u64] {
+    &bits[index * words..(index + 1) * words]
+}
+
+fn bits_of(row: &[u64]) -> Vec<usize> {
+    (0..row.len() * 64).filter(|&index| test_bit(row, index)).collect()
+}
+
+/// Size of the largest subset of `nodes` (bitmask over positions) with no two adjacent.
+fn max_independent(nodes: u32, adjacent: &[u32]) -> u32 {
+    if nodes == 0 {
+        return 0;
+    }
+    let first = nodes.trailing_zeros() as usize;
+    let rest = nodes & (nodes - 1);
+    let neighbours = adjacent[first] & rest;
+    if neighbours == 0 {
+        return 1 + max_independent(rest, adjacent);
+    }
+    (1 + max_independent(rest & !neighbours, adjacent)).max(max_independent(rest, adjacent))
+}
+
+/// A later candidate `d` that might make chording `c` pointless.
+struct Partner {
+    candidate: usize,
+    /// Factors `d` needs `c`'s state to have hit already: mines of `d` not of `c`, units of `c` not of `d`.
+    need_hits: Vec<u64>,
+}
+
+#[derive(Clone, Copy, PartialEq)]
+enum Verdict {
+    Both,
+    /// Chording is never worse, so the not-chorded child is skipped.
+    ForcedChord,
+    /// Not chording is never worse, so the chorded child is skipped.
+    ForcedSkip,
+    Exchange,
+}
+
+/// What the sibling rules need to know about one old connectivity signature, cached per layer.
+#[derive(Clone, Copy)]
+struct SignatureFacts {
+    transitions: [Transition; 2],
+    /// Chains that can still reach the candidate being decided.
+    chains_reaching: u32,
+    /// Bit `i` is set when every chain reaching the candidate also reaches partner `i`.
+    partner_ok: u64,
+}
+
+/// Per-candidate data for the sibling rules. The value of a completion `F` (a set of later chords)
+/// from a state is `cost + |F| + unhit mines of F - unhit units of F + components`, where components
+/// join the state's chains and the chords of `F` by the reveal relation. Each rule bounds the
+/// difference between chording `c` and not, over every `F`.
+struct SiblingRules {
+    /// Factors `c` hits that no later candidate hits.
+    last_units: Vec<u64>,
+    last_mines: Vec<u64>,
+    /// Upper bound on how many separate components of later chords `c` can touch.
+    independent_reveals: Vec<u32>,
+    partners: Vec<Vec<Partner>>,
+}
+
+impl SiblingRules {
+    /// Everything is built from the reduced and reordered `model`, so rules never rely on a removed candidate.
+    fn new(model: &ChordModel, factors: &FactorLayout, later: &[u64], candidate_words: usize) -> Self {
+        let count = model.candidate_cells.len();
+        let words = factors.factor_words;
+
+        // Symmetric reveal relation between candidates.
+        let mut full = later.to_vec();
+        for candidate in 0..count {
+            for other in bits_of(bit_row(later, candidate, candidate_words)) {
+                set_bit(&mut full[other * candidate_words..(other + 1) * candidate_words], candidate);
+            }
+        }
+
+        let mut last_units = vec![0u64; count * words];
+        let mut last_mines = vec![0u64; count * words];
+        let mut independent_reveals = Vec::with_capacity(count);
+        let mut partners = Vec::with_capacity(count);
+        for candidate in 0..count {
+            let (hit_by, active) = (factors.hit_by(candidate), factors.active_after(candidate));
+            for word in 0..words {
+                let last = hit_by[word] & !active[word];
+                last_units[candidate * words + word] = last & factors.bbbv_factor_mask[word];
+                last_mines[candidate * words + word] = last & factors.mine_factor_mask[word];
+            }
+
+            let later_nodes = bits_of(bit_row(later, candidate, candidate_words));
+            independent_reveals.push(if later_nodes.len() > MAX_EXACT_REVEALS {
+                later_nodes.len() as u32
+            } else {
+                let adjacent: Vec<u32> = later_nodes
+                    .iter()
+                    .map(|&node| {
+                        let row = bit_row(&full, node, candidate_words);
+                        later_nodes
+                            .iter()
+                            .enumerate()
+                            .filter(|&(_, &other)| other != node && test_bit(row, other))
+                            .fold(0u32, |mask, (position, _)| mask | (1 << position))
+                    })
+                    .collect();
+                let all = if later_nodes.is_empty() { 0 } else { u32::MAX >> (32 - later_nodes.len()) };
+                max_independent(all, &adjacent)
+            });
+
+            // Partners within reveal distance 2 that cover everything `c` reveals later.
+            let direct = bit_row(&full, candidate, candidate_words);
+            let mut near = direct.to_vec();
+            for neighbour in bits_of(direct) {
+                for (word, &value) in near.iter_mut().zip(bit_row(&full, neighbour, candidate_words)) {
+                    *word |= value;
+                }
+            }
+            let mut found: Vec<Partner> = Vec::new();
+            for other in candidate + 1..count {
+                if found.len() == MAX_PARTNERS {
+                    break;
+                }
+                if !test_bit(&near, other) {
+                    continue;
+                }
+                let other_row = bit_row(&full, other, candidate_words);
+                if later_nodes.iter().any(|&node| node != other && !test_bit(other_row, node)) {
+                    continue;
+                }
+                let other_hit_by = factors.hit_by(other);
+                let need_hits: Vec<u64> = (0..words)
+                    .map(|word| {
+                        (other_hit_by[word] & !hit_by[word] & factors.mine_factor_mask[word])
+                            | (hit_by[word] & !other_hit_by[word] & factors.bbbv_factor_mask[word])
+                    })
+                    .collect();
+                // A state can only have hit factors that were already active before `c`.
+                let reachable = (0..words).all(|word| {
+                    let tracked = if candidate == 0 { 0 } else { factors.active_after(candidate - 1)[word] };
+                    need_hits[word] & !tracked == 0
+                });
+                if reachable {
+                    found.push(Partner { candidate: other, need_hits });
+                }
+            }
+            partners.push(found);
+        }
+        SiblingRules { last_units, last_mines, independent_reveals, partners }
+    }
+
+    fn signature_facts(
+        &self,
+        signature: &[u64],
+        candidate: usize,
+        candidate_words: usize,
+        transitions: [Transition; 2],
+    ) -> SignatureFacts {
+        let partners = &self.partners[candidate];
+        let mut partner_ok = if partners.is_empty() { 0 } else { u64::MAX >> (64 - partners.len()) };
+        let mut chains_reaching = 0;
+        for chain in signature.chunks(candidate_words) {
+            if !test_bit(chain, candidate) {
+                continue;
+            }
+            chains_reaching += 1;
+            for (index, partner) in partners.iter().enumerate() {
+                if !test_bit(chain, partner.candidate) {
+                    partner_ok &= !(1u64 << index);
+                }
+            }
+        }
+        SignatureFacts { transitions, chains_reaching, partner_ok }
+    }
+
+    /// Which children of a state (with hits `old_hits`) need building. Rules are tried in order and
+    /// at most one child is ever skipped, so the sibling that proves the bound always survives.
+    fn verdict(
+        &self,
+        factors: &FactorLayout,
+        candidate: usize,
+        old_hits: &[u64],
+        facts: &SignatureFacts,
+    ) -> Verdict {
+        let words = factors.factor_words;
+        let hit_by = factors.hit_by(candidate);
+        let (mut unhit_mines, mut unhit_units) = (0i32, 0i32);
+        let (mut private_units, mut private_mines) = (0i32, 0i32);
+        for word in 0..words {
+            let unhit = hit_by[word] & !old_hits[word];
+            unhit_mines += (unhit & factors.mine_factor_mask[word]).count_ones() as i32;
+            unhit_units += (unhit & factors.bbbv_factor_mask[word]).count_ones() as i32;
+            private_units += (self.last_units[candidate * words + word] & !old_hits[word]).count_ones() as i32;
+            private_mines += (self.last_mines[candidate * words + word] & !old_hits[word]).count_ones() as i32;
+        }
+        let chains = facts.chains_reaching as i32;
+
+        // Chording adds at most 1 + unhit mines, at most 1 seed when no chain reaches it, and gains
+        // at least the units nobody later can solve.
+        if FORCED_CHORD_RULE && 1 + unhit_mines + (chains == 0) as i32 <= private_units {
+            return Verdict::ForcedChord;
+        }
+        // Chording adds at least 1 + the mines nobody later can flag, and gains at most every unhit
+        // unit, and merges at most `chains + independent_reveals` components.
+        if FORCED_SKIP_RULE && 2 + private_mines - unhit_units - chains - self.independent_reveals[candidate] as i32 >= 0 {
+            return Verdict::ForcedSkip;
+        }
+        if EXCHANGE_RULE {
+            for (index, partner) in self.partners[candidate].iter().enumerate() {
+                if facts.partner_ok >> index & 1 == 1
+                    && partner.need_hits.iter().zip(old_hits).all(|(&need, &hit)| need & !hit == 0)
+                {
+                    return Verdict::Exchange;
+                }
+            }
+        }
+        Verdict::Both
+    }
 }
 
 /// Scratch buffers reused for every connectivity transition in a layer.
@@ -267,6 +495,7 @@ pub fn solve_frontier(
     let factors = FactorLayout::new(&model);
     let factor_words = factors.factor_words;
     let reveals = later_reveals(&model, candidate_words);
+    let siblings = SiblingRules::new(&model, &factors, &reveals, candidate_words);
     progress(DomsProgress::Plan { cut_widths: &cut_widths(&model) });
 
     // Candidates still waiting on an adjacent candidate, plus partly decided openings, after each
@@ -295,6 +524,7 @@ pub fn solve_frontier(
     let mut peak_states = 1usize;
     let mut max_boundary = 0usize;
     let mut max_active_factors = 0usize;
+    let (mut skipped_by_forced_chord, mut skipped_by_forced_skip, mut skipped_by_exchange) = (0usize, 0usize, 0usize);
 
     let mut scratch = TransitionScratch {
         kept_chains: Vec::new(),
@@ -314,8 +544,8 @@ pub fn solve_frontier(
         let mut next = StateTable::new(factor_words, candidate_words);
         next.reserve(max_states.saturating_add(1).min(table.len().saturating_mul(2).saturating_add(16)));
         let mut next_pool = ConnectivityPool::with_capacity(pool.len() * 2 + 16);
-        // Indexed by old connectivity id: [not chorded, chorded].
-        let mut transitions: Vec<Option<[Transition; 2]>> = vec![None; pool.len()];
+        // Indexed by old connectivity id.
+        let mut transitions: Vec<Option<SignatureFacts>> = vec![None; pool.len()];
         let mut absorptions: Vec<Absorption> = Vec::new();
 
         let mut open = OpenReach { factors: Vec::new(), reach: Vec::new() };
@@ -336,8 +566,8 @@ pub fn solve_frontier(
                 continue;
             }
             let connectivity_id = table.connectivity_id(entry) as usize;
-            let transition = match transitions[connectivity_id] {
-                Some(transition) => transition,
+            let facts = match transitions[connectivity_id] {
+                Some(facts) => facts,
                 None => {
                     let signature = pool.get(connectivity_id as u32);
                     let mut compute = |chorded| {
@@ -353,14 +583,29 @@ pub fn solve_frontier(
                         )
                     };
                     let computed = [compute(false), compute(true)];
-                    transitions[connectivity_id] = Some(computed);
-                    computed
+                    let facts = siblings.signature_facts(signature, candidate, candidate_words, computed);
+                    transitions[connectivity_id] = Some(facts);
+                    facts
                 }
             };
+            let transition = facts.transitions;
 
             let old_hits = table.factor_hits(entry);
             let old_cost = table.cost(entry);
+            let verdict = siblings.verdict(&factors, candidate, old_hits, &facts);
+            match verdict {
+                Verdict::Both => {}
+                Verdict::ForcedChord => skipped_by_forced_chord += 1,
+                Verdict::ForcedSkip => skipped_by_forced_skip += 1,
+                Verdict::Exchange => skipped_by_exchange += 1,
+            }
             for chorded in 0..2 {
+                if verdict == Verdict::ForcedChord && chorded == 0 {
+                    continue;
+                }
+                if matches!(verdict, Verdict::ForcedSkip | Verdict::Exchange) && chorded == 1 {
+                    continue;
+                }
                 let mut factor_delta = 0i32;
                 for word in 0..factor_words {
                     let mut hits = old_hits[word];
@@ -466,5 +711,8 @@ pub fn solve_frontier(
         max_boundary,
         max_active_factors,
         static_removed,
+        skipped_by_forced_chord,
+        skipped_by_forced_skip,
+        skipped_by_exchange,
     })
 }
