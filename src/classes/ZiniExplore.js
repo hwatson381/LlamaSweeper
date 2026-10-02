@@ -15,6 +15,7 @@ import {
   analyseVisualise,
   analyseForbid,
   analyseDomsMaxStates,
+  analyseLastAlgorithm,
   classicPathBreakdown,
   analyseZiniTotal,
   analyse3bv,
@@ -52,6 +53,7 @@ class ZiniExplore {
       throw new Error("Unrecognised display mode");
     }
 
+    analyseLastAlgorithm.value = "Custom";
     this.updateUiAndBoard();
   }
 
@@ -1263,6 +1265,21 @@ class ZiniExplore {
 
   clearCurrentPath() {
     this.classicPath = [];
+    analyseLastAlgorithm.value = "Custom";
+  }
+
+  //Label for the path after an algorithm finishes, e.g. "Custom -> DOMS" if it continued an existing path
+  getAlgorithmLabel(name, fromCurrent) {
+    if (!fromCurrent || this.classicPath.length === 0) {
+      return name;
+    }
+
+    if (this.getIsComplete()) {
+      //Do not credit an algorithm for changing an already-complete solution.
+      return "Custom";
+    }
+
+    return `${analyseLastAlgorithm.value} -> ${name}`;
   }
 
   refreshForEditedBoard(skipAskForPathReset = false) {
@@ -1271,8 +1288,11 @@ class ZiniExplore {
       Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(
         this.board.mines
       );
-    if (this.removeInvalidDigsAndFlags() && !skipAskForPathReset) {
-      this.promptForPathReset();
+    if (this.removeInvalidDigsAndFlags()) {
+      analyseLastAlgorithm.value = "Custom"; //Defensive as this would usually be caught when the board changes in Board.handleEditClick().
+      if (!skipAskForPathReset) {
+        this.promptForPathReset();
+      }
     }
     this.updateUiAndBoard();
   }
@@ -1314,18 +1334,23 @@ class ZiniExplore {
   }
 
   runAlgorithm() {
+    const fromCurrent = analyseAlgorithmScope.value === "current";
     switch (analyseAlgorithm.value) {
-      case "8 way":
+      case "8 way": {
         synchronousZiniActive.value = true;
+        const label = this.getAlgorithmLabel("8-Way ZiNi", fromCurrent);
         this.run8way();
+        analyseLastAlgorithm.value = label;
         setTimeout(() => (synchronousZiniActive.value = false), 100);
         break;
+      }
       case "womzini":
         synchronousZiniActive.value = true;
         this.classicPath = Algorithms.calcWomZiniAndHZini(
           this.board.mines,
           false
         ).womZini.clicks;
+        analyseLastAlgorithm.value = "WoM L ZiNi";
         setTimeout(() => (synchronousZiniActive.value = false), 100);
         break;
       case "womzinifix":
@@ -1334,6 +1359,7 @@ class ZiniExplore {
           this.board.mines,
           true
         ).womZini.clicks;
+        analyseLastAlgorithm.value = "WoM L ZiNi Improved";
         setTimeout(() => (synchronousZiniActive.value = false), 100);
         break;
       case "womhzini":
@@ -1342,13 +1368,17 @@ class ZiniExplore {
           this.board.mines,
           false
         ).womHzini.clicks;
+        analyseLastAlgorithm.value = "WoM HZiNi";
         setTimeout(() => (synchronousZiniActive.value = false), 100);
         break;
-      case "chainzini":
+      case "chainzini": {
         synchronousZiniActive.value = true;
+        const label = this.getAlgorithmLabel("Chain ZiNi", fromCurrent);
         this.runChainZini();
+        analyseLastAlgorithm.value = label;
         setTimeout(() => (synchronousZiniActive.value = false), 100);
         break;
+      }
       case "incexzini":
         this.runInclusionExclusionZini(true);
         break;
@@ -1502,6 +1532,10 @@ class ZiniExplore {
     }
 
     this.classicPathBeforeRun = structuredClone(this.classicPath);
+    const algorithmLabel = this.getAlgorithmLabel(
+      "DeepChain",
+      scope === "current"
+    );
 
     if (scope === "beginning") {
       this.ziniRunner = new DeepChainZiniRunner(
@@ -1519,6 +1553,7 @@ class ZiniExplore {
           },
           onCompleteRun: (result) => {
             this.classicPath = result.clicks;
+            analyseLastAlgorithm.value = algorithmLabel;
             this.updateUiAndBoard();
             this.ziniRunner = null;
             this.classicPathBeforeRun = null;
@@ -1558,6 +1593,7 @@ class ZiniExplore {
           },
           onCompleteRun: (result) => {
             this.classicPath = result.clicks;
+            analyseLastAlgorithm.value = algorithmLabel;
             this.updateUiAndBoard();
             this.ziniRunner = null;
             this.classicPathBeforeRun = null;
@@ -1609,6 +1645,7 @@ class ZiniExplore {
       {
         onCompleteRun: (result) => {
           this.classicPath = result.clicks;
+          analyseLastAlgorithm.value = "DOMS (optimal)";
           this.updateUiAndBoard();
           this.ziniRunner = null;
           this.classicPathBeforeRun = null;
@@ -1622,7 +1659,7 @@ class ZiniExplore {
             title: "DOMS ZiNi failed",
             message:
               error.kind === "state-limit"
-                ? `The search grew too large (${error.message}). Try increasing "Max states", which uses more memory.`
+                ? `The search grew too large: ${error.message}. Try increasing the "Max states" setting.`
                 : error.message,
           });
         },

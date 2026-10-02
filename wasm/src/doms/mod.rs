@@ -43,7 +43,7 @@ impl fmt::Display for DomsError {
         match self {
             DomsError::StateLimitExceeded { states, processed, candidates } => write!(
                 f,
-                "frontier grew to {} states after {}/{} chord candidates; increase max states",
+                "Frontier grew to {} states after {}/{} chord candidates",
                 states, processed, candidates
             ),
             DomsError::Invalid(message) => write!(f, "{}", message),

@@ -32,7 +32,7 @@ class DeepChainZiniRunner {
 
     ziniRunnerActive.value = true;
     ziniRunnerTitle.value = isDoms
-      ? "Running DOMS ZiNi"
+      ? "Running DOMS (Optimal)"
       : "Running DeepChain ZiNi";
     ziniRunnerExpectedDuration.value = "calculating...";
     ziniRunnerExpectedFinishTime.value = "calculating...";
