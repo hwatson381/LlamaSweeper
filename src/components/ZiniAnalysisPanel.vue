@@ -36,6 +36,9 @@
         {{ analyse3bv }} 3bv / {{ analyseZiniTotal }} zini
       </p>
       <p class="text-center text-h5 q-mb-sm">{{ analyseEff }}% eff</p>
+      <p class="text-center text-caption text-info text-h6 q-mb-sm">
+        Path: {{ analyseLastAlgorithm }}
+      </p>
       <div class="row justify-center screenshot-hidden">
         <q-btn
           @click="runZiniAlgorithmModal = true"
@@ -225,6 +228,7 @@ import {
   analyseEff,
   analyseShowPremiums,
   analyseHiddenStyle,
+  analyseLastAlgorithm,
   runZiniAlgorithmModal,
 } from "src/composables/useSettings";
 

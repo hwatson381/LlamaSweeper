@@ -428,6 +428,7 @@ let analyseDeepIterations = ref(5);
 let analyseVisualise = ref(true);
 let analyseForbid = ref(false);
 let analyseDomsMaxStates = ref(2000000);
+let analyseLastAlgorithm = ref("Custom");
 let classicPathBreakdown = ref({
   lefts: 0,
   rights: 0,
@@ -591,6 +592,7 @@ function resetTransientSettings() {
   analyseZiniTotal.value = 0;
   analyse3bv.value = 0;
   analyseEff.value = 0;
+  analyseLastAlgorithm.value = "Custom";
 
   ziniRunnerActive.value = false;
   synchronousZiniActive.value = false;
@@ -753,6 +755,7 @@ export {
   analyseVisualise,
   analyseForbid,
   analyseDomsMaxStates,
+  analyseLastAlgorithm,
   classicPathBreakdown,
   analyseZiniTotal,
   analyse3bv,

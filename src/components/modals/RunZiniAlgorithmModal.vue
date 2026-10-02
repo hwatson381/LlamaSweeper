@@ -28,7 +28,7 @@
                 value: 'incexzini',
               },
               {
-                label: '8 Way ZiNi',
+                label: '8-Way ZiNi',
                 value: '8 way',
               },
               { label: 'WoM L ZiNi', value: 'womzini' },
@@ -169,8 +169,8 @@
             Deterministically Optimal Minesweeper Solver (DOMS) is an algorithm
             originally developed by qqwref. It finds the provably minimum number
             of clicks to solve the board. The "Max states" setting puts a limit
-            on the number of states DOMS can explore before giving up. Higher
-            values can solve harder boards, but also use more memory.
+            on the number of states DOMS can hold at once before giving up.
+            Higher values can solve harder boards, but also use more memory.
           </p>
         </q-card-section>
       </template>

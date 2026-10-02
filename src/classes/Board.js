@@ -44,6 +44,7 @@ import {
   reorderZini,
   ziniRunnerActive,
   chordingButtons,
+  analyseLastAlgorithm,
 } from "src/composables/useSettings";
 
 class Board {
@@ -590,6 +591,7 @@ class Board {
 
     this.mineCount += isAddingMines ? 1 : -1;
     this.unflagged = this.mineCount;
+    analyseLastAlgorithm.value = "Custom";
 
     this.openBoardForEdit(); //refreshes all numbers. Maybe too inefficient?
   }
@@ -959,6 +961,7 @@ class Board {
 
     if (clickPathOrFalse) {
       this.ziniExplore.classicPath = clickPathOrFalse;
+      analyseLastAlgorithm.value = "Custom";
 
       //Very hacky, but this is needed for switching to analyse mode as if this runs immediately then this.variant won't be defined
       setTimeout(() => {
@@ -973,8 +976,31 @@ class Board {
 
       //Very hacky, but this is needed for switching to analyse mode as if this runs immediately then this.variant won't be defined
       setTimeout(() => {
+        const width = this.ziniExplorerMines.length;
+        const height = this.ziniExplorerMines[0].length;
+
         this.switchToAnalyseMode(true);
-        this.ziniExplore.runDefaultAlgorithm(false);
+
+        //Run either DeepChain or DOMS depending on whether max states = 2 million is likely to be hit
+        //A naive check is using the minimum dimension of the board.
+        const minimumDimension = Math.min(width, height);
+
+        const bbv = Algorithms.calc3bv(this.ziniExplorerMines);
+
+        const bbvDensity = bbv / (width * height);
+
+        if (
+          (minimumDimension >= 22 && bbvDensity >= 0.3) ||
+          (minimumDimension >= 25 && bbvDensity >= 0.27) ||
+          (minimumDimension >= 27 && bbvDensity >= 0.2) ||
+          minimumDimension >= 30
+        ) {
+          //DeepChain
+          this.ziniExplore.runDefaultAlgorithm(false);
+        } else {
+          //DOMS
+          this.ziniExplore.runDomsZini(true);
+        }
       }, 100);
     }
 
