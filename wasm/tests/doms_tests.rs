@@ -235,6 +235,32 @@ fn benchmark_slow_board() {
     benchmark(SLOW_BOARD.0, SLOW_BOARD.1, 20_000_000);
 }
 
+#[test]
+#[ignore]
+fn benchmark_random_expert_boards() {
+    const BOARD_COUNT: usize = 100;
+    let mut rng = StdRng::seed_from_u64(20261004);
+    let mut timings = Vec::with_capacity(BOARD_COUNT);
+
+    for _ in 0..BOARD_COUNT {
+        let board = random_board(&mut rng, 30, 16, 99);
+        let start = std::time::Instant::now();
+        doms::solve_board(&board, DEFAULT_MAX_STATES, &mut |_| {}).expect("DOMS solves the board");
+        timings.push(start.elapsed().as_secs_f64());
+    }
+
+    timings.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let total: f64 = timings.iter().sum();
+    println!(
+        "{} random expert boards: total {:.3}s, mean {:.3}s, median {:.3}s, slowest {:.3}s",
+        BOARD_COUNT,
+        total,
+        total / BOARD_COUNT as f64,
+        timings[BOARD_COUNT / 2],
+        timings[BOARD_COUNT - 1]
+    );
+}
+
 /// "Evil 199" board (optimal clicks, 3BV).
 const EVIL_199_BOARD: (&str, usize, usize) = (
     "?b=3020&m=84819191d005024402p010ki1104i0a85204000g10090h8080kj092916g324h0ka00ci0o880002cs0106294ad2244408i8p968hh020304ia0g000gi0",
