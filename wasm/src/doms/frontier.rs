@@ -23,13 +23,7 @@ use super::reduce::kept_candidates;
 use super::table::{set_bit, test_bit, ConnectivityPool, Lookup, StateTable};
 use super::{DomsError, DomsProgress};
 
-// Sibling rules: each proves one child of a parent state is never better than the other, so it is not built.
-const FORCED_SKIP_RULE: bool = true;
-const EXCHANGE_RULE: bool = true;
-// Factor cancellation inside the forced skip bound.
-const SIBLING_CANCELLATION: bool = true;
-// Forced skip bounds merges by what each state's chains don't already reach, not just by the candidate.
-const SIGNATURE_ALPHA: bool = true;
+// Sibling rules each prove one child of a parent state is never better than the other, so it is not built.
 const MAX_PARTNERS: usize = 64;
 const MAX_EXACT_REVEALS: usize = 24;
 const MAX_CANCEL_FACTORS: usize = 32;
@@ -403,7 +397,7 @@ impl SiblingRules {
                     partner_ok &= !(1u64 << index);
                 }
             }
-            if SIGNATURE_ALPHA && !self.node_adjacent[candidate].is_empty() {
+            if !self.node_adjacent[candidate].is_empty() {
                 for (position, &node) in nodes.iter().enumerate() {
                     if test_bit(chain, node) {
                         covered |= 1 << position;
@@ -413,7 +407,7 @@ impl SiblingRules {
         }
         // A later chord in a reaching chain's reach joins that chain, which is already counted.
         let mut alpha = self.independent_reveals[candidate];
-        if SIGNATURE_ALPHA && chains_reaching > 0 && !self.node_adjacent[candidate].is_empty() {
+        if chains_reaching > 0 && !self.node_adjacent[candidate].is_empty() {
             let all = u32::MAX >> (32 - nodes.len());
             alpha = max_independent(all & !covered, &self.node_adjacent[candidate]);
         }
@@ -441,30 +435,25 @@ impl SiblingRules {
 
         // Chording adds at least 1 + the mines nobody later can flag, and gains at most every unhit
         // unit, and merges at most `chains + alpha` components. A mine and a unit that cancel count once.
-        if FORCED_SKIP_RULE {
-            let slack = 2 + private_mines - unhit_units - chains - facts.alpha as i32;
-            if slack >= 0 {
-                return Verdict::ForcedSkip;
-            }
-            if SIBLING_CANCELLATION
-                && -slack <= self.cancel_units[candidate].len().min(self.cancel_mines[candidate].len()) as i32
-                && count_cancellations(
-                    &self.cancel_mines[candidate],
-                    &self.skip_pair_masks[candidate],
-                    &self.cancel_units[candidate],
-                    old_hits,
-                ) >= -slack
-            {
-                return Verdict::ForcedSkip;
-            }
+        let slack = 2 + private_mines - unhit_units - chains - facts.alpha as i32;
+        if slack >= 0 {
+            return Verdict::ForcedSkip;
         }
-        if EXCHANGE_RULE {
-            for (index, partner) in self.partners[candidate].iter().enumerate() {
-                if facts.partner_ok >> index & 1 == 1
-                    && partner.need_hits.iter().zip(old_hits).all(|(&need, &hit)| need & !hit == 0)
-                {
-                    return Verdict::Exchange;
-                }
+        if -slack <= self.cancel_units[candidate].len().min(self.cancel_mines[candidate].len()) as i32
+            && count_cancellations(
+                &self.cancel_mines[candidate],
+                &self.skip_pair_masks[candidate],
+                &self.cancel_units[candidate],
+                old_hits,
+            ) >= -slack
+        {
+            return Verdict::ForcedSkip;
+        }
+        for (index, partner) in self.partners[candidate].iter().enumerate() {
+            if facts.partner_ok >> index & 1 == 1
+                && partner.need_hits.iter().zip(old_hits).all(|(&need, &hit)| need & !hit == 0)
+            {
+                return Verdict::Exchange;
             }
         }
         Verdict::Both
