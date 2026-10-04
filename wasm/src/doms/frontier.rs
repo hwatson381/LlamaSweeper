@@ -18,22 +18,18 @@
 
 use super::model::ChordModel;
 use super::order::{choose_sweep_order, coverage, cut_widths};
-use super::prune::{prune_dominated, Cancellation, PruneOptions};
+use super::prune::prune_dominated;
 use super::reduce::kept_candidates;
 use super::table::{set_bit, test_bit, ConnectivityPool, Lookup, StateTable};
 use super::{DomsError, DomsProgress};
 
 // Sibling rules: each proves one child of a parent state is never better than the other, so it is not built.
-const FORCED_CHORD_RULE: bool = true;
 const FORCED_SKIP_RULE: bool = true;
 const EXCHANGE_RULE: bool = true;
-// Factor cancellation inside the forced chord and forced skip bounds.
+// Factor cancellation inside the forced skip bound.
 const SIBLING_CANCELLATION: bool = true;
 // Forced skip bounds merges by what each state's chains don't already reach, not just by the candidate.
 const SIGNATURE_ALPHA: bool = true;
-// Dominance pruning: factor cancellation, and chains that can only cost a seed.
-const PRUNE_CANCELLATION: bool = true;
-const LIABILITY_CHAINS: bool = true;
 const MAX_PARTNERS: usize = 64;
 const MAX_EXACT_REVEALS: usize = 24;
 const MAX_CANCEL_FACTORS: usize = 32;
@@ -49,7 +45,6 @@ pub struct FrontierOutcome {
     /// Candidates removed by the static rules before the DP.
     pub static_removed: usize,
     /// Children not built, credited to the first of these rules that proved it.
-    pub skipped_by_forced_chord: usize,
     pub skipped_by_forced_skip: usize,
     pub skipped_by_exchange: usize,
 }
@@ -133,25 +128,6 @@ impl FactorLayout {
         let other_remaining = self.remaining(other, candidate);
         self.remaining(factor, candidate).iter().all(|solver| other_remaining.binary_search(solver).is_ok())
     }
-
-    /// Fills `covers` (one row of `factor_words` per factor bit) for the factors still active after
-    /// `candidate`, and returns how many of them have a cover.
-    fn fill_covers(&self, candidate: usize, covers: &mut [u64]) -> u32 {
-        covers.fill(0);
-        let active = bits_of(self.active_after(candidate));
-        let mut coverable = 0;
-        for &factor in &active {
-            let mut any = false;
-            for &other in &active {
-                if other != factor && self.is_covered_by(factor, other, candidate) {
-                    set_bit(&mut covers[factor * self.factor_words..(factor + 1) * self.factor_words], other);
-                    any = true;
-                }
-            }
-            coverable += any as u32;
-        }
-        coverable
-    }
 }
 
 /// For each candidate, the later candidates its chord reveals: adjacent candidates, plus the
@@ -220,8 +196,6 @@ struct Partner {
 #[derive(Clone, Copy, PartialEq)]
 enum Verdict {
     Both,
-    /// Chording is never worse, so the not-chorded child is skipped.
-    ForcedChord,
     /// Not chording is never worse, so the chorded child is skipped.
     ForcedSkip,
     Exchange,
@@ -244,8 +218,7 @@ struct SignatureFacts {
 /// join the state's chains and the chords of `F` by the reveal relation. Each rule bounds the
 /// difference between chording `c` and not, over every `F`.
 struct SiblingRules {
-    /// Factors `c` hits that no later candidate hits.
-    last_units: Vec<u64>,
+    /// Mines `c` needs flagged that no later candidate needs.
     last_mines: Vec<u64>,
     /// Upper bound on how many separate components of later chords `c` can touch.
     independent_reveals: Vec<u32>,
@@ -253,12 +226,11 @@ struct SiblingRules {
     /// there are more than `MAX_EXACT_REVEALS`).
     later_nodes: Vec<Vec<usize>>,
     node_adjacent: Vec<Vec<u32>>,
-    /// Factors `c` hits that stay active after it. A mine `c` needs flagged and a unit it solves cancel
-    /// when every later candidate hitting the unit also hits the mine (chord rule), or the reverse (skip rule).
+    /// Factors `c` hits that stay active after it. A mine and a unit cancel when every later candidate
+    /// hitting the mine also hits the unit.
     cancel_mines: Vec<Vec<usize>>,
     cancel_units: Vec<Vec<usize>>,
-    /// Per unit (resp. mine): positions in the other list it can cancel.
-    chord_pair_masks: Vec<Vec<u32>>,
+    /// Per mine: positions in `cancel_units` it can cancel.
     skip_pair_masks: Vec<Vec<u32>>,
     partners: Vec<Vec<Partner>>,
 }
@@ -297,21 +269,18 @@ impl SiblingRules {
         let count = model.candidate_cells.len();
         let words = factors.factor_words;
 
-        let mut last_units = vec![0u64; count * words];
         let mut last_mines = vec![0u64; count * words];
         let mut independent_reveals = Vec::with_capacity(count);
         let mut all_later_nodes = Vec::with_capacity(count);
         let mut node_adjacent = Vec::with_capacity(count);
         let mut cancel_mines = Vec::with_capacity(count);
         let mut cancel_units = Vec::with_capacity(count);
-        let mut chord_pair_masks = Vec::with_capacity(count);
         let mut skip_pair_masks = Vec::with_capacity(count);
         let mut partners = Vec::with_capacity(count);
         for candidate in 0..count {
             let (hit_by, active) = (factors.hit_by(candidate), factors.active_after(candidate));
             for word in 0..words {
                 let last = hit_by[word] & !active[word];
-                last_units[candidate * words + word] = last & factors.bbbv_factor_mask[word];
                 last_mines[candidate * words + word] = last & factors.mine_factor_mask[word];
             }
 
@@ -325,18 +294,18 @@ impl SiblingRules {
             }
             mines.truncate(MAX_CANCEL_FACTORS);
             units.truncate(MAX_CANCEL_FACTORS);
-            let pair_masks = |from: &[usize], to: &[usize]| -> Vec<u32> {
-                from.iter()
-                    .map(|&factor| {
-                        to.iter()
+            skip_pair_masks.push(
+                mines
+                    .iter()
+                    .map(|&mine| {
+                        units
+                            .iter()
                             .enumerate()
-                            .filter(|&(_, &other)| factors.is_covered_by(factor, other, candidate))
+                            .filter(|&(_, &unit)| factors.is_covered_by(mine, unit, candidate))
                             .fold(0u32, |mask, (position, _)| mask | (1 << position))
                     })
-                    .collect()
-            };
-            chord_pair_masks.push(pair_masks(&units, &mines));
-            skip_pair_masks.push(pair_masks(&mines, &units));
+                    .collect(),
+            );
             cancel_mines.push(mines);
             cancel_units.push(units);
 
@@ -401,14 +370,12 @@ impl SiblingRules {
             all_later_nodes.push(later_nodes);
         }
         SiblingRules {
-            last_units,
             last_mines,
             independent_reveals,
             later_nodes: all_later_nodes,
             node_adjacent,
             cancel_mines,
             cancel_units,
-            chord_pair_masks,
             skip_pair_masks,
             partners,
         }
@@ -464,36 +431,14 @@ impl SiblingRules {
     ) -> Verdict {
         let words = factors.factor_words;
         let hit_by = factors.hit_by(candidate);
-        let (mut unhit_mines, mut unhit_units) = (0i32, 0i32);
-        let (mut private_units, mut private_mines) = (0i32, 0i32);
+        let (mut unhit_units, mut private_mines) = (0i32, 0i32);
         for word in 0..words {
             let unhit = hit_by[word] & !old_hits[word];
-            unhit_mines += (unhit & factors.mine_factor_mask[word]).count_ones() as i32;
             unhit_units += (unhit & factors.bbbv_factor_mask[word]).count_ones() as i32;
-            private_units += (self.last_units[candidate * words + word] & !old_hits[word]).count_ones() as i32;
             private_mines += (self.last_mines[candidate * words + word] & !old_hits[word]).count_ones() as i32;
         }
         let chains = facts.chains_reaching as i32;
 
-        // Chording adds at most 1 + unhit mines, at most 1 seed when no chain reaches it, and gains
-        // at least the units nobody later can solve. A unit and a mine that cancel count once.
-        if FORCED_CHORD_RULE {
-            let deficit = 1 + unhit_mines + (chains == 0) as i32 - private_units;
-            if deficit <= 0 {
-                return Verdict::ForcedChord;
-            }
-            if SIBLING_CANCELLATION
-                && deficit <= self.cancel_units[candidate].len().min(self.cancel_mines[candidate].len()) as i32
-                && count_cancellations(
-                    &self.cancel_units[candidate],
-                    &self.chord_pair_masks[candidate],
-                    &self.cancel_mines[candidate],
-                    old_hits,
-                ) >= deficit
-            {
-                return Verdict::ForcedChord;
-            }
-        }
         // Chording adds at least 1 + the mines nobody later can flag, and gains at most every unhit
         // unit, and merges at most `chains + alpha` components. A mine and a unit that cancel count once.
         if FORCED_SKIP_RULE {
@@ -672,12 +617,6 @@ pub fn solve_frontier(
     let reveals = later_reveals(&model, candidate_words);
     let full_reveals = symmetric_reveals(&reveals, candidate_count, candidate_words);
     let siblings = SiblingRules::new(&model, &factors, &reveals, &full_reveals, candidate_words);
-    // One row of `factor_words` per factor bit, refilled each layer.
-    let mut covers = if PRUNE_CANCELLATION && factor_words <= 16 {
-        vec![0u64; factor_words * 64 * factor_words]
-    } else {
-        Vec::new()
-    };
     progress(DomsProgress::Plan { cut_widths: &cut_widths(&model) });
 
     // Candidates still waiting on an adjacent candidate, plus partly decided openings, after each
@@ -706,7 +645,7 @@ pub fn solve_frontier(
     let mut peak_states = 1usize;
     let mut max_boundary = 0usize;
     let mut max_active_factors = 0usize;
-    let (mut skipped_by_forced_chord, mut skipped_by_forced_skip, mut skipped_by_exchange) = (0usize, 0usize, 0usize);
+    let (mut skipped_by_forced_skip, mut skipped_by_exchange) = (0usize, 0usize);
 
     let mut scratch = TransitionScratch {
         kept_chains: Vec::new(),
@@ -777,14 +716,10 @@ pub fn solve_frontier(
             let verdict = siblings.verdict(&factors, candidate, old_hits, &facts);
             match verdict {
                 Verdict::Both => {}
-                Verdict::ForcedChord => skipped_by_forced_chord += 1,
                 Verdict::ForcedSkip => skipped_by_forced_skip += 1,
                 Verdict::Exchange => skipped_by_exchange += 1,
             }
             for chorded in 0..2 {
-                if verdict == Verdict::ForcedChord && chorded == 0 {
-                    continue;
-                }
                 if matches!(verdict, Verdict::ForcedSkip | Verdict::Exchange) && chorded == 1 {
                     continue;
                 }
@@ -856,22 +791,7 @@ pub fn solve_frontier(
         drop(std::mem::replace(&mut pool, ConnectivityPool::with_capacity(0)));
         drop(transitions);
 
-        let coverable = if covers.is_empty() { 0 } else { factors.fill_covers(candidate, &mut covers) };
-        prune_dominated(
-            &mut next,
-            dominance_comparisons,
-            &factors.bbbv_factor_mask,
-            &next_pool,
-            candidate_words,
-            &PruneOptions {
-                cancellation: (!covers.is_empty()).then(|| Cancellation {
-                    covers: &covers,
-                    factor_words,
-                    coverable,
-                }),
-                reveal_rows: LIABILITY_CHAINS.then_some(&full_reveals[..]),
-            },
-        );
+        prune_dominated(&mut next, dominance_comparisons, &factors.bbbv_factor_mask, &next_pool, candidate_words);
         table = next;
         pool = next_pool;
 
@@ -908,7 +828,6 @@ pub fn solve_frontier(
         max_boundary,
         max_active_factors,
         static_removed,
-        skipped_by_forced_chord,
         skipped_by_forced_skip,
         skipped_by_exchange,
     })

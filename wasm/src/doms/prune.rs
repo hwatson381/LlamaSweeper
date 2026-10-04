@@ -13,25 +13,6 @@
 use super::table::{ConnectivityPool, StateTable};
 use rustc_hash::FxHashMap;
 
-/// Largest factor bitset the cancellation matching keeps on the stack.
-const MAX_CANCELLATION_WORDS: usize = 16;
-
-/// Factor cancellation: row `p` of `covers` has bit `q` set when every undecided candidate that hits
-/// factor `p` also hits factor `q`, so a penalty on `p` can be paid for by a bonus on `q`.
-pub struct Cancellation<'a> {
-    pub covers: &'a [u64],
-    pub factor_words: usize,
-    /// Number of factors with at least one cover; bounds how many matches a pair can use.
-    pub coverable: u32,
-}
-
-#[derive(Default)]
-pub struct PruneOptions<'a> {
-    pub cancellation: Option<Cancellation<'a>>,
-    /// Symmetric reveal rows (`signature_words` per candidate), used to spot chains that can only cost a seed.
-    pub reveal_rows: Option<&'a [u64]>,
-}
-
 /// In "good bit" form (mine hit, or 3BV unit not yet solved) the penalty is simply the good
 /// bits `target` has that `dominator` lacks.
 fn dominance_penalty_at_most(dominator: &[u64], target: &[u64], bbbv_factor_mask: &[u64], allowance: i32) -> bool {
@@ -42,69 +23,6 @@ fn dominance_penalty_at_most(dominator: &[u64], target: &[u64], bbbv_factor_mask
         penalty += (target_good & !dominator_good).count_ones() as i32;
         if penalty > allowance {
             return false;
-        }
-    }
-    true
-}
-
-/// Like `dominance_penalty_at_most`, but a penalty bit can be cancelled by a distinct bonus bit that it
-/// covers. Any matching gives a valid bound, so a greedy one is used.
-fn cancelled_penalty_at_most(
-    dominator: &[u64],
-    target: &[u64],
-    bbbv_factor_mask: &[u64],
-    cancellation: &Cancellation,
-    allowance: i32,
-) -> bool {
-    let words = cancellation.factor_words;
-    let mut bonus = [0u64; MAX_CANCELLATION_WORDS];
-    let (mut penalty, mut bonus_count) = (0i32, 0i32);
-    for word in 0..words {
-        let dominator_good = dominator[word] ^ bbbv_factor_mask[word];
-        let target_good = target[word] ^ bbbv_factor_mask[word];
-        bonus[word] = dominator_good & !target_good;
-        penalty += (target_good & !dominator_good).count_ones() as i32;
-        bonus_count += bonus[word].count_ones() as i32;
-    }
-    if penalty - bonus_count > allowance {
-        return false;
-    }
-    for word in 0..words {
-        let mut penalty_bits = (target[word] ^ bbbv_factor_mask[word]) & !(dominator[word] ^ bbbv_factor_mask[word]);
-        while penalty_bits != 0 {
-            let factor = word * 64 + penalty_bits.trailing_zeros() as usize;
-            penalty_bits &= penalty_bits - 1;
-            let covers = &cancellation.covers[factor * words..(factor + 1) * words];
-            if let Some(index) = (0..words).find(|&index| covers[index] & bonus[index] != 0) {
-                let available = covers[index] & bonus[index];
-                bonus[index] &= !(available & available.wrapping_neg());
-                penalty -= 1;
-                if penalty <= allowance {
-                    return true;
-                }
-            }
-        }
-    }
-    penalty <= allowance
-}
-
-/// A chain whose reach cells all reveal each other can join at most one future component, so it can only
-/// cost a seed, never save one.
-fn reach_reveals_pairwise(chain: &[u64], reveal_rows: &[u64]) -> bool {
-    let words = chain.len();
-    for (word_index, &word) in chain.iter().enumerate() {
-        let mut bits = word;
-        while bits != 0 {
-            let cell = word_index * 64 + bits.trailing_zeros() as usize;
-            bits &= bits - 1;
-            let row = &reveal_rows[cell * words..(cell + 1) * words];
-            let missing = chain.iter().zip(row).enumerate().any(|(index, (&reach, &neighbours))| {
-                let own = if index == cell / 64 { 1u64 << (cell % 64) } else { 0 };
-                reach & !neighbours & !own != 0
-            });
-            if missing {
-                return false;
-            }
         }
     }
     true
@@ -151,26 +69,24 @@ fn kuhn_augment(coarse: usize, eligible: &[Vec<bool>], seen: &mut [bool], fine_m
 /// A coarser signature can stand in for a finer one when every fine chain's future reach is
 /// contained in some coarse chain, and every coarse chain can be matched to a distinct fine chain
 /// (otherwise the coarse state could need a seed click the fine state doesn't).
-/// `fine_liability` flags fine chains that can only cost a seed (empty means none): dropping one is never
-/// worse, so it needs no coarse chain to contain it, though it can still be matched to one.
-fn connectivity_coarsens(coarse: &[u64], fine: &[u64], signature_words: usize, fine_liability: &[bool]) -> bool {
+fn connectivity_coarsens(coarse: &[u64], fine: &[u64], signature_words: usize) -> bool {
     let coarse_count = coarse.len() / signature_words;
     let fine_count = fine.len() / signature_words;
     if coarse_count > fine_count {
         return false;
     }
     if coarse_count == 0 {
-        return (0..fine_count).all(|f| fine_liability.get(f) == Some(&true));
+        return fine_count == 0;
     }
     if fine_count <= 64 {
-        coarsens_by_mask(coarse, fine, signature_words, fine_liability)
+        coarsens_by_mask(coarse, fine, signature_words)
     } else {
-        coarsens_general(coarse, fine, signature_words, fine_liability)
+        coarsens_general(coarse, fine, signature_words)
     }
 }
 
 /// Matching with each coarse chain's eligible fine chains as a bitmask (at most 64 fine chains).
-fn coarsens_by_mask(coarse: &[u64], fine: &[u64], signature_words: usize, fine_liability: &[bool]) -> bool {
+fn coarsens_by_mask(coarse: &[u64], fine: &[u64], signature_words: usize) -> bool {
     let coarse_count = coarse.len() / signature_words;
     let fine_count = fine.len() / signature_words;
     let mut eligible = [0u64; 64];
@@ -182,7 +98,7 @@ fn coarsens_by_mask(coarse: &[u64], fine: &[u64], signature_words: usize, fine_l
                 represented = true;
             }
         }
-        if !represented && fine_liability.get(f) != Some(&true) {
+        if !represented {
             return false;
         }
     }
@@ -196,7 +112,7 @@ fn coarsens_by_mask(coarse: &[u64], fine: &[u64], signature_words: usize, fine_l
     true
 }
 
-fn coarsens_general(coarse: &[u64], fine: &[u64], signature_words: usize, fine_liability: &[bool]) -> bool {
+fn coarsens_general(coarse: &[u64], fine: &[u64], signature_words: usize) -> bool {
     let coarse_count = coarse.len() / signature_words;
     let fine_count = fine.len() / signature_words;
     let mut eligible = vec![vec![false; fine_count]; coarse_count];
@@ -206,7 +122,7 @@ fn coarsens_general(coarse: &[u64], fine: &[u64], signature_words: usize, fine_l
             eligible[c][f] = is_subset(fine_chain, coarse_chain);
             represented |= eligible[c][f];
         }
-        if !represented && fine_liability.get(f) != Some(&true) {
+        if !represented {
             return false;
         }
     }
@@ -244,22 +160,16 @@ struct CoarseCandidate {
     minimum_reach_size: u32,
     maximum_reach_size: u32,
     reach_start: usize,
-    /// The only chain is one that can only cost a seed.
-    lone_chain_is_liability: bool,
 }
 
 /// Returns the number of removed states. `comparison_limit` caps state-to-state comparisons;
 /// reaching it only keeps more states, it never makes the result inexact.
-///
-/// With cancellation on, the sort-key and quasi-score shortcuts below are no longer implied by
-/// domination, so they only decide which pairs are tried; every removal is still proven.
 pub fn prune_dominated(
     table: &mut StateTable,
     comparison_limit: u64,
     bbbv_factor_mask: &[u64],
     pool: &ConnectivityPool,
     signature_words: usize,
-    options: &PruneOptions,
 ) -> usize {
     if comparison_limit == 0 || table.len() < 2 {
         return 0;
@@ -272,25 +182,7 @@ pub fn prune_dominated(
         }
     }
 
-    // Per chain of each live signature: can it only cost a seed?
-    let mut liability: Vec<bool> = Vec::new();
-    let mut liability_range = vec![(0usize, 0usize); connectivity_count];
-    if let Some(reveal_rows) = options.reveal_rows {
-        for id in 0..connectivity_count {
-            if state_counts[id] == 0 {
-                continue;
-            }
-            let start = liability.len();
-            liability.extend(
-                pool.get(id as u32).chunks(signature_words).map(|chain| reach_reveals_pairwise(chain, reveal_rows)),
-            );
-            liability_range[id] = (start, liability.len());
-        }
-    }
-    let liability_of = |id: usize| &liability[liability_range[id].0..liability_range[id].1];
-
-    // Only signatures with the same total future reach can be coarsenings of each other. Chains
-    // that can only cost a seed don't count towards it, so they may be present on one side only.
+    // Only signatures with the same total future reach can be coarsenings of each other.
     let mut bucket_by_reach: FxHashMap<Vec<u64>, usize> =
         FxHashMap::with_capacity_and_hasher(connectivity_count, Default::default());
     let mut bucket_count = 0;
@@ -299,12 +191,8 @@ pub fn prune_dominated(
         if state_counts[id] == 0 {
             continue;
         }
-        let flags = liability_of(id);
         let mut total_reach = vec![0u64; signature_words];
-        for (index, chain) in pool.get(id as u32).chunks(signature_words).enumerate() {
-            if flags.get(index) == Some(&true) {
-                continue;
-            }
+        for chain in pool.get(id as u32).chunks(signature_words) {
             for (word, &value) in total_reach.iter_mut().zip(chain) {
                 *word |= value;
             }
@@ -341,34 +229,23 @@ pub fn prune_dominated(
     // `entry` makes keys unique, so this gives the same order a stable sort would.
     summaries.sort_unstable_by_key(|summary| (summary.bucket, summary.key, summary.entry));
 
-    let cancellation = options
-        .cancellation
-        .as_ref()
-        .filter(|c| c.factor_words <= MAX_CANCELLATION_WORDS && c.factor_words == bbbv_factor_mask.len());
     let dominates = |dominator: &StateSummary, target: &StateSummary| -> bool {
         let allowance = table.cost(target.entry) - table.cost(dominator.entry);
         if allowance < 0 {
             return false;
         }
-        // Hit-count differences give a cheap lower bound on the bit penalty. Each matched pair can
-        // cancel one penalty, and bonus bits are mines the dominator hit or units the target hit.
+        // Hit-count differences give a cheap lower bound on the bit penalty.
         let lower_bound = (target.mine_hits - dominator.mine_hits).max(0)
             + (dominator.bbbv_hits - target.bbbv_hits).max(0);
-        let slack = cancellation
-            .map_or(0, |c| (c.coverable as i32).min(dominator.mine_hits + target.bbbv_hits));
-        if lower_bound > allowance + slack {
+        if lower_bound > allowance {
             return false;
         }
-        let (dominator_hits, target_hits) = (table.factor_hits(dominator.entry), table.factor_hits(target.entry));
-        if dominance_penalty_at_most(dominator_hits, target_hits, bbbv_factor_mask, allowance) {
-            return true;
-        }
-        match cancellation {
-            Some(cancellation) if slack > 0 => {
-                cancelled_penalty_at_most(dominator_hits, target_hits, bbbv_factor_mask, cancellation, allowance)
-            }
-            _ => false,
-        }
+        dominance_penalty_at_most(
+            table.factor_hits(dominator.entry),
+            table.factor_hits(target.entry),
+            bbbv_factor_mask,
+            allowance,
+        )
     };
 
     let mut remaining = comparison_limit;
@@ -403,24 +280,18 @@ pub fn prune_dominated(
     let mut reach_start = vec![0usize; connectivity_count];
     let mut minimum_reach_size = vec![u32::MAX; connectivity_count];
     let mut maximum_reach_size = vec![0u32; connectivity_count];
-    // Largest reach among chains that must be contained in a coarse chain (not seed-only chains).
-    let mut covered_maximum_reach_size = vec![0u32; connectivity_count];
     let mut coarse_candidates: Vec<CoarseCandidate> = Vec::with_capacity(connectivity_count);
     for id in 0..connectivity_count {
         if survivors[id].is_empty() {
             continue;
         }
         let signature = pool.get(id as u32);
-        let flags = liability_of(id);
         chain_counts[id] = signature.len() / signature_words;
         reach_start[id] = reach_sizes.len();
-        for (index, chain) in signature.chunks(signature_words).enumerate() {
+        for chain in signature.chunks(signature_words) {
             let reach_size: u32 = chain.iter().map(|word| word.count_ones()).sum();
             minimum_reach_size[id] = minimum_reach_size[id].min(reach_size);
             maximum_reach_size[id] = maximum_reach_size[id].max(reach_size);
-            if flags.get(index) != Some(&true) {
-                covered_maximum_reach_size[id] = covered_maximum_reach_size[id].max(reach_size);
-            }
             reach_sizes.push(reach_size);
         }
         reach_sizes[reach_start[id]..].sort_unstable();
@@ -433,7 +304,6 @@ pub fn prune_dominated(
             minimum_reach_size: minimum_reach_size[id],
             maximum_reach_size: maximum_reach_size[id],
             reach_start: reach_start[id],
-            lone_chain_is_liability: chain_counts[id] == 1 && flags.first() == Some(&true),
         });
     }
 
@@ -490,7 +360,7 @@ pub fn prune_dominated(
                 if candidate.id == fine_id || candidate.minimum_quasi > maximum_quasi[fine_id] {
                     continue;
                 }
-                if covered_maximum_reach_size[fine_id] > candidate.maximum_reach_size
+                if maximum_reach_size[fine_id] > candidate.maximum_reach_size
                     || minimum_reach_size[fine_id] > candidate.minimum_reach_size
                 {
                     continue;
@@ -500,14 +370,12 @@ pub fn prune_dominated(
                 if !fine_reach_sizes.iter().zip(coarse_reach_sizes).all(|(fine, coarse)| fine <= coarse) {
                     continue;
                 }
-                // Within a bucket, a single coarse chain already contains every fine chain, unless
-                // that chain was left out of the bucket for only costing a seed.
-                if (count == 1 && !candidate.lone_chain_is_liability)
+                // Within a bucket, a single coarse chain already contains every fine chain.
+                if count == 1
                     || connectivity_coarsens(
                         pool.get(candidate.id as u32),
                         pool.get(fine_id as u32),
                         signature_words,
-                        liability_of(fine_id),
                     )
                 {
                     coarser.push(candidate.id);
@@ -598,8 +466,8 @@ mod tests {
             }
             let coarse: Vec<u64> = groups.concat();
             assert_eq!(
-                coarsens_by_mask(&coarse, &fine, words, &[]),
-                coarsens_general(&coarse, &fine, words, &[])
+                coarsens_by_mask(&coarse, &fine, words),
+                coarsens_general(&coarse, &fine, words)
             );
         }
     }
@@ -612,7 +480,7 @@ mod tests {
             let fine_count = rng.random_range(65..=100);
             let (fine, groups) = random_signatures(&mut rng, fine_count, words);
             let coarse: Vec<u64> = groups.concat();
-            assert!(connectivity_coarsens(&coarse, &fine, words, &[]));
+            assert!(connectivity_coarsens(&coarse, &fine, words));
 
             // An extra coarse chain that anchors no fine chain breaks the matching.
             let mut extra = coarse.clone();
@@ -622,7 +490,7 @@ mod tests {
             extra[last + 1] = 1u64 << 63;
             let has_matching_fine = fine.chunks(words).any(|chain| is_subset(chain, &extra[last..]));
             if !has_matching_fine {
-                assert!(!connectivity_coarsens(&extra, &fine, words, &[]));
+                assert!(!connectivity_coarsens(&extra, &fine, words));
             }
         }
     }

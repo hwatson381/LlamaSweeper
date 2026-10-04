@@ -81,7 +81,6 @@ pub struct DomsStats {
     /// Chord candidates removed by the static rules; the DP decides the rest.
     pub static_removed: usize,
     /// DP children not built because a sibling rule proved the other child no worse.
-    pub skipped_by_forced_chord: usize,
     pub skipped_by_forced_skip: usize,
     pub skipped_by_exchange: usize,
 }
@@ -135,7 +134,6 @@ pub fn solve_board(
     result.stats.max_boundary = outcome.max_boundary;
     result.stats.max_active_factors = outcome.max_active_factors;
     result.stats.static_removed = outcome.static_removed;
-    result.stats.skipped_by_forced_chord = outcome.skipped_by_forced_chord;
     result.stats.skipped_by_forced_skip = outcome.skipped_by_forced_skip;
     result.stats.skipped_by_exchange = outcome.skipped_by_exchange;
     Ok(result)
