@@ -619,19 +619,6 @@ Also ask for click path to be added in link?
 
 Figure out how to make it run on game end
 
-Small bug where saving an eff boards preset as "custom" causes it to become NaN in localstorage or something
-
-I noticed "filterSaturateValue" is also NaN?
-
-Small ziniexplorer bug -
-http://localhost:9000/#/game/zini-explorer?b=1&m=00400001000008000
-On classic input, click C1 then B1 to produce a smothered, but still existant left click.
-Then change to chain input, click B1 and it gives a javascript error in console
-
 Fix deepchain code hijacking by DOMs
-
-Change d=1 to auto run doms instead
-
-Also ptt import should allow links with d=1 at the end?
 
 Can we do something in zini explorer (or similar) that allows doing logically guaranteed zini. Like we have a bunch of rules (static rules from DOMS exposition) like the swap rules, never doing chords that reveal nothing new, possibly rules about chords being dominated by digs, other dominance rules like exchanges (care needed), key square stuff. So like have checkboxes for which rules to use to find "never chords" and "always chords" and maybe a button to do a "never chord" pass and a button for an "always chord" pass. We can then use different coloured markings (and a key or hover tooltip) to show where a square's classification came from similar to DOMS exposition.

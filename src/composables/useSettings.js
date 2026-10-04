@@ -191,16 +191,16 @@ let autoHintDelay = useLocalStorage("ls_autoHintDelay", 0); //ms to linger on mi
 let autoHintVariants = useLocalStorage("ls_autoHintVariants", "not eff boards");
 let autoHintBackdrop = useLocalStorage("ls_autoHintBackdrop", "no mines"); //numbers, mines, no mines, minimal
 
-let begEffPreset = useLocalStorage("ls_begEffPreset", 200);
-let begEffOptions = Object.freeze([200, 210, 225, "custom"]);
+let begEffPreset = useLocalStorage("ls_begEffPreset", "200");
+let begEffOptions = Object.freeze(["200", "210", "225", "custom"]);
 let begEffCustom = useLocalStorage("ls_begEffCustom", 235);
 const begEffSlowGenPoint = 210;
-let intEffPreset = useLocalStorage("ls_intEffPreset", 160);
-let intEffOptions = Object.freeze([160, 170, 180, "custom"]);
+let intEffPreset = useLocalStorage("ls_intEffPreset", "160");
+let intEffOptions = Object.freeze(["160", "170", "180", "custom"]);
 let intEffCustom = useLocalStorage("ls_intEffCustom", 190);
 const intEffSlowGenPoint = 180;
-let expEffPreset = useLocalStorage("ls_expEffPreset", 150);
-let expEffOptions = Object.freeze([150, 160, 170, "custom"]);
+let expEffPreset = useLocalStorage("ls_expEffPreset", "150");
+let expEffOptions = Object.freeze(["150", "160", "170", "custom"]);
 let expEffCustom = useLocalStorage("ls_expEffCustom", 180);
 const expEffSlowGenPoint = 170;
 let customEffCustom = useLocalStorage("ls_customEffCustom", 150);
@@ -226,19 +226,19 @@ let minimumEff = computed(() => {
       minEff =
         begEffPreset.value === "custom"
           ? begEffCustom.value
-          : begEffPreset.value;
+          : Number(begEffPreset.value);
       break;
     case "int":
       minEff =
         intEffPreset.value === "custom"
           ? intEffCustom.value
-          : intEffPreset.value;
+          : Number(intEffPreset.value);
       break;
     case "exp":
       minEff =
         expEffPreset.value === "custom"
           ? expEffCustom.value
-          : expEffPreset.value;
+          : Number(expEffPreset.value);
       break;
     case "custom":
       minEff = customEffCustom.value;
@@ -247,7 +247,7 @@ let minimumEff = computed(() => {
       throw new Error("Disallowed preset");
   }
 
-  if (typeof minEff !== "number") {
+  if (!Number.isFinite(minEff)) {
     return 100;
   }
 

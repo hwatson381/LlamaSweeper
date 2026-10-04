@@ -550,12 +550,9 @@ class ZiniExplore {
           c.y === nonOpeningSquare.y
       );
 
-      //Dig, but no chord means the dig was previously smothered, but now may be needed idk?
+      //Dig, but no chord means the dig was previously smothered
+      //This needs to remain untouched, we can't push to possiblyDependentNeighbourCoords as it's not a proper chain so optimising chain would fail.
       if (hasDigClick && !hasChordClick) {
-        possiblyDependentNeighbourCoords.push({
-          x: nonOpeningSquare.x,
-          y: nonOpeningSquare.y,
-        });
         continue;
       }
 

@@ -87,7 +87,7 @@ class BoardGenerator {
     }
 
     //Special case, if only search params are provided, we prepend the ptt part so it works
-    if (/^\??b=\d+&m=\w+$/.test(pttaUrl)) {
+    if (/^\??b=\d+&m=\w+(?:&d=1)?$/.test(pttaUrl)) {
       if (pttaUrl.charAt(0) !== "?") {
         pttaUrl = "?" + pttaUrl;
       }
