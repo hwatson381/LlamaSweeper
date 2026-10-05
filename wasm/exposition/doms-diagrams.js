@@ -11,6 +11,8 @@
     between: ["....*...", "........", "*...**..", ".*....*.", ".*.*....", "......*."],
     // 10 x 6, 11 mines. Has an opening spanning seven columns.
     wide: ["..........", ".*........", ".**..*.*..", "..*.*.....", "....*.....", "..*...*.*."],
+    // 3 x 3. The centre 6 has three mines that no other candidate needs.
+    private6: ["..*", "*.*", "***"],
   };
 
   const CHAIN_COLOURS = ["#8e24aa", "#ef6c00", "#d81b60", "#6d4c41", "#7cb342", "#c9a000", "#3949ab"];
@@ -135,6 +137,7 @@
     else if (board.mine[i] && !o.revealed) cell.append(h("div", { class: "mine-dot" }));
     else if (isRevealed && board.num[i] > 0) cell.append(numberSpan(board.num[i]));
     const d = o.decorate ? o.decorate(i) : null;
+    if (d && d.passHighlight) cell.classList.add("pass-highlight");
     if (d && d.title) cell.title = d.title;
     cell.append(...overlays(d));
     return cell;
@@ -1100,21 +1103,25 @@
   register("nothing-new", () => {
     const { board } = running();
     const between = M.analyse(BOARDS.between);
+    const private6 = M.analyse(BOARDS.private6);
     return figure(
       "Three cells the strengthened Rule C can remove. Rings show N(c) (dashed = reached only through an opening).",
       nothingNewFigure(board, candAt(board, 7, 6), "A border cell whose local revealers leave no independent set that exceeds the two-click budget."),
       nothingNewFigure(board, candAt(board, 0, 0), "A corner island whose revealers cover the same local work. Rule C checks all independent subsets rather than only triples."),
-      nothingNewFigure(between, candAt(between, 4, 1), "An island wedged between two openings. Private mines, when present, increase the budget because dropping c also saves those flags.")
+      nothingNewFigure(between, candAt(between, 4, 1), "An island wedged between two openings. Private mines, when present, increase the budget because dropping c also saves those flags."),
+      nothingNewFigure(private6, candAt(private6, 1, 1), "A 6 in a U-shaped mine pocket at the lower wall. Three mines are private to c, so its replacement budget is 2 + 3 = 5 rather than 2.")
     );
   });
 
-  function reductionDecorate(board, removed) {
+  function reductionDecorate(board, removed, latestPass) {
+    const latest = latestPass || new Set();
     return (cell) => {
       const c = board.candOf[cell];
       if (c < 0 || !removed.has(c)) return null;
       const reason = removed.get(c);
       return {
         cross: reason.rule === "A" ? REMOVED_A : REMOVED_C,
+        passHighlight: latest.has(c),
         title:
           reason.rule === "A"
             ? "swap rule: " + candName(board, reason.by) + " is never worse"
@@ -1144,18 +1151,13 @@
 
   register("reduction-live", (container) => {
     const out = h("div");
-    const tableOut = h("div");
     const errorOut = h("div", { class: "warn", hidden: true });
-    const pttaInput = h("input", {
-      type: "text",
-      value: "",
-      placeholder: "PTTACG URL or ?b=...&m=...",
-      class: "ptta-input",
-    });
     let seed = 1;
     let board = M.analyse(M.randomRows(30, 16, 99, seed));
     let kept = new Set(board.candidates.map((_, c) => c));
     let removed = new Map();
+    let latestPass = new Set();
+    let source = `random board (seed ${seed})`;
 
     const draw = () => {
       const byRule = (rule) => [...removed.values()].filter((r) => r.rule === rule).length;
@@ -1164,27 +1166,16 @@
         return x === 0 || y === 0 || x === board.w - 1 || y === board.h - 1;
       }).length;
       const borders = [...removed.keys()].filter((c) => board.openingsOfCell[board.candidates[c]].length).length;
-      const swapPreview = M.staticRulePass(board, kept, "swap").removed;
-      const leftClickPreview = M.staticRulePass(board, kept, "left-click-equivalent").removed;
-      const candidateRows = board.candidates.map((cell, c) => {
-        const position = board.xy(cell);
-        const status = removed.has(c) ? `removed (${removed.get(c).rule})` : kept.has(c) ? "kept" : "removed";
-        const swap = swapPreview.has(c) ? "yes" : "";
-        const leftClick = leftClickPreview.has(c) ? "yes" : "";
-        return [`(${position.x},${position.y})`, status, swap, leftClick];
-      });
       out.replaceChildren(
-        renderBoard(board, { cell: 20, decorate: reductionDecorate(board, removed) }),
+        renderBoard(board, { cell: 20, axes: true, decorate: reductionDecorate(board, removed, latestPass) }),
         h(
           "p",
           { class: "small" },
-          `Seed ${seed}: ${removed.size} of ${board.candidates.length} candidates removed (${((100 * removed.size) / board.candidates.length).toFixed(1)}%). ` +
+          `${source}: ${removed.size} of ${board.candidates.length} candidates removed (${((100 * removed.size) / board.candidates.length).toFixed(1)}%). ` +
             `Swap rule ${byRule("A")}, Rule C ${byRule("C")}. ${edge} were on the board edge and ${borders} were opening borders.`
           ),
-          h("p", { class: "small" }, `Preview uses ${kept.size} candidates at the start of the next pass. A pass removes its whole batch at once.`),
-          table(["candidate", "state", "swap pass", "Rule C + private"], candidateRows)
+          h("p", { class: "small" }, `The targeted passes use one pass-start snapshot; the fixpoint repeats until stable.`)
       );
-        tableOut.replaceChildren(out.lastChild);
     };
     const stats = h("span", { class: "small" });
     const many = () => {
@@ -1197,36 +1188,45 @@
       }
       stats.textContent = ` Over 50 random expert boards: ${((100 * removedTotal) / candidateTotal).toFixed(1)}% of candidates removed.`;
     };
-    const setBoard = (nextBoard) => {
+    const setBoard = (nextBoard, nextSource) => {
       board = nextBoard;
       kept = new Set(board.candidates.map((_, c) => c));
       removed = new Map();
+      latestPass = new Set();
+      source = nextSource;
       errorOut.hidden = true;
-      draw();
+      runFixpoint();
     };
     const runPass = (rule) => {
       const result = M.staticRulePass(board, kept, rule);
       result.removed.forEach((reason, c) => removed.set(c, reason));
       kept = result.kept;
+      latestPass = new Set(result.removed.keys());
       draw();
     };
     const runFixpoint = () => {
       const result = M.reduceCandidates(board, kept);
       result.removed.forEach((reason, c) => removed.set(c, reason));
       kept = new Set(result.kept);
+      latestPass = new Set();
       draw();
     };
     const load = () => {
+      const input = window.prompt("Enter a PTTACG URL or ?b=...&m=... query:");
+      if (input === null) return;
       try {
-        setBoard(M.analyse(M.parsePttacg(pttaInput.value)));
+        setBoard(M.analyse(M.parsePttacg(input)), "imported PTTACG board");
       } catch (error) {
         errorOut.textContent = error.message;
         errorOut.hidden = false;
       }
     };
-    const reset = () => {
-      pttaInput.value = "";
-      setBoard(M.analyse(M.randomRows(30, 16, 99, seed)));
+    const clear = () => {
+      kept = new Set(board.candidates.map((_, c) => c));
+      removed = new Map();
+      latestPass = new Set();
+      errorOut.hidden = true;
+      draw();
     };
     container.append(
       figure(
@@ -1235,22 +1235,21 @@
         h(
           "div",
           { class: "control-row" },
-          pttaInput,
           h("button", { onclick: load }, "load PTTACG"),
-          h("button", { onclick: reset }, "reset"),
+          h("button", { onclick: clear }, "clear"),
           h("button", { onclick: () => runPass("swap") }, "swap pass"),
           h("button", { onclick: () => runPass("left-click-equivalent") }, "Rule C + private mines"),
           h("button", { onclick: runFixpoint }, "run fixpoint")
         ),
-        h("div", {}, h("button", { onclick: () => ((seed += 1), reset()) }, "next random board"), " ", h("button", { onclick: many }, "average over 50 boards"), stats),
+        h("div", {}, h("button", { onclick: () => ((seed += 1), setBoard(M.analyse(M.randomRows(30, 16, 99, seed)), `random board (seed ${seed})`)) }, "next random board"), " ", h("button", { onclick: many }, "average over 50 boards"), stats),
         out,
-        tableOut,
         legend([
           [{ cross: REMOVED_A }, "swap rule"],
           [{ cross: REMOVED_C }, "Rule C / left-click equivalent"],
         ])
       )
     );
+    setBoard(board, `random board (seed ${seed})`);
     return null;
   });
 
@@ -1523,7 +1522,7 @@
             ["variant", "optimum", "total states", "peak states", "time"],
             results.map((r) => [r.name, r.result.total, sum(r.result.counts), Math.max(...r.result.counts), r.ms.toFixed(0) + " ms"])
           ),
-          results.map((r) => chart(r.name, r.result.counts, { max, log: true, colour: r.colour }))
+          ...results.map((r) => chart(r.name, r.result.counts, { max, log: true, colour: r.colour }))
         );
       }, 20);
     };

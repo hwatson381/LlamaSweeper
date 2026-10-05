@@ -855,7 +855,7 @@
   // Evaluate a complete pass against the same kept set, then remove the whole batch together.
   function staticRulePass(board, keptInput, rule) {
     const snapshot = new Set(keptInput || board.candidates.map((_, c) => c));
-    const removed = new Map();
+    const proposed = new Map();
     for (const c of [...snapshot].sort(byNumber)) {
       let reason = null;
       if (rule === "swap") {
@@ -867,7 +867,18 @@
       } else {
         throw new Error("Unknown static-rule pass: " + rule);
       }
-      if (reason) removed.set(c, reason);
+      if (reason) proposed.set(c, reason);
+    }
+
+    const removed = new Map();
+    const protectedWitnesses = new Set();
+    for (const c of [...proposed.keys()].sort(byNumber)) {
+      const reason = proposed.get(c);
+      if (reason.rule === "A") {
+        if (removed.has(reason.by) || protectedWitnesses.has(c)) continue;
+        protectedWitnesses.add(reason.by);
+      }
+      removed.set(c, reason);
     }
     const kept = new Set([...snapshot].filter((c) => !removed.has(c)));
     return { kept, removed };
@@ -970,6 +981,14 @@
       const { kept } = reduceCandidates(board);
       const reduced = bruteForce(board, kept);
       if (reduced.total !== best.total) fail("static reduction", [reduced.total, best.total]);
+      for (const rule of ["swap", "left-click-equivalent"]) {
+        const pass = staticRulePass(board, new Set(board.candidates.map((_, c) => c)), rule);
+        const passResult = bruteForce(board, [...pass.kept]);
+        if (passResult.total !== best.total) fail("snapshot " + rule, [passResult.total, best.total]);
+        for (const [c, reason] of pass.removed) {
+          if (reason.rule === "A" && pass.removed.has(reason.by)) fail("snapshot swap witness removed", [c, reason.by]);
+        }
+      }
       const reducedDp = solveDP(board, columnOrder(board, kept), { prune: "cancel", absorb: true });
       if (reducedDp.total !== best.total) fail("reduced dp", [reducedDp.total, best.total]);
       const { chosen } = chooseSweepOrder(board);

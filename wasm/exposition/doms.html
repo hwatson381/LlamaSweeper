@@ -218,9 +218,15 @@
 
       <h3>3.3 Rule C: left-click-equivalent chords (applied statically, exact)</h3>
       <p>
+        The motivation is simple: sometimes chording c does no more useful work than a small number of ordinary left-click-equivalent actions nearby.
+        Removing c saves its chord and possibly its chain seed, while the remaining candidates can pay for the work c used to do. The normal replacement
+        budget is two actions. A mine that only c needs to flag is an additional guaranteed saving, so private mines increase that budget. Rule C makes this
+        intuition exact by checking every independent subset I of the currently kept candidates in N(c), rather than guessing which neighbouring chords happen
+        to be used later.
+      </p>
+      <p>
         The earlier draft called a narrow version of this Rule B: it only allowed two lost 3BV units and at most two independent chain pieces. That special
-        case is no longer a separate rule. The implemented Rule C checks the stronger condition directly. Remove c if every independent subset I of the
-        currently kept candidates in N(c) satisfies:
+        case is no longer a separate rule. The implemented Rule C checks the stronger condition directly. Remove c when:
       </p>
       <ol>
         <li><b>|I| + |B(c) not solved by I| ≤ 2 + private(c)</b>, where I is non-empty,</li>
@@ -246,7 +252,11 @@
         Before choosing a sweep order, Rust repeatedly applies the swap rule and Rule C to the currently kept candidates. Removing a candidate means one
         fewer branching decision. It also shortens the window of every mine and 3BV unit next to it, and drops the candidate from every chain reach set, so
         more states become identical and merge. The reduced model filters candidate-related lists before <code>solve_frontier</code>; brute force tests still
-        use the unreduced model to verify that the optimum is unchanged.
+        use the unreduced model to verify that the optimum is unchanged. The explorer below starts with this fixpoint reduction, while its targeted buttons
+        demonstrate one snapshot pass at a time. A snapshot evaluates every candidate using knowledge from the beginning of the pass, then removes the safe
+        batch together. Rule C remains safe when batched because removing candidates only makes its condition easier; a swap batch additionally preserves each
+        removal's witness, so two mutually dominating candidates cannot remove each other. A targeted pass briefly highlights its newly removed cells with a
+        yellow-to-grey background transition, which can be disabled with the checkbox; <b>clear</b> restores all candidates without changing the board.
       </p>
       <div data-diagram="reduction-running"></div>
       <div data-diagram="reduction-live"></div>

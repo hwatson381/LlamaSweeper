@@ -248,6 +248,19 @@ figure.diagram figcaption {
   opacity: 0.8;
 }
 
+.cell.pass-highlight {
+  animation: pass-highlight-fade 1.2s ease-out forwards;
+}
+
+@keyframes pass-highlight-fade {
+  from {
+    background-color: #eee2a8;
+  }
+  to {
+    background-color: #d8d8d8;
+  }
+}
+
 .badge {
   position: absolute;
   top: 0;
@@ -277,7 +290,8 @@ figure.diagram figcaption {
   font-weight: 800;
   color: #000;
   font-style: italic;
-  z-index: 2;
+  z-index: 3;
+  text-shadow: 0 0 2px #fff, 0 0 4px #fff;
 }
 
 /* ---- legend and chips ---- */
@@ -529,19 +543,6 @@ button:hover {
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
-  margin-bottom: 10px;
-}
-
-.ptta-input {
-  flex: 1 1 320px;
-  min-width: 220px;
-  font: inherit;
-  padding: 5px 8px;
-  border: 1px solid #aab;
-  border-radius: 6px;
-}
-
-.control-row + div {
   margin-bottom: 10px;
 }
 
