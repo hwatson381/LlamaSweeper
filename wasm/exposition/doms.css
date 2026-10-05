@@ -524,6 +524,32 @@ button:hover {
   background: #f0f3ff;
 }
 
+.control-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.ptta-input {
+  flex: 1 1 320px;
+  min-width: 220px;
+  font: inherit;
+  padding: 5px 8px;
+  border: 1px solid #aab;
+  border-radius: 6px;
+}
+
+.control-row + div {
+  margin-bottom: 10px;
+}
+
+.facts td,
+.facts th {
+  vertical-align: top;
+}
+
 .small {
   font-size: 0.85rem;
   color: var(--muted);

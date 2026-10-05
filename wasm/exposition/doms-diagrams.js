@@ -19,7 +19,7 @@
   const CHORD_BADGE = "#6a1b9a";
   const SOLVED_TINT = "rgba(46, 160, 67, 0.3)";
   const REMOVED_A = "#c62828";
-  const REMOVED_B = "#6a1b9a";
+  const REMOVED_C = "#6a1b9a";
 
   // ---------- small DOM helpers ----------
 
@@ -1065,7 +1065,7 @@
 
   function nothingNewFigure(board, c, caption) {
     const kept = new Set(board.candidates.map((_, i) => i));
-    const checks = M.nothingNewRule(board, c, kept);
+    const checks = M.leftClickEquivalentRule(board, c, kept, true);
     const cell = board.candidates[c];
     const nCells = new Set(board.N[c].map((x) => board.candidates[x]));
     const units = board.B[c].map((u) => (board.units[u].kind === "opening" ? "opening@" : "island ") + cn(board, board.units[u].click)).join(", ");
@@ -1087,9 +1087,9 @@
         table(
           ["condition", "here", ""],
           [
-            ["|B(c)| ≤ 2", units, tick(checks.small)],
-            ["every cell in N(c) also solves B(c)", `${board.N[c].length} cells in N(c)`, tick(checks.covered)],
-            ["N(c) has no 3 cells that don't reveal each other", `N(c) sits on ${openingsOfN.length || "no"} opening border${openingsOfN.length === 1 ? "" : "s"}`, tick(checks.splitsAtMostTwo)],
+            ["|B(c)| ≤ 2 + private credit", `${units}; budget ${checks.budget}`, tick(checks.budget >= board.B[c].length)],
+            ["every independent set I obeys |I| + uncovered B(c) ≤ budget", `${board.N[c].length} kept revealers`, tick(checks.valid)],
+            ["private mines are credited", `${checks.privateMines} private mine${checks.privateMines === 1 ? "" : "s"}`, tick(checks.privateMines >= 0)],
           ]
         )
       ),
@@ -1101,10 +1101,10 @@
     const { board } = running();
     const between = M.analyse(BOARDS.between);
     return figure(
-      "Three cells the rule removes. Rings show N(c) (dashed = reached only through an opening).",
-      nothingNewFigure(board, candAt(board, 7, 6), "A border cell whose other numbered neighbours all border the same opening. Chording it reveals nothing the opening doesn't, so clicking the opening is always at least as good."),
-      nothingNewFigure(board, candAt(board, 0, 0), "A corner island whose neighbours all border one opening. Any chord that reveals those neighbours already reveals c."),
-      nothingNewFigure(between, candAt(between, 4, 1), "An island wedged between two openings. Removing it can split a chain in two (+1 seed) but always saves its own chord (−1), and its only 3BV (itself) is solved by whichever neighbour is chorded.")
+      "Three cells the strengthened Rule C can remove. Rings show N(c) (dashed = reached only through an opening).",
+      nothingNewFigure(board, candAt(board, 7, 6), "A border cell whose local revealers leave no independent set that exceeds the two-click budget."),
+      nothingNewFigure(board, candAt(board, 0, 0), "A corner island whose revealers cover the same local work. Rule C checks all independent subsets rather than only triples."),
+      nothingNewFigure(between, candAt(between, 4, 1), "An island wedged between two openings. Private mines, when present, increase the budget because dropping c also saves those flags.")
     );
   });
 
@@ -1113,7 +1113,13 @@
       const c = board.candOf[cell];
       if (c < 0 || !removed.has(c)) return null;
       const reason = removed.get(c);
-      return { cross: reason.rule === "A" ? REMOVED_A : REMOVED_B, title: reason.rule === "A" ? "swap rule: " + candName(board, reason.by) + " is never worse" : "reveals nothing new" };
+      return {
+        cross: reason.rule === "A" ? REMOVED_A : REMOVED_C,
+        title:
+          reason.rule === "A"
+            ? "swap rule: " + candName(board, reason.by) + " is never worse"
+            : `Rule C: left-click-equivalent${reason.privateMines ? `, ${reason.privateMines} private mine credit` : ""}`,
+      };
     };
   }
 
@@ -1126,37 +1132,59 @@
     const max = Math.max(...full.counts, ...reduced.counts);
     return figure(
       `Applying both rules repeatedly to the running example removes ${removed.size} of ${board.candidates.length} candidates ` +
-        `(${byRule("A")} by the swap rule, ${byRule("B")} by the nothing-new rule). The optimum is unchanged (${full.total} vs ${reduced.total}) while the toy DP ` +
+        `(${byRule("A")} by the swap rule, ${byRule("C")} by Rule C). The optimum is unchanged (${full.total} vs ${reduced.total}) while the toy DP ` +
         `handles ${sum(reduced.counts)} states instead of ${sum(full.counts)}. Hover a cross to see why it was removed.`,
       row(renderBoard(board, { decorate: reductionDecorate(board, removed), axes: true }), h("div", { style: { flex: "1", "min-width": "300px" } }, chart("toy DP, all candidates", full.counts, { max, log: true }), chart("toy DP, reduced candidates", reduced.counts, { max, log: true, colour: "#2e9e57" }))),
       legend([
         [{ cross: REMOVED_A }, "removed by the swap rule"],
-        [{ cross: REMOVED_B }, "removed by the nothing-new rule"],
+        [{ cross: REMOVED_C }, "removed by Rule C / left-click equivalent"],
       ])
     );
   });
 
   register("reduction-live", (container) => {
     const out = h("div");
+    const tableOut = h("div");
+    const errorOut = h("div", { class: "warn", hidden: true });
+    const pttaInput = h("input", {
+      type: "text",
+      value: "",
+      placeholder: "PTTACG URL or ?b=...&m=...",
+      class: "ptta-input",
+    });
     let seed = 1;
+    let board = M.analyse(M.randomRows(30, 16, 99, seed));
+    let kept = new Set(board.candidates.map((_, c) => c));
+    let removed = new Map();
+
     const draw = () => {
-      const board = M.analyse(M.randomRows(30, 16, 99, seed));
-      const { removed } = M.reduceCandidates(board);
       const byRule = (rule) => [...removed.values()].filter((r) => r.rule === rule).length;
       const edge = [...removed.keys()].filter((c) => {
         const { x, y } = board.xy(board.candidates[c]);
         return x === 0 || y === 0 || x === board.w - 1 || y === board.h - 1;
       }).length;
       const borders = [...removed.keys()].filter((c) => board.openingsOfCell[board.candidates[c]].length).length;
+      const swapPreview = M.staticRulePass(board, kept, "swap").removed;
+      const leftClickPreview = M.staticRulePass(board, kept, "left-click-equivalent").removed;
+      const candidateRows = board.candidates.map((cell, c) => {
+        const position = board.xy(cell);
+        const status = removed.has(c) ? `removed (${removed.get(c).rule})` : kept.has(c) ? "kept" : "removed";
+        const swap = swapPreview.has(c) ? "yes" : "";
+        const leftClick = leftClickPreview.has(c) ? "yes" : "";
+        return [`(${position.x},${position.y})`, status, swap, leftClick];
+      });
       out.replaceChildren(
         renderBoard(board, { cell: 20, decorate: reductionDecorate(board, removed) }),
         h(
           "p",
           { class: "small" },
           `Seed ${seed}: ${removed.size} of ${board.candidates.length} candidates removed (${((100 * removed.size) / board.candidates.length).toFixed(1)}%). ` +
-            `Swap rule ${byRule("A")}, nothing-new rule ${byRule("B")}. ${edge} were on the board edge and ${borders} were opening borders.`
-        )
+            `Swap rule ${byRule("A")}, Rule C ${byRule("C")}. ${edge} were on the board edge and ${borders} were opening borders.`
+          ),
+          h("p", { class: "small" }, `Preview uses ${kept.size} candidates at the start of the next pass. A pass removes its whole batch at once.`),
+          table(["candidate", "state", "swap pass", "Rule C + private"], candidateRows)
       );
+        tableOut.replaceChildren(out.lastChild);
     };
     const stats = h("span", { class: "small" });
     const many = () => {
@@ -1169,15 +1197,57 @@
       }
       stats.textContent = ` Over 50 random expert boards: ${((100 * removedTotal) / candidateTotal).toFixed(1)}% of candidates removed.`;
     };
-    draw();
+    const setBoard = (nextBoard) => {
+      board = nextBoard;
+      kept = new Set(board.candidates.map((_, c) => c));
+      removed = new Map();
+      errorOut.hidden = true;
+      draw();
+    };
+    const runPass = (rule) => {
+      const result = M.staticRulePass(board, kept, rule);
+      result.removed.forEach((reason, c) => removed.set(c, reason));
+      kept = result.kept;
+      draw();
+    };
+    const runFixpoint = () => {
+      const result = M.reduceCandidates(board, kept);
+      result.removed.forEach((reason, c) => removed.set(c, reason));
+      kept = new Set(result.kept);
+      draw();
+    };
+    const load = () => {
+      try {
+        setBoard(M.analyse(M.parsePttacg(pttaInput.value)));
+      } catch (error) {
+        errorOut.textContent = error.message;
+        errorOut.hidden = false;
+      }
+    };
+    const reset = () => {
+      pttaInput.value = "";
+      setBoard(M.analyse(M.randomRows(30, 16, 99, seed)));
+    };
     container.append(
       figure(
-        "Random expert boards (30×16, 99 mines). Crosses are candidates that never need to be considered.",
-        h("div", {}, h("button", { onclick: () => ((seed += 1), draw()) }, "next board"), " ", h("button", { onclick: many }, "average over 50 boards"), stats),
+        "Static-rule explorer. Crosses are candidates removed by the rules. Snapshot buttons evaluate every candidate against the pass-start candidate set, while fixpoint repeats until stable.",
+        errorOut,
+        h(
+          "div",
+          { class: "control-row" },
+          pttaInput,
+          h("button", { onclick: load }, "load PTTACG"),
+          h("button", { onclick: reset }, "reset"),
+          h("button", { onclick: () => runPass("swap") }, "swap pass"),
+          h("button", { onclick: () => runPass("left-click-equivalent") }, "Rule C + private mines"),
+          h("button", { onclick: runFixpoint }, "run fixpoint")
+        ),
+        h("div", {}, h("button", { onclick: () => ((seed += 1), reset()) }, "next random board"), " ", h("button", { onclick: many }, "average over 50 boards"), stats),
         out,
+        tableOut,
         legend([
           [{ cross: REMOVED_A }, "swap rule"],
-          [{ cross: REMOVED_B }, "nothing-new rule"],
+          [{ cross: REMOVED_C }, "Rule C / left-click equivalent"],
         ])
       )
     );
@@ -1437,7 +1507,7 @@
         const { kept } = M.reduceCandidates(board);
         const variants = [
           ["pass 1 (roughly today's pass 1)", M.columnOrder(board), { prune: "basic" }, "#6b8cff"],
-          ["+ static rules", M.columnOrder(board, kept), { prune: "basic" }, "#2e9e57"],
+          ["+ Rule A + Rule C (private credit)", M.columnOrder(board, kept), { prune: "basic" }, "#2e9e57"],
           ["+ absorption", M.columnOrder(board), { prune: "basic", absorb: true }, "#e08a00"],
           ["+ cancellation", M.columnOrder(board), { prune: "cancel" }, "#b0607a"],
           ["all three", M.columnOrder(board, kept), { prune: "cancel", absorb: true }, "#333"],

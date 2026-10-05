@@ -25,7 +25,7 @@
         <ol>
           <li><a href="#walkthrough">How the algorithm works</a></li>
           <li><a href="#applied">The minesweeper ideas DOMS already uses</a></li>
-          <li><a href="#potential">Minesweeper ideas not applied yet</a></li>
+          <li><a href="#potential">Applied and possible improvements</a></li>
           <li><a href="#ordering">Choosing the sweep order</a></li>
           <li><a href="#appendix">Appendix: self-check</a></li>
         </ol>
@@ -180,17 +180,23 @@
       <div data-diagram="geometry"></div>
 
       <!-- ================================================================== -->
-      <h2 id="potential">3. Minesweeper ideas not applied yet</h2>
+      <h2 id="potential">3. Applied and possible improvements</h2>
 
-      <h3>3.1 The blind spot: exchanges</h3>
+      <p>
+        This section started as a list of ideas the original frontier DP did not express. Several are now implemented. Each subsection says whether it is
+        <b>applied</b> in the Rust solver or remains a <b>possible improvement</b>; the numbering stays stable so links and discussion remain easy to follow.
+      </p>
+
+      <h3>3.1 The blind spot: exchanges (applied dynamically)</h3>
       <p>
         DOMS's dominance only ever says "A is no worse than B <em>if both make exactly the same future chords</em>". It can't express the most natural
         minesweeper argument: "whatever you did with chord c, chord d instead". Two histories that differ in c vs d usually have different chains and
-        different bits, so neither pass compares them. Both lines survive, often for a whole column of layers.
+        different bits, so neither ordinary dominance pass compares them. The frontier solver now handles a bounded version of this argument while building
+        each layer: if a later partner covers the relevant reveals and factor differences are already paid, the chorded child is skipped.
       </p>
       <div data-diagram="blindspot"></div>
 
-      <h3>3.2 Rule A: the swap rule (static, exact)</h3>
+      <h3>3.2 Rule A: the swap rule (applied statically, exact)</h3>
       <p>Remove candidate c before the DP runs if some other remaining candidate d satisfies all three of:</p>
       <ol>
         <li><b>M(d) ⊆ M(c)</b>: d never needs a flag c doesn't,</li>
@@ -210,52 +216,62 @@
       <div data-diagram="swap-edge"></div>
       <div data-diagram="swap-opening"></div>
 
-      <h3>3.3 Rule B: chords that reveal nothing new (static, exact)</h3>
-      <p>Remove c if:</p>
+      <h3>3.3 Rule C: left-click-equivalent chords (applied statically, exact)</h3>
+      <p>
+        The earlier draft called a narrow version of this Rule B: it only allowed two lost 3BV units and at most two independent chain pieces. That special
+        case is no longer a separate rule. The implemented Rule C checks the stronger condition directly. Remove c if every independent subset I of the
+        currently kept candidates in N(c) satisfies:
+      </p>
       <ol>
-        <li>|B(c)| ≤ 2,</li>
-        <li>every candidate in N(c) also solves all of B(c), and</li>
-        <li>N(c) doesn't contain three candidates that pairwise don't reveal each other, so removing c splits its chain into at most two.</li>
+        <li><b>|I| + |B(c) not solved by I| ≤ 2 + private(c)</b>, where I is non-empty,</li>
+        <li>the empty set also fits the same budget, and</li>
+        <li><b>private(c)</b> is the number of mines needed by c that no other currently kept candidate needs to flag.</li>
       </ol>
       <details>
         <summary>Why this is exact</summary>
         <p>
-          If nothing next to c is chorded, c is a chain on its own. Dropping it saves its chord and its seed (−2) and loses at most |B(c)| ≤ 2 units.
-          Otherwise some chorded neighbour already solves B(c), dropping c saves its chord (−1), and the chain splits into at most two pieces (+1 seed at most).
+          Dropping c saves its chord and, when it was a separate chain, its seed. The remaining chords can lose only the 3BV units not solved by their
+          representatives, and can gain seeds only for independent pieces of the reach left around c. The private flags are guaranteed savings, so they
+          increase the budget. Checking all independent subsets covers every possible set of later chords without depending on the history that reached c.
         </p>
       </details>
+      <p class="note">
+        Rule B was therefore retired as a separate switch. It is a weaker special case of Rule C, and the Rust implementation uses Rule C with private-mine
+        credit instead.
+      </p>
       <div data-diagram="nothing-new"></div>
 
-      <h3>3.4 How much the static rules remove</h3>
+      <h3>3.4 How much the static rules remove (applied before the frontier DP)</h3>
       <p>
-        Removing a candidate means one fewer branching decision. It also shortens the window of every mine and 3BV unit next to it, and drops it from every
-        chain's reach set, so more states become identical and merge. Implementation-wise this would be a <code>reduced()</code> step in
-        <code>model.rs</code> (like <code>reordered</code>) that filters every candidate list before <code>solve_frontier</code>. Brute force should keep
-        using the unreduced model so the tests check the rules independently.
+        Before choosing a sweep order, Rust repeatedly applies the swap rule and Rule C to the currently kept candidates. Removing a candidate means one
+        fewer branching decision. It also shortens the window of every mine and 3BV unit next to it, and drops the candidate from every chain reach set, so
+        more states become identical and merge. The reduced model filters candidate-related lists before <code>solve_frontier</code>; brute force tests still
+        use the unreduced model to verify that the optimum is unchanged.
       </p>
       <div data-diagram="reduction-running"></div>
       <div data-diagram="reduction-live"></div>
 
-      <h3>3.5 Opening-chain absorption (exact state equivalence)</h3>
+      <h3>3.5 Opening-chain absorption (applied, exact state equivalence)</h3>
       <p>
         Once the sweep has passed every chord in a chain except its link into an opening, the chain can only grow through that opening's remaining borders.
         That state is <em>exactly</em> equivalent to a state with no chain, the opening unsolved, and one extra click. In minesweeper terms, "the opening is
         open" is worth exactly one click, the same as clicking it.
       </p>
       <p>
-        Today the two versions have different chain counts and different total reach, so they land in different pass-2 buckets and are never compared.
-        States that touched a big opening a while ago and states that haven't touched it yet coexist across the opening's whole span. The fix is local: after
-        a transition, if an opening's bit is set and some chain's reach equals that opening's undecided borders, delete the chain, clear the bit and add 1.
+        The frontier transition now applies this equivalence locally: after a transition, if an opening factor is hit and a chain's reach equals that
+        opening's undecided borders, it deletes the chain, clears the opening bit and adds one click. The diagram below illustrates the state equivalence;
+        it is no longer merely a proposed optimisation.
       </p>
       <div data-diagram="absorb"></div>
       <div data-diagram="absorb-chart"></div>
 
-      <h3>3.6 Factor cancellation (tighter pass 1, exact)</h3>
+      <h3>3.6 Factor cancellation (applied dynamically, exact)</h3>
       <p>
         Pass 1 treats every "red" bit as a click the future can win back for free. But sometimes the only undecided candidates that can trigger a red bit
         are all among those that trigger a "green" bit. Then the future can't collect the red one without also collecting the green one, and the two cancel.
         A common case is a mine just behind the sweep next to an island just ahead of it: every remaining chord that needs that flag also opens the island.
-        The containment only depends on the layer, so it can be precomputed per layer. Any matching of red to green bits gives a valid, tighter bound.
+        The containment only depends on the layer, so it is precomputed per candidate. The frontier solver uses a matching of red to green bits as a tighter
+        bound before deciding whether the chorded child needs to be built.
       </p>
       <div data-diagram="cancel"></div>
       <div data-diagram="cancel-chart"></div>
@@ -296,7 +312,7 @@
         </tr>
         <tr>
           <td>history-dependent "never chord both c and d" rules</td>
-          <td>Forbidding some futures for some states breaks the "every identical future" assumption that dominance relies on. Only static, history-independent removals are safe.</td>
+          <td>Forbidding arbitrary futures for arbitrary states breaks the "every identical future" assumption that dominance relies on. The implemented rules are static or prove a sibling child is no better for the current state.</td>
         </tr>
         <tr>
           <td>bound pruning (greedy ZiNi as an upper bound plus a lower bound per state)</td>

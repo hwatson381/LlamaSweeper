@@ -747,20 +747,7 @@
     return { total: final.cost, chords: [...final.chords].sort(byNumber), counts, rawCounts, prep };
   }
 
-  // ---- Static candidate elimination (not in the Rust solver) ----
-
-  function alphaAtMostTwo(board, list) {
-    const set = list.map((c) => new Set(board.N[c]));
-    for (let i = 0; i < list.length; i++) {
-      for (let j = i + 1; j < list.length; j++) {
-        if (set[i].has(list[j])) continue;
-        for (let k = j + 1; k < list.length; k++) {
-          if (!set[i].has(list[k]) && !set[j].has(list[k])) return false;
-        }
-      }
-    }
-    return true;
-  }
+  // ---- Static candidate elimination ----
 
   function revealsWithin(board, c, kept) {
     return board.N[c].filter((d) => kept.has(d));
@@ -776,47 +763,85 @@
     };
   }
 
-  // Rule B: chording c never adds anything its revealers don't already give.
-  function nothingNewRule(board, c, kept) {
-    const reveals = revealsWithin(board, c, kept);
-    return {
-      small: board.B[c].length <= 2,
-      covered: reveals.every((e) => isSubset(board.B[c], board.B[e])),
-      splitsAtMostTwo: alphaAtMostTwo(board, reveals),
-    };
+  function mineSolvers(board, mine) {
+    const index = board.mineCells.indexOf(mine);
+    return index < 0 ? [] : board.mineSolvers[index];
   }
 
-  const allTrue = (checks) => Object.values(checks).every(Boolean);
+  function privateMineCount(board, c, kept) {
+    return board.M[c].filter((mine) => mineSolvers(board, mine).every((other) => other === c || !kept.has(other))).length;
+  }
+
+  function leftClickEquivalentRule(board, c, kept, includePrivate = true) {
+    const neighbours = revealsWithin(board, c, kept);
+    const privateMines = includePrivate ? privateMineCount(board, c, kept) : 0;
+    const budget = 2 + privateMines;
+    const units = new Set(board.B[c]);
+    let failingSet = null;
+
+    if (units.size > budget) return { valid: false, budget, privateMines, failingSet: [] };
+
+    const covers = neighbours.map((neighbour) => new Set(board.B[neighbour]));
+    const chosen = [];
+    const search = (start, uncovered) => {
+      for (let i = start; i < neighbours.length; i++) {
+        const neighbour = neighbours[i];
+        if (chosen.some((other) => board.N[other].includes(neighbour))) continue;
+        const nextUncovered = new Set([...uncovered].filter((unit) => !covers[i].has(unit)));
+        chosen.push(neighbour);
+        if (chosen.length + nextUncovered.size > budget) {
+          failingSet = [...chosen];
+          chosen.pop();
+          return false;
+        }
+        if (!search(i + 1, nextUncovered)) {
+          chosen.pop();
+          return false;
+        }
+        chosen.pop();
+      }
+      return true;
+    };
+
+    const valid = search(0, units);
+    return { valid, budget, privateMines, failingSet };
+  }
+
+  function allTrue(checks) {
+    return Object.values(checks).every(Boolean);
+  }
 
   function findSwap(board, c, kept) {
-    const { x, y } = board.xy(board.candidates[c]);
-    for (let dy = -2; dy <= 2; dy++) {
-      for (let dx = -2; dx <= 2; dx++) {
-        const nx = x + dx;
-        const ny = y + dy;
-        if ((!dx && !dy) || nx < 0 || ny < 0 || nx >= board.w || ny >= board.h) continue;
-        const d = board.candOf[board.cellAt(nx, ny)];
-        if (d >= 0 && kept.has(d) && allTrue(swapRule(board, c, d, kept))) return d;
+    for (const mine of board.M[c]) {
+      for (const d of mineSolvers(board, mine)) {
+        if (d !== c && kept.has(d) && allTrue(swapRule(board, c, d, kept))) return d;
       }
     }
     return -1;
   }
 
-  function reduceCandidates(board) {
-    const kept = new Set(board.candidates.map((_, c) => c));
+  function removalReason(board, c, kept, options) {
+    const opts = Object.assign({ swap: true, leftClickEquivalent: true, privateMineCredit: true }, options);
+    if (opts.leftClickEquivalent) {
+      const checks = leftClickEquivalentRule(board, c, kept, opts.privateMineCredit);
+      if (checks.valid) return { rule: "C", privateMines: checks.privateMines, budget: checks.budget };
+    }
+    if (opts.swap) {
+      const d = findSwap(board, c, kept);
+      if (d >= 0) return { rule: "A", by: d };
+    }
+    return null;
+  }
+
+  function reduceCandidates(board, keptInput) {
+    const kept = new Set(keptInput || board.candidates.map((_, c) => c));
     const removed = new Map();
     let changed = true;
     while (changed) {
       changed = false;
       for (let c = 0; c < board.candidates.length; c++) {
         if (!kept.has(c)) continue;
-        let reason = null;
-        if (allTrue(nothingNewRule(board, c, kept))) {
-          reason = { rule: "B" };
-        } else {
-          const d = findSwap(board, c, kept);
-          if (d >= 0) reason = { rule: "A", by: d };
-        }
+        const reason = removalReason(board, c, kept);
         if (reason) {
           kept.delete(c);
           removed.set(c, reason);
@@ -825,6 +850,62 @@
       }
     }
     return { kept: [...kept].sort(byNumber), removed };
+  }
+
+  // Evaluate a complete pass against the same kept set, then remove the whole batch together.
+  function staticRulePass(board, keptInput, rule) {
+    const snapshot = new Set(keptInput || board.candidates.map((_, c) => c));
+    const removed = new Map();
+    for (const c of [...snapshot].sort(byNumber)) {
+      let reason = null;
+      if (rule === "swap") {
+        const d = findSwap(board, c, snapshot);
+        if (d >= 0) reason = { rule: "A", by: d };
+      } else if (rule === "left-click-equivalent") {
+        const checks = leftClickEquivalentRule(board, c, snapshot, true);
+        if (checks.valid) reason = { rule: "C", privateMines: checks.privateMines, budget: checks.budget };
+      } else {
+        throw new Error("Unknown static-rule pass: " + rule);
+      }
+      if (reason) removed.set(c, reason);
+    }
+    const kept = new Set([...snapshot].filter((c) => !removed.has(c)));
+    return { kept, removed };
+  }
+
+  function parsePttacg(input) {
+    const text = String(input || "").trim().toLowerCase();
+    const match = text.match(/[?&]b=([0-9]+)&m=([0-9a-v]+)/i);
+    if (!match) throw new Error("Expected a PTTACG query or URL containing ?b=...&m=...");
+    const sizeCode = match[1];
+    let w;
+    let h;
+    if (sizeCode === "1") [w, h] = [9, 9];
+    else if (sizeCode === "2") [w, h] = [16, 16];
+    else if (sizeCode === "3") [w, h] = [30, 16];
+    else {
+      if (sizeCode.length % 2 || sizeCode.length > 6) throw new Error("Custom PTTACG board size must contain an even number of digits");
+      const midpoint = sizeCode.length / 2;
+      w = Number(sizeCode.slice(0, midpoint));
+      h = Number(sizeCode.slice(midpoint));
+      if (!w || !h || w > 256 || h > 256) throw new Error("PTTACG board dimensions are out of range");
+    }
+    const expected = Math.ceil((w * h) / 5);
+    const encoded = match[2];
+    if (encoded.length !== expected) throw new Error(`PTTACG mine data has ${encoded.length} digits; expected ${expected}`);
+    const bits = [];
+    for (const digit of encoded) {
+      const value = parseInt(digit, 32);
+      if (!Number.isInteger(value) || value > 31) throw new Error(`Invalid PTTACG digit: ${digit}`);
+      for (let bit = 4; bit >= 0; bit--) bits.push(Boolean(value & (1 << bit)));
+    }
+    const rows = [];
+    for (let y = 0; y < h; y++) {
+      let row = "";
+      for (let x = 0; x < w; x++) row += bits[y * w + x] ? "*" : ".";
+      rows.push(row);
+    }
+    return rows;
   }
 
   // ---- Random boards ----
@@ -945,8 +1026,10 @@
     dominates,
     solveDP,
     swapRule,
-    nothingNewRule,
+    leftClickEquivalentRule,
+    staticRulePass,
     reduceCandidates,
+    parsePttacg,
     randomRows,
     mulberry32,
     selfCheck,
