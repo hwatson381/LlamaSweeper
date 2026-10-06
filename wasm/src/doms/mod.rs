@@ -125,8 +125,18 @@ pub fn solve_board(
     max_states: usize,
     progress: &mut dyn FnMut(DomsProgress),
 ) -> Result<DomsResult, DomsError> {
+    solve_board_with_rule(board, reduce::DEFAULT_STATIC_RULE, max_states, progress)
+}
+
+/// `solve_board` with an explicit static reduction rule, for comparing rules.
+pub fn solve_board_with_rule(
+    board: &Board,
+    rule: reduce::StaticRule,
+    max_states: usize,
+    progress: &mut dyn FnMut(DomsProgress),
+) -> Result<DomsResult, DomsError> {
     let model = ChordModel::from_board(board);
-    let outcome = frontier::solve_frontier(&model, max_states, DEFAULT_DOMINANCE_COMPARISONS, progress)?;
+    let outcome = frontier::solve_frontier(&model, rule, max_states, DEFAULT_DOMINANCE_COMPARISONS, progress)?;
     let solution = solution::construct_solution(&model, &outcome.chords, Some(outcome.total_clicks))?;
     let mut result = to_result(board, &model, solution);
     result.stats.sweep_order = outcome.sweep_order;

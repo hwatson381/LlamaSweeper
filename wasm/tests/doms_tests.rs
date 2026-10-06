@@ -1,6 +1,6 @@
 use llamasweeper_rust::board_gen_8way::{Board, ClickType, SquareType};
 use llamasweeper_rust::doms::model::ChordModel;
-use llamasweeper_rust::doms::reduce;
+use llamasweeper_rust::doms::reduce::{self, StaticRule};
 use llamasweeper_rust::doms::{self, solution, DomsProgress, DomsResult, DEFAULT_MAX_STATES};
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
@@ -120,13 +120,13 @@ fn matches_bruteforce_on_small_boards() {
 }
 
 /// Brute force over the kept candidates must match brute force over all of them.
-#[test]
-fn static_reduction_keeps_the_optimum() {
+/// Returns how many candidates the rule removed over all boards checked.
+fn check_static_reduction(rule: StaticRule, seed: u64) -> usize {
     let mut removed = 0usize;
-    let mut rng = StdRng::seed_from_u64(20260930);
+    let mut rng = StdRng::seed_from_u64(seed);
     let mut checked = 0;
-    for attempt in 0..5000usize {
-        if checked == 400 {
+    for attempt in 0..20000usize {
+        if checked == 1500 {
             break;
         }
         let width = 3 + (attempt % 5);
@@ -139,14 +139,27 @@ fn static_reduction_keeps_the_optimum() {
             Ok(best) => best.total_clicks,
             Err(_) => continue,
         };
-        let kept = reduce::kept_candidates(&model);
+        let kept = reduce::kept_candidates_with(&model, rule);
         removed += model.candidate_cells.len() - kept.len();
         let reduced = solution::solve_bruteforce(&model.reordered(&kept), 16).unwrap();
-        assert_eq!(reduced.total_clicks, optimum, "{}", board.generate_pttacg());
+        assert_eq!(reduced.total_clicks, optimum, "{:?}: {}", rule, board.generate_pttacg());
         checked += 1;
     }
-    assert_eq!(checked, 400);
-    assert!(removed > 0, "nothing was removed");
+    assert_eq!(checked, 1500);
+    removed
+}
+
+#[test]
+fn static_reduction_keeps_the_optimum() {
+    assert!(check_static_reduction(StaticRule::Legacy, 20260930) > 0, "nothing was removed");
+}
+
+#[test]
+fn witness_reduction_keeps_the_optimum() {
+    let legacy = check_static_reduction(StaticRule::Legacy, 20261006);
+    let witness = check_static_reduction(StaticRule::Witness, 20261006);
+    println!("candidates removed: legacy {}, witness {}", legacy, witness);
+    assert!(witness >= legacy);
 }
 
 #[test]
@@ -208,57 +221,70 @@ const SLOW_BOARD: (&str, usize, usize) = (
     420,
 );
 
-fn benchmark(pttacg: &str, optimal_clicks: usize, max_states: usize) -> f64 {
+fn benchmark(pttacg: &str, optimal_clicks: usize, max_states: usize, rule: StaticRule) -> f64 {
     let board = load(pttacg);
     let start = std::time::Instant::now();
-    let result = doms::solve_board(&board, max_states, &mut |_| {}).expect("DOMS solves the board");
+    let result = doms::solve_board_with_rule(&board, rule, max_states, &mut |_| {}).expect("DOMS solves the board");
     let seconds = start.elapsed().as_secs_f64();
     assert_eq!(result.total_clicks, optimal_clicks, "optimal clicks for {}", pttacg);
-    println!("{:>8.3}s {:?}", seconds, result.stats);
+    println!("{:?} {:>8.3}s {:?}", rule, seconds, result.stats);
     seconds
 }
 
-// Run with `cargo test --release --test doms_tests -- --ignored --nocapture`
+const RULES: [StaticRule; 2] = [StaticRule::Legacy, StaticRule::Witness];
+
+// Run with `cargo test --release --test doms_tests -- --ignored --nocapture --test-threads=1`
 #[test]
 #[ignore]
 fn benchmark_reference_boards() {
-    let total: f64 = REFERENCE_BOARDS
-        .iter()
-        .map(|&(pttacg, optimal_clicks, _)| benchmark(pttacg, optimal_clicks, DEFAULT_MAX_STATES))
-        .sum();
-    println!("reference boards total: {:.3}s", total);
+    for rule in RULES {
+        let total: f64 = REFERENCE_BOARDS
+            .iter()
+            .map(|&(pttacg, optimal_clicks, _)| benchmark(pttacg, optimal_clicks, DEFAULT_MAX_STATES, rule))
+            .sum();
+        println!("reference boards total with {:?}: {:.3}s", rule, total);
+    }
 }
 
 #[test]
 #[ignore]
 fn benchmark_slow_board() {
-    benchmark(SLOW_BOARD.0, SLOW_BOARD.1, 20_000_000);
+    for rule in RULES {
+        benchmark(SLOW_BOARD.0, SLOW_BOARD.1, 20_000_000, rule);
+    }
 }
 
 #[test]
 #[ignore]
 fn benchmark_random_expert_boards() {
     const BOARD_COUNT: usize = 100;
-    let mut rng = StdRng::seed_from_u64(20261004);
-    let mut timings = Vec::with_capacity(BOARD_COUNT);
+    for rule in RULES {
+        let mut rng = StdRng::seed_from_u64(20261004);
+        let mut timings = Vec::with_capacity(BOARD_COUNT);
+        let mut removed = 0;
 
-    for _ in 0..BOARD_COUNT {
-        let board = random_board(&mut rng, 30, 16, 99);
-        let start = std::time::Instant::now();
-        doms::solve_board(&board, DEFAULT_MAX_STATES, &mut |_| {}).expect("DOMS solves the board");
-        timings.push(start.elapsed().as_secs_f64());
+        for _ in 0..BOARD_COUNT {
+            let board = random_board(&mut rng, 30, 16, 99);
+            let start = std::time::Instant::now();
+            let result = doms::solve_board_with_rule(&board, rule, DEFAULT_MAX_STATES, &mut |_| {})
+                .expect("DOMS solves the board");
+            timings.push(start.elapsed().as_secs_f64());
+            removed += result.stats.static_removed;
+        }
+
+        timings.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let total: f64 = timings.iter().sum();
+        println!(
+            "{:?}, {} random expert boards: total {:.3}s, mean {:.3}s, median {:.3}s, slowest {:.3}s, candidates removed {}",
+            rule,
+            BOARD_COUNT,
+            total,
+            total / BOARD_COUNT as f64,
+            timings[BOARD_COUNT / 2],
+            timings[BOARD_COUNT - 1],
+            removed
+        );
     }
-
-    timings.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    let total: f64 = timings.iter().sum();
-    println!(
-        "{} random expert boards: total {:.3}s, mean {:.3}s, median {:.3}s, slowest {:.3}s",
-        BOARD_COUNT,
-        total,
-        total / BOARD_COUNT as f64,
-        timings[BOARD_COUNT / 2],
-        timings[BOARD_COUNT - 1]
-    );
 }
 
 /// "Evil 199" board (optimal clicks, 3BV).
@@ -273,7 +299,9 @@ const EVIL_199_BOARD: (&str, usize, usize) = (
 fn benchmark_evil_199_board() {
     let (pttacg, optimal_clicks, bbbv) = EVIL_199_BOARD;
     assert_eq!(load(pttacg).info.bbbv as usize, bbbv, "3BV for {}", pttacg);
-    benchmark(pttacg, optimal_clicks, 20_000_000);
+    for rule in RULES {
+        benchmark(pttacg, optimal_clicks, 20_000_000, rule);
+    }
 }
 
 /// Community-scraped expert boards with very high efficiency potential, one per line:
@@ -283,6 +311,12 @@ const COMMUNITY_EXPERT_BOARDS: &str = include_str!("data/community_expert_boards
 #[test]
 #[ignore]
 fn benchmark_community_expert_boards() {
+    for rule in RULES {
+        benchmark_community_expert_boards_with(rule);
+    }
+}
+
+fn benchmark_community_expert_boards_with(rule: StaticRule) {
     let mut timings: Vec<(f64, &str)> = Vec::new();
     for line in COMMUNITY_EXPERT_BOARDS.lines().filter(|line| !line.trim().is_empty()) {
         let fields: Vec<&str> = line.split_whitespace().collect();
@@ -291,7 +325,8 @@ fn benchmark_community_expert_boards() {
         let board = load(pttacg);
         assert_eq!(board.info.bbbv as usize, bbbv, "3BV for {}", pttacg);
         let start = std::time::Instant::now();
-        let result = doms::solve_board(&board, 20_000_000, &mut |_| {}).expect("DOMS solves the board");
+        let result =
+            doms::solve_board_with_rule(&board, rule, 20_000_000, &mut |_| {}).expect("DOMS solves the board");
         timings.push((start.elapsed().as_secs_f64(), pttacg));
         assert_eq!(result.total_clicks, optimal_clicks, "optimal clicks for {}", pttacg);
     }
@@ -300,7 +335,8 @@ fn benchmark_community_expert_boards() {
     timings.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     let median = timings[timings.len() / 2].0;
     println!(
-        "{} community boards: total {:.3}s, mean {:.3}s, median {:.3}s",
+        "{:?}, {} community boards: total {:.3}s, mean {:.3}s, median {:.3}s",
+        rule,
         timings.len(),
         total,
         total / timings.len() as f64,

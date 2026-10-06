@@ -19,7 +19,7 @@
 use super::model::ChordModel;
 use super::order::{choose_sweep_order, coverage, cut_widths};
 use super::prune::prune_dominated;
-use super::reduce::kept_candidates;
+use super::reduce::{kept_candidates_with, StaticRule};
 use super::table::{set_bit, test_bit, ConnectivityPool, Lookup, StateTable};
 use super::{DomsError, DomsProgress};
 
@@ -592,11 +592,12 @@ fn chain_transition(
 
 pub fn solve_frontier(
     original: &ChordModel,
+    rule: StaticRule,
     max_states: usize,
     dominance_comparisons: u64,
     progress: &mut dyn FnMut(DomsProgress),
 ) -> Result<FrontierOutcome, DomsError> {
-    let kept = kept_candidates(original);
+    let kept = kept_candidates_with(original, rule);
     let static_removed = original.candidate_cells.len() - kept.len();
     let (model, sweep_order) = choose_sweep_order(&original.reordered(&kept));
     let candidate_count = model.candidate_cells.len();
