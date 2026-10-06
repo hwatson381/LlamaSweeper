@@ -37,3 +37,6 @@ yarn-error.log*
 flamegraph.svg
 profile.json.gz
 wasm/src/board_gen_8way copy.rs
+
+# notes
+scratchpad/

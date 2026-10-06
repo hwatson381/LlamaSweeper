@@ -122,6 +122,21 @@
       </p>
       <div data-diagram="coarsen"></div>
 
+      <h3 id="pass2-cost">1.10a How pass 2 stays cheap</h3>
+      <p>
+        Pass 2 is more powerful than comparing only identical chains, but it cannot afford to compare every pair of states. It therefore rejects most
+        impossible pairs before running the exact coarsening test. States are sorted by <b>(cost + 3BV hits, cost, −total hits)</b>; a possible dominator
+        must occur no later than its target in that order, so the scan only looks backwards. A cached <b>quasi-score</b>,
+        <b>cost + 3BV hits − mine hits</b>, rejects pairs whose factor costs already make domination impossible.
+      </p>
+      <p>
+        The remaining candidates are narrowed again. Signatures are grouped by the exact set of future cells they can reach, because a coarsening cannot
+        change that set. A coarse signature must have no more chains than the fine one, and its sorted chain reach sizes must be large enough to pair with
+        the fine sizes. Only then does <code>prune.rs</code> run the matching test that checks whether every fine chain is covered by a distinct coarse chain.
+        These are cheap necessary conditions; the final matching test is still the exact proof.
+      </p>
+      <div data-diagram="pass2-cost"></div>
+
       <h3>1.11 What merging and pruning buy</h3>
       <div data-diagram="layers"></div>
 
@@ -138,6 +153,42 @@
         Every state carries a bitset of its chords. The final state (no chains, no active bits) holds an optimal S. <code>solution.rs</code> re-evaluates S from
         scratch, checks the cost matches the DP, orders each chain's chords breadth-first from a seed, and replays the clicks on the board.
       </p>
+
+      <h3 id="limits">1.14 State limit and comparison cap</h3>
+      <p>
+        Two different limits protect the solver from spending unbounded time or memory. The normal defaults are a maximum of <b>2,000,000 live states
+        in one layer</b> and a budget of <b>1,000,000 state-to-state dominance comparisons in one pruning pass</b>. They control resources, not the
+        mathematical objective.
+      </p>
+      <p>
+        The state limit is a hard stop. After a layer has been merged and pruned, if too many states remain, DOMS returns a state-limit error with the
+        layer where it happened. It does not choose the best state seen so far and call that an answer, because that could discard the true optimum.
+      </p>
+      <p>
+        The comparison cap is different. Every comparison it does make uses the same sound dominance proof described above. When the budget runs out,
+        the solver simply stops attempting more comparisons and keeps the states it has not checked. That can leave more states for later layers and make
+        the solve slower or reach the state limit sooner, but it cannot remove a state that might be better. A completed solve therefore remains exact;
+        the cap limits pruning work, not answer quality.
+      </p>
+      <div data-diagram="limits"></div>
+
+      <h3 id="transition-cache">1.15 Transition caching</h3>
+      <p>
+        A state has two conceptually separate parts: its <b>connectivity signature</b>, meaning the unfinished chains and the cells each chain can still
+        reveal, and its factor bits, meaning which mines and 3BV units have already been paid for. The same signature often appears in many states with
+        different factor bits and costs.
+      </p>
+      <p>
+        <code>ConnectivityPool</code> interns each distinct, sorted chain signature once and gives it a small integer id. In a frontier layer,
+        <code>frontier.rs</code> computes the two chain-only transitions for each old signature id: what happens if the next candidate is skipped, and what
+        happens if it is chorded. It caches those results and reuses them for every state with that signature. Each state still applies its own factor-bit
+        changes, cost delta, and dominance rules, so caching shares only the connectivity work that is genuinely identical.
+      </p>
+      <p>
+        This is why a state stores a signature id plus factor bits instead of copying every chain bitset. Interning saves memory, while the per-layer
+        transition table avoids repeating the same chain update once for every state that happens to share it.
+      </p>
+      <div data-diagram="transition-cache"></div>
 
       <!-- ================================================================== -->
       <h2 id="applied">2. The minesweeper ideas DOMS already uses</h2>

@@ -764,6 +764,36 @@
     );
   });
 
+  register("pass2-cost", () => {
+    const stage = (title, body, colour) =>
+      h(
+        "div",
+        { class: "card", style: { "border-top": `4px solid ${colour}`, "min-width": "210px", "max-width": "260px" } },
+        h("h4", {}, title),
+        h("div", { class: "small", html: body })
+      );
+    return figure(
+      "Pass 2 narrows the search from all state pairs to a small set of candidates. Each filter is a sound reason to skip a comparison; the matching test is the final exact check.",
+      rowCenter(
+        stage("1. sort", "Earlier states are the only possible dominators. The key starts with <code>cost + 3BV hits</code>.", "#3559c7"),
+        arrow("→"),
+        stage("2. cheap bounds", "Reject by quasi-score, bucket, chain count, or sorted reach sizes before touching the chain bitsets.", "#e08a00"),
+        arrow("→"),
+        stage("3. exact test", "Run the Kuhn matching test: every fine chain must be covered by a distinct coarse chain.", "#2e9e57")
+      ),
+      table(
+        ["filter", "what it proves", "what remains"],
+        [
+          ["sort key", "a later state cannot be a cheaper dominator", "earlier states"],
+          ["quasi-score", "factor costs already exceed the available allowance", "plausible costs"],
+          ["total reach", "the two signatures do not reach the same future cells", "same-reach buckets"],
+          ["sizes and chain count", "there cannot be a one-to-one coarsening", "possible coarsenings"],
+          ["matching", "the coarse chains really cover the fine chains", "states eligible for dominance"],
+        ]
+      )
+    );
+  });
+
   register("layers", () => {
     const { board, order } = running();
     const plain = M.solveDP(board, order, { prune: "none" });
@@ -795,6 +825,74 @@
         `a narrower frontier (max ${Math.max(...columns)} vs ${Math.max(...rows)}). order.rs also tries bands and "smart" per-line orders and keeps the narrowest.`,
       chart("column sweep", columns, { max, colour: "#e08a00", height: 70 }),
       chart("row sweep", rows, { max, colour: "#b0607a", height: 70 })
+    );
+  });
+
+  register("limits", () => {
+    const outcome = (title, colour, text) =>
+      h(
+        "div",
+        { class: "card", style: { "border-top": `4px solid ${colour}`, "min-width": "250px", "max-width": "360px" } },
+        h("h4", {}, title),
+        h("div", { class: "small", html: text })
+      );
+    return figure(
+      "The two limits have different meanings. The comparison budget may reduce pruning; the state limit is an explicit failure rather than an approximate answer.",
+      rowCenter(
+        outcome("comparison cap: 1,000,000", "#e08a00", "A comparison is either a sound proof that one state can be deleted or it is not attempted. When the budget is exhausted, unchecked states stay alive."),
+        arrow("→"),
+        outcome("more survivors", "#3559c7", "The next layer may be slower or larger. Nothing has been incorrectly discarded, so an eventual completed answer is still optimal."),
+        arrow("or"),
+        outcome("state limit: 2,000,000", "#c62828", "If a layer still exceeds the limit after pruning, DOMS stops and reports an error. It never returns the best partial state as a solution.")
+      ),
+      table(
+        ["resource", "checked when", "effect on correctness"],
+        [
+          ["dominance comparisons", "while pruning each layer", '<span class="ok">may keep extra states; no effect on exactness</span>'],
+          ["live states", "after pruning each layer", '<span class="fail">explicitly fails if exceeded</span>'],
+        ]
+      )
+    );
+  });
+
+  register("transition-cache", () => {
+    const signature = h(
+      "div",
+      { class: "setbox", style: { "--c": "#3559c7", "min-width": "200px" } },
+      h("div", { class: "name" }, "signature id 17"),
+      h("div", {}, "chain A → {p, r}"),
+      h("div", {}, "chain B → {q}")
+    );
+    const state = (title, cost, factors) =>
+      h(
+        "div",
+        { class: "card", style: { "min-width": "190px", "max-width": "230px" } },
+        h("h4", {}, title),
+        h("div", {}, "signature: ", h("b", {}, "17")),
+        h("div", {}, "cost: ", h("b", {}, cost)),
+        h("div", { class: "section small" }, "factor bits: ", chips(factors))
+      );
+    const transition = h(
+      "div",
+      { class: "card highlight", style: { "min-width": "245px", "max-width": "290px" } },
+      h("h4", {}, "cached once for signature 17"),
+      h("div", { class: "section" }, "skip next candidate → signature 21; finish 0 chains"),
+      h("div", { class: "section" }, "chord next candidate → signature 24; finish 0 chains")
+    );
+    return figure(
+      "Three states share the same chain signature, so the layer computes its skip/chord connectivity transition once. Their factor bits and costs still produce separate next states.",
+      row(
+        h("div", {}, state("state A", 42, ["mine m ✓", "opening o ✗"]), state("state B", 43, ["mine m ✗", "opening o ✗"]), state("state C", 44, ["mine m ✓", "opening o ✓"])),
+        arrow("→"),
+        h("div", {}, signature, h("div", { class: "small", style: { "margin-top": "8px" } }, "one interned chain description")),
+        arrow("→"),
+        transition
+      ),
+      legend([
+        [{ tint: "#eef3ff" }, "states differ in cost and factor bits"],
+        [{ ring: "#3559c7" }, "one shared connectivity signature"],
+        [{ tint: "#e3f4e6" }, "cached chain-only transition"],
+      ])
     );
   });
 
