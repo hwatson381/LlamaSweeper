@@ -807,6 +807,156 @@
     return { valid, budget, privateMines, failingSet };
   }
 
+  const popcount = (value) => {
+    let count = 0;
+    for (let v = value; v; v &= v - 1) count++;
+    return count;
+  };
+
+  // Largest (mines covered - units solved) over subsets of `items` ({ mines, units } bitmasks), stopping early
+  // once `stopAt` is reached. `tick()` returns false when the node budget is spent.
+  function bestGain(items, stopAt, tick) {
+    let best = 0;
+    let bestPick = [];
+    let limited = false;
+    const go = (index, covered, units, picked) => {
+      const net = popcount(covered) - popcount(units);
+      if (net > best) {
+        best = net;
+        bestPick = picked;
+      }
+      if (best >= stopAt || index >= items.length || limited) return;
+      let optimistic = covered;
+      for (let i = index; i < items.length; i++) optimistic |= items[i].mines;
+      if (popcount(optimistic) - popcount(units) <= best) return;
+      if (!tick()) {
+        limited = true;
+        return;
+      }
+      go(index + 1, covered | items[index].mines, units | items[index].units, [...picked, items[index]]);
+      go(index + 1, covered, units, picked);
+    };
+    go(0, 0, 0, []);
+    return { gain: best, picked: bestPick, limited };
+  }
+
+  // Drops witnesses that another one matches or beats (more mines, no more units).
+  function dropDominated(items) {
+    const unique = [];
+    for (const item of items) if (!unique.some((other) => other.mines === item.mines && other.units === item.units)) unique.push(item);
+    return unique.filter((item) => !unique.some((other) => other !== item && (item.mines & ~other.mines) === 0 && (other.units & ~item.units) === 0));
+  }
+
+  // Rule C with witnesses. For every independent set I of c's kept revealers (one chord per piece c's chain
+  // splits into), the other kept chords that need c's mines ("witnesses") can only be used if they can coexist
+  // with I. The rule holds when |I| + (units of c left unsolved) - (mines of c left unflagged) <= 2 for the
+  // worst usable set of witnesses. options.ignore may contain "units", "neighbours" or "joins" to switch off one
+  // constraint (the page uses this to show what each one buys); options.exhaustive keeps going after a failure;
+  // options.only (candidate indexes) checks that single set I instead of every independent set.
+  function witnessCheck(board, c, kept, options) {
+    const opts = Object.assign({ exhaustive: false, ignore: [], nodeLimit: 20000 }, options);
+    const neighbours = revealsWithin(board, c, kept);
+    const mines = board.M[c];
+    const units = board.B[c];
+    const maskOf = (list, within) => list.reduce((mask, item, bit) => (within.includes(item) ? mask | (1 << bit) : mask), 0);
+    const allMines = (1 << mines.length) - 1;
+    const allUnits = (1 << units.length) - 1;
+    const witnesses = [];
+    for (const mine of mines) {
+      for (const d of mineSolvers(board, mine)) {
+        if (d !== c && kept.has(d) && !witnesses.some((w) => w.d === d)) {
+          witnesses.push({ d, mines: maskOf(mines, board.M[d]), units: maskOf(units, board.B[d]), isNeighbour: board.N[c].includes(d) });
+        }
+      }
+    }
+    witnesses.sort((a, b) => a.d - b.d);
+    const neighbourMines = neighbours.map((n) => maskOf(mines, board.M[n]));
+    const neighbourUnits = neighbours.map((n) => maskOf(units, board.B[n]));
+
+    let nodes = 0;
+    const tick = () => ++nodes <= opts.nodeLimit;
+    let limited = false;
+    let tightest = null;
+
+    const evaluate = (chosen) => {
+      if (!tick()) {
+        limited = true;
+        return false;
+      }
+      let unitsDone = 0;
+      let minesDone = 0;
+      for (const i of chosen) {
+        unitsDone |= neighbourUnits[i];
+        minesDone |= neighbourMines[i];
+      }
+      const unitsLeft = allUnits & ~unitsDone;
+      const minesLeft = allMines & ~minesDone;
+      const members = chosen.map((i) => neighbours[i]);
+      const free = [];
+      const costly = [];
+      const excluded = [];
+      let freeMines = 0;
+      for (const w of witnesses) {
+        const witnessMines = w.mines & minesLeft;
+        if (witnessMines === 0 || members.includes(w.d)) continue;
+        if (w.isNeighbour && chosen.length === 0 && !opts.ignore.includes("neighbours")) {
+          excluded.push({ d: w.d, mines: witnessMines, reason: "neighbour" });
+          continue;
+        }
+        if (!opts.ignore.includes("joins") && members.filter((n) => board.N[n].includes(w.d)).length > 1) {
+          excluded.push({ d: w.d, mines: witnessMines, reason: "joins" });
+          continue;
+        }
+        const stolen = opts.ignore.includes("units") ? 0 : w.units & unitsLeft;
+        if (stolen === 0) {
+          free.push({ d: w.d, mines: witnessMines });
+          freeMines |= witnessMines;
+        } else {
+          costly.push({ d: w.d, mines: witnessMines, units: stolen });
+        }
+      }
+      const base = chosen.length + popcount(unitsLeft) - popcount(minesLeft & ~freeMines);
+      const items = dropDominated(costly.map((w) => ({ ...w, mines: w.mines & ~freeMines })).filter((w) => w.mines !== 0));
+      const search = base > 2 && !opts.exhaustive ? { gain: 0, picked: [], limited: false } : bestGain(items, opts.exhaustive ? Infinity : 3 - base, tick);
+      if (search.limited) {
+        limited = true;
+        return false;
+      }
+      const height = base + search.gain;
+      if (!tightest || height > tightest.height) {
+        tightest = {
+          chosen: members,
+          height,
+          unitsLeft: units.filter((_, bit) => (unitsLeft >> bit) & 1),
+          minesLeft: mines.filter((_, bit) => (minesLeft >> bit) & 1),
+          free,
+          costly,
+          excluded,
+          worst: search.picked.map((w) => w.d),
+          freeMines: mines.filter((_, bit) => (freeMines >> bit) & 1),
+        };
+      }
+      return height <= 2;
+    };
+
+    const walk = (chosen, start) => {
+      const ok = evaluate(chosen);
+      if (limited || (!ok && !opts.exhaustive)) return false;
+      for (let i = start; i < neighbours.length; i++) {
+        if (chosen.some((j) => board.N[neighbours[j]].includes(neighbours[i]))) continue;
+        chosen.push(i);
+        const within = walk(chosen, i + 1);
+        chosen.pop();
+        if (limited || (!within && !opts.exhaustive)) return false;
+      }
+      return true;
+    };
+    if (opts.only) evaluate(opts.only.map((n) => neighbours.indexOf(n)));
+    else walk([], 0);
+    const valid = !limited && tightest.height <= 2;
+    return { valid, limited, tightest, failingSet: valid ? null : tightest.chosen };
+  }
+
   function allTrue(checks) {
     return Object.values(checks).every(Boolean);
   }
@@ -821,7 +971,7 @@
   }
 
   function removalReason(board, c, kept, options) {
-    const opts = Object.assign({ swap: true, leftClickEquivalent: true, privateMineCredit: true }, options);
+    const opts = Object.assign({ swap: true, leftClickEquivalent: true, privateMineCredit: true, witness: false }, options);
     if (opts.leftClickEquivalent) {
       const checks = leftClickEquivalentRule(board, c, kept, opts.privateMineCredit);
       if (checks.valid) return { rule: "C", privateMines: checks.privateMines, budget: checks.budget };
@@ -830,25 +980,31 @@
       const d = findSwap(board, c, kept);
       if (d >= 0) return { rule: "A", by: d };
     }
+    if (opts.witness && witnessCheck(board, c, kept).valid) return { rule: "W" };
     return null;
   }
 
-  function reduceCandidates(board, keptInput) {
+  // options.witness adds Rule C with witnesses. Like the Rust solver, the cheaper rules run to a fixpoint first.
+  function reduceCandidates(board, keptInput, options) {
     const kept = new Set(keptInput || board.candidates.map((_, c) => c));
     const removed = new Map();
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (let c = 0; c < board.candidates.length; c++) {
-        if (!kept.has(c)) continue;
-        const reason = removalReason(board, c, kept);
-        if (reason) {
-          kept.delete(c);
-          removed.set(c, reason);
-          changed = true;
+    const fixpoint = (witness) => {
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (let c = 0; c < board.candidates.length; c++) {
+          if (!kept.has(c)) continue;
+          const reason = removalReason(board, c, kept, { witness });
+          if (reason) {
+            kept.delete(c);
+            removed.set(c, reason);
+            changed = true;
+          }
         }
       }
-    }
+    };
+    fixpoint(false);
+    if (options && options.witness) fixpoint(true);
     return { kept: [...kept].sort(byNumber), removed };
   }
 
@@ -864,6 +1020,10 @@
       } else if (rule === "left-click-equivalent") {
         const checks = leftClickEquivalentRule(board, c, snapshot, true);
         if (checks.valid) reason = { rule: "C", privateMines: checks.privateMines, budget: checks.budget };
+      } else if (rule === "witness") {
+        const checks = leftClickEquivalentRule(board, c, snapshot, true);
+        if (checks.valid) reason = { rule: "C", privateMines: checks.privateMines, budget: checks.budget };
+        else if (witnessCheck(board, c, snapshot).valid) reason = { rule: "W" };
       } else {
         throw new Error("Unknown static-rule pass: " + rule);
       }
@@ -981,7 +1141,19 @@
       const { kept } = reduceCandidates(board);
       const reduced = bruteForce(board, kept);
       if (reduced.total !== best.total) fail("static reduction", [reduced.total, best.total]);
-      for (const rule of ["swap", "left-click-equivalent"]) {
+      const witnessReduced = reduceCandidates(board, null, { witness: true });
+      const witnessResult = bruteForce(board, witnessReduced.kept);
+      if (witnessResult.total !== best.total) fail("witness reduction", [witnessResult.total, best.total]);
+      if (!witnessReduced.kept.every((c) => kept.includes(c))) fail("witness reduction keeps more than the plain rules");
+      board.candidates.forEach((_, c) => {
+        const everything = new Set(board.candidates.map((_, i) => i));
+        const legacy = leftClickEquivalentRule(board, c, everything, true).valid;
+        const early = witnessCheck(board, c, everything);
+        const full = witnessCheck(board, c, everything, { exhaustive: true });
+        if (legacy && !early.valid) fail("witness rule is weaker than Rule C", c);
+        if (early.valid !== full.valid) fail("witness early exit disagrees with exhaustive", c);
+      });
+      for (const rule of ["swap", "left-click-equivalent", "witness"]) {
         const pass = staticRulePass(board, new Set(board.candidates.map((_, c) => c)), rule);
         const passResult = bruteForce(board, [...pass.kept]);
         if (passResult.total !== best.total) fail("snapshot " + rule, [passResult.total, best.total]);
@@ -1046,6 +1218,7 @@
     solveDP,
     swapRule,
     leftClickEquivalentRule,
+    witnessCheck,
     staticRulePass,
     reduceCandidates,
     parsePttacg,

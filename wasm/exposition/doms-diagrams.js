@@ -11,8 +11,14 @@
     between: ["....*...", "........", "*...**..", ".*....*.", ".*.*....", "......*."],
     // 10 x 6, 11 mines. Has an opening spanning seven columns.
     wide: ["..........", ".*........", ".**..*.*..", "..*.*.....", "....*.....", "..*...*.*."],
-    // 3 x 3. The centre 6 has three mines that no other candidate needs.
-    private6: ["..*", "*.*", "***"],
+    // 8 x 6, 9 mines. The 6 at (4,4) sits in a U-shaped pocket against the bottom wall; the mine below it is private.
+    private6: ["........", "........", ".....*..", "**.*....", "...*.*..", "...***.."],
+    // 8 x 6, 10 mines. Rule C with witnesses removes the 2 at (3,1); the old rule does not.
+    witnessEmpty: ["....*...", "........", "...*....", "**...*..", ".*..*...", "*.....**"],
+    // 8 x 6, 10 mines. Rule C with witnesses removes the 2 at (1,2) with a non-empty I.
+    witnessMember: ["........", "........", "..**..**", "*..*....", "*.*...*.", "...*...."],
+    // 9 x 7, 13 mines. The 4 at (5,5): the only witness for its last mine would join two members of I.
+    witnessJoins: ["*.*......", ".*.......", "......*..", ".*.......", "*....*...", "..*...*..", ".*...***."],
   };
 
   const CHAIN_COLOURS = ["#8e24aa", "#ef6c00", "#d81b60", "#6d4c41", "#7cb342", "#c9a000", "#3949ab"];
@@ -22,6 +28,7 @@
   const SOLVED_TINT = "rgba(46, 160, 67, 0.3)";
   const REMOVED_A = "#c62828";
   const REMOVED_C = "#6a1b9a";
+  const REMOVED_W = "#00838f";
 
   // ---------- small DOM helpers ----------
 
@@ -1202,14 +1209,141 @@
     const { board } = running();
     const between = M.analyse(BOARDS.between);
     const private6 = M.analyse(BOARDS.private6);
+    const privateChecks = M.leftClickEquivalentRule(private6, candAt(private6, 4, 4), new Set(private6.candidates.map((_, i) => i)), true);
     return figure(
-      "Three cells the strengthened Rule C can remove. Rings show N(c) (dashed = reached only through an opening).",
+      "Four cells the old Rule C can remove. Rings show N(c) (dashed = reached only through an opening).",
       nothingNewFigure(board, candAt(board, 7, 6), "A border cell whose local revealers leave no independent set that exceeds the two-click budget."),
       nothingNewFigure(board, candAt(board, 0, 0), "A corner island whose revealers cover the same local work. Rule C checks all independent subsets rather than only triples."),
       nothingNewFigure(between, candAt(between, 4, 1), "An island wedged between two openings. Private mines, when present, increase the budget because dropping c also saves those flags."),
-      nothingNewFigure(private6, candAt(private6, 1, 1), "A 6 in a U-shaped mine pocket at the lower wall. Three mines are private to c, so its replacement budget is 2 + 3 = 5 rather than 2.")
+      nothingNewFigure(private6, candAt(private6, 4, 4), `A 6 in a U-shaped mine pocket against the bottom wall. The mine directly below c touches no other number, so it is private to c and the budget is 2 + ${privateChecks.privateMines} = ${privateChecks.budget} rather than 2.`)
     );
   });
+
+  const WITNESS_FREE = "#2e7d32";
+  const WITNESS_COSTLY = "#ef6c00";
+  const WITNESS_EXCLUDED = "#757575";
+  const WITNESS_CONSTRAINT = {
+    units: "the units a witness also solves",
+    neighbours: "that c is alone when I is empty",
+    joins: "that a witness can't join two members of I",
+  };
+
+  function unitName(board, u) {
+    return (board.units[u].kind === "opening" ? "opening@" : "island ") + cn(board, board.units[u].click);
+  }
+
+  // Mines (or units) of c selected by a bitmask over c's own list.
+  const fromMask = (list, mask) => list.filter((_, bit) => (mask >> bit) & 1);
+
+  // One example of Rule C with witnesses. `key` is the constraint the example shows off: the variant of the check
+  // without it fails at some I, and the figure breaks the full check down at that same I.
+  function witnessFigure(board, c, key, caption) {
+    const kept = new Set(board.candidates.map((_, i) => i));
+    const legacy = M.leftClickEquivalentRule(board, c, kept, true);
+    const without = M.witnessCheck(board, c, kept, { ignore: [key] });
+    const full = M.witnessCheck(board, c, kept);
+    const detail = M.witnessCheck(board, c, kept, { only: without.failingSet || [] }).tightest;
+    const cell = board.candidates[c];
+    const names = (list) => list.map((x) => candName(board, x)).join(" ") || "∅";
+    const cells = (list) => list.map((i) => cn(board, i)).join(" ") || "∅";
+    const mark = (list, x) => list.some((w) => w.d === x);
+    const decorate = (i) => {
+      const x = board.candOf[i];
+      return mergeDecorations(
+        board.zeroOpening[i] >= 0 || board.openingsOfCell[i].length ? { tint: "var(--opening)" } : null,
+        detail.chosen.includes(x) ? { ring: CHAIN_COLOURS[0], label: "I", title: "a member of I" } : null,
+        mark(detail.free, x) ? { ring: WITNESS_FREE, title: "free witness" } : null,
+        mark(detail.costly, x) ? { ring: WITNESS_COSTLY, title: "costly witness" } : null,
+        mark(detail.excluded, x) ? { ring: WITNESS_EXCLUDED, dashed: true, title: "needs a mine of c but can't be used here" } : null,
+        i === cell ? { label: "c", ring: "#000" } : null
+      );
+    };
+    const flags = (w) => cells(fromMask(board.M[c], w.mines));
+    const reason = { neighbour: "next to c, so c would not be alone", joins: "would join two members of I" };
+    const unflagged = detail.minesLeft.length - detail.freeMines.length;
+    return figure(
+      caption,
+      row(
+        renderBoard(board, { cell: 24, title: `c = ${candName(board, c)}`, flagged: new Set(board.M[c]), decorate }),
+        h(
+          "div",
+          { style: { flex: "1", "min-width": "300px" } },
+          table(
+            [`at I = {${names(detail.chosen)}}`, ""],
+            [
+              ["units of c that I leaves unsolved", detail.unitsLeft.map((u) => unitName(board, u)).join(", ") || "∅"],
+              ["mines of c that I leaves unflagged", cells(detail.minesLeft)],
+              ["free witnesses<br><span class='small'>flag some of those mines, solve none of those units</span>", detail.free.map((w) => `${candName(board, w.d)}: ${flags(w)}`).join("<br>") || "∅"],
+              [
+                "costly witnesses<br><span class='small'>also solve one of those units</span>",
+                detail.costly.map((w) => `${candName(board, w.d)}: ${flags(w)}, solves ${fromMask(board.B[c], w.units).map((u) => unitName(board, u)).join(", ")}`).join("<br>") || "∅",
+              ],
+              ["unusable witnesses", detail.excluded.map((w) => `${candName(board, w.d)}: ${reason[w.reason]}`).join("<br>") || "∅"],
+              [
+                `|I| + unsolved units − unflagged mines, worst case<br><span class='small'>${detail.chosen.length} + ${detail.unitsLeft.length} − ${unflagged}${detail.worst.length ? `, then ${names(detail.worst)} added` : ""}; must be ≤ 2</span>`,
+                `${detail.height}`,
+              ],
+            ]
+          ),
+          table(
+            ["rule", "removes c?"],
+            [
+              ["old Rule C (only private mines are credited)", tick(legacy.valid)],
+              [`with witnesses, ignoring ${WITNESS_CONSTRAINT[key]}`, tick(without.valid)],
+              ["with witnesses", tick(full.valid)],
+            ]
+          )
+        )
+      ),
+      legend([
+        [{ ring: "#000" }, "c"],
+        [{ ring: CHAIN_COLOURS[0] }, "I"],
+        [{ ring: WITNESS_FREE }, "free witness"],
+        [{ ring: WITNESS_COSTLY }, "costly witness"],
+        [{ ring: WITNESS_EXCLUDED, dashed: true }, "unusable witness"],
+        [{}, "mines of c", h("span", { class: "flag", style: { "font-size": "14px" } }, "⚑")],
+      ])
+    );
+  }
+
+  const WITNESS_EXAMPLES = {
+    "witness-empty": {
+      key: "units",
+      board: BOARDS.witnessEmpty,
+      x: 3,
+      y: 1,
+      caption:
+        "A 2 that touches three 3BV units, so the old rule fails: no mine is private, so it must assume every other chord flags the mines for free. " +
+        "The table is the case where c is alone in its chain (I empty). The chords next to c can't be used, one of c's mines is flagged for free by a chord that " +
+        "solves none of those units, and every usable chord that could flag the other mine also solves one of them. So dropping c never costs more than it saves, and it can be removed.",
+    },
+    "witness-member": {
+      key: "units",
+      board: BOARDS.witnessMember,
+      x: 1,
+      y: 2,
+      caption:
+        "The same check with a non-empty I. One chord (the I member) already pays for its own flags and solves some of the units. " +
+        "The remaining witnesses all flag c's last mine, but each also solves a unit c would need, so adding any of them gains nothing in the worst case. " +
+        "Without charging them for those units, the check would assume the flag is free and fail.",
+    },
+    "witness-joins": {
+      key: "joins",
+      board: BOARDS.witnessJoins,
+      x: 5,
+      y: 5,
+      caption:
+        "A rarer case. I has three members that don't reveal each other, and only one other chord could flag c's last mine, but it touches two members of I. " +
+        "If it were chorded it would join them into one piece, so I would not have been the set of piece representatives. Treating it as usable makes the check fail.",
+    },
+  };
+
+  for (const [name, example] of Object.entries(WITNESS_EXAMPLES)) {
+    register(name, () => {
+      const board = M.analyse(example.board);
+      return witnessFigure(board, candAt(board, example.x, example.y), example.key, example.caption);
+    });
+  }
 
   function reductionDecorate(board, removed, latestPass) {
     const latest = latestPass || new Set();
@@ -1218,31 +1352,34 @@
       if (c < 0 || !removed.has(c)) return null;
       const reason = removed.get(c);
       return {
-        cross: reason.rule === "A" ? REMOVED_A : REMOVED_C,
+        cross: reason.rule === "A" ? REMOVED_A : reason.rule === "W" ? REMOVED_W : REMOVED_C,
         passHighlight: latest.has(c),
         title:
           reason.rule === "A"
             ? "swap rule: " + candName(board, reason.by) + " is never worse"
-            : `Rule C: left-click-equivalent${reason.privateMines ? `, ${reason.privateMines} private mine credit` : ""}`,
+            : reason.rule === "W"
+              ? "Rule C with witnesses: no usable set of other chords makes c worth chording"
+              : `Rule C: left-click-equivalent${reason.privateMines ? `, ${reason.privateMines} private mine credit` : ""}`,
       };
     };
   }
 
   register("reduction-running", () => {
     const { board } = running();
-    const { removed, kept } = M.reduceCandidates(board);
+    const { removed, kept } = M.reduceCandidates(board, null, { witness: true });
     const byRule = (rule) => [...removed.values()].filter((r) => r.rule === rule).length;
     const full = M.solveDP(board, M.columnOrder(board), { prune: "basic" });
     const reduced = M.solveDP(board, M.columnOrder(board, kept), { prune: "basic" });
     const max = Math.max(...full.counts, ...reduced.counts);
     return figure(
-      `Applying both rules repeatedly to the running example removes ${removed.size} of ${board.candidates.length} candidates ` +
-        `(${byRule("A")} by the swap rule, ${byRule("C")} by Rule C). The optimum is unchanged (${full.total} vs ${reduced.total}) while the toy DP ` +
+      `Applying all the rules repeatedly to the running example removes ${removed.size} of ${board.candidates.length} candidates ` +
+        `(${byRule("A")} by the swap rule, ${byRule("C")} by Rule C, ${byRule("W")} by Rule C with witnesses). The optimum is unchanged (${full.total} vs ${reduced.total}) while the toy DP ` +
         `handles ${sum(reduced.counts)} states instead of ${sum(full.counts)}. Hover a cross to see why it was removed.`,
       row(renderBoard(board, { decorate: reductionDecorate(board, removed), axes: true }), h("div", { style: { flex: "1", "min-width": "300px" } }, chart("toy DP, all candidates", full.counts, { max, log: true }), chart("toy DP, reduced candidates", reduced.counts, { max, log: true, colour: "#2e9e57" }))),
       legend([
         [{ cross: REMOVED_A }, "removed by the swap rule"],
         [{ cross: REMOVED_C }, "removed by Rule C / left-click equivalent"],
+        [{ cross: REMOVED_W }, "removed by Rule C with witnesses"],
       ])
     );
   });
@@ -1270,7 +1407,7 @@
           "p",
           { class: "small" },
           `${source}: ${removed.size} of ${board.candidates.length} candidates removed (${((100 * removed.size) / board.candidates.length).toFixed(1)}%). ` +
-            `Swap rule ${byRule("A")}, Rule C ${byRule("C")}. ${edge} were on the board edge and ${borders} were opening borders.`
+            `Swap rule ${byRule("A")}, Rule C ${byRule("C")}, Rule C with witnesses ${byRule("W")}. ${edge} were on the board edge and ${borders} were opening borders.`
           ),
           h("p", { class: "small" }, `The targeted passes use one pass-start snapshot; the fixpoint repeats until stable.`)
       );
@@ -1281,7 +1418,7 @@
       let candidateTotal = 0;
       for (let s = 1; s <= 50; s++) {
         const board = M.analyse(M.randomRows(30, 16, 99, s));
-        removedTotal += M.reduceCandidates(board).removed.size;
+        removedTotal += M.reduceCandidates(board, null, { witness: true }).removed.size;
         candidateTotal += board.candidates.length;
       }
       stats.textContent = ` Over 50 random expert boards: ${((100 * removedTotal) / candidateTotal).toFixed(1)}% of candidates removed.`;
@@ -1303,7 +1440,7 @@
       draw();
     };
     const runFixpoint = () => {
-      const result = M.reduceCandidates(board, kept);
+      const result = M.reduceCandidates(board, kept, { witness: true });
       result.removed.forEach((reason, c) => removed.set(c, reason));
       kept = new Set(result.kept);
       latestPass = new Set();
@@ -1337,6 +1474,7 @@
           h("button", { onclick: clear }, "clear"),
           h("button", { onclick: () => runPass("swap") }, "swap pass"),
           h("button", { onclick: () => runPass("left-click-equivalent") }, "Rule C + private mines"),
+          h("button", { onclick: () => runPass("witness") }, "Rule C + witnesses"),
           h("button", { onclick: runFixpoint }, "run fixpoint")
         ),
         h("div", {}, h("button", { onclick: () => ((seed += 1), setBoard(M.analyse(M.randomRows(30, 16, 99, seed)), `random board (seed ${seed})`)) }, "next random board"), " ", h("button", { onclick: many }, "average over 50 boards"), stats),
@@ -1344,6 +1482,7 @@
         legend([
           [{ cross: REMOVED_A }, "swap rule"],
           [{ cross: REMOVED_C }, "Rule C / left-click equivalent"],
+          [{ cross: REMOVED_W }, "Rule C with witnesses"],
         ])
       )
     );

@@ -269,45 +269,103 @@
 
       <h3>3.3 Rule C: left-click-equivalent chords (applied statically, exact)</h3>
       <p>
-        The motivation is simple: sometimes chording c does no more useful work than a small number of ordinary left-click-equivalent actions nearby.
-        Removing c saves its chord and possibly its chain seed, while the remaining candidates can pay for the work c used to do. The normal replacement
-        budget is two actions. A mine that only c needs to flag is an additional guaranteed saving, so private mines increase that budget. Rule C makes this
-        intuition exact by checking every independent subset I of the currently kept candidates in N(c), rather than guessing which neighbouring chords happen
-        to be used later.
+        Sometimes chording c is worth no more than a couple of ordinary clicks nearby. Rule C removes c when every solution that chords it can drop that
+        chord without costing any extra clicks.
       </p>
       <p>
-        The earlier draft called a narrow version of this Rule B: it only allowed two lost 3BV units and at most two independent chain pieces. That special
-        case is no longer a separate rule. The implemented Rule C checks the stronger condition directly. Remove c when:
+        Take a solution S that chords c, and remove c from it. Let I hold one chord from each piece c's chain splits into, so I is a set of chords next to c
+        that don't reveal each other (I is empty if c was alone). The number of clicks changes by
       </p>
-      <ol>
-        <li><b>|I| + |B(c) not solved by I| ≤ 2 + private(c)</b>, where I is non-empty,</li>
-        <li>the empty set also fits the same budget, and</li>
-        <li><b>private(c)</b> is the number of mines needed by c that no other currently kept candidate needs to flag.</li>
-      </ol>
+      <p class="note">|I| − 2 − saved + lost</p>
+      <ul>
+        <li>
+          <b>−2</b> is the chord on c and the seed click of its old chain, and <b>+|I|</b> is one new seed for each piece the chain splits into.
+        </li>
+        <li><b>saved</b> is the number of flags that only c needed.</li>
+        <li><b>lost</b> is the number of 3BV units in B(c) that no remaining chord solves, each now needing a left click.</li>
+      </ul>
+      <p>
+        Rule C removes c if this is never positive, so |I| + lost ≤ 2 + saved. It can't know what the rest of S looks like, so it takes the safe bound for
+        each side. lost is at most the number of units of B(c) that I doesn't solve, and saved is at least private(c), the number of mines of c that no other
+        kept candidate needs. Remove c when, for every set I of kept candidates in N(c) that don't reveal each other (including the empty set):
+      </p>
+      <p class="note">|I| + |B(c) not solved by I| ≤ 2 + private(c)</p>
       <details>
         <summary>Why this is exact</summary>
         <p>
-          Dropping c saves its chord and, when it was a separate chain, its seed. The remaining chords can lose only the 3BV units not solved by their
-          representatives, and can gain seeds only for independent pieces of the reach left around c. The private flags are guaranteed savings, so they
-          increase the budget. Checking all independent subsets covers every possible set of later chords without depending on the history that reached c.
+          Whatever S is, c's chain splits into some number of pieces after c is removed, and one chord from each piece forms an I of the kind the rule
+          checks. Units lost are never more than the ones I fails to solve, and the flags only c needed are saved no matter what else S contains.
+          So the real cost change is never worse than the bound for that I, and checking every I covers every possible S without depending on how S got to c.
         </p>
       </details>
       <p class="note">
-        Rule B was therefore retired as a separate switch. It is a weaker special case of Rule C, and the Rust implementation uses Rule C with private-mine
-        credit instead.
+        An earlier version of this idea, Rule B, allowed only two lost 3BV units and at most two chain pieces. It is a weaker special case of Rule C, so it no
+        longer exists as a separate rule.
       </p>
       <div data-diagram="nothing-new"></div>
 
+      <h3 id="rule-c-witnesses">3.3a Rule C with witnesses (applied statically, exact)</h3>
+      <p>
+        Rule C's credit for flags is very cautious. A mine of c that some other kept candidate also needs gives no credit at all, on the assumption that
+        the other candidate is chorded anyway and flags it for free. Call a kept candidate d ≠ c that needs one of c's mines a <b>witness</b> for c. Two
+        things make that assumption too pessimistic:
+      </p>
+      <ul>
+        <li>
+          <b>A witness can cost the adversary a unit.</b> If d also solves a unit of B(c), then having d in S removes one saved flag but also one lost unit,
+          since d solves that unit whether or not c is dropped. The two cancel, so d is no help in making dropping c look bad. This is the common case.
+        </li>
+        <li>
+          <b>Not every witness can be in the same solution as I.</b> A witness touching two members of I would put them in the same piece of the chain,
+          which contradicts I having one member per piece. This is rare. When I is empty, c is alone, so a witness next to c can't be chorded either, but
+          that case never changes the verdict, because such a witness could instead be put in I. Rust skips them anyway, since it saves search.
+        </li>
+      </ul>
+      <p>
+        For a fixed I, write U for the units of B(c) that no member of I solves and F for the mines of c that no member of I needs, since members of I
+        pay for their own flags and solve their own units. Each usable witness has the mines of F it flags and the units of U it solves. Witnesses that solve
+        no unit of U are <b>free</b>: they flag mines at no cost, so the worst case always includes them. Witnesses that do solve a unit of U are
+        <b>costly</b>: the worst case only includes a set of them if they flag more new mines than the units they solve. For a set D of usable witnesses
+        the change in clicks is at most zero when:
+      </p>
+      <p class="note">|I| + |U not solved by D| ≤ 2 + |F not flagged by D|</p>
+      <p>
+        Rule C with witnesses removes c when this holds for every set I of kept candidates in N(c) that don't reveal each other, whichever set D of witnesses
+        is used. Rule C is the special case where witnesses cost nothing and every one of them is usable, so anything Rule C removes this rule removes too.
+      </p>
+      <details>
+        <summary>Why this is exact</summary>
+        <p>
+          Again take any S containing c, with I the representatives of c's pieces. Every chord of S other than c and I either touches no mine or unit of c,
+          which only helps, or is a witness, and a witness in S can't touch two members of I. So the flags actually saved and the units actually lost are
+          those of a usable set D, which is what the check ranges over. The check also treats chains that merge indirectly as separate, which can only make
+          it stricter. If it passes, the real change in clicks is at most zero for every S.
+        </p>
+      </details>
+      <p>
+        The Rust check runs after the cheaper rules have reached a fixpoint, so it only looks at the candidates they couldn't remove. For each I it takes
+        the free witnesses at once, discards costly witnesses that another one beats (more mines, no more units) and searches the rest with a bound. It stops at
+        the first failing I. Each candidate gets at most 20,000 search steps; running out just keeps the candidate, so only reduction is lost, never
+        correctness. Large openings are the case where many sets I exist, since any one border can be a member.
+      </p>
+      <p>The boards below are cases the old rule can't remove. The first is the I = ∅ case, the second has a non-empty I, and the third needs the rule that a witness can't join two members of I.</p>
+      <div data-diagram="witness-empty"></div>
+      <div data-diagram="witness-member"></div>
+      <div data-diagram="witness-joins"></div>
+
       <h3>3.4 How much the static rules remove (applied before the frontier DP)</h3>
       <p>
-        Before choosing a sweep order, Rust repeatedly applies the swap rule and Rule C to the currently kept candidates. Removing a candidate means one
+        Before choosing a sweep order, Rust repeatedly applies the swap rule and Rule C to the currently kept candidates, and then repeats with Rule C with
+        witnesses added. Removing a candidate means one
         fewer branching decision. It also shortens the window of every mine and 3BV unit next to it, and drops the candidate from every chain reach set, so
         more states become identical and merge. The reduced model filters candidate-related lists before <code>solve_frontier</code>; brute force tests still
         use the unreduced model to verify that the optimum is unchanged. The explorer below starts with this fixpoint reduction, while its targeted buttons
         demonstrate one snapshot pass at a time. A snapshot evaluates every candidate using knowledge from the beginning of the pass, then removes the safe
-        batch together. Rule C remains safe when batched because removing candidates only makes its condition easier; a swap batch additionally preserves each
+        batch together. Rule C and Rule C with witnesses remain safe when batched because removing candidates only shrinks the sets they quantify over, so their
+        conditions only get easier; a swap batch additionally preserves each
         removal's witness, so two mutually dominating candidates cannot remove each other. A targeted pass briefly highlights its newly removed cells with a
         yellow-to-grey background transition, which can be disabled with the checkbox; <b>clear</b> restores all candidates without changing the board.
+        Teal crosses are the candidates only Rule C with witnesses removes.
       </p>
       <div data-diagram="reduction-running"></div>
       <div data-diagram="reduction-live"></div>
