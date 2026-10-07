@@ -4,7 +4,7 @@ use llamasweeper_rust::doms::reduce::{self, StaticRule};
 use llamasweeper_rust::doms::{self, solution, DomsProgress, DomsResult, DEFAULT_MAX_STATES};
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 
 /// (PTTACG string, optimal clicks, 3BV) from the reference C++ implementation.
 const REFERENCE_BOARDS: &[(&str, usize, usize)] = &[
@@ -163,6 +163,78 @@ fn witness_reduction_keeps_the_optimum() {
 }
 
 #[test]
+fn strong_swap_reduction_keeps_the_optimum() {
+    let witness = check_static_reduction(StaticRule::Witness, 20261007);
+    let strong = check_static_reduction(StaticRule::StrongSwap, 20261007);
+    println!("candidates removed: witness {}, strong swap {}", witness, strong);
+    assert!(strong >= witness);
+}
+
+/// Every swap the strong rule accepts must not cost clicks for any chord set containing `c`:
+/// replace `c` by `d`, or just drop `c` if `d` is already chorded. This is much stricter than
+/// comparing optima, which a wrong removal only breaks when every optimal solution uses `c`.
+#[test]
+fn strong_swap_never_costs_clicks() {
+    const MAX_KEPT: usize = 10;
+    let mut rng = StdRng::seed_from_u64(20261008);
+    let (mut boards, mut swaps, mut dropped_cases) = (0usize, 0usize, 0usize);
+    for attempt in 0..40000usize {
+        if boards == 400 {
+            break;
+        }
+        let width = 3 + (attempt % 5);
+        let height = 3 + (attempt % 4);
+        let mine_count = 1 + attempt % (width * height / 2);
+        let board = random_board(&mut rng, width, height, mine_count);
+        let model = ChordModel::from_board(&board);
+        let count = model.candidate_cells.len();
+        if count < 2 {
+            continue;
+        }
+        // Random kept sets, since the rule must hold relative to whatever is still kept.
+        let mut kept: Vec<bool> = (0..count).map(|_| rng.random_bool(0.8)).collect();
+        let mut total = 0;
+        for flag in kept.iter_mut() {
+            total += *flag as usize;
+            *flag = *flag && total <= MAX_KEPT;
+        }
+        boards += 1;
+        let members: Vec<usize> = (0..count).filter(|&candidate| kept[candidate]).collect();
+
+        for &candidate in &members {
+            let Some(partner) = reduce::strong_swap_partner(&model, &kept, candidate) else { continue };
+            swaps += 1;
+            let others: Vec<usize> = members.iter().copied().filter(|&other| other != candidate).collect();
+            for subset in 0..1usize << others.len() {
+                let rest: Vec<usize> =
+                    others.iter().enumerate().filter(|&(bit, _)| subset >> bit & 1 == 1).map(|(_, &o)| o).collect();
+                let mut before = rest.clone();
+                before.push(candidate);
+                let mut after = rest;
+                if !after.contains(&partner) {
+                    after.push(partner);
+                } else {
+                    dropped_cases += 1;
+                }
+                assert!(
+                    solution::evaluate_chords(&model, &after).total_clicks
+                        <= solution::evaluate_chords(&model, &before).total_clicks,
+                    "swap {} -> {} with {:?} kept {:?}: {}",
+                    candidate,
+                    partner,
+                    before,
+                    members,
+                    board.generate_pttacg()
+                );
+            }
+        }
+    }
+    println!("{} boards, {} accepted swaps, {} chord sets where the partner was already chorded", boards, swaps, dropped_cases);
+    assert_eq!(boards, 400);
+    assert!(swaps > 0, "the rule never fired");
+}
+
+#[test]
 fn solves_from_row_major_mines() {
     // 4 wide, 2 tall with a mine at (x=3, y=0): one opening plus the island at (x=3, y=1)
     let mines = [0, 0, 0, 1, 0, 0, 0, 0];
@@ -231,7 +303,7 @@ fn benchmark(pttacg: &str, optimal_clicks: usize, max_states: usize, rule: Stati
     seconds
 }
 
-const RULES: [StaticRule; 2] = [StaticRule::Legacy, StaticRule::Witness];
+const RULES: [StaticRule; 2] = [StaticRule::Witness, StaticRule::StrongSwap];
 
 // Run with `cargo test --release --test doms_tests -- --ignored --nocapture --test-threads=1`
 #[test]
