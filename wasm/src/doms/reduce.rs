@@ -181,6 +181,44 @@ impl CandidateSets {
     }
 }
 
+/// Neighbours of `c` with one kept from each group that solve the same units of `c` and reveal the
+/// same neighbours, counting themselves. Those reveal each other, so at most one is ever in `I`, and
+/// any of them can stand in for another. Mostly these are the borders of an opening far from `c`.
+#[derive(Default)]
+struct Twins {
+    members: Vec<u64>,
+    rows: Vec<u64>,
+    distinct: Vec<Near>,
+}
+
+impl Twins {
+    fn collapse(&mut self, sets: &CandidateSets, neighbours: &[Near]) {
+        let words = sets.candidate_words;
+        self.members.clear();
+        self.members.resize(words, 0);
+        for neighbour in neighbours {
+            set_bit(&mut self.members, neighbour.other);
+        }
+        self.rows.clear();
+        self.distinct.clear();
+        for neighbour in neighbours {
+            let start = self.rows.len();
+            let reveals = &sets.reveal_bits[neighbour.other * words..(neighbour.other + 1) * words];
+            self.rows.extend(reveals.iter().zip(&self.members).map(|(row, member)| row & member));
+            set_bit(&mut self.rows[start..], neighbour.other);
+            let row = &self.rows[start..];
+            let has_twin = self.distinct.iter().enumerate().any(|(index, other)| {
+                other.units == neighbour.units && self.rows[index * words..(index + 1) * words] == *row
+            });
+            if has_twin {
+                self.rows.truncate(start);
+            } else {
+                self.distinct.push(*neighbour);
+            }
+        }
+    }
+}
+
 /// Checks `|I| + (units none of I solve) <= budget` for every non-empty `I` of `neighbours` that
 /// pairwise don't reveal each other. Each member of `I` may be left in its own piece of the chain.
 fn independent_sets_within_budget(
@@ -212,11 +250,12 @@ fn independent_sets_within_budget(
 
 /// Dropping `c` saves its chord, and its seed if it was alone. It can lose each unit of `B(c)`
 /// no remaining chord solves, and adds a seed for each extra piece its chain splits into.
-fn can_drop(sets: &CandidateSets, candidate: usize, neighbours: &[Near], budget: u32) -> bool {
+fn can_drop(sets: &CandidateSets, candidate: usize, neighbours: &[Near], budget: u32, twins: &mut Twins) -> bool {
     if sets.unit_count[candidate] > budget {
         return false;
     }
-    independent_sets_within_budget(sets, neighbours, sets.all_units(candidate), &mut Vec::new(), 0, budget)
+    twins.collapse(sets, neighbours);
+    independent_sets_within_budget(sets, &twins.distinct, sets.all_units(candidate), &mut Vec::new(), 0, budget)
 }
 
 /// Mines of `candidate` that no other kept candidate needs flagged.
@@ -471,6 +510,7 @@ impl Spread {
 
 struct Scratch {
     neighbours: Vec<Near>,
+    twins: Twins,
     /// `c`'s kept `near` entries, and those sharing a mine with `c`.
     kept_near: Vec<Near>,
     sharers: Vec<Near>,
@@ -483,6 +523,7 @@ impl Scratch {
     fn new(count: usize) -> Self {
         Scratch {
             neighbours: Vec::new(),
+            twins: Twins::default(),
             kept_near: Vec::new(),
             sharers: Vec::new(),
             c: Spread::new(count),
@@ -840,7 +881,7 @@ fn is_removable(sets: &CandidateSets, candidate: usize, kept: &[bool], checks: u
         let mut neighbours = std::mem::take(&mut scratch.neighbours);
         sets.kept_neighbours(candidate, kept, &mut neighbours);
         let removable = (checks & CHECK_CHEAP != 0
-            && (can_drop(sets, candidate, &neighbours, 2 + private_mines(sets, candidate, kept))
+            && (can_drop(sets, candidate, &neighbours, 2 + private_mines(sets, candidate, kept), &mut scratch.twins)
                 || has_swap(sets, candidate, &neighbours, kept)))
             || (checks & CHECK_WITNESS != 0 && can_drop_with_witnesses(sets, candidate, &neighbours, kept));
         scratch.neighbours = neighbours;
