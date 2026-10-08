@@ -961,6 +961,141 @@
     return Object.values(checks).every(Boolean);
   }
 
+  // Strong swap. One case of the proof: with R the other chords and I one chord from each piece only c was joining
+  // (kept revealers of c that d doesn't reveal, pairwise not revealing each other), swapping costs at most
+  // |I| + (bad items R leaves uncovered) - (good items R leaves uncovered). It is safe in this case when that is
+  // at most spec.budget for every I and every usable set of witnesses (kept chords other than c and d that cover a
+  // good item). A witness can't touch two members of I, and one that d reveals can't touch any.
+  // options.exhaustive keeps going after a failure and options.nodeLimit bounds the search (running out fails).
+  function swapCaseCheck(board, c, d, kept, spec, options) {
+    const opts = Object.assign({ exhaustive: false, nodeLimit: 20000 }, options);
+    const good = [...spec.goodMines.map((id) => ({ kind: "mine", id })), ...spec.goodUnits.map((id) => ({ kind: "unit", id }))];
+    const bad = [...spec.badMines.map((id) => ({ kind: "mine", id })), ...spec.badUnits.map((id) => ({ kind: "unit", id }))];
+    const coverOf = (x, items) =>
+      items.reduce((mask, item, bit) => ((item.kind === "mine" ? board.M[x] : board.B[x]).includes(item.id) ? mask | (1 << bit) : mask), 0);
+    const pick = (items, mask) => items.filter((_, bit) => (mask >> bit) & 1);
+    const neighbours = revealsWithin(board, c, kept).filter((n) => n !== d && !board.N[d].includes(n));
+    const witnessIds = new Set();
+    for (const item of good) {
+      for (const x of item.kind === "mine" ? mineSolvers(board, item.id) : board.unitSolvers[item.id]) {
+        if (x !== c && x !== d && kept.has(x)) witnessIds.add(x);
+      }
+    }
+    const witnesses = [...witnessIds].sort(byNumber).map((x) => ({ d: x, good: coverOf(x, good), bad: coverOf(x, bad), touchesPartner: board.N[d].includes(x) }));
+    const neighbourGood = neighbours.map((n) => coverOf(n, good));
+    const neighbourBad = neighbours.map((n) => coverOf(n, bad));
+    const allGood = (1 << good.length) - 1;
+    const allBad = (1 << bad.length) - 1;
+
+    let nodes = 0;
+    const tick = () => ++nodes <= opts.nodeLimit;
+    let limited = false;
+    let tightest = null;
+
+    const evaluateSet = (chosen) => {
+      if (!tick()) {
+        limited = true;
+        return false;
+      }
+      let goodDone = 0;
+      let badDone = 0;
+      for (const i of chosen) {
+        goodDone |= neighbourGood[i];
+        badDone |= neighbourBad[i];
+      }
+      const goodLeft = allGood & ~goodDone;
+      const badLeft = allBad & ~badDone;
+      const members = chosen.map((i) => neighbours[i]);
+      const free = [];
+      const costly = [];
+      const excluded = [];
+      let freeGood = 0;
+      for (const w of witnesses) {
+        const witnessGood = w.good & goodLeft;
+        if (witnessGood === 0 || members.includes(w.d)) continue;
+        const touching = members.filter((n) => board.N[n].includes(w.d)).length;
+        if (touching > (w.touchesPartner ? 0 : 1)) {
+          excluded.push({ d: w.d, good: witnessGood, reason: touching > 1 ? "joins" : "partner" });
+          continue;
+        }
+        const covered = w.bad & badLeft;
+        if (covered === 0) {
+          free.push({ d: w.d, good: witnessGood });
+          freeGood |= witnessGood;
+        } else {
+          costly.push({ d: w.d, good: witnessGood, bad: covered });
+        }
+      }
+      const base = chosen.length + popcount(badLeft) - popcount(goodLeft & ~freeGood);
+      const items = dropDominated(costly.map((w) => ({ d: w.d, mines: w.good & ~freeGood, units: w.bad })).filter((w) => w.mines !== 0));
+      const search = base > spec.budget && !opts.exhaustive ? { gain: 0, picked: [], limited: false } : bestGain(items, opts.exhaustive ? Infinity : spec.budget + 1 - base, tick);
+      if (search.limited) {
+        limited = true;
+        return false;
+      }
+      const height = base + search.gain;
+      if (!tightest || height > tightest.height) {
+        tightest = {
+          chosen: members,
+          height,
+          goodLeft: pick(good, goodLeft),
+          badLeft: pick(bad, badLeft),
+          free,
+          costly,
+          excluded,
+          worst: search.picked.map((w) => w.d),
+          freeGood: pick(good, freeGood),
+        };
+      }
+      return height <= spec.budget;
+    };
+
+    const walk = (chosen, start) => {
+      const ok = evaluateSet(chosen);
+      if (limited || (!ok && !opts.exhaustive)) return false;
+      for (let i = start; i < neighbours.length; i++) {
+        if (chosen.some((j) => board.N[neighbours[j]].includes(neighbours[i]))) continue;
+        chosen.push(i);
+        const within = walk(chosen, i + 1);
+        chosen.pop();
+        if (limited || (!within && !opts.exhaustive)) return false;
+      }
+      return true;
+    };
+    walk([], 0);
+    return { valid: !limited && tightest.height <= spec.budget, limited, tightest, neighbours, good, bad, budget: spec.budget };
+  }
+
+  // Replacing c by d never costs clicks: if d isn't chorded, swap it in; if it already is, just drop c.
+  function strongSwapCheck(board, c, d, kept, options) {
+    const diff = (a, b) => a.filter((x) => !b.includes(x));
+    const minesOnlyC = diff(board.M[c], board.M[d]);
+    const minesOnlyD = diff(board.M[d], board.M[c]);
+    const unitsOnlyC = diff(board.B[c], board.B[d]);
+    const unitsOnlyD = diff(board.B[d], board.B[c]);
+    const alreadyChorded = swapCaseCheck(board, c, d, kept, { goodMines: minesOnlyC, goodUnits: [], badMines: [], badUnits: unitsOnlyC, budget: 1 }, options);
+    const swappedIn = swapCaseCheck(board, c, d, kept, { goodMines: minesOnlyC, goodUnits: unitsOnlyD, badMines: minesOnlyD, badUnits: unitsOnlyC, budget: 0 }, options);
+    return { valid: alreadyChorded.valid && swappedIn.valid, minesOnlyC, minesOnlyD, unitsOnlyC, unitsOnlyD, alreadyChorded, swappedIn };
+  }
+
+  // The first kept d (among chords sharing a mine or unit with c, or revealed by it) that c can be swapped for.
+  function findStrongSwap(board, c, kept) {
+    const pool = new Set(revealsWithin(board, c, kept));
+    for (const mine of board.M[c]) for (const x of mineSolvers(board, mine)) pool.add(x);
+    for (const unit of board.B[c]) for (const x of board.unitSolvers[unit]) pool.add(x);
+    for (const d of [...pool].sort(byNumber)) {
+      if (d === c || !kept.has(d)) continue;
+      // Count-only necessary conditions (empty I, no witnesses), as in the Rust solver.
+      const only = (a, b) => a.filter((x) => !b.includes(x)).length;
+      const savings = only(board.M[c], board.M[d]) + only(board.B[d], board.B[c]);
+      const costs = only(board.M[d], board.M[c]) + only(board.B[c], board.B[d]);
+      if (costs > savings || only(board.B[c], board.B[d]) > 1 + only(board.M[c], board.M[d])) continue;
+      const check = strongSwapCheck(board, c, d, kept);
+      if (check.valid) return { d, check };
+    }
+    return null;
+  }
+
   function findSwap(board, c, kept) {
     for (const mine of board.M[c]) {
       for (const d of mineSolvers(board, mine)) {
@@ -971,7 +1106,7 @@
   }
 
   function removalReason(board, c, kept, options) {
-    const opts = Object.assign({ swap: true, leftClickEquivalent: true, privateMineCredit: true, witness: false }, options);
+    const opts = Object.assign({ swap: true, leftClickEquivalent: true, privateMineCredit: true, witness: false, strongSwap: false }, options);
     if (opts.leftClickEquivalent) {
       const checks = leftClickEquivalentRule(board, c, kept, opts.privateMineCredit);
       if (checks.valid) return { rule: "C", privateMines: checks.privateMines, budget: checks.budget };
@@ -981,30 +1116,41 @@
       if (d >= 0) return { rule: "A", by: d };
     }
     if (opts.witness && witnessCheck(board, c, kept).valid) return { rule: "W" };
+    if (opts.strongSwap) {
+      const found = findStrongSwap(board, c, kept);
+      if (found) return { rule: "S", by: found.d };
+    }
     return null;
   }
 
-  // options.witness adds Rule C with witnesses. Like the Rust solver, the cheaper rules run to a fixpoint first.
+  // options.witness adds Rule C with witnesses and options.strongSwap the strong swap. Like the Rust solver, the cheaper
+  // rules run to a fixpoint first, and the strong swap only runs after the witness rule has settled.
   function reduceCandidates(board, keptInput, options) {
     const kept = new Set(keptInput || board.candidates.map((_, c) => c));
     const removed = new Map();
-    const fixpoint = (witness) => {
+    const fixpoint = (witness, strongSwap) => {
+      let any = false;
       let changed = true;
       while (changed) {
         changed = false;
         for (let c = 0; c < board.candidates.length; c++) {
           if (!kept.has(c)) continue;
-          const reason = removalReason(board, c, kept, { witness });
+          const reason = removalReason(board, c, kept, { witness, strongSwap });
           if (reason) {
             kept.delete(c);
             removed.set(c, reason);
             changed = true;
+            any = true;
           }
         }
       }
+      return any;
     };
-    fixpoint(false);
-    if (options && options.witness) fixpoint(true);
+    fixpoint(false, false);
+    if (options && (options.witness || options.strongSwap)) fixpoint(true, false);
+    if (options && options.strongSwap) {
+      while (fixpoint(false, true)) fixpoint(true, false);
+    }
     return { kept: [...kept].sort(byNumber), removed };
   }
 
@@ -1024,6 +1170,9 @@
         const checks = leftClickEquivalentRule(board, c, snapshot, true);
         if (checks.valid) reason = { rule: "C", privateMines: checks.privateMines, budget: checks.budget };
         else if (witnessCheck(board, c, snapshot).valid) reason = { rule: "W" };
+      } else if (rule === "strong-swap") {
+        const found = findStrongSwap(board, c, snapshot);
+        if (found) reason = { rule: "S", by: found.d };
       } else {
         throw new Error("Unknown static-rule pass: " + rule);
       }
@@ -1034,7 +1183,7 @@
     const protectedWitnesses = new Set();
     for (const c of [...proposed.keys()].sort(byNumber)) {
       const reason = proposed.get(c);
-      if (reason.rule === "A") {
+      if (reason.rule === "A" || reason.rule === "S") {
         if (removed.has(reason.by) || protectedWitnesses.has(c)) continue;
         protectedWitnesses.add(reason.by);
       }
@@ -1145,6 +1294,25 @@
       const witnessResult = bruteForce(board, witnessReduced.kept);
       if (witnessResult.total !== best.total) fail("witness reduction", [witnessResult.total, best.total]);
       if (!witnessReduced.kept.every((c) => kept.includes(c))) fail("witness reduction keeps more than the plain rules");
+      const strongReduced = reduceCandidates(board, null, { witness: true, strongSwap: true });
+      const strongResult = bruteForce(board, strongReduced.kept);
+      if (strongResult.total !== best.total) fail("strong swap reduction", [strongResult.total, best.total]);
+      if (!strongReduced.kept.every((c) => witnessReduced.kept.includes(c))) fail("strong swap reduction keeps more than the witness rules");
+      // Every accepted swap must not cost clicks for any chord set (checked on a kept set small enough to enumerate).
+      const small = new Set(board.candidates.map((_, i) => i).slice(0, 9));
+      small.forEach((c) => {
+        const found = findStrongSwap(board, c, small);
+        if (!found) return;
+        const others = [...small].filter((x) => x !== c);
+        for (let subset = 0; subset < 1 << others.length; subset++) {
+          const rest = others.filter((_, bit) => (subset >> bit) & 1);
+          const after = rest.includes(found.d) ? rest : [...rest, found.d];
+          if (evaluate(board, after).total > evaluate(board, [...rest, c]).total) {
+            fail("strong swap costs clicks", [c, found.d, rest]);
+            break;
+          }
+        }
+      });
       board.candidates.forEach((_, c) => {
         const everything = new Set(board.candidates.map((_, i) => i));
         const legacy = leftClickEquivalentRule(board, c, everything, true).valid;
@@ -1153,12 +1321,12 @@
         if (legacy && !early.valid) fail("witness rule is weaker than Rule C", c);
         if (early.valid !== full.valid) fail("witness early exit disagrees with exhaustive", c);
       });
-      for (const rule of ["swap", "left-click-equivalent", "witness"]) {
+      for (const rule of ["swap", "left-click-equivalent", "witness", "strong-swap"]) {
         const pass = staticRulePass(board, new Set(board.candidates.map((_, c) => c)), rule);
         const passResult = bruteForce(board, [...pass.kept]);
         if (passResult.total !== best.total) fail("snapshot " + rule, [passResult.total, best.total]);
         for (const [c, reason] of pass.removed) {
-          if (reason.rule === "A" && pass.removed.has(reason.by)) fail("snapshot swap witness removed", [c, reason.by]);
+          if ((reason.rule === "A" || reason.rule === "S") && pass.removed.has(reason.by)) fail("snapshot swap witness removed", [c, reason.by]);
         }
       }
       const reducedDp = solveDP(board, columnOrder(board, kept), { prune: "cancel", absorb: true });
@@ -1219,6 +1387,8 @@
     swapRule,
     leftClickEquivalentRule,
     witnessCheck,
+    strongSwapCheck,
+    findStrongSwap,
     staticRulePass,
     reduceCandidates,
     parsePttacg,

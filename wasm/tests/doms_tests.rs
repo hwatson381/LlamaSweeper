@@ -334,6 +334,7 @@ fn benchmark_random_expert_boards() {
         let mut rng = StdRng::seed_from_u64(20261004);
         let mut timings = Vec::with_capacity(BOARD_COUNT);
         let mut removed = 0;
+        let mut static_seconds = 0.0;
 
         for _ in 0..BOARD_COUNT {
             let board = random_board(&mut rng, 30, 16, 99);
@@ -342,15 +343,17 @@ fn benchmark_random_expert_boards() {
                 .expect("DOMS solves the board");
             timings.push(start.elapsed().as_secs_f64());
             removed += result.stats.static_removed;
+            static_seconds += result.stats.static_pass_seconds;
         }
 
         timings.sort_by(|a, b| a.partial_cmp(b).unwrap());
         let total: f64 = timings.iter().sum();
         println!(
-            "{:?}, {} random expert boards: total {:.3}s, mean {:.3}s, median {:.3}s, slowest {:.3}s, candidates removed {}",
+            "{:?}, {} random expert boards: total {:.3}s (static pass {:.3}s), mean {:.3}s, median {:.3}s, slowest {:.3}s, candidates removed {}",
             rule,
             BOARD_COUNT,
             total,
+            static_seconds,
             total / BOARD_COUNT as f64,
             timings[BOARD_COUNT / 2],
             timings[BOARD_COUNT - 1],
@@ -390,6 +393,7 @@ fn benchmark_community_expert_boards() {
 
 fn benchmark_community_expert_boards_with(rule: StaticRule) {
     let mut timings: Vec<(f64, &str)> = Vec::new();
+    let mut static_seconds = 0.0;
     for line in COMMUNITY_EXPERT_BOARDS.lines().filter(|line| !line.trim().is_empty()) {
         let fields: Vec<&str> = line.split_whitespace().collect();
         let (pttacg, optimal_clicks, bbbv): (&str, usize, usize) =
@@ -400,6 +404,7 @@ fn benchmark_community_expert_boards_with(rule: StaticRule) {
         let result =
             doms::solve_board_with_rule(&board, rule, 20_000_000, &mut |_| {}).expect("DOMS solves the board");
         timings.push((start.elapsed().as_secs_f64(), pttacg));
+        static_seconds += result.stats.static_pass_seconds;
         assert_eq!(result.total_clicks, optimal_clicks, "optimal clicks for {}", pttacg);
     }
 
@@ -407,10 +412,11 @@ fn benchmark_community_expert_boards_with(rule: StaticRule) {
     timings.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     let median = timings[timings.len() / 2].0;
     println!(
-        "{:?}, {} community boards: total {:.3}s, mean {:.3}s, median {:.3}s",
+        "{:?}, {} community boards: total {:.3}s (static pass {:.3}s), mean {:.3}s, median {:.3}s",
         rule,
         timings.len(),
         total,
+        static_seconds,
         total / timings.len() as f64,
         median
     );

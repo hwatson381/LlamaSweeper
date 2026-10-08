@@ -173,7 +173,7 @@ pub enum StaticRule {
     StrongSwap,
 }
 
-pub const DEFAULT_STATIC_RULE: StaticRule = StaticRule::Witness;
+pub const DEFAULT_STATIC_RULE: StaticRule = StaticRule::StrongSwap;
 
 /// Search nodes allowed per candidate in the witness rule; past this the candidate is just kept.
 const WITNESS_NODE_LIMIT: u32 = 20_000;

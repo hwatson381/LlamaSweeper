@@ -267,6 +267,67 @@
       <div data-diagram="swap-edge"></div>
       <div data-diagram="swap-opening"></div>
 
+      <h3 id="strong-swap">3.2a The strong swap rule (applied statically, exact)</h3>
+      <p>
+        Rule A asks d to be at least as good as c on every count. Often d is better overall without being better on each one: d needs a flag c doesn't
+        but solves a unit c doesn't, or c has mines of its own that more than pay for the neighbours d can't reveal. The strong swap rule balances the two
+        sides. Anything both chords share cancels, so only what is on one side matters:
+      </p>
+      <table class="facts">
+        <tr><th>set</th><th>meaning</th><th>effect of swapping c for d</th></tr>
+        <tr><td>M<sub>c</sub> = M(c) ∖ M(d)</td><td>mines only c needs</td><td>saves those flags</td></tr>
+        <tr><td>M<sub>d</sub> = M(d) ∖ M(c)</td><td>mines only d needs</td><td>costs those flags</td></tr>
+        <tr><td>B<sub>c</sub> = B(c) ∖ B(d)</td><td>units only c solves</td><td>each needs a left click again</td></tr>
+        <tr><td>B<sub>d</sub> = B(d) ∖ B(c)</td><td>units only d solves</td><td>saves those left clicks</td></tr>
+        <tr><td>X = N(c) ∖ (N(d) ∪ {d})</td><td>chords c reveals that d doesn't</td><td>may leave a piece of c's chain without a seed</td></tr>
+      </table>
+      <p>Rule A is the case where M<sub>d</sub>, B<sub>c</sub> and X are all empty. The new rule instead works out the worst case over every other chord R in a solution that contains c:</p>
+      <ul>
+        <li>
+          <b>d is not chorded.</b> Chord d instead of c. The clicks change by at most
+          <div class="note">|I| + |M<sub>d</sub> not flagged by R| + |B<sub>c</sub> not solved by R| − |M<sub>c</sub> not flagged by R| − |B<sub>d</sub> not solved by R|</div>
+          where I has one chord from each piece of c's chain that d can't join, so I is a set of chords in X that don't reveal each other. This must be ≤ 0.
+        </li>
+        <li>
+          <b>d is already chorded.</b> Just drop c. d already pays for everything the two share, and already solves B<sub>d</sub>, so no credit is given for it.
+          The clicks change by at most
+          <div class="note">−1 + |I| + |B<sub>c</sub> not solved by R| − |M<sub>c</sub> not flagged by R|</div>
+          which must also be ≤ 0.
+        </li>
+      </ul>
+      <p>
+        Both cases are needed. A unit only d solves is only a gain when d is swapped in. If d was already chorded, that unit was already solved, so crediting it
+        there would wrongly hide the cost of c's own units. Rule C is the same check with "swap c for nothing": budget 2 instead of 0 or 1, and I drawn from
+        all of N(c).
+      </p>
+      <p>
+        <b>Witnesses.</b> A mine that some other kept chord also flags isn't a guaranteed saving, and a unit that some other chord also solves isn't a guaranteed
+        gain. As in Rule C with witnesses, the worst case may include other chords of S. Any kept chord other than c and d that flags a mine of M<sub>c</sub> or solves
+        a unit of B<sub>d</sub> is a witness. A <b>free</b> witness covers none of the costs that are still open, so the worst case always includes it. A
+        <b>costly</b> witness also covers a cost (a mine of M<sub>d</sub> or a unit of B<sub>c</sub>), and only helps the worst case when it covers more savings than
+        costs. Two limits apply: a witness can't touch two members of I, and a witness that d reveals can't touch any of them, because that would put
+        the member in d's piece instead of its own. Unlike Rule C there is no special case for I empty, since c's neighbours can belong to d's piece.
+      </p>
+      <details>
+        <summary>Why this is exact</summary>
+        <p>
+          Chords, flags and units that c and d share are in S before and after, so they cancel. Of c's chain pieces after c is removed, the ones that touch N(d) join d
+          (or, if d was already chorded, are already part of its piece), so only the pieces with no chord in N(d) can need a new seed. Each such piece has a chord next to c,
+          which is in X, and chords from different pieces don't reveal each other, so one from each forms an independent set I. The flags and units are counted
+          against what the remaining chords R cover, and R is I together with some set of witnesses that respects the two limits. The check covers every I and every
+          such set, so it covers every solution.
+        </p>
+      </details>
+      <p>
+        The Rust check runs after the witness rule has settled and only on the candidates it kept. For each c it looks at the chords that share a mine or a unit with c
+        or are revealed by it. Two checks that only compare counts, |B<sub>c</sub>| ≤ 1 + |M<sub>c</sub>| and |M<sub>d</sub>| + |B<sub>c</sub>| ≤ |M<sub>c</sub>| + |B<sub>d</sub>|,
+        throw out most pairs before any search. Each candidate gets at most 20,000 search steps in total across all its partners and both cases; running out just keeps
+        the candidate, so only reduction is lost, never correctness. The witness rule runs again whenever the strong swap removes something.
+      </p>
+      <p>In the first board d can't reveal one of c's neighbours and c solves a unit d doesn't, but c's two private mines pay for both. In the second, d's extra mine is paid for by an island only d solves.</p>
+      <div data-diagram="strong-swap-mines"></div>
+      <div data-diagram="strong-swap-unit"></div>
+
       <h3>3.3 Rule C: left-click-equivalent chords (applied statically, exact)</h3>
       <p>
         Sometimes chording c is worth no more than a couple of ordinary clicks nearby. Rule C removes c when every solution that chords it can drop that
@@ -355,17 +416,17 @@
 
       <h3>3.4 How much the static rules remove (applied before the frontier DP)</h3>
       <p>
-        Before choosing a sweep order, Rust repeatedly applies the swap rule and Rule C to the currently kept candidates, and then repeats with Rule C with
-        witnesses added. Removing a candidate means one
+        Before choosing a sweep order, Rust repeatedly applies the swap rule and Rule C to the currently kept candidates, then repeats with Rule C with
+        witnesses added, and finally with the strong swap rule added (the default). Removing a candidate means one
         fewer branching decision. It also shortens the window of every mine and 3BV unit next to it, and drops the candidate from every chain reach set, so
         more states become identical and merge. The reduced model filters candidate-related lists before <code>solve_frontier</code>; brute force tests still
         use the unreduced model to verify that the optimum is unchanged. The explorer below starts with this fixpoint reduction, while its targeted buttons
         demonstrate one snapshot pass at a time. A snapshot evaluates every candidate using knowledge from the beginning of the pass, then removes the safe
         batch together. Rule C and Rule C with witnesses remain safe when batched because removing candidates only shrinks the sets they quantify over, so their
-        conditions only get easier; a swap batch additionally preserves each
-        removal's witness, so two mutually dominating candidates cannot remove each other. A targeted pass briefly highlights its newly removed cells with a
+        conditions only get easier; a swap batch (either swap rule) additionally preserves each
+        removal's partner, so two mutually dominating candidates cannot remove each other. A targeted pass briefly highlights its newly removed cells with a
         yellow-to-grey background transition, which can be disabled with the checkbox; <b>clear</b> restores all candidates without changing the board.
-        Teal crosses are the candidates only Rule C with witnesses removes.
+        Teal crosses are the candidates only Rule C with witnesses removes, and orange crosses the ones only the strong swap removes.
       </p>
       <div data-diagram="reduction-running"></div>
       <div data-diagram="reduction-live"></div>

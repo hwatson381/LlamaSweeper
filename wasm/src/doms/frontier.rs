@@ -38,6 +38,8 @@ pub struct FrontierOutcome {
     pub max_active_factors: usize,
     /// Candidates removed by the static rules before the DP.
     pub static_removed: usize,
+    /// Seconds spent in the static pass; always 0 on wasm32, where `Instant` isn't available.
+    pub static_pass_seconds: f64,
     /// Children not built, credited to the first of these rules that proved it.
     pub skipped_by_forced_skip: usize,
     pub skipped_by_exchange: usize,
@@ -597,7 +599,13 @@ pub fn solve_frontier(
     dominance_comparisons: u64,
     progress: &mut dyn FnMut(DomsProgress),
 ) -> Result<FrontierOutcome, DomsError> {
+    #[cfg(not(target_arch = "wasm32"))]
+    let static_started = std::time::Instant::now();
     let kept = kept_candidates_with(original, rule);
+    #[cfg(not(target_arch = "wasm32"))]
+    let static_pass_seconds = static_started.elapsed().as_secs_f64();
+    #[cfg(target_arch = "wasm32")]
+    let static_pass_seconds = 0.0;
     let static_removed = original.candidate_cells.len() - kept.len();
     let (model, sweep_order) = choose_sweep_order(&original.reordered(&kept));
     let candidate_count = model.candidate_cells.len();
@@ -818,6 +826,7 @@ pub fn solve_frontier(
         max_boundary,
         max_active_factors,
         static_removed,
+        static_pass_seconds,
         skipped_by_forced_skip,
         skipped_by_exchange,
     })

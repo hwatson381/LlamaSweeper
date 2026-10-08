@@ -19,6 +19,10 @@
     witnessMember: ["........", "........", "..**..**", "*..*....", "*.*...*.", "...*...."],
     // 9 x 7, 13 mines. The 4 at (5,5): the only witness for its last mine would join two members of I.
     witnessJoins: ["*.*......", ".*.......", "......*..", ".*.......", "*....*...", "..*...*..", ".*...***."],
+    // 8 x 6, 10 mines. Strong swap: the 2 mines only c needs pay for a unit only c solves and a chain piece.
+    swapMines: ["...*....", "......**", ".....***", ".......*", "........", "....**.*"],
+    // 8 x 6, 9 mines. Strong swap: d's extra mine is paid for by the island only d solves.
+    swapUnit: [".*......", "...*...*", "*......*", "...*....", ".....*..", "..**..*."],
   };
 
   const CHAIN_COLOURS = ["#8e24aa", "#ef6c00", "#d81b60", "#6d4c41", "#7cb342", "#c9a000", "#3949ab"];
@@ -29,6 +33,7 @@
   const REMOVED_A = "#c62828";
   const REMOVED_C = "#6a1b9a";
   const REMOVED_W = "#00838f";
+  const REMOVED_S = "#e65100";
 
   // ---------- small DOM helpers ----------
 
@@ -1345,6 +1350,112 @@
     });
   }
 
+  const SWAP_C = "#ef6c00";
+  const SWAP_D = "#3559c7";
+
+  // One accepted strong swap: what each side has to itself, and the worst case of both halves of the proof.
+  function strongSwapFigure(rows, cx, cy, dx, dy, caption) {
+    const board = M.analyse(rows);
+    const c = candAt(board, cx, cy);
+    const d = candAt(board, dx, dy);
+    const kept = new Set(board.candidates.map((_, i) => i));
+    const check = M.strongSwapCheck(board, c, d, kept);
+    const oldSwap = M.swapRule(board, c, d, kept);
+    const cells = (list) => list.map((i) => cn(board, i)).join(" ") || "∅";
+    const unitsText = (list) => list.map((u) => unitName(board, u)).join(", ") || "∅";
+    const names = (list) => list.map((x) => candName(board, x)).join(" ") || "∅";
+    const unitCells = (list) => new Set(list.flatMap((u) => board.units[u].cells));
+    const onlyC = new Set(check.minesOnlyC);
+    const onlyD = new Set(check.minesOnlyD);
+    const unitsC = unitCells(check.unitsOnlyC);
+    const unitsD = unitCells(check.unitsOnlyD);
+    const unrevealed = check.swappedIn.neighbours;
+    const decorate = (i) =>
+      mergeDecorations(
+        unitsC.has(i) ? { tint: "rgba(239, 108, 0, 0.25)" } : null,
+        unitsD.has(i) ? { tint: "rgba(53, 89, 199, 0.25)" } : null,
+        onlyC.has(i) ? { ring: SWAP_C } : null,
+        onlyD.has(i) ? { ring: SWAP_D } : null,
+        unrevealed.includes(board.candOf[i]) ? { ring: CHAIN_COLOURS[0], dashed: true } : null,
+        i === board.candidates[c] ? { label: "c", ring: "#000" } : null,
+        i === board.candidates[d] ? { label: "d", ring: "#000" } : null
+      );
+    const caseRow = (label, result) => {
+      const t = result.tightest;
+      return [
+        label,
+        `{${names(t.chosen)}}`,
+        names(t.free),
+        names(t.costly),
+        `${t.height}${t.worst.length ? ` (adding ${names(t.worst)})` : ""} ≤ ${result.budget}`,
+        tick(result.valid),
+      ];
+    };
+    return figure(
+      caption,
+      row(
+        renderBoard(board, { cell: 24, flagged: new Set([...check.minesOnlyC, ...check.minesOnlyD, ...board.M[c], ...board.M[d]]), decorate }),
+        h(
+          "div",
+          { style: { flex: "1", "min-width": "340px" } },
+          table(
+            ["", `only c = ${candName(board, c)}`, `only d = ${candName(board, d)}`],
+            [
+              ["mines needed", cells(check.minesOnlyC), cells(check.minesOnlyD)],
+              ["3BV units solved", unitsText(check.unitsOnlyC), unitsText(check.unitsOnlyD)],
+            ]
+          ),
+          table(
+            ["old swap condition", ""],
+            [
+              ["M(d) ⊆ M(c)", tick(oldSwap.mines)],
+              ["B(c) ⊆ B(d)", tick(oldSwap.bbbv)],
+              ["N(c) ∖ {d} ⊆ N(d)", tick(oldSwap.reveals)],
+            ]
+          ),
+          table(
+            ["case", "worst I", "free witnesses", "costly witnesses", "worst value ≤ budget", ""],
+            [caseRow("d not chorded", check.swappedIn), caseRow("d already chorded", check.alreadyChorded)]
+          ),
+          h("p", { class: "small" }, `Neighbours of c that d doesn't reveal (where I comes from): ${names(unrevealed)}.`)
+        )
+      ),
+      legend([
+        [{ ring: "#000" }, "c and d"],
+        [{ ring: SWAP_C }, "mine only c needs"],
+        [{ ring: SWAP_D }, "mine only d needs"],
+        [{ tint: "rgba(239, 108, 0, 0.25)" }, "unit only c solves"],
+        [{ tint: "rgba(53, 89, 199, 0.25)" }, "unit only d solves"],
+        [{ ring: CHAIN_COLOURS[0], dashed: true }, "neighbour of c that d doesn't reveal"],
+      ])
+    );
+  }
+
+  register("strong-swap-mines", () =>
+    strongSwapFigure(
+      BOARDS.swapMines,
+      6,
+      3,
+      5,
+      3,
+      "d reveals everything c does except one neighbour, and c solves a unit d doesn't, so the old rule fails on two counts. " +
+        "But c also has two mines that d doesn't need. Swapping saves those two flags and costs at most one extra seed (a member of I) and one lost unit, so it never loses clicks. " +
+        "If d is already chorded, c's chord is simply dropped and the budget is one click bigger."
+    )
+  );
+
+  register("strong-swap-unit", () =>
+    strongSwapFigure(
+      BOARDS.swapUnit,
+      7,
+      4,
+      6,
+      4,
+      "d needs one mine that c doesn't, so the old rule fails. But d also solves an island that c doesn't, which pays for the flag whenever no other chord had already flagged it. " +
+        "Every other chord that could flag d's extra mine also solves that island, so none of them can make the swap worse."
+    )
+  );
+
   function reductionDecorate(board, removed, latestPass) {
     const latest = latestPass || new Set();
     return (cell) => {
@@ -1352,34 +1463,37 @@
       if (c < 0 || !removed.has(c)) return null;
       const reason = removed.get(c);
       return {
-        cross: reason.rule === "A" ? REMOVED_A : reason.rule === "W" ? REMOVED_W : REMOVED_C,
+        cross: reason.rule === "A" ? REMOVED_A : reason.rule === "W" ? REMOVED_W : reason.rule === "S" ? REMOVED_S : REMOVED_C,
         passHighlight: latest.has(c),
         title:
           reason.rule === "A"
             ? "swap rule: " + candName(board, reason.by) + " is never worse"
             : reason.rule === "W"
               ? "Rule C with witnesses: no usable set of other chords makes c worth chording"
-              : `Rule C: left-click-equivalent${reason.privateMines ? `, ${reason.privateMines} private mine credit` : ""}`,
+              : reason.rule === "S"
+                ? "strong swap: " + candName(board, reason.by) + " is never worse once private mines and units are weighed"
+                : `Rule C: left-click-equivalent${reason.privateMines ? `, ${reason.privateMines} private mine credit` : ""}`,
       };
     };
   }
 
   register("reduction-running", () => {
     const { board } = running();
-    const { removed, kept } = M.reduceCandidates(board, null, { witness: true });
+    const { removed, kept } = M.reduceCandidates(board, null, { witness: true, strongSwap: true });
     const byRule = (rule) => [...removed.values()].filter((r) => r.rule === rule).length;
     const full = M.solveDP(board, M.columnOrder(board), { prune: "basic" });
     const reduced = M.solveDP(board, M.columnOrder(board, kept), { prune: "basic" });
     const max = Math.max(...full.counts, ...reduced.counts);
     return figure(
       `Applying all the rules repeatedly to the running example removes ${removed.size} of ${board.candidates.length} candidates ` +
-        `(${byRule("A")} by the swap rule, ${byRule("C")} by Rule C, ${byRule("W")} by Rule C with witnesses). The optimum is unchanged (${full.total} vs ${reduced.total}) while the toy DP ` +
+        `(${byRule("A")} by the swap rule, ${byRule("C")} by Rule C, ${byRule("W")} by Rule C with witnesses, ${byRule("S")} by the strong swap). The optimum is unchanged (${full.total} vs ${reduced.total}) while the toy DP ` +
         `handles ${sum(reduced.counts)} states instead of ${sum(full.counts)}. Hover a cross to see why it was removed.`,
       row(renderBoard(board, { decorate: reductionDecorate(board, removed), axes: true }), h("div", { style: { flex: "1", "min-width": "300px" } }, chart("toy DP, all candidates", full.counts, { max, log: true }), chart("toy DP, reduced candidates", reduced.counts, { max, log: true, colour: "#2e9e57" }))),
       legend([
         [{ cross: REMOVED_A }, "removed by the swap rule"],
         [{ cross: REMOVED_C }, "removed by Rule C / left-click equivalent"],
         [{ cross: REMOVED_W }, "removed by Rule C with witnesses"],
+        [{ cross: REMOVED_S }, "removed by the strong swap"],
       ])
     );
   });
@@ -1407,7 +1521,7 @@
           "p",
           { class: "small" },
           `${source}: ${removed.size} of ${board.candidates.length} candidates removed (${((100 * removed.size) / board.candidates.length).toFixed(1)}%). ` +
-            `Swap rule ${byRule("A")}, Rule C ${byRule("C")}, Rule C with witnesses ${byRule("W")}. ${edge} were on the board edge and ${borders} were opening borders.`
+            `Swap rule ${byRule("A")}, Rule C ${byRule("C")}, Rule C with witnesses ${byRule("W")}, strong swap ${byRule("S")}. ${edge} were on the board edge and ${borders} were opening borders.`
           ),
           h("p", { class: "small" }, `The targeted passes use one pass-start snapshot; the fixpoint repeats until stable.`)
       );
@@ -1416,12 +1530,21 @@
     const many = () => {
       let removedTotal = 0;
       let candidateTotal = 0;
-      for (let s = 1; s <= 50; s++) {
+      let s = 0;
+      // One board per tick so the page stays responsive; the full rule set takes a fraction of a second per board.
+      const next = () => {
+        s++;
         const board = M.analyse(M.randomRows(30, 16, 99, s));
-        removedTotal += M.reduceCandidates(board, null, { witness: true }).removed.size;
+        removedTotal += M.reduceCandidates(board, null, { witness: true, strongSwap: true }).removed.size;
         candidateTotal += board.candidates.length;
-      }
-      stats.textContent = ` Over 50 random expert boards: ${((100 * removedTotal) / candidateTotal).toFixed(1)}% of candidates removed.`;
+        if (s < 50) {
+          stats.textContent = ` Averaging… ${s}/50 boards.`;
+          setTimeout(next, 0);
+        } else {
+          stats.textContent = ` Over 50 random expert boards: ${((100 * removedTotal) / candidateTotal).toFixed(1)}% of candidates removed.`;
+        }
+      };
+      next();
     };
     const setBoard = (nextBoard, nextSource) => {
       board = nextBoard;
@@ -1440,7 +1563,7 @@
       draw();
     };
     const runFixpoint = () => {
-      const result = M.reduceCandidates(board, kept, { witness: true });
+      const result = M.reduceCandidates(board, kept, { witness: true, strongSwap: true });
       result.removed.forEach((reason, c) => removed.set(c, reason));
       kept = new Set(result.kept);
       latestPass = new Set();
@@ -1475,6 +1598,7 @@
           h("button", { onclick: () => runPass("swap") }, "swap pass"),
           h("button", { onclick: () => runPass("left-click-equivalent") }, "Rule C + private mines"),
           h("button", { onclick: () => runPass("witness") }, "Rule C + witnesses"),
+          h("button", { onclick: () => runPass("strong-swap") }, "strong swap"),
           h("button", { onclick: runFixpoint }, "run fixpoint")
         ),
         h("div", {}, h("button", { onclick: () => ((seed += 1), setBoard(M.analyse(M.randomRows(30, 16, 99, seed)), `random board (seed ${seed})`)) }, "next random board"), " ", h("button", { onclick: many }, "average over 50 boards"), stats),
@@ -1483,6 +1607,7 @@
           [{ cross: REMOVED_A }, "swap rule"],
           [{ cross: REMOVED_C }, "Rule C / left-click equivalent"],
           [{ cross: REMOVED_W }, "Rule C with witnesses"],
+          [{ cross: REMOVED_S }, "strong swap"],
         ])
       )
     );

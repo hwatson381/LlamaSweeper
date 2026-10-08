@@ -80,6 +80,8 @@ pub struct DomsStats {
     pub max_active_factors: usize,
     /// Chord candidates removed by the static rules; the DP decides the rest.
     pub static_removed: usize,
+    /// Seconds spent in the static pass; always 0 on wasm32, where `Instant` isn't available.
+    pub static_pass_seconds: f64,
     /// DP children not built because a sibling rule proved the other child no worse.
     pub skipped_by_forced_skip: usize,
     pub skipped_by_exchange: usize,
@@ -144,6 +146,7 @@ pub fn solve_board_with_rule(
     result.stats.max_boundary = outcome.max_boundary;
     result.stats.max_active_factors = outcome.max_active_factors;
     result.stats.static_removed = outcome.static_removed;
+    result.stats.static_pass_seconds = outcome.static_pass_seconds;
     result.stats.skipped_by_forced_skip = outcome.skipped_by_forced_skip;
     result.stats.skipped_by_exchange = outcome.skipped_by_exchange;
     Ok(result)
