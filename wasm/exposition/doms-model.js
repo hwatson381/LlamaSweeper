@@ -967,8 +967,10 @@
   // at most spec.budget for every I and every usable set of witnesses (kept chords other than c and d that cover a
   // good item). A witness can't touch two members of I, and one that d reveals can't touch any.
   // options.exhaustive keeps going after a failure and options.nodeLimit bounds the search (running out fails).
+  // options.prepass drops the witnesses: they only help the worst case, so failing without them fails with them.
+  // Running out of nodes then proves nothing, so a pre-pass passes.
   function swapCaseCheck(board, c, d, kept, spec, options) {
-    const opts = Object.assign({ exhaustive: false, nodeLimit: 20000 }, options);
+    const opts = Object.assign({ exhaustive: false, nodeLimit: 20000, prepass: false }, options);
     const good = [...spec.goodMines.map((id) => ({ kind: "mine", id })), ...spec.goodUnits.map((id) => ({ kind: "unit", id }))];
     const bad = [...spec.badMines.map((id) => ({ kind: "mine", id })), ...spec.badUnits.map((id) => ({ kind: "unit", id }))];
     const coverOf = (x, items) =>
@@ -976,7 +978,7 @@
     const pick = (items, mask) => items.filter((_, bit) => (mask >> bit) & 1);
     const neighbours = revealsWithin(board, c, kept).filter((n) => n !== d && !board.N[d].includes(n));
     const witnessIds = new Set();
-    for (const item of good) {
+    for (const item of opts.prepass ? [] : good) {
       for (const x of item.kind === "mine" ? mineSolvers(board, item.id) : board.unitSolvers[item.id]) {
         if (x !== c && x !== d && kept.has(x)) witnessIds.add(x);
       }
@@ -1063,19 +1065,31 @@
       return true;
     };
     walk([], 0);
-    return { valid: !limited && tightest.height <= spec.budget, limited, tightest, neighbours, good, bad, budget: spec.budget };
+    return { valid: opts.prepass ? !(tightest && tightest.height > spec.budget) : !limited && tightest.height <= spec.budget, limited, tightest, neighbours, good, bad, budget: spec.budget };
   }
 
-  // Replacing c by d never costs clicks: if d isn't chorded, swap it in; if it already is, just drop c.
-  function strongSwapCheck(board, c, d, kept, options) {
+  function swapSpecs(board, c, d) {
     const diff = (a, b) => a.filter((x) => !b.includes(x));
     const minesOnlyC = diff(board.M[c], board.M[d]);
     const minesOnlyD = diff(board.M[d], board.M[c]);
     const unitsOnlyC = diff(board.B[c], board.B[d]);
     const unitsOnlyD = diff(board.B[d], board.B[c]);
-    const alreadyChorded = swapCaseCheck(board, c, d, kept, { goodMines: minesOnlyC, goodUnits: [], badMines: [], badUnits: unitsOnlyC, budget: 1 }, options);
-    const swappedIn = swapCaseCheck(board, c, d, kept, { goodMines: minesOnlyC, goodUnits: unitsOnlyD, badMines: minesOnlyD, badUnits: unitsOnlyC, budget: 0 }, options);
-    return { valid: alreadyChorded.valid && swappedIn.valid, minesOnlyC, minesOnlyD, unitsOnlyC, unitsOnlyD, alreadyChorded, swappedIn };
+    return {
+      minesOnlyC,
+      minesOnlyD,
+      unitsOnlyC,
+      unitsOnlyD,
+      alreadyChorded: { goodMines: minesOnlyC, goodUnits: [], badMines: [], badUnits: unitsOnlyC, budget: 1 },
+      swappedIn: { goodMines: minesOnlyC, goodUnits: unitsOnlyD, badMines: minesOnlyD, badUnits: unitsOnlyC, budget: 0 },
+    };
+  }
+
+  // Replacing c by d never costs clicks: if d isn't chorded, swap it in; if it already is, just drop c.
+  function strongSwapCheck(board, c, d, kept, options) {
+    const specs = swapSpecs(board, c, d);
+    const alreadyChorded = swapCaseCheck(board, c, d, kept, specs.alreadyChorded, options);
+    const swappedIn = swapCaseCheck(board, c, d, kept, specs.swappedIn, options);
+    return { valid: alreadyChorded.valid && swappedIn.valid, minesOnlyC: specs.minesOnlyC, minesOnlyD: specs.minesOnlyD, unitsOnlyC: specs.unitsOnlyC, unitsOnlyD: specs.unitsOnlyD, alreadyChorded, swappedIn };
   }
 
   // The first kept d (among chords sharing a mine or unit with c, or revealed by it) that c can be swapped for.
@@ -1090,6 +1104,24 @@
       const savings = only(board.M[c], board.M[d]) + only(board.B[d], board.B[c]);
       const costs = only(board.M[d], board.M[c]) + only(board.B[c], board.B[d]);
       if (costs > savings || only(board.B[c], board.B[d]) > 1 + only(board.M[c], board.M[d])) continue;
+      // Root of each case with every free witness (covers a good item, no bad one) in the solution; no search needed.
+      const freeBreaks = (swappedIn, base, budget) => {
+        const need = budget - base + 1;
+        if (need <= 0) return true;
+        const coversBad = (w) =>
+          board.B[w].some((u) => board.B[c].includes(u) && !board.B[d].includes(u)) ||
+          (swappedIn && board.M[w].some((m) => board.M[d].includes(m) && !board.M[c].includes(m)));
+        const hasFree = (list) => list.some((w) => w !== c && w !== d && kept.has(w) && !coversBad(w));
+        let covered = 0;
+        for (const m of board.M[c]) if (!board.M[d].includes(m) && hasFree(mineSolvers(board, m)) && ++covered >= need) return true;
+        if (swappedIn) for (const u of board.B[d]) if (!board.B[c].includes(u) && hasFree(board.unitSolvers[u]) && ++covered >= need) return true;
+        return false;
+      };
+      if (freeBreaks(false, only(board.B[c], board.B[d]) - only(board.M[c], board.M[d]), 1) || freeBreaks(true, costs - savings, 0)) continue;
+      // Witness-free pre-pass: rejects most remaining pairs before any witness list is built.
+      const specs = swapSpecs(board, c, d);
+      if (!swapCaseCheck(board, c, d, kept, specs.alreadyChorded, { prepass: true, nodeLimit: 2000 }).valid) continue;
+      if (!swapCaseCheck(board, c, d, kept, specs.swappedIn, { prepass: true, nodeLimit: 2000 }).valid) continue;
       const check = strongSwapCheck(board, c, d, kept);
       if (check.valid) return { d, check };
     }
@@ -1128,29 +1160,54 @@
   function reduceCandidates(board, keptInput, options) {
     const kept = new Set(keptInput || board.candidates.map((_, c) => c));
     const removed = new Map();
-    const fixpoint = (witness, strongSwap) => {
-      let any = false;
+    const fixpoint = (witness) => {
       let changed = true;
       while (changed) {
         changed = false;
         for (let c = 0; c < board.candidates.length; c++) {
           if (!kept.has(c)) continue;
-          const reason = removalReason(board, c, kept, { witness, strongSwap });
+          const reason = removalReason(board, c, kept, { witness });
           if (reason) {
             kept.delete(c);
             removed.set(c, reason);
             changed = true;
-            any = true;
           }
         }
       }
-      return any;
     };
-    fixpoint(false, false);
-    if (options && (options.witness || options.strongSwap)) fixpoint(true, false);
-    if (options && options.strongSwap) {
-      while (fixpoint(false, true)) fixpoint(true, false);
-    }
+    // Strong swap phase: only candidates within two steps (sharing a mine or unit, or revealing each other) of a
+    // removal can change verdict, so after the first strong-swap-only sweep only those are checked again, with every rule.
+    const strongPhase = () => {
+      const near = board.candidates.map((_, c) => {
+        const list = new Set(board.N[c]);
+        for (const mine of board.M[c]) for (const x of mineSolvers(board, mine)) list.add(x);
+        for (const unit of board.B[c]) for (const x of board.unitSolvers[unit]) list.add(x);
+        list.delete(c);
+        return [...list];
+      });
+      const pending = new Map([...kept].map((c) => [c, "strong"]));
+      while (pending.size) {
+        for (const c of [...pending.keys()].sort(byNumber)) {
+          const level = pending.get(c);
+          pending.delete(c);
+          if (!kept.has(c)) continue;
+          const reason =
+            level === "all"
+              ? removalReason(board, c, kept, { witness: true, strongSwap: true })
+              : removalReason(board, c, kept, { swap: false, leftClickEquivalent: false, strongSwap: true });
+          if (!reason) continue;
+          kept.delete(c);
+          removed.set(c, reason);
+          for (const close of near[c]) {
+            if (kept.has(close)) pending.set(close, "all");
+            for (const far of near[close]) if (kept.has(far) && !pending.has(far)) pending.set(far, "strong");
+          }
+        }
+      }
+    };
+    fixpoint(false);
+    if (options && (options.witness || options.strongSwap)) fixpoint(true);
+    if (options && options.strongSwap) strongPhase();
     return { kept: [...kept].sort(byNumber), removed };
   }
 

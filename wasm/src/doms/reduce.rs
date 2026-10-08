@@ -392,9 +392,26 @@ fn can_drop_with_witnesses(
 /// Search nodes allowed per candidate in the strong swap rule, over all its partners and both cases.
 const SWAP_NODE_LIMIT: u32 = 20_000;
 
+/// Nodes allowed in one witness-free pre-pass before it gives up and lets the exact check decide.
+const SWAP_PREPASS_NODE_LIMIT: u32 = 2_000;
+
 /// Items in `a` but not `b` (both sorted).
 fn difference(a: &[usize], b: &[usize]) -> Vec<usize> {
     a.iter().copied().filter(|item| b.binary_search(item).is_err()).collect()
+}
+
+/// How many items of `a` are not in `b` (both sorted), without allocating.
+fn count_difference(a: &[usize], b: &[usize]) -> usize {
+    let (mut count, mut next) = (0, 0);
+    for &item in a {
+        while next < b.len() && b[next] < item {
+            next += 1;
+        }
+        if next == b.len() || b[next] != item {
+            count += 1;
+        }
+    }
+    count
 }
 
 /// One case of the strong swap proof, as a budget over two groups of items.
@@ -457,6 +474,9 @@ struct SwapWitness {
 /// Exact check of one `SwapSide`, with the same witness search as `WitnessCheck`. Members of `I`
 /// are the kept neighbours of `c` that `d` doesn't reveal; a witness can't touch two of them, and
 /// one that `d` reveals can't touch any. Indirect joins are ignored, which only makes it stricter.
+///
+/// Without witnesses it is a cheaper necessary condition: witnesses only help the worst case, so
+/// failing without them fails with them. Running out of nodes then proves nothing, so it passes.
 struct SwapCheck<'a> {
     sets: &'a CandidateSets,
     neighbours: &'a [usize],
@@ -467,6 +487,9 @@ struct SwapCheck<'a> {
     bad_all: u32,
     budget: i32,
     nodes: &'a mut u32,
+    limit: u32,
+    /// What running out of nodes counts as: true for the pre-pass, false for the exact check.
+    on_limit: bool,
 }
 
 impl<'a> SwapCheck<'a> {
@@ -478,29 +501,33 @@ impl<'a> SwapCheck<'a> {
         partner: usize,
         neighbours: &'a [usize],
         kept: &[bool],
+        with_witnesses: bool,
         nodes: &'a mut u32,
     ) -> Option<Self> {
         if side.good_len() > 32 || side.bad_len() > 32 {
             return None;
         }
-        let mut others: Vec<usize> = side
-            .good_mines
-            .iter()
-            .flat_map(|&mine| model.flag_needed_by[mine].iter().copied())
-            .chain(side.good_units.iter().flat_map(|&unit| model.bbbv_solved_by[unit].iter().copied()))
-            .filter(|&other| other != candidate && other != partner && kept[other])
-            .collect();
-        others.sort_unstable();
-        others.dedup();
-        let witnesses = others
-            .into_iter()
-            .map(|other| SwapWitness {
-                candidate: other,
-                good: side.good_cover(sets, other),
-                bad: side.bad_cover(sets, other),
-                touches_partner: sets.reveals_each_other(partner, other),
-            })
-            .collect();
+        let mut witnesses = Vec::new();
+        if with_witnesses {
+            let mut others: Vec<usize> = side
+                .good_mines
+                .iter()
+                .flat_map(|&mine| model.flag_needed_by[mine].iter().copied())
+                .chain(side.good_units.iter().flat_map(|&unit| model.bbbv_solved_by[unit].iter().copied()))
+                .filter(|&other| other != candidate && other != partner && kept[other])
+                .collect();
+            others.sort_unstable();
+            others.dedup();
+            witnesses = others
+                .into_iter()
+                .map(|other| SwapWitness {
+                    candidate: other,
+                    good: side.good_cover(sets, other),
+                    bad: side.bad_cover(sets, other),
+                    touches_partner: sets.reveals_each_other(partner, other),
+                })
+                .collect();
+        }
         Some(SwapCheck {
             sets,
             neighbours,
@@ -511,14 +538,16 @@ impl<'a> SwapCheck<'a> {
             bad_all: ((1u64 << side.bad_len()) - 1) as u32,
             budget: side.budget,
             nodes,
+            limit: if with_witnesses { SWAP_NODE_LIMIT } else { SWAP_PREPASS_NODE_LIMIT },
+            on_limit: !with_witnesses,
         })
     }
 
     /// True when no witness set can push the change in clicks above the budget for this `I`.
     fn within_budget(&mut self, chosen: &[usize]) -> bool {
         *self.nodes += 1;
-        if *self.nodes > SWAP_NODE_LIMIT {
-            return false;
+        if *self.nodes > self.limit {
+            return self.on_limit;
         }
         let (mut good_done, mut bad_done) = (0u32, 0u32);
         for &index in chosen {
@@ -562,13 +591,16 @@ impl<'a> SwapCheck<'a> {
         }
         costly.retain(|&(good, _)| good != 0);
         remove_dominated(&mut costly);
-        !costly_gain_reaches(self.nodes, SWAP_NODE_LIMIT, &costly, 0, 0, 0, need)
+        !costly_gain_reaches(self.nodes, self.limit, &costly, 0, 0, 0, need)
     }
 
     /// Every independent set `I` of neighbours (pairwise not revealing each other) is within budget.
     fn all_within_budget(&mut self, chosen: &mut Vec<usize>, start: usize) -> bool {
         if !self.within_budget(chosen) {
             return false;
+        }
+        if *self.nodes > self.limit {
+            return self.on_limit;
         }
         for index in start..self.neighbours.len() {
             let neighbour = self.neighbours[index];
@@ -586,6 +618,58 @@ impl<'a> SwapCheck<'a> {
     }
 }
 
+/// Root of the exact check for one case, with no allocation: `I` empty and every free witness
+/// (a kept chord other than `c` and `d` that covers a good item and no bad one) in the solution.
+/// `base` is |bad| - |good|; each good item a free witness covers adds one. When that exceeds
+/// `budget` the full check fails at its first set, so the pair can be dropped right away.
+fn free_witnesses_break_case(
+    model: &ChordModel,
+    sets: &CandidateSets,
+    candidate: usize,
+    partner: usize,
+    kept: &[bool],
+    swapped_in: bool,
+    base: i32,
+    budget: i32,
+) -> bool {
+    let need = budget - base + 1;
+    if need <= 0 {
+        return true;
+    }
+    let covers_bad = |other: usize| {
+        sets.units[other]
+            .iter()
+            .any(|unit| sets.units[candidate].binary_search(unit).is_ok() && sets.units[partner].binary_search(unit).is_err())
+            || (swapped_in
+                && sets.mines[other].iter().any(|mine| {
+                    sets.mines[partner].binary_search(mine).is_ok() && sets.mines[candidate].binary_search(mine).is_err()
+                }))
+    };
+    let has_free_cover = |others: &[usize]| {
+        others.iter().any(|&other| other != candidate && other != partner && kept[other] && !covers_bad(other))
+    };
+    let mut covered = 0;
+    for &mine in &sets.mines[candidate] {
+        if sets.mines[partner].binary_search(&mine).is_err() && has_free_cover(&model.flag_needed_by[mine]) {
+            covered += 1;
+            if covered >= need {
+                return true;
+            }
+        }
+    }
+    if swapped_in {
+        for &unit in &sets.units[partner] {
+            if sets.units[candidate].binary_search(&unit).is_err() && has_free_cover(&model.bbbv_solved_by[unit]) {
+                covered += 1;
+                if covered >= need {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 /// A kept `d` such that replacing `c` by `d` (or just dropping `c` when `d` is already chorded)
 /// never costs clicks. Both cases are needed: the private units of `d` only help when `d` is
 /// swapped in, not when it was already there.
@@ -595,19 +679,14 @@ impl<'a> SwapCheck<'a> {
 ///   - |M(c)-M(d) uncovered| - |B(d)-B(c) uncovered|, which must be <= 0.
 /// * `d` chorded: change <= |I| - 1 + |B(c)-B(d) uncovered| - |M(c)-M(d) uncovered|, which must be <= 0.
 ///
-/// `neighbours` are the kept candidates `c` reveals. Cheap count checks run before any search.
-fn find_swap_partner(
-    model: &ChordModel,
-    sets: &CandidateSets,
-    candidate: usize,
-    neighbours: &[usize],
-    kept: &[bool],
-) -> Option<usize> {
+/// `c`'s own reveal set restricted to kept candidates is what `I` is drawn from. Count checks and
+/// a root test with free witnesses run first and need no allocation.
+fn find_swap_partner(model: &ChordModel, sets: &CandidateSets, candidate: usize, kept: &[bool]) -> Option<usize> {
     let mut partners: Vec<usize> = sets.mines[candidate]
         .iter()
         .flat_map(|&mine| model.flag_needed_by[mine].iter().copied())
         .chain(sets.units[candidate].iter().flat_map(|&unit| model.bbbv_solved_by[unit].iter().copied()))
-        .chain(neighbours.iter().copied())
+        .chain(sets.reveals[candidate].iter().copied())
         .filter(|&other| other != candidate && kept[other])
         .collect();
     partners.sort_unstable();
@@ -618,22 +697,33 @@ fn find_swap_partner(
         if nodes > SWAP_NODE_LIMIT {
             return None;
         }
+        let units_only_c_count = count_difference(&sets.units[candidate], &sets.units[partner]);
+        let mines_only_c_count = count_difference(&sets.mines[candidate], &sets.mines[partner]);
+        // Each case fails when its counts alone fail (empty `I`, no witnesses), so no search is needed.
+        if units_only_c_count > 1 + mines_only_c_count {
+            continue;
+        }
+        let units_only_d_count = count_difference(&sets.units[partner], &sets.units[candidate]);
+        let mines_only_d_count = count_difference(&sets.mines[partner], &sets.mines[candidate]);
+        if mines_only_d_count + units_only_c_count > mines_only_c_count + units_only_d_count {
+            continue;
+        }
+        let bad_over_good_both = (mines_only_d_count + units_only_c_count) as i32 - (mines_only_c_count + units_only_d_count) as i32;
+        let bad_over_good_chorded = units_only_c_count as i32 - mines_only_c_count as i32;
+        if free_witnesses_break_case(model, sets, candidate, partner, kept, false, bad_over_good_chorded, 1)
+            || free_witnesses_break_case(model, sets, candidate, partner, kept, true, bad_over_good_both, 0)
+        {
+            continue;
+        }
         let mines_only_c = difference(&sets.mines[candidate], &sets.mines[partner]);
         let units_only_c = difference(&sets.units[candidate], &sets.units[partner]);
-        // Each case fails when its counts alone fail (empty `I`, no witnesses), so no search is needed.
-        if units_only_c.len() > 1 + mines_only_c.len() {
-            continue;
-        }
         let mines_only_d = difference(&sets.mines[partner], &sets.mines[candidate]);
         let units_only_d = difference(&sets.units[partner], &sets.units[candidate]);
-        if mines_only_d.len() + units_only_c.len() > mines_only_c.len() + units_only_d.len() {
-            continue;
-        }
 
-        let unrevealed: Vec<usize> = neighbours
+        let unrevealed: Vec<usize> = sets.reveals[candidate]
             .iter()
             .copied()
-            .filter(|&neighbour| neighbour != partner && !sets.reveals_each_other(partner, neighbour))
+            .filter(|&neighbour| kept[neighbour] && neighbour != partner && !sets.reveals_each_other(partner, neighbour))
             .collect();
         let already_chorded = SwapSide {
             good_mines: mines_only_c.clone(),
@@ -649,13 +739,19 @@ fn find_swap_partner(
             bad_units: units_only_c,
             budget: 0,
         };
-        let within = |side: &SwapSide, nodes: &mut u32| -> bool {
-            match SwapCheck::new(model, sets, side, candidate, partner, &unrevealed, kept, nodes) {
+        let within = |side: &SwapSide, with_witnesses: bool, nodes: &mut u32| -> bool {
+            match SwapCheck::new(model, sets, side, candidate, partner, &unrevealed, kept, with_witnesses, nodes) {
                 Some(mut check) => check.all_within_budget(&mut Vec::new(), 0),
                 None => false,
             }
         };
-        if within(&already_chorded, &mut nodes) && within(&swapped_in, &mut nodes) {
+        // Pre-pass without witnesses first: it rejects most pairs before any witness list is built.
+        let mut prepass_nodes = 0u32;
+        if within(&already_chorded, false, &mut prepass_nodes)
+            && within(&swapped_in, false, &mut prepass_nodes)
+            && within(&already_chorded, true, &mut nodes)
+            && within(&swapped_in, true, &mut nodes)
+        {
             return Some(partner);
         }
     }
@@ -666,20 +762,12 @@ fn find_swap_partner(
 /// `kept`. Exposed so tests can check the swap claim directly against every chord set.
 pub fn strong_swap_partner(model: &ChordModel, kept: &[bool], candidate: usize) -> Option<usize> {
     let sets = CandidateSets::new(model);
-    let neighbours: Vec<usize> = sets.reveals[candidate].iter().copied().filter(|&other| kept[other]).collect();
-    find_swap_partner(model, &sets, candidate, &neighbours, kept)
+    find_swap_partner(model, &sets, candidate, kept)
 }
 
-/// Removes candidates until no rule applies, and says whether anything was removed.
-/// `witness` also enables the witness rule and `strong_swap` the strong swap rule.
-fn reduce_to_fixpoint(
-    model: &ChordModel,
-    sets: &CandidateSets,
-    kept: &mut [bool],
-    witness: bool,
-    strong_swap: bool,
-) -> bool {
-    let (mut any_removed, mut changed) = (false, true);
+/// Removes candidates until no rule applies. `witness` also enables the witness rule.
+fn reduce_to_fixpoint(model: &ChordModel, sets: &CandidateSets, kept: &mut [bool], witness: bool) {
+    let mut changed = true;
     while changed {
         changed = false;
         for candidate in 0..kept.len() {
@@ -691,16 +779,85 @@ fn reduce_to_fixpoint(
             let credit = private_mines(model, sets, candidate, kept);
             let removable = can_drop(sets, candidate, &neighbours, 2 + credit)
                 || has_swap(model, sets, candidate, &neighbours, kept)
-                || (witness && can_drop_with_witnesses(model, sets, candidate, &neighbours, kept))
-                || (strong_swap && find_swap_partner(model, sets, candidate, &neighbours, kept).is_some());
+                || (witness && can_drop_with_witnesses(model, sets, candidate, &neighbours, kept));
             if removable {
                 kept[candidate] = false;
                 changed = true;
-                any_removed = true;
             }
         }
     }
-    any_removed
+}
+
+/// For each candidate, the others it shares a mine or a 3BV unit with, or reveals. Every rule's
+/// verdict on `x` depends only on which candidates are kept among these and, through the units of
+/// its partners, among theirs, so removing `c` can only change verdicts within two steps of `c`.
+fn nearby_candidates(model: &ChordModel, sets: &CandidateSets) -> Vec<Vec<usize>> {
+    (0..sets.reveals.len())
+        .map(|candidate| {
+            let mut list = sets.reveals[candidate].clone();
+            for &mine in &sets.mines[candidate] {
+                list.extend(model.flag_needed_by[mine].iter().copied());
+            }
+            for &unit in &sets.units[candidate] {
+                list.extend(model.bbbv_solved_by[unit].iter().copied());
+            }
+            list.sort_unstable();
+            list.dedup();
+            list.retain(|&other| other != candidate);
+            list
+        })
+        .collect()
+}
+
+const CHECK_STRONG_ONLY: u8 = 1;
+const CHECK_ALL_RULES: u8 = 2;
+
+/// Strong swap phase, run once every other rule has settled, so those still fail for every kept
+/// candidate and only the strong swap is tried at first. After a removal, the candidates sharing a
+/// mine or unit with it or revealing it are checked again with every rule, and those two steps away
+/// with the strong swap only: it alone looks that far, at witnesses for a partner's units.
+fn reduce_with_strong_swap(model: &ChordModel, sets: &CandidateSets, kept: &mut [bool]) {
+    let near = nearby_candidates(model, sets);
+    let mut pending: Vec<u8> = kept.iter().map(|&is_kept| if is_kept { CHECK_STRONG_ONLY } else { 0 }).collect();
+    loop {
+        let mut more = false;
+        for candidate in 0..kept.len() {
+            let level = pending[candidate];
+            if level == 0 {
+                continue;
+            }
+            pending[candidate] = 0;
+            if !kept[candidate] {
+                continue;
+            }
+            let removable = level == CHECK_ALL_RULES && {
+                let neighbours: Vec<usize> =
+                    sets.reveals[candidate].iter().copied().filter(|&other| kept[other]).collect();
+                can_drop(sets, candidate, &neighbours, 2 + private_mines(model, sets, candidate, kept))
+                    || has_swap(model, sets, candidate, &neighbours, kept)
+                    || can_drop_with_witnesses(model, sets, candidate, &neighbours, kept)
+            } || find_swap_partner(model, sets, candidate, kept).is_some();
+            if !removable {
+                continue;
+            }
+            kept[candidate] = false;
+            for &close in &near[candidate] {
+                if kept[close] {
+                    pending[close] = CHECK_ALL_RULES;
+                    more = true;
+                }
+                for &far in &near[close] {
+                    if kept[far] && pending[far] == 0 {
+                        pending[far] = CHECK_STRONG_ONLY;
+                        more = true;
+                    }
+                }
+            }
+        }
+        if !more {
+            break;
+        }
+    }
 }
 
 /// Candidates (sorted) that the default rules can't remove.
@@ -714,15 +871,12 @@ pub fn kept_candidates_with(model: &ChordModel, rule: StaticRule) -> Vec<usize> 
     let sets = CandidateSets::new(model);
     let mut kept = vec![true; count];
     // The cheap rules go first so the witness search sees fewer candidates.
-    reduce_to_fixpoint(model, &sets, &mut kept, false, false);
+    reduce_to_fixpoint(model, &sets, &mut kept, false);
     if rule != StaticRule::Legacy {
-        reduce_to_fixpoint(model, &sets, &mut kept, true, false);
+        reduce_to_fixpoint(model, &sets, &mut kept, true);
     }
     if rule == StaticRule::StrongSwap {
-        // The witness search is only repeated after the strong swap removes something.
-        while reduce_to_fixpoint(model, &sets, &mut kept, false, true) {
-            reduce_to_fixpoint(model, &sets, &mut kept, true, false);
-        }
+        reduce_with_strong_swap(model, &sets, &mut kept);
     }
     (0..count).filter(|&candidate| kept[candidate]).collect()
 }
