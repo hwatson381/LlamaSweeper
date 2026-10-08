@@ -415,6 +415,7 @@ fn benchmark_community_expert_boards() {
 fn benchmark_community_expert_boards_with(rule: StaticRule) {
     let mut timings: Vec<(f64, &str)> = Vec::new();
     let mut static_seconds = 0.0;
+    let mut removed = 0;
     for line in COMMUNITY_EXPERT_BOARDS.lines().filter(|line| !line.trim().is_empty()) {
         let fields: Vec<&str> = line.split_whitespace().collect();
         let (pttacg, optimal_clicks, bbbv): (&str, usize, usize) =
@@ -426,6 +427,7 @@ fn benchmark_community_expert_boards_with(rule: StaticRule) {
             doms::solve_board_with_rule(&board, rule, 20_000_000, &mut |_| {}).expect("DOMS solves the board");
         timings.push((start.elapsed().as_secs_f64(), pttacg));
         static_seconds += result.stats.static_pass_seconds;
+        removed += result.stats.static_removed;
         assert_eq!(result.total_clicks, optimal_clicks, "optimal clicks for {}", pttacg);
     }
 
@@ -433,13 +435,14 @@ fn benchmark_community_expert_boards_with(rule: StaticRule) {
     timings.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
     let median = timings[timings.len() / 2].0;
     println!(
-        "{:?}, {} community boards: total {:.3}s (static pass {:.3}s), mean {:.3}s, median {:.3}s",
+        "{:?}, {} community boards: total {:.3}s (static pass {:.3}s), mean {:.3}s, median {:.3}s, candidates removed {}",
         rule,
         timings.len(),
         total,
         static_seconds,
         total / timings.len() as f64,
-        median
+        median,
+        removed
     );
     println!("slowest:");
     for &(seconds, pttacg) in timings.iter().rev().take(5) {
