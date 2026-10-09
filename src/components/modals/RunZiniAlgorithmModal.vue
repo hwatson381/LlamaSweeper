@@ -31,6 +31,8 @@
                 label: '8-Way ZiNi',
                 value: '8 way',
               },
+              { label: 'G ZiNi', value: 'gzini' },
+              { label: 'H ZiNi', value: 'hzini' },
               { label: 'WoM L ZiNi', value: 'womzini' },
               { label: 'WoM L ZiNi Improved', value: 'womzinifix' },
               { label: 'WoM HZiNi', value: 'womhzini' },

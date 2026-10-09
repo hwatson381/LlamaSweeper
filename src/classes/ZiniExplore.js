@@ -1341,6 +1341,22 @@ class ZiniExplore {
         setTimeout(() => (synchronousZiniActive.value = false), 100);
         break;
       }
+      case "gzini": {
+        synchronousZiniActive.value = true;
+        const label = this.getAlgorithmLabel("G ZiNi", fromCurrent);
+        this.runGreedyZini();
+        analyseLastAlgorithm.value = label;
+        setTimeout(() => (synchronousZiniActive.value = false), 100);
+        break;
+      }
+      case "hzini": {
+        synchronousZiniActive.value = true;
+        const label = this.getAlgorithmLabel("H ZiNi", fromCurrent);
+        this.runHumanZini();
+        analyseLastAlgorithm.value = label;
+        setTimeout(() => (synchronousZiniActive.value = false), 100);
+        break;
+      }
       case "womzini":
         synchronousZiniActive.value = true;
         this.classicPath = Algorithms.calcWomZiniAndHZini(
@@ -1439,6 +1455,36 @@ class ZiniExplore {
     } else {
       const { revealedStates, flagStates } = this.getRevealedAndFlagStates();
       const pathExtension = Algorithms.calcEightWayZini(
+        this.board.mines,
+        false,
+        revealedStates,
+        flagStates
+      ).clicks;
+      this.classicPath = this.classicPath.concat(pathExtension);
+    }
+  }
+
+  runGreedyZini() {
+    if (analyseAlgorithmScope.value === "beginning") {
+      this.classicPath = Algorithms.calcGreedyZini(this.board.mines).clicks;
+    } else {
+      const { revealedStates, flagStates } = this.getRevealedAndFlagStates();
+      const pathExtension = Algorithms.calcGreedyZini(
+        this.board.mines,
+        false,
+        revealedStates,
+        flagStates
+      ).clicks;
+      this.classicPath = this.classicPath.concat(pathExtension);
+    }
+  }
+
+  runHumanZini() {
+    if (analyseAlgorithmScope.value === "beginning") {
+      this.classicPath = Algorithms.calcHumanZini(this.board.mines).clicks;
+    } else {
+      const { revealedStates, flagStates } = this.getRevealedAndFlagStates();
+      const pathExtension = Algorithms.calcHumanZini(
         this.board.mines,
         false,
         revealedStates,

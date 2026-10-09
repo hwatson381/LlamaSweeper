@@ -19,7 +19,8 @@ class Algorithms {
     is8Way,
     preprocessedData = false,
     initialRevealedStates = false,
-    initialFlagStates = false
+    initialFlagStates = false,
+    oneWayEnumeration = [false, false, false] //Enumeration order used when is8Way is false
   ) {
     //PreprocessedData is the result from Algorithms.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines)
     //Which means that we don't have to run that function multiple times
@@ -109,7 +110,7 @@ class Algorithms {
         [true, true, true],
       ];
     } else {
-      enumerationsOrders = [[false, false, false]];
+      enumerationsOrders = [oneWayEnumeration];
     }
 
     let currentZiniValue = Infinity; //Set to the best zini we've found so far
@@ -565,6 +566,221 @@ class Algorithms {
     const is8Way = false;
 
     return this.calcBasicZini(mines, is8Way, preprocessedData);
+  }
+
+  //Greedy ZiNi is a single direction of 8-way ZiNi.
+  //Ties are broken by lowest x (left column) first, then lowest y (top row)
+  static calcGreedyZini(
+    mines,
+    preprocessedData = false,
+    initialRevealedStates = false,
+    initialFlagStates = false
+  ) {
+    const is8Way = false;
+    const xReverse = false;
+    const yReverse = false;
+    const xySwap = true; //x in the outer loop, so lowest x is preferred first
+
+    return this.calcBasicZini(
+      mines,
+      is8Way,
+      preprocessedData,
+      initialRevealedStates,
+      initialFlagStates,
+      [xReverse, yReverse, xySwap]
+    );
+  }
+
+  //Human ZiNi differs from greedy ZiNi in two ways:
+  // - All openings are clicked first
+  // - Only revealed squares are considered for chording
+  //If no revealed square has a non-negative premium, the first unrevealed 3bv square is clicked (and chorded if that is worthwhile)
+  //Ties are broken by lowest x (left column) first, then lowest y (top row)
+  static calcHumanZini(
+    mines,
+    preprocessedData = false,
+    initialRevealedStates = false,
+    initialFlagStates = false
+  ) {
+    if (!preprocessedData) {
+      preprocessedData =
+        this.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
+    }
+
+    const { numbersArray, openingLabels, preprocessedOpenings } =
+      preprocessedData;
+
+    const width = mines.length;
+    const height = mines[0].length;
+
+    //false for unrevealed, true for revealed. Copied so that the caller's arrays are not changed
+    const revealedStates = initialRevealedStates
+      ? this.fast2dArrayCopy(initialRevealedStates)
+      : new Array(width).fill(0).map(() => new Array(height).fill(false));
+
+    //false for unflagged, true for flagged
+    const flagStates = initialFlagStates
+      ? this.fast2dArrayCopy(initialFlagStates)
+      : new Array(width).fill(0).map(() => new Array(height).fill(false));
+
+    const squareInfo = this.computeSquareInfo(
+      mines,
+      numbersArray,
+      openingLabels
+    );
+
+    const premiums = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(null));
+
+    let squaresToSolve = 0;
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (mines[x][y]) {
+          continue;
+        }
+        if (!revealedStates[x][y]) {
+          squaresToSolve++;
+        }
+        this.updatePremiumForCoord(
+          x,
+          y,
+          squareInfo,
+          flagStates,
+          revealedStates,
+          premiums,
+          preprocessedOpenings
+        );
+      }
+    }
+
+    const clicks = [];
+
+    //Revealing or flagging a square can change the premium of itself and its neighbours
+    const updatePremiumsAround = (x, y) => {
+      for (let i = x - 1; i <= x + 1; i++) {
+        for (let j = y - 1; j <= y + 1; j++) {
+          //Bounds and mine checks are done inside updatePremiumForCoord
+          this.updatePremiumForCoord(
+            i,
+            j,
+            squareInfo,
+            flagStates,
+            revealedStates,
+            premiums,
+            preprocessedOpenings
+          );
+        }
+      }
+    };
+
+    const revealSquare = (x, y) => {
+      if (revealedStates[x][y]) {
+        return;
+      }
+      revealedStates[x][y] = true;
+      squaresToSolve--;
+      updatePremiumsAround(x, y);
+    };
+
+    //Reveals a square, and the whole opening if the square is a zero
+    const revealSquareOrOpening = (x, y) => {
+      revealSquare(x, y);
+
+      const labelIfOpening = squareInfo[x][y].labelIfOpening;
+      if (labelIfOpening !== null) {
+        const opening = preprocessedOpenings.get(labelIfOpening);
+        for (const zero of opening.zeros) {
+          revealSquare(zero.x, zero.y);
+        }
+        for (const edge of opening.edges) {
+          revealSquare(edge.x, edge.y);
+        }
+      }
+    };
+
+    const leftClick = (x, y) => {
+      clicks.push({ type: "left", x, y });
+      revealSquareOrOpening(x, y);
+    };
+
+    const flagAndChord = (x, y) => {
+      if (!revealedStates[x][y]) {
+        leftClick(x, y);
+      }
+
+      for (const mine of squareInfo[x][y].mineNeighbours) {
+        if (!flagStates[mine.x][mine.y]) {
+          clicks.push({ type: "right", x: mine.x, y: mine.y });
+          flagStates[mine.x][mine.y] = true;
+          updatePremiumsAround(mine.x, mine.y);
+        }
+      }
+
+      clicks.push({ type: "chord", x, y });
+      for (const safeNeighbour of squareInfo[x][y].safeNeighbours) {
+        if (!revealedStates[safeNeighbour.x][safeNeighbour.y]) {
+          revealSquareOrOpening(safeNeighbour.x, safeNeighbour.y);
+        }
+      }
+    };
+
+    //Start by clicking every opening
+    for (const opening of preprocessedOpenings.values()) {
+      const zero = opening.zeros[0];
+      if (!revealedStates[zero.x][zero.y]) {
+        leftClick(zero.x, zero.y);
+      }
+    }
+
+    while (squaresToSolve > 0) {
+      //Find the revealed square with the highest non-negative premium
+      let highestPremiumSoFar = -1;
+      let chordSquare = null;
+      for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+          if (squareInfo[x][y].isMine || !revealedStates[x][y]) {
+            continue;
+          }
+          if (premiums[x][y] > highestPremiumSoFar) {
+            highestPremiumSoFar = premiums[x][y];
+            chordSquare = { x, y };
+          }
+        }
+      }
+
+      if (chordSquare !== null) {
+        flagAndChord(chordSquare.x, chordSquare.y);
+        continue;
+      }
+
+      //No revealed square is worth chording, so click the first unrevealed 3bv square
+      let nfSquare = null;
+      for (let x = 0; x < width && nfSquare === null; x++) {
+        for (let y = 0; y < height; y++) {
+          const thisSquare = squareInfo[x][y];
+          if (!thisSquare.isMine && thisSquare.is3bv && !revealedStates[x][y]) {
+            nfSquare = { x, y };
+            break;
+          }
+        }
+      }
+
+      if (nfSquare === null) {
+        throw new Error("No chords or NF clicks found for H ZiNi");
+      }
+
+      if (premiums[nfSquare.x][nfSquare.y] >= 0) {
+        flagAndChord(nfSquare.x, nfSquare.y);
+      } else {
+        leftClick(nfSquare.x, nfSquare.y);
+      }
+    }
+
+    return {
+      total: clicks.length,
+      clicks,
+    };
   }
 
   static updatePremiumForCoord(
