@@ -1343,7 +1343,7 @@ class ZiniExplore {
       }
       case "gzini": {
         synchronousZiniActive.value = true;
-        const label = this.getAlgorithmLabel("G ZiNi", fromCurrent);
+        const label = this.getAlgorithmLabel("G.ZiNi", fromCurrent);
         this.runGreedyZini();
         analyseLastAlgorithm.value = label;
         setTimeout(() => (synchronousZiniActive.value = false), 100);
@@ -1351,7 +1351,7 @@ class ZiniExplore {
       }
       case "hzini": {
         synchronousZiniActive.value = true;
-        const label = this.getAlgorithmLabel("H ZiNi", fromCurrent);
+        const label = this.getAlgorithmLabel("H.ZiNi", fromCurrent);
         this.runHumanZini();
         analyseLastAlgorithm.value = label;
         setTimeout(() => (synchronousZiniActive.value = false), 100);

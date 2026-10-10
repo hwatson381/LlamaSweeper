@@ -130,9 +130,9 @@
           <q-card-section>
             <q-checkbox v-model="statsShow8Way" label="Show 8-way ZiNi" />
             <br />
-            <q-checkbox v-model="statsShowGZini" label="Show G ZiNi" />
+            <q-checkbox v-model="statsShowGZini" label="Show G.ZiNi" />
             <br />
-            <q-checkbox v-model="statsShowHZini" label="Show H ZiNi" />
+            <q-checkbox v-model="statsShowHZini" label="Show H.ZiNi" />
             <br />
             <q-checkbox v-model="statsShowChain" label="Show 100chain ZiNi" />
             <br />
