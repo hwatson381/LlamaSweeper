@@ -5,6 +5,8 @@ import DeepChainZiniRunner from "./DeepChainZiniRunner";
 import {
   statsObject,
   statsShow8Way,
+  statsShowGZini,
+  statsShowHZini,
   statsShowChain,
   statsShowWomZini,
   statsShowMaxEff,
@@ -31,6 +33,10 @@ class BoardStats {
       superClick: false, //superClick is the term used in rawvf for l-chord
     };
     this.statsWorkerManager = statsWorkerManager;
+    this.gZini = null;
+    this.gZiniPath = null;
+    this.hZini = null;
+    this.hZiniPath = null;
   }
 
   addLeft(x, y, xRaw, yRaw, time) {
@@ -318,6 +324,8 @@ class BoardStats {
       statsObject.value.deepMaxEff = null;
       statsObject.value.clicks = clicksObject;
       statsObject.value.eightZini = null;
+      statsObject.value.gZini = null;
+      statsObject.value.hZini = null;
       statsObject.value.chainZini = null;
       statsObject.value.womZini = null;
       statsObject.value.womHzini = null;
@@ -342,6 +350,8 @@ class BoardStats {
       statsObject.value.deepMaxEff = null;
       statsObject.value.clicks = clicksObject;
       statsObject.value.eightZini = null;
+      statsObject.value.gZini = null;
+      statsObject.value.hZini = null;
       statsObject.value.chainZini = null;
       statsObject.value.womZini = null;
       statsObject.value.womHzini = null;
@@ -361,7 +371,29 @@ class BoardStats {
       hintsUsed: this.attributes.hintsUsed,
     };
 
+    if (statsShowGZini.value) {
+      this.calcGreedyZini();
+    }
+    if (statsShowHZini.value) {
+      this.calcHumanZini();
+    }
+
     this.calcZinisForStatsPanel();
+  }
+
+  //G ZiNi and H ZiNi are display only and are not used for max eff
+  calcGreedyZini() {
+    const gZiniResult = Algorithms.calcGreedyZini(this.mines);
+    this.gZini = gZiniResult.total;
+    this.gZiniPath = gZiniResult.clicks;
+    statsObject.value.gZini = this.gZini;
+  }
+
+  calcHumanZini() {
+    const hZiniResult = Algorithms.calcHumanZini(this.mines);
+    this.hZini = hZiniResult.total;
+    this.hZiniPath = hZiniResult.clicks;
+    statsObject.value.hZini = this.hZini;
   }
 
   lateCalcDeepChainZini(completionCallback = false) {
@@ -482,6 +514,8 @@ class BoardStats {
     }
 
     statsObject.value.eightZini = this.eightZini;
+    statsObject.value.gZini = this.gZini;
+    statsObject.value.hZini = this.hZini;
     statsObject.value.chainZini = this.chainZini;
     statsObject.value.womZini = this.womZini;
     statsObject.value.womHzini = this.womHzini;

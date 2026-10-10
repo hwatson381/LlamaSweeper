@@ -39,6 +39,8 @@ let statsObject = ref({
     effectiveClicksPerSecond: null,
   },
   eightZini: null,
+  gZini: null,
+  hZini: null,
   chainZini: null,
   womZini: null,
   womHzini: null,
@@ -59,6 +61,8 @@ let statsObject = ref({
   },
 });
 let statsShow8Way = useLocalStorage("ls_statsShow8Way", true);
+let statsShowGZini = useLocalStorage("ls_statsShowGZini", false);
+let statsShowHZini = useLocalStorage("ls_statsShowHZini", false);
 let statsShowChain = useLocalStorage("ls_statsShowChain", true);
 let statsShowWomZini = useLocalStorage("ls_statsShowWomZini", true);
 let statsShowWomZiniFix = useLocalStorage("ls_statsShowWomZiniFix", true);
@@ -459,6 +463,8 @@ let analyseAlgorithmScopeOptions = computed(() => {
   ];
   if (
     analyseAlgorithm.value === "8 way" ||
+    analyseAlgorithm.value === "gzini" ||
+    analyseAlgorithm.value === "hzini" ||
     analyseAlgorithm.value === "chainzini" ||
     analyseAlgorithm.value === "incexzini"
   ) {
@@ -470,6 +476,8 @@ let analyseAlgorithmScopeOptions = computed(() => {
 watchEffect(() => {
   if (
     analyseAlgorithm.value === "8 way" ||
+    analyseAlgorithm.value === "gzini" ||
+    analyseAlgorithm.value === "hzini" ||
     analyseAlgorithm.value === "chainzini" ||
     analyseAlgorithm.value === "incexzini"
   ) {
@@ -610,6 +618,8 @@ export {
   showStatsBlock,
   statsObject,
   statsShow8Way,
+  statsShowGZini,
+  statsShowHZini,
   statsShowChain,
   statsShowWomZini,
   statsShowWomZiniFix,

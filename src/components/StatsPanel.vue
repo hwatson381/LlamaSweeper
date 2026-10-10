@@ -158,6 +158,8 @@
       <div v-if="statsShow8Way">
         ZiNi (8-way): {{ statsObject.eightZini ?? "-" }}
       </div>
+      <div v-if="statsShowGZini">ZiNi (G): {{ statsObject.gZini ?? "-" }}</div>
+      <div v-if="statsShowHZini">ZiNi (H): {{ statsObject.hZini ?? "-" }}</div>
       <div v-if="statsShowChain">
         ZiNi (100chain): {{ statsObject.chainZini ?? "-" }}
       </div>
@@ -372,6 +374,26 @@
             <q-item
               clickable
               v-close-popup
+              @click="game.board.initReplay('gzini')"
+            >
+              <q-item-section>
+                <q-item-label>G ZiNi</q-item-label>
+              </q-item-section>
+            </q-item>
+
+            <q-item
+              clickable
+              v-close-popup
+              @click="game.board.initReplay('hzini')"
+            >
+              <q-item-section>
+                <q-item-label>H ZiNi</q-item-label>
+              </q-item-section>
+            </q-item>
+
+            <q-item
+              clickable
+              v-close-popup
               @click="game.board.initReplay('womzini')"
             >
               <q-item-section>
@@ -470,6 +492,8 @@ import { ref, inject } from "vue";
 import {
   statsObject,
   statsShow8Way,
+  statsShowGZini,
+  statsShowHZini,
   statsShowChain,
   statsShowWomZini,
   statsShowWomZiniFix,

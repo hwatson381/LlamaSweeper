@@ -709,6 +709,28 @@ class Board {
         };
         isReorderableZini = true;
         break;
+      case "gzini":
+        if (this.stats.gZini === null) {
+          this.stats.calcGreedyZini();
+        }
+        replayParams = {
+          clicks: this.stats.gZiniPath,
+          board: this,
+          forceSteppy: true,
+        };
+        isReorderableZini = true;
+        break;
+      case "hzini":
+        if (this.stats.hZini === null) {
+          this.stats.calcHumanZini();
+        }
+        replayParams = {
+          clicks: this.stats.hZiniPath,
+          board: this,
+          forceSteppy: true,
+        };
+        isReorderableZini = false;
+        break;
       case "womzini":
         if (this.stats.womZini === null) {
           this.stats.lateCalcForceZinis();
