@@ -25,7 +25,7 @@ import { Dialog } from "quasar";
 
 import {
   showStatsBlock,
-  tileSizeSlider,
+  effectiveTileSize,
   boardWidth,
   boardHeight,
   boardMines,
@@ -115,7 +115,7 @@ class Board {
     this.width = boardWidth.value;
     this.height = boardHeight.value;
     this.mineCount = boardMines.value;
-    this.tileSize = tileSizeSlider.value;
+    this.tileSize = effectiveTileSize.value;
     this.variant = variant.value;
 
     this.gameStage = "pregame";

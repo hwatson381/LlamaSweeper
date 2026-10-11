@@ -94,6 +94,30 @@ let showTimer = useLocalStorage("ls_showTimer", true);
 let showMineCount = useLocalStorage("ls_showMineCount", true);
 let showCoords = useLocalStorage("ls_showCoords", false);
 let boardSkin = useLocalStorage("ls_boardSkin", "light");
+let boardPixelDensity = useLocalStorage("ls_boardPixelDensity", "device"); //By default canvas uses "CSS" pixels, so this option allows making it higher res instead
+
+//devicePixelRatio can change with browser zoom on desktop
+let devicePixelRatioRef = ref(window.devicePixelRatio || 1);
+window.addEventListener("resize", () => {
+  devicePixelRatioRef.value = window.devicePixelRatio || 1;
+});
+
+let pixelScale = computed(() => {
+  switch (boardPixelDensity.value) {
+    case "1x":
+      return 1;
+    case "device":
+      return devicePixelRatioRef.value;
+    default:
+      return 1;
+  }
+});
+
+//Helper function for adjusting logical coords such that they line up with the real pixel grid
+//1e6 added to fix float errors
+const toGrid = (v) =>
+  Math.floor(v * pixelScale.value + 1e-6) / pixelScale.value;
+let effectiveTileSize = computed(() => toGrid(tileSizeSlider.value));
 
 let coordsModal = ref(false);
 let coordsUseLetters = useLocalStorage("ls_coordsUseLetters", true);
@@ -102,24 +126,24 @@ let coordsUseZeroIndexing = useLocalStorage("ls_coordsUseZeroIndexing", false);
 
 //Dimensions for border
 let boardHorizontalPadding = computed(() => {
-  return showBorders.value ? Math.floor(tileSizeSlider.value / 2) : 0;
+  return showBorders.value ? toGrid(tileSizeSlider.value / 2) : 0;
 });
 let boardTopPadding = computed(() => {
-  const topPanelTopAndBottomBorder = Math.floor(tileSizeSlider.value / 2);
-  const topPanelHeight = Math.floor(tileSizeSlider.value * 2);
+  const topPanelTopAndBottomBorder = toGrid(tileSizeSlider.value / 2);
+  const topPanelHeight = toGrid(tileSizeSlider.value * 2);
   return showBorders.value
     ? topPanelHeight + 2 * topPanelTopAndBottomBorder
     : 0; //Around 3 * tileSize, but may be less if values are non-integer to prevent gaps
 });
 let boardBottomPadding = computed(() => {
-  return showBorders.value ? Math.floor(tileSizeSlider.value / 2) : 0;
+  return showBorders.value ? toGrid(tileSizeSlider.value / 2) : 0;
 });
 //More dimensions for top panel
 let topPanelTopAndBottomBorder = computed(() => {
-  return showBorders.value ? Math.floor(tileSizeSlider.value / 2) : 0;
+  return showBorders.value ? toGrid(tileSizeSlider.value / 2) : 0;
 });
 let topPanelHeight = computed(() => {
-  return showBorders.value ? Math.floor(tileSizeSlider.value * 2) : 0;
+  return showBorders.value ? toGrid(tileSizeSlider.value * 2) : 0;
 });
 
 let boardSizePreset = useLocalStorage("ls_boardSizePreset", "beg"); //beg/int/exp. Mainly just used for showing correct thing in dropdown
@@ -646,6 +670,9 @@ export {
   showMineCount,
   showCoords,
   boardSkin,
+  boardPixelDensity,
+  pixelScale,
+  effectiveTileSize,
   coordsModal,
   coordsUseLetters,
   coordsUseInvertedY,

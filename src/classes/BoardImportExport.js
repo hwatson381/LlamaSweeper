@@ -8,7 +8,7 @@ import { toBlob, toCanvas } from "html-to-image";
 
 import { Dialog, Notify, copyToClipboard, exportFile, Dark } from "quasar";
 
-import { statsObject, variant } from "src/composables/useSettings";
+import { statsObject, variant, pixelScale } from "src/composables/useSettings";
 
 class BoardImportExport {
   constructor(board) {
@@ -455,10 +455,15 @@ class BoardImportExport {
   async getScreenshotBlob(includeStats) {
     //Create a new canvas and draw the main canvas onto it with CSS filters applied. This ensures that the exported image includes the visual effects from CSS.
     //This is required because html-to-image doesn't work for canvases on safari
-    const pixelRatio = window.devicePixelRatio || 1;
+    //Main canvas may already include the pixel ratio, so only scale by the remainder
+    const outputScale = (window.devicePixelRatio || 1) / pixelScale.value;
     const canvasWithFilters = document.createElement("canvas");
-    canvasWithFilters.width = this.board.mainCanvas.value.width * pixelRatio;
-    canvasWithFilters.height = this.board.mainCanvas.value.height * pixelRatio;
+    canvasWithFilters.width = Math.round(
+      this.board.mainCanvas.value.width * outputScale
+    );
+    canvasWithFilters.height = Math.round(
+      this.board.mainCanvas.value.height * outputScale
+    );
     const ctxWithFilters = canvasWithFilters.getContext("2d");
     if ("filter" in ctxWithFilters) {
       ctxWithFilters.filter = getComputedStyle(

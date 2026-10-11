@@ -195,6 +195,31 @@
           >
           </q-btn>
         </div>
+        <q-select
+          class="q-mx-md q-mb-md"
+          outlined
+          options-dense
+          dense
+          transition-duration="100"
+          input-debounce="0"
+          v-model="boardPixelDensity"
+          style="width: 200px; flex-shrink: 0"
+          :options="[
+            {
+              label: '1x (lower res)',
+              value: '1x',
+            },
+            {
+              label: 'Device (higher res)',
+              value: 'device',
+            },
+          ]"
+          emit-value
+          map-options
+          stack-label
+          label="Board Pixel Density"
+          @update:model-value="game.refreshSize()"
+        />
       </q-card-section>
 
       <q-card-actions align="right" class="text-primary">
@@ -220,6 +245,7 @@ import {
   showMineCount,
   showCoords,
   boardSkin,
+  boardPixelDensity,
   coordsModal,
   enableFilters,
 } from "src/composables/useSettings";

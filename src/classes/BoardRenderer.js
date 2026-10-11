@@ -1,7 +1,8 @@
 import skinManager from "src/classes/SkinManager";
 
 import {
-  tileSizeSlider,
+  effectiveTileSize,
+  pixelScale,
   gameCentrePadding,
   coordsUseLetters,
   coordsUseInvertedY,
@@ -27,11 +28,12 @@ class BoardRenderer {
   }
 
   draw() {
+    //Clear in logical units, as the context is scaled by pixelScale
     this.board.mainCanvasCtx.clearRect(
       0,
       0,
-      this.board.mainCanvas.value.width,
-      this.board.mainCanvas.value.height
+      this.board.mainCanvas.value.width / pixelScale.value,
+      this.board.mainCanvas.value.height / pixelScale.value
     );
 
     if (
@@ -524,27 +526,44 @@ class BoardRenderer {
 
   updateBoardPixelDimensions() {
     //Set pixel dimensions for board
-    const mainCanvasWidth =
-      this.board.width * tileSizeSlider.value +
+    //Note that care is needed here since the grid used by the canvas made have a different scale to what is used by css pixels
+
+    const logicalWidth =
+      this.board.width * effectiveTileSize.value +
       2 * boardHorizontalPadding.value;
-    const mainCanvasHeight =
-      this.board.height * tileSizeSlider.value +
+    const logicalHeight =
+      this.board.height * effectiveTileSize.value +
       boardTopPadding.value +
       boardBottomPadding.value;
 
-    this.board.mainCanvas.value.width = mainCanvasWidth;
-    this.board.mainCanvas.value.height = mainCanvasHeight;
+    //Logical sizes are whole multiples of 1/pixelScale, so round only removes float noise
+    const bufferWidth = Math.round(logicalWidth * pixelScale.value);
+    const bufferHeight = Math.round(logicalHeight * pixelScale.value);
+
+    const canvas = this.board.mainCanvas.value;
+
+    canvas.width = bufferWidth;
+    canvas.height = bufferHeight;
 
     //Also set height in style (needed for flex layout to work)
-    this.board.mainCanvas.value.style.width = `${mainCanvasWidth}px`;
-    this.board.mainCanvas.value.style.height = `${mainCanvasHeight}px`;
+    canvas.style.width = `${bufferWidth / pixelScale.value}px`;
+    canvas.style.height = `${bufferHeight / pixelScale.value}px`;
+
+    this.board.mainCanvasCtx.setTransform(
+      pixelScale.value,
+      0,
+      0,
+      pixelScale.value,
+      0,
+      0
+    );
 
     //Figure out what left padding should be in order to centre the board
     let gameContainerWidth =
       this.board.gameContainerDiv.value.getBoundingClientRect().width;
 
     let marginToCentre = Math.max(
-      (gameContainerWidth - mainCanvasWidth) / 2,
+      (gameContainerWidth - bufferWidth / pixelScale.value) / 2,
       0
     );
 
@@ -554,7 +573,7 @@ class BoardRenderer {
   refreshCanvasSize() {
     this.updateBoardPixelDimensions();
 
-    this.board.tileSize = tileSizeSlider.value;
+    this.board.tileSize = effectiveTileSize.value;
     this.draw();
   }
 
