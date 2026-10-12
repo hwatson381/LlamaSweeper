@@ -114,7 +114,7 @@
           v-if="variant === 'zini explorer'"
           @click="
             game.board.switchToAnalyseMode(true);
-            game.board.ziniExplore.runDomsZini(true);
+            game.board.ziniExplore.runDomsZini(false);
           "
           color="primary"
           label="Run DOMS"

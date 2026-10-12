@@ -9,6 +9,7 @@
 //! columns, "smart" per-line orders and multi-line bands are all estimated and the narrowest wins.
 
 use super::model::ChordModel;
+use super::DomsError;
 
 /// Frontier width of an order. Derived `Ord` compares fields in declaration order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -353,8 +354,52 @@ fn band_sizes(size: usize) -> Vec<usize> {
     values
 }
 
+/// Which sweep order the DP uses. `Auto` picks the narrowest estimated frontier.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SweepOrder {
+    Auto,
+    Columns,
+    Rows,
+    ColumnsSmart,
+    RowsSmart,
+}
+
+impl SweepOrder {
+    pub fn parse(name: &str) -> Option<SweepOrder> {
+        match name {
+            "auto" => Some(SweepOrder::Auto),
+            "columns" => Some(SweepOrder::Columns),
+            "rows" => Some(SweepOrder::Rows),
+            "columns-smart" => Some(SweepOrder::ColumnsSmart),
+            "rows-smart" => Some(SweepOrder::RowsSmart),
+            _ => None,
+        }
+    }
+}
+
 /// Returns the reordered model and the name of the chosen sweep order.
-pub fn choose_sweep_order(model: &ChordModel) -> (ChordModel, String) {
+pub fn choose_sweep_order(model: &ChordModel, requested: SweepOrder) -> Result<(ChordModel, String), DomsError> {
+    let (name, by_columns, smart) = match requested {
+        SweepOrder::Auto => return Ok(choose_best_sweep_order(model)),
+        SweepOrder::Columns => ("columns", true, false),
+        SweepOrder::Rows => ("rows", false, false),
+        SweepOrder::ColumnsSmart => ("columns-smart", true, true),
+        SweepOrder::RowsSmart => ("rows-smart", false, true),
+    };
+    if smart {
+        let line_size = if by_columns { model.height } else { model.width };
+        if line_size > 20 {
+            return Err(DomsError::Invalid(format!(
+                "The {} sweep order only supports lines of at most 20 cells, but this one has {}",
+                name, line_size
+            )));
+        }
+        return Ok((model.reordered(&smart_strip_order(model, by_columns)), name.to_string()));
+    }
+    Ok((model.reordered(&strip_order(model, by_columns, 1)), name.to_string()))
+}
+
+fn choose_best_sweep_order(model: &ChordModel) -> (ChordModel, String) {
     let mut choices: Vec<(WidthEstimate, String, Vec<usize>)> = Vec::new();
     let mut standard_best = i32::MAX;
     let mut standard_estimates = Vec::new();

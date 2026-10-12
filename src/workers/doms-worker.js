@@ -34,6 +34,13 @@ class EtaEstimator {
     this.startTime = performance.now();
     this.lastLayerTime = this.startTime;
     this.previousStates = 1;
+    this.pausedSeconds = 0;
+  }
+
+  //Slow mode waits are not algorithm time, so keep them out of the timings
+  skipPause(pauseSeconds) {
+    this.pausedSeconds += pauseSeconds;
+    this.lastLayerTime = performance.now();
   }
 
   widthAfter(processed) {
@@ -55,11 +62,12 @@ class EtaEstimator {
   }
 
   //Returns { elapsedSeconds, remainingSeconds } or null while there is too little data
-  estimate(processed, total) {
+  estimate(processed, total, slowLayerSeconds) {
     if (!this.cutWidths || this.layers.length < MIN_LAYERS_FOR_ESTIMATE) {
       return null;
     }
-    const elapsedSeconds = (performance.now() - this.startTime) / 1000;
+    const elapsedSeconds =
+      (performance.now() - this.startTime) / 1000 - this.pausedSeconds;
     const layerSeconds = this.layers.reduce((sum, l) => sum + l.seconds, 0);
     const layerWork = this.layers.reduce((sum, l) => sum + l.statesIn, 0);
     const secondsPerState = layerSeconds / layerWork;
@@ -81,20 +89,46 @@ class EtaEstimator {
     }
     return {
       elapsedSeconds,
-      remainingSeconds: remainingWork * secondsPerState,
+      remainingSeconds:
+        remainingWork * secondsPerState +
+        (total - processed) * slowLayerSeconds,
     };
   }
 }
 
 onmessage = function (event) {
-  const { width, height, mines, maxStates } = event.data.parameters;
+  const { width, height, mines, maxStates, sweepOrder } = event.data.parameters;
+  const { visualise, randomState, slow, slowMs } = event.data.parameters;
 
   const estimator = new EtaEstimator();
-  let lastReport = 0;
+  let lastEtaReport = 0;
+  let lastProgressReport = 0;
+  let layerStart = performance.now();
+
+  //Rust can't sleep on wasm, so slow mode spins here for at least slowMs per candidate
+  const waitForSlowMode = () => {
+    const pauseStart = performance.now();
+    while (performance.now() < layerStart + slowMs) {
+      //spin
+    }
+    estimator.skipPause((performance.now() - pauseStart) / 1000);
+    layerStart = performance.now();
+  };
+
+  //For "layer" events the return value tells Rust whether to send a board path
   const reportProgress = (progress) => {
     if (progress.type === "plan") {
       estimator.cutWidths = progress.cutWidths;
-      return;
+      layerStart = performance.now();
+      return false;
+    }
+
+    if (progress.type === "path") {
+      postMessage({ type: "board-progress", clicks: progress.clicks });
+      if (slow) {
+        waitForSlowMode();
+      }
+      return false;
     }
 
     const { processed, total, states } = progress;
@@ -102,29 +136,48 @@ onmessage = function (event) {
 
     //Throttle messages, but always report the final layer
     const now = Date.now();
-    if (now - lastReport < 500 && processed !== total) {
-      return;
+    const finalLayer = processed === total;
+    if (now - lastEtaReport >= 500 || finalLayer) {
+      lastEtaReport = now;
+      const eta = estimator.estimate(
+        processed,
+        total,
+        slow ? slowMs / 1000 : 0
+      );
+      if (eta) {
+        postMessage({
+          type: "eta-update",
+          totalSeconds: eta.elapsedSeconds + eta.remainingSeconds,
+          remainingSeconds: eta.remainingSeconds,
+        });
+      }
     }
-    lastReport = now;
 
-    const eta = estimator.estimate(processed, total);
-    if (eta) {
-      postMessage({
-        type: "eta-update",
-        totalSeconds: eta.elapsedSeconds + eta.remainingSeconds,
-        remainingSeconds: eta.remainingSeconds,
-      });
+    if (!slow && now - lastProgressReport < 33 && !finalLayer) {
+      return false;
     }
+    lastProgressReport = now;
     postMessage({
       type: "iteration-update",
       candidates: { processed, total },
       states,
     });
+    return visualise;
   };
 
   try {
     const start = performance.now();
-    const result = doms_zini(width, height, mines, maxStates, reportProgress);
+    const result = doms_zini(
+      width,
+      height,
+      mines,
+      maxStates,
+      sweepOrder,
+      visualise,
+      randomState,
+      Math.floor(Math.random() * 2 ** 32),
+      reportProgress
+    );
     const durationSeconds = (performance.now() - start) / 1000;
     postMessage({ type: "run-complete", result, durationSeconds });
   } catch (error) {

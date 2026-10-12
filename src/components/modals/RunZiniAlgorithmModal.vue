@@ -150,6 +150,59 @@
               max="20000000"
               style="width: 110px"
             />
+            <q-select
+              v-if="analyseAlgorithm === 'doms'"
+              class="q-mx-md q-mb-md"
+              outlined
+              options-dense
+              dense
+              transition-duration="100"
+              input-debounce="0"
+              v-model="analyseDomsSweepOrder"
+              style="width: 175px; flex-shrink: 0"
+              :options="[
+                { label: 'Auto (best)', value: 'auto' },
+                { label: 'Columns', value: 'columns' },
+                { label: 'Rows', value: 'rows' },
+                { label: 'Columns (smart)', value: 'columns-smart' },
+                { label: 'Rows (smart)', value: 'rows-smart' },
+              ]"
+              emit-value
+              map-options
+              stack-label
+              label="Sweep order"
+            />
+            <q-checkbox
+              v-if="analyseAlgorithm === 'doms'"
+              v-model="analyseDomsVisualise"
+              label="Visualise"
+            />
+            <q-checkbox
+              v-if="analyseAlgorithm === 'doms' && analyseDomsVisualise"
+              v-model="analyseDomsRandomState"
+              label="Show random state"
+            />
+            <q-checkbox
+              v-if="analyseAlgorithm === 'doms' && analyseDomsVisualise"
+              v-model="analyseDomsSlow"
+              label="Slow mode"
+            />
+            <q-input
+              v-if="
+                analyseAlgorithm === 'doms' &&
+                analyseDomsVisualise &&
+                analyseDomsSlow
+              "
+              class="q-mb-sm"
+              debounce="100"
+              v-model.number="analyseDomsSlowMs"
+              label="Slow mode delay (ms)"
+              type="number"
+              dense
+              min="10"
+              max="10000"
+              style="width: 110px"
+            />
             <q-checkbox
               v-if="
                 (analyseAlgorithm === 'chainzini' ||
@@ -204,6 +257,11 @@ import {
   analyseDeepIterations,
   analyseVisualise,
   analyseDomsMaxStates,
+  analyseDomsVisualise,
+  analyseDomsRandomState,
+  analyseDomsSlow,
+  analyseDomsSlowMs,
+  analyseDomsSweepOrder,
   analyseAlgorithmScopeOptions,
   runZiniAlgorithmModal,
 } from "src/composables/useSettings";

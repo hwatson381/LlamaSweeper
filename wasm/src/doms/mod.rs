@@ -25,6 +25,8 @@ use crate::board_gen_8way::{Board, ClickInfo, ClickType, Square, SquareType};
 use model::ChordModel;
 use std::fmt;
 
+pub use order::SweepOrder;
+
 pub const DEFAULT_MAX_STATES: usize = 2_000_000;
 pub const DEFAULT_DOMINANCE_COMPARISONS: u64 = 1_000_000;
 
@@ -64,6 +66,33 @@ pub enum DomsProgress<'a> {
     Plan { cut_widths: &'a [i32] },
     /// Sent after each candidate is decided.
     Layer { processed: usize, total: usize, states: usize },
+    /// A partial click path (candidate cells in play order), sent after `Layer` when requested.
+    Path { clicks: &'a [(ClickType, usize)] },
+}
+
+#[derive(Clone, Copy)]
+pub enum VisualiseMode {
+    /// The cheapest state, first encountered on ties.
+    Best,
+    /// A uniformly random state, seeded for repeatability.
+    Random(u64),
+}
+
+pub struct Visualise<'a> {
+    pub mode: VisualiseMode,
+    /// Asked after each `Layer` event; the path is only built when this returns true.
+    pub due: &'a dyn Fn() -> bool,
+}
+
+pub struct DomsOptions<'a> {
+    pub sweep_order: SweepOrder,
+    pub visualise: Option<Visualise<'a>>,
+}
+
+impl Default for DomsOptions<'_> {
+    fn default() -> Self {
+        DomsOptions { sweep_order: SweepOrder::Auto, visualise: None }
+    }
 }
 
 #[derive(Debug, Default, Clone)]
@@ -137,8 +166,19 @@ pub fn solve_board_with_rule(
     max_states: usize,
     progress: &mut dyn FnMut(DomsProgress),
 ) -> Result<DomsResult, DomsError> {
+    solve_board_with_options(board, rule, max_states, &DomsOptions::default(), progress)
+}
+
+pub fn solve_board_with_options(
+    board: &Board,
+    rule: reduce::StaticRule,
+    max_states: usize,
+    options: &DomsOptions,
+    progress: &mut dyn FnMut(DomsProgress),
+) -> Result<DomsResult, DomsError> {
     let model = ChordModel::from_board(board);
-    let outcome = frontier::solve_frontier(&model, rule, max_states, DEFAULT_DOMINANCE_COMPARISONS, progress)?;
+    let outcome =
+        frontier::solve_frontier(&model, rule, max_states, DEFAULT_DOMINANCE_COMPARISONS, options, progress)?;
     let solution = solution::construct_solution(&model, &outcome.chords, Some(outcome.total_clicks))?;
     let mut result = to_result(board, &model, solution);
     result.stats.sweep_order = outcome.sweep_order;
@@ -165,6 +205,17 @@ pub fn solve_mines(
     height: usize,
     mines: &[u8],
     max_states: usize,
+    progress: &mut dyn FnMut(DomsProgress),
+) -> Result<DomsResult, DomsError> {
+    solve_mines_with_options(width, height, mines, max_states, &DomsOptions::default(), progress)
+}
+
+pub fn solve_mines_with_options(
+    width: usize,
+    height: usize,
+    mines: &[u8],
+    max_states: usize,
+    options: &DomsOptions,
     progress: &mut dyn FnMut(DomsProgress),
 ) -> Result<DomsResult, DomsError> {
     if width == 0 || height == 0 || mines.len() != width * height {
@@ -199,5 +250,5 @@ pub fn solve_mines(
         }
     }
     board.initialize_all()?;
-    solve_board(&board, max_states, progress)
+    solve_board_with_options(&board, reduce::DEFAULT_STATIC_RULE, max_states, options, progress)
 }

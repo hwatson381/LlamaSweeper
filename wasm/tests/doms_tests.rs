@@ -278,6 +278,7 @@ fn reports_progress_for_every_candidate() {
     let result = doms::solve_board(&board, DEFAULT_MAX_STATES, &mut |event| match event {
         DomsProgress::Plan { cut_widths } => plan_widths = Some(cut_widths.len()),
         DomsProgress::Layer { processed, total, .. } => calls.push((processed, total)),
+        DomsProgress::Path { .. } => {}
     })
     .unwrap();
     let decided = result.stats.chord_candidates - result.stats.static_removed;

@@ -15,6 +15,11 @@ import {
   analyseVisualise,
   analyseForbid,
   analyseDomsMaxStates,
+  analyseDomsVisualise,
+  analyseDomsRandomState,
+  analyseDomsSlow,
+  analyseDomsSlowMs,
+  analyseDomsSweepOrder,
   analyseLastAlgorithm,
   classicPathBreakdown,
   analyseZiniTotal,
@@ -1396,7 +1401,7 @@ class ZiniExplore {
         this.runInclusionExclusionZini(true);
         break;
       case "doms":
-        this.runDomsZini(false);
+        this.runDomsZini(true);
         break;
       default:
         alert("disallowed algorithm");
@@ -1647,15 +1652,24 @@ class ZiniExplore {
     }
   }
 
-  runDomsZini(useDefaultMaxStates = false) {
+  runDomsZini(useRefs = true) {
     const DEFAULT_MAX_STATES = 2000000;
     const UPPER_BOUND_MAX_STATES = 20000000;
 
     this.killDeepChainZiniRunner(); //just in case it is already running
 
-    let maxStates = useDefaultMaxStates
-      ? DEFAULT_MAX_STATES
-      : analyseDomsMaxStates.value;
+    let maxStates = useRefs ? analyseDomsMaxStates.value : DEFAULT_MAX_STATES;
+    const visualise = useRefs ? analyseDomsVisualise.value : true;
+    const randomState = useRefs && visualise && analyseDomsRandomState.value;
+    const slow = useRefs && visualise && analyseDomsSlow.value;
+    const sweepOrder = useRefs ? analyseDomsSweepOrder.value : "auto";
+
+    let slowMs = Math.round(Number(analyseDomsSlowMs.value));
+    if (!Number.isFinite(slowMs)) {
+      slowMs = 100;
+    }
+    slowMs = Math.min(Math.max(slowMs, 10), 10000);
+    analyseDomsSlowMs.value = slowMs;
 
     if (
       !Number.isFinite(maxStates) ||
@@ -1684,8 +1698,22 @@ class ZiniExplore {
     this.classicPathBeforeRun = structuredClone(this.classicPath);
 
     this.ziniRunner = new DeepChainZiniRunner(
-      { width, height, mines, maxStates },
       {
+        width,
+        height,
+        mines,
+        maxStates,
+        sweepOrder,
+        visualise,
+        randomState,
+        slow,
+        slowMs,
+      },
+      {
+        onBoardProgress: (clicks) => {
+          this.classicPath = clicks;
+          this.updateUiAndBoard();
+        },
         onCompleteRun: (result) => {
           this.classicPath = result.clicks;
           analyseLastAlgorithm.value = "DOMS (optimal)";

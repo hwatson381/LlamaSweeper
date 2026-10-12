@@ -456,6 +456,11 @@ let analyseDeepIterations = ref(5);
 let analyseVisualise = ref(true);
 let analyseForbid = ref(false);
 let analyseDomsMaxStates = ref(2000000);
+let analyseDomsVisualise = ref(true);
+let analyseDomsRandomState = ref(false);
+let analyseDomsSlow = ref(false);
+let analyseDomsSlowMs = ref(100);
+let analyseDomsSweepOrder = ref("auto");
 let analyseLastAlgorithm = ref("Custom");
 let classicPathBreakdown = ref({
   lefts: 0,
@@ -792,6 +797,11 @@ export {
   analyseVisualise,
   analyseForbid,
   analyseDomsMaxStates,
+  analyseDomsVisualise,
+  analyseDomsRandomState,
+  analyseDomsSlow,
+  analyseDomsSlowMs,
+  analyseDomsSweepOrder,
   analyseLastAlgorithm,
   classicPathBreakdown,
   analyseZiniTotal,

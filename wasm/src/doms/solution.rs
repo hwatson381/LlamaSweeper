@@ -211,6 +211,22 @@ fn validate_clicks(model: &ChordModel, clicks: &[(ClickType, usize)]) -> Result<
     Ok(())
 }
 
+/// Clicks for a partly decided chord set (bitset over candidates): flags, then each chain.
+/// Left clicks for 3BV units no chain solves are left out, so this is not a complete path.
+pub fn partial_clicks(model: &ChordModel, chord_bits: &[u64]) -> Result<Vec<(ClickType, usize)>, DomsError> {
+    let chords: Vec<usize> = (0..model.candidate_cells.len())
+        .filter(|&candidate| (chord_bits[candidate / 64] >> (candidate % 64)) & 1 == 1)
+        .collect();
+    let evaluation = evaluate_chords(model, &chords);
+    let mut clicks: Vec<(ClickType, usize)> = evaluation.flags.iter().map(|&mine| (ClickType::Flag, mine)).collect();
+    for chain in &evaluation.chains {
+        let order = chain_chord_order(model, chain)?;
+        clicks.push((ClickType::NF, model.candidate_cells[order[0]]));
+        clicks.extend(order.iter().map(|&candidate| (ClickType::Chord, model.candidate_cells[candidate])));
+    }
+    Ok(clicks)
+}
+
 pub fn construct_solution(
     model: &ChordModel,
     chords: &[usize],

@@ -152,14 +152,39 @@ fn set_property(target: &Object, key: &str, value: JsValue) -> Result<(), JsValu
 /// * Entry point for JavaScript
 /// * `mines` is row-major (`y * width + x`), non-zero for a mine
 /// * `progress_callback(event)` receives `{ type: "plan", cutWidths }` once, then
-///   `{ type: "layer", processed, total, states }` after each chord candidate is decided
+///   `{ type: "layer", processed, total, states }` after each chord candidate is decided.
+///   The callback's return value for "layer" is only read when `visualise` is true: returning `true`
+///   requests `{ type: "path", clicks: [{ type, x, y }] }`, a partial path for that layer.
+/// * `sweep_order` is "auto", "columns", "rows", "columns-smart" or "rows-smart"
+/// * `random_state` picks a random state for the path instead of the cheapest; `seed` seeds it
 ///
 /// Returns `{ totalClicks, bbbv, clicks: [{ type, x, y }], stats }`.
 /// Errors are `{ kind: "state-limit" | "invalid" | "internal", message }`.
 #[wasm_bindgen]
-pub fn doms_zini(width: usize, height: usize, mines: &[u8], max_states: u32, progress_callback: Option<js_sys::Function>) -> Result<JsValue, JsValue> {
+pub fn doms_zini(
+    width: usize,
+    height: usize,
+    mines: &[u8],
+    max_states: u32,
+    sweep_order: &str,
+    visualise: bool,
+    random_state: bool,
+    seed: u32,
+    progress_callback: Option<js_sys::Function>,
+) -> Result<JsValue, JsValue> {
     #[cfg(feature = "console_error_panic_hook")]
     utils::set_panic_hook();
+
+    let sweep_order = match doms::SweepOrder::parse(sweep_order) {
+        Some(order) => order,
+        None => {
+            let js_error = Object::new();
+            set_property(&js_error, "kind", "invalid".into())?;
+            set_property(&js_error, "message", format!("Unknown sweep order \"{}\"", sweep_order).into())?;
+            return Err(js_error.into());
+        }
+    };
+    let path_requested = std::cell::Cell::new(false);
 
     let mut progress = |event: doms::DomsProgress| {
         let callback = match &progress_callback {
@@ -177,12 +202,51 @@ pub fn doms_zini(width: usize, height: usize, mines: &[u8], max_states: u32, pro
                 let _ = set_property(&js_event, "processed", (processed as f64).into());
                 let _ = set_property(&js_event, "total", (total as f64).into());
                 let _ = set_property(&js_event, "states", (states as f64).into());
+                if visualise {
+                    let reply = callback.call1(&JsValue::NULL, &js_event);
+                    path_requested.set(matches!(reply, Ok(value) if value.as_bool() == Some(true)));
+                    return;
+                }
+            }
+            doms::DomsProgress::Path { clicks } => {
+                let js_clicks = Array::new();
+                for &(click_type, cell) in clicks {
+                    let js_click = Object::new();
+                    let click_type = match click_type {
+                        ClickType::NF => "left",
+                        ClickType::Flag => "right",
+                        ClickType::Chord => "chord",
+                    };
+                    let _ = set_property(&js_click, "type", click_type.into());
+                    let _ = set_property(&js_click, "x", ((cell % width) as f64).into());
+                    let _ = set_property(&js_click, "y", ((cell / width) as f64).into());
+                    js_clicks.push(&js_click);
+                }
+                let _ = set_property(&js_event, "type", "path".into());
+                let _ = set_property(&js_event, "clicks", js_clicks.into());
             }
         }
         let _ = callback.call1(&JsValue::NULL, &js_event);
     };
 
-    let result = match doms::solve_mines(width, height, mines, max_states as usize, &mut progress) {
+    let due = || path_requested.replace(false);
+    let options = doms::DomsOptions {
+        sweep_order,
+        visualise: if visualise {
+            Some(doms::Visualise {
+                mode: if random_state {
+                    doms::VisualiseMode::Random(seed as u64)
+                } else {
+                    doms::VisualiseMode::Best
+                },
+                due: &due,
+            })
+        } else {
+            None
+        },
+    };
+
+    let result = match doms::solve_mines_with_options(width, height, mines, max_states as usize, &options, &mut progress) {
         Ok(result) => result,
         Err(error) => {
             let kind = match error {

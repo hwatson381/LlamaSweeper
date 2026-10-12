@@ -20,8 +20,9 @@ use super::model::ChordModel;
 use super::order::{choose_sweep_order, coverage, cut_widths};
 use super::prune::prune_dominated;
 use super::reduce::{kept_candidates_with, StaticRule};
+use super::solution::partial_clicks;
 use super::table::{set_bit, test_bit, ConnectivityPool, Lookup, StateTable};
-use super::{DomsError, DomsProgress};
+use super::{DomsError, DomsOptions, DomsProgress, VisualiseMode};
 
 // Sibling rules each prove one child of a parent state is never better than the other, so it is not built.
 const MAX_PARTNERS: usize = 64;
@@ -592,11 +593,19 @@ fn chain_transition(
     (next_pool.intern(&scratch.signature), finished_chains)
 }
 
+fn splitmix64(seed: u64) -> u64 {
+    let mut value = seed.wrapping_add(0x9e3779b97f4a7c15);
+    value = (value ^ (value >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
+    value = (value ^ (value >> 27)).wrapping_mul(0x94d049bb133111eb);
+    value ^ (value >> 31)
+}
+
 pub fn solve_frontier(
     original: &ChordModel,
     rule: StaticRule,
     max_states: usize,
     dominance_comparisons: u64,
+    options: &DomsOptions,
     progress: &mut dyn FnMut(DomsProgress),
 ) -> Result<FrontierOutcome, DomsError> {
     #[cfg(not(target_arch = "wasm32"))]
@@ -607,7 +616,7 @@ pub fn solve_frontier(
     #[cfg(target_arch = "wasm32")]
     let static_pass_seconds = 0.0;
     let static_removed = original.candidate_cells.len() - kept.len();
-    let (model, sweep_order) = choose_sweep_order(&original.reordered(&kept));
+    let (model, sweep_order) = choose_sweep_order(&original.reordered(&kept), options.sweep_order)?;
     let candidate_count = model.candidate_cells.len();
     let candidate_words = (candidate_count + 63) / 64;
     let factors = FactorLayout::new(&model);
@@ -654,6 +663,7 @@ pub fn solve_frontier(
         removed_chains: Vec::new(),
     };
     let mut next_hits = vec![0u64; factor_words];
+    let mut random_draws = 0u64;
 
     for candidate in 0..candidate_count {
         let hit_by = factors.hit_by(candidate);
@@ -797,6 +807,31 @@ pub fn solve_frontier(
         max_boundary = max_boundary.max(boundary_sizes[candidate] as usize);
         max_active_factors = max_active_factors.max(active.iter().map(|word| word.count_ones() as usize).sum());
         progress(DomsProgress::Layer { processed: candidate + 1, total: candidate_count, states: table.len() });
+
+        if let Some(visualise) = &options.visualise {
+            if (visualise.due)() {
+                let entry = match visualise.mode {
+                    VisualiseMode::Best => (0..table.entry_count())
+                        .filter(|&entry| table.is_alive(entry))
+                        .fold(None, |best: Option<usize>, entry| match best {
+                            Some(current) if table.cost(current) <= table.cost(entry) => best,
+                            _ => Some(entry),
+                        }),
+                    VisualiseMode::Random(seed) => {
+                        random_draws += 1;
+                        let mut pick = splitmix64(seed ^ random_draws) as usize % table.entry_count().max(1);
+                        while !table.is_alive(pick) {
+                            pick = (pick + 1) % table.entry_count();
+                        }
+                        Some(pick)
+                    }
+                };
+                if let Some(entry) = entry {
+                    let clicks = partial_clicks(&model, table.chords(entry))?;
+                    progress(DomsProgress::Path { clicks: &clicks });
+                }
+            }
+        }
 
         if table.len() > max_states {
             return Err(DomsError::StateLimitExceeded {

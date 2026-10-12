@@ -1021,7 +1021,7 @@ class Board {
           this.ziniExplore.runDefaultAlgorithm(false);
         } else {
           //DOMS
-          this.ziniExplore.runDomsZini(true);
+          this.ziniExplore.runDomsZini(false);
         }
       }, 100);
     }
