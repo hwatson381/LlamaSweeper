@@ -18,7 +18,7 @@
 
 use super::model::ChordModel;
 use super::order::{choose_sweep_order, coverage, cut_widths};
-use super::prune::prune_dominated;
+use super::prune::{prune_dominated, Lap, PruneTimes};
 use super::reduce::{kept_candidates_with, StaticRule};
 use super::solution::partial_clicks;
 use super::table::{set_bit, test_bit, ConnectivityPool, Lookup, StateTable};
@@ -58,6 +58,37 @@ pub struct FrontierOutcome {
     pub dominance_limited_layers: usize,
     /// Sum of the state count after pruning over all layers.
     pub total_states: usize,
+    pub prune_times: PruneTimes,
+    pub dp_times: DpTimes,
+}
+
+/// Seconds in the parts of a solve outside pruning; all 0 on wasm32, where `Instant` isn't available.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct DpTimes {
+    /// Static rules, sweep order and the per-candidate tables built before the first layer.
+    pub setup: f64,
+    /// Every layer's state loop, which includes `transitions`.
+    pub expansion: f64,
+    /// Connectivity transitions and signature facts, computed once per signature per layer.
+    pub transitions: f64,
+}
+
+impl DpTimes {
+    pub fn add(&mut self, other: &DpTimes) {
+        self.setup += other.setup;
+        self.expansion += other.expansion;
+        self.transitions += other.transitions;
+    }
+}
+
+impl std::fmt::Display for DpTimes {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "setup {:.3}s, expansion {:.3}s (of which transitions {:.3}s)",
+            self.setup, self.expansion, self.transitions
+        )
+    }
 }
 
 /// Per-candidate factor bitsets. Mine factors come first, then 3BV factors.
@@ -622,6 +653,7 @@ pub fn solve_frontier(
     options: &DomsOptions,
     progress: &mut dyn FnMut(DomsProgress),
 ) -> Result<FrontierOutcome, DomsError> {
+    let mut lap = Lap::start();
     #[cfg(not(target_arch = "wasm32"))]
     let static_started = std::time::Instant::now();
     let kept = kept_candidates_with(original, rule);
@@ -669,6 +701,8 @@ pub fn solve_frontier(
     let (mut skipped_by_forced_skip, mut skipped_by_exchange) = (0usize, 0usize);
     let (mut reverse_dominated, mut reverse_max_comparisons) = (0usize, 0u64);
     let (mut reverse_limited_layers, mut dominance_limited_layers, mut total_states) = (0usize, 0usize, 0usize);
+    let mut prune_times = PruneTimes::default();
+    let mut dp_times = DpTimes::default();
 
     let mut scratch = TransitionScratch {
         kept_chains: Vec::new(),
@@ -680,8 +714,11 @@ pub fn solve_frontier(
     };
     let mut next_hits = vec![0u64; factor_words];
     let mut random_draws = 0u64;
+    dp_times.setup = lap.lap();
 
     for candidate in 0..candidate_count {
+        // Drops time spent in the progress callback and visualisation from the previous layer.
+        lap.lap();
         let hit_by = factors.hit_by(candidate);
         let active = factors.active_after(candidate);
         let candidate_reveals = &reveals[candidate * candidate_words..(candidate + 1) * candidate_words];
@@ -692,6 +729,8 @@ pub fn solve_frontier(
         // Indexed by old connectivity id.
         let mut transitions: Vec<Option<SignatureFacts>> = vec![None; pool.len()];
         let mut absorptions: Vec<Absorption> = Vec::new();
+        // Allocating the next table isn't part of the expansion timer.
+        lap.lap();
 
         let mut open = OpenReach { factors: Vec::new(), reach: Vec::new() };
         for &(factor, opening) in &factors.opening_factors {
@@ -714,6 +753,7 @@ pub fn solve_frontier(
             let facts = match transitions[connectivity_id] {
                 Some(facts) => facts,
                 None => {
+                    let mut transition_lap = Lap::start();
                     let signature = pool.get(connectivity_id as u32);
                     let mut compute = |chorded| {
                         full_transition(
@@ -730,6 +770,7 @@ pub fn solve_frontier(
                     let computed = [compute(false), compute(true)];
                     let facts = siblings.signature_facts(signature, candidate, candidate_words, computed);
                     transitions[connectivity_id] = Some(facts);
+                    dp_times.transitions += transition_lap.lap();
                     facts
                 }
             };
@@ -811,6 +852,7 @@ pub fn solve_frontier(
         }
 
         // Release the previous layer before pruning allocates its temporary structures.
+        dp_times.expansion += lap.lap();
         drop(std::mem::replace(&mut table, StateTable::new(factor_words, candidate_words)));
         drop(std::mem::replace(&mut pool, ConnectivityPool::with_capacity(0)));
         drop(transitions);
@@ -824,6 +866,7 @@ pub fn solve_frontier(
             &next_pool,
             candidate_words,
         );
+        prune_times.add(&report.times);
         reverse_dominated += report.reverse_dominated;
         reverse_max_comparisons = reverse_max_comparisons.max(report.reverse_comparisons);
         reverse_limited_layers += report.reverse_limited as usize;
@@ -898,5 +941,7 @@ pub fn solve_frontier(
         reverse_limited_layers,
         dominance_limited_layers,
         total_states,
+        prune_times,
+        dp_times,
     })
 }

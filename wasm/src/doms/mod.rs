@@ -25,7 +25,9 @@ use crate::board_gen_8way::{Board, ClickInfo, ClickType, Square, SquareType};
 use model::ChordModel;
 use std::fmt;
 
+pub use frontier::DpTimes;
 pub use order::SweepOrder;
+pub use prune::PruneTimes;
 
 pub const DEFAULT_MAX_STATES: usize = 2_000_000;
 pub const DEFAULT_DOMINANCE_COMPARISONS: u64 = 1_000_000;
@@ -123,6 +125,8 @@ pub struct DomsStats {
     pub dominance_limited_layers: usize,
     /// Sum of the state count after pruning over all layers.
     pub total_states: usize,
+    pub prune_times: PruneTimes,
+    pub dp_times: DpTimes,
 }
 
 pub struct DomsResult {
@@ -203,6 +207,8 @@ pub fn solve_board_with_options(
     result.stats.reverse_limited_layers = outcome.reverse_limited_layers;
     result.stats.dominance_limited_layers = outcome.dominance_limited_layers;
     result.stats.total_states = outcome.total_states;
+    result.stats.prune_times = outcome.prune_times;
+    result.stats.dp_times = outcome.dp_times;
     Ok(result)
 }
 

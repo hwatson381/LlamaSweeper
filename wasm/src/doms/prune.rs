@@ -164,6 +164,71 @@ fn refines_exactly(coarse: &[u64], fine: &[u64], signature_words: usize, scratch
     scratch.as_slice() == coarse
 }
 
+/// Seconds spent in each stage of `prune_dominated`; all 0 on wasm32, where `Instant` isn't available.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct PruneTimes {
+    /// Bucketing signatures by reach and building a summary for every state.
+    pub summaries: f64,
+    pub sort: f64,
+    pub pass1: f64,
+    /// Per-signature chain data shared by passes 2 and 3.
+    pub setup: f64,
+    pub pass2: f64,
+    pub pass3: f64,
+}
+
+impl PruneTimes {
+    pub fn add(&mut self, other: &PruneTimes) {
+        self.summaries += other.summaries;
+        self.sort += other.sort;
+        self.pass1 += other.pass1;
+        self.setup += other.setup;
+        self.pass2 += other.pass2;
+        self.pass3 += other.pass3;
+    }
+}
+
+impl std::fmt::Display for PruneTimes {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "summaries {:.3}s, sort {:.3}s, pass 1 {:.3}s, setup {:.3}s, pass 2 {:.3}s, pass 3 {:.3}s",
+            self.summaries, self.sort, self.pass1, self.setup, self.pass2, self.pass3
+        )
+    }
+}
+
+pub(super) struct Lap {
+    #[cfg(not(target_arch = "wasm32"))]
+    started: std::time::Instant,
+}
+
+impl Lap {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(super) fn start() -> Self {
+        Lap { started: std::time::Instant::now() }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(super) fn start() -> Self {
+        Lap {}
+    }
+
+    /// Seconds since the previous lap, then restarts.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(super) fn lap(&mut self) -> f64 {
+        let now = std::time::Instant::now();
+        let seconds = now.duration_since(self.started).as_secs_f64();
+        self.started = now;
+        seconds
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(super) fn lap(&mut self) -> f64 {
+        0.0
+    }
+}
+
 /// What one `prune_dominated` call did. The reverse fields describe pass 3 only.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct PruneReport {
@@ -172,6 +237,7 @@ pub struct PruneReport {
     pub reverse_dominated: usize,
     pub reverse_comparisons: u64,
     pub reverse_limited: bool,
+    pub times: PruneTimes,
     /// Pass 1 skipped a state, or pass 2 stopped, because the comparison budget ran out.
     pub limited: bool,
 }
@@ -202,8 +268,8 @@ struct CoarseCandidate {
     reach_start: usize,
 }
 
-/// Returns what was removed. `comparison_limit` caps state-to-state comparisons in passes 1 and 2,
-/// `reverse_limit` those in pass 3 (0 turns it off); reaching either only keeps more states, it
+/// Returns what was removed. `comparison_limit` caps state-to-state comparisons in passes 1 and 2
+/// and `reverse_limit` those in pass 3 (0 turns it off); reaching either only keeps more states, it
 /// never makes the result inexact. With `apply_reverse` false pass 3 runs and counts but removes nothing.
 pub fn prune_dominated(
     table: &mut StateTable,
@@ -218,6 +284,7 @@ pub fn prune_dominated(
     if comparison_limit == 0 || table.len() < 2 {
         return report;
     }
+    let mut lap = Lap::start();
     let connectivity_count = pool.len();
     let mut state_counts = vec![0usize; connectivity_count];
     for entry in 0..table.entry_count() {
@@ -271,7 +338,9 @@ pub fn prune_dominated(
         });
     }
     // `entry` makes keys unique, so this gives the same order a stable sort would.
+    report.times.summaries = lap.lap();
     summaries.sort_unstable_by_key(|summary| (summary.bucket, summary.key, summary.entry));
+    report.times.sort = lap.lap();
 
     // `charge` is the extra clicks the dominator's future may cost; 0 outside pass 3.
     let dominates = |dominator: &StateSummary, target: &StateSummary, charge: i32| -> bool {
@@ -319,6 +388,8 @@ pub fn prune_dominated(
             maximum_quasi[connectivity_id] = maximum_quasi[connectivity_id].max(summary.quasi_score);
         }
     }
+
+    report.times.pass1 = lap.lap();
 
     // Chain counts and reach sizes, used to reject impossible coarsenings cheaply.
     let mut chain_counts = vec![0usize; connectivity_count];
@@ -378,6 +449,7 @@ pub fn prune_dominated(
         bucket_groups[bucket].1 = count_groups.len();
         start = end;
     }
+    report.times.setup = lap.lap();
 
     // Pass 2: coarser connectivity dominating finer connectivity. Dominated states stay
     // available as dominators until the scan finishes.
@@ -462,6 +534,8 @@ pub fn prune_dominated(
         }
     }
 
+    report.times.pass2 = lap.lap();
+
     // Pass 3: finer connectivity dominating coarser connectivity, which also pays one click per
     // extra chain. Every such edge has a positive charge, so it can't close a dominance cycle.
     let mut reverse_dominated = vec![false; summaries.len()];
@@ -535,6 +609,7 @@ pub fn prune_dominated(
         }
         report.reverse_comparisons = reverse_limit - reverse_remaining;
     }
+    report.times.pass3 = lap.lap();
 
     for position in 0..summaries.len() {
         if dominated[position] || cross_dominated[position] || (apply_reverse && reverse_dominated[position]) {

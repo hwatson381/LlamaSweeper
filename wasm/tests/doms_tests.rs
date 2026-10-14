@@ -301,6 +301,8 @@ fn benchmark(pttacg: &str, optimal_clicks: usize, max_states: usize, rule: Stati
     let seconds = start.elapsed().as_secs_f64();
     assert_eq!(result.total_clicks, optimal_clicks, "optimal clicks for {}", pttacg);
     println!("{:?} {:>8.3}s {:?}", rule, seconds, result.stats);
+    println!("  prune time: {}", result.stats.prune_times);
+    println!("  dp time: {}", result.stats.dp_times);
     seconds
 }
 
@@ -314,6 +316,8 @@ struct PruningTotals {
     reverse_max_comparisons: u64,
     reverse_limited_layers: usize,
     dominance_limited_layers: usize,
+    prune_times: doms::PruneTimes,
+    dp_times: doms::DpTimes,
 }
 
 impl PruningTotals {
@@ -323,6 +327,8 @@ impl PruningTotals {
         self.reverse_max_comparisons = self.reverse_max_comparisons.max(stats.reverse_max_comparisons);
         self.reverse_limited_layers += stats.reverse_limited_layers;
         self.dominance_limited_layers += stats.dominance_limited_layers;
+        self.prune_times.add(&stats.prune_times);
+        self.dp_times.add(&stats.dp_times);
     }
 }
 
@@ -330,12 +336,14 @@ impl std::fmt::Display for PruningTotals {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "total states {}, reverse dominated {}, reverse max comparisons per layer {}, reverse-limited layers {}, pass 1/2-limited layers {}",
+            "total states {}, reverse dominated {}, reverse max comparisons per layer {}, reverse-limited layers {}, pass 1/2-limited layers {}\n  prune time: {}\n  dp time: {}",
             self.total_states,
             self.reverse_dominated,
             self.reverse_max_comparisons,
             self.reverse_limited_layers,
-            self.dominance_limited_layers
+            self.dominance_limited_layers,
+            self.prune_times,
+            self.dp_times
         )
     }
 }
