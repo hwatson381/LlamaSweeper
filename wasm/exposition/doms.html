@@ -16,7 +16,7 @@
         <p class="small">
           The boards, numbers, optimal solutions and example DP states are all computed in the page by <code>doms-model.js</code>, a small JavaScript copy
           of the DOMS model. Nothing is typed in by hand, so every number on every board matches its mines. The toy DP has merging and pass-1 dominance
-          but not pass 2 or the comparison cap. The self-check at the bottom compares it against brute force.
+          but not passes 2 and 3 or the comparison caps. The self-check at the bottom compares it against brute force.
         </p>
       </header>
 
@@ -137,6 +137,73 @@
       </p>
       <div data-diagram="pass2-cost"></div>
 
+      <h3 id="pass3">1.10b Dominance, pass 3: finer chains dominating coarser</h3>
+      <p>
+        Pass 2 only lets a state with <em>coarser</em> chains remove one with finer chains. The reverse can be sound too, when the finer state is far enough
+        ahead. Picture a chain that wanders through the already-decided region and pokes out at the top and the bottom of the frontier. Only a chain with
+        the same shape, but broader, could dominate it in pass 2. A state whose chains poke out in the same two places as <em>separate</em> pieces, without the
+        costly path between them, is often much cheaper, and that lead can be enough to remove the wandering one.
+      </p>
+      <p>
+        The catch is seeds. Every unfinished chain costs one seed click when it finishes, unless a later chord joins it to something. The coarse state B has
+        already been joined; the fine state A might never be. In the worst case the future never links A's extra pieces, so A pays one more seed for each
+        extra chain. That number is the <b>charge</b>, and it is the most A can lose. A dominates B when the lead covers the factor penalty and the charge:
+      </p>
+      <p class="note">
+        cost(B) − cost(A) ≥ factor penalty(A, B) + (chains of A − chains of B)
+      </p>
+      <p>The factor penalty is the same one passes 1 and 2 use.</p>
+      <div data-diagram="pass3"></div>
+      <p>
+        <b>The chains have to split exactly.</b> A charge of one seed per extra chain only holds when B's chains are exactly A's chains grouped together: each
+        of A's chains lies inside exactly one of B's chains, and each of B's chains is exactly the union of the A chains inside it. Then any later chord that
+        touches a B chain also touches one of its pieces, so every link the future makes between B's chains also links their pieces in A. A can only be behind
+        by the pieces within one B chain that the future leaves apart.
+      </p>
+      <p>
+        This is not pass 2's test run backwards. Containment plus a matching is not enough when chains overlap, and the table below shows two overlapping
+        cases where A really could lose more than the charge. An A chain that fits inside two B chains is rejected too, because the future could attach it to
+        either. Rejecting a pair is always safe: the state is just left alone.
+      </p>
+      <div data-diagram="pass3-exact"></div>
+      <p>
+        <b>Why it can't delete everything.</b> Pass 2 lets states it has already removed keep acting as dominators until the scan finishes, which is safe
+        because every pass 2 edge goes from a state with fewer chains to one with more. Pass 3 adds edges the other way. Each needs a cost lead of at least
+        its charge, which is at least 1. Going around a loop of dominations, the cost leads must add up to zero, so no loop can contain a pass 3 edge. Every
+        removed state therefore still has a surviving state that is at least as good, and the optimum stays exact.
+      </p>
+      <p>
+        <b>Keeping it cheap.</b> Pass 3 runs after pass 2 and reuses its data: the buckets of equal total reach, the signatures grouped by chain count (now
+        scanned for <em>more</em> chains instead of fewer), the sorted chain reach sizes, and the quasi-scores. The targets are the pass 1 survivors that pass 2
+        did not remove. The filters are pass 2's turned around, each with the charge included:
+      </p>
+      <table class="facts">
+        <tr><th>filter</th><th>what it proves</th></tr>
+        <tr><td>same bucket</td><td>an exact split has the same total reach on both sides</td></tr>
+        <tr><td>strictly more chains</td><td>with equal counts an exact split is the same signature, which pass 1 already handled</td></tr>
+        <tr><td>sort key</td><td>the dominator's <code>cost + 3BV hits</code> plus its charge cannot exceed the target's, so the scan can stop early</td></tr>
+        <tr><td>quasi-score</td><td>the factor bound plus the charge already exceeds the cost lead</td></tr>
+        <tr><td>reach sizes</td><td>every fine chain sits inside a coarse chain, so the largest and smallest fine chains are no bigger than the coarse ones</td></tr>
+        <tr><td>one coarse chain</td><td>inside a bucket one chain is exactly the union of every fine chain, so no test is needed</td></tr>
+        <tr><td>exact split test</td><td>the final check, run last</td></tr>
+      </table>
+      <p>
+        Pass 3 has its own budget of 500,000 comparisons per layer, separate from the 1,000,000 of passes 1 and 2 (<a href="#limits">1.14</a>). It can neither
+        use up their budget nor be starved by it. Like theirs, it only affects how many states survive, never the answer.
+      </p>
+      <p>
+        <b>What it buys.</b> These numbers were measured in the Rust solver with the default static rule, with pass 3 off and on. This page's toy DP has
+        no pass 3, so they are not computed here.
+      </p>
+      <table class="facts">
+        <tr><th>boards</th><th>time, pass 3 off</th><th>time, pass 3 on</th><th>states over all layers, off → on</th></tr>
+        <tr><td>evil 199 board</td><td>9.6 s</td><td>1.8 s</td><td>7.1M → 1.6M</td></tr>
+        <tr><td>99 community expert boards</td><td>35.1 s</td><td>12.8 s</td><td>39.8M → 14.9M</td></tr>
+        <tr><td>100 random expert boards</td><td>4.8 s</td><td>2.0 s</td><td>4.8M → 2.2M</td></tr>
+        <tr><td>1000 random intermediate boards</td><td>2.85 s</td><td>2.34 s</td><td>2.6M → 1.7M</td></tr>
+      </table>
+      <p class="small">Pass 3 itself takes about 6–9% of the solve time on the first three sets.</p>
+
       <h3>1.11 What merging and pruning buy</h3>
       <div data-diagram="layers"></div>
 
@@ -169,6 +236,9 @@
         the solver simply stops attempting more comparisons and keeps the states it has not checked. That can leave more states for later layers and make
         the solve slower or reach the state limit sooner, but it cannot remove a state that might be better. A completed solve therefore remains exact;
         the cap limits pruning work, not answer quality.
+      </p>
+      <p>
+        Pass 3 (<a href="#pass3">1.10b</a>) has its own separate budget, so it cannot use up the one for passes 1 and 2. It too only affects how many states survive.
       </p>
       <div data-diagram="limits"></div>
 
@@ -475,6 +545,11 @@
       <div data-diagram="liability-chain"></div>
 
       <h3>3.9 Seed slack: the general form</h3>
+      <p>
+        <a href="#pass3">Pass 3</a> implements the simplest special case. The chains are an exact split, so only the "+1 per extra A chain" charge is left and
+        no B chain is uncovered. The general form below also tolerates B chains that no A chain covers, which needs comparisons between signatures with
+        different total reach. The buckets cannot index those, so that part is not implemented.
+      </p>
       <div data-diagram="seed-slack"></div>
 
       <h3>3.10 Try them together</h3>
@@ -509,6 +584,13 @@
         <tr>
           <td>"never chord an 8" style rules</td>
           <td>Too rare to matter, and the DP already discards them almost immediately.</td>
+        </tr>
+        <tr>
+          <td>capping the charge in pass 3 (for example only charge 1)</td>
+          <td>
+            Nearly all removals have charge 1, but the rare charge 2 ones each cut off a whole line of descendants. Allowing only charge 1 left 36% more states
+            on the evil board and ran about 1.7 times slower. Allowing 2 changed nothing measurable, and pass 3 is only 6–9% of the solve time anyway.
+          </td>
         </tr>
       </table>
 

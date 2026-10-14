@@ -806,6 +806,100 @@
     );
   });
 
+  // Seeds a future costs: connected components of chains and chorded cells, where a chord joins every chain whose reach contains it.
+  function futureSeeds(chains, chorded, links) {
+    const nodes = chains.length + chorded.length;
+    const parent = Array.from({ length: nodes }, (_, i) => i);
+    const find = (i) => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+    const join = (a, b) => {
+      parent[find(a)] = find(b);
+    };
+    chorded.forEach((cell, i) => chains.forEach((chain, c) => chain.includes(cell) && join(c, chains.length + i)));
+    links.forEach(([a, b]) => join(chains.length + chorded.indexOf(a), chains.length + chorded.indexOf(b)));
+    return new Set(Array.from({ length: nodes }, (_, i) => find(i))).size;
+  }
+
+  // Every future over `cells`: any subset chorded, with any set of reveal links among the chorded ones.
+  function allFutures(cells) {
+    const out = [];
+    for (let mask = 0; mask < 1 << cells.length; mask++) {
+      const chorded = cells.filter((_, i) => (mask >> i) & 1);
+      const pairs = [];
+      for (let i = 0; i < chorded.length; i++) for (let j = i + 1; j < chorded.length; j++) pairs.push([chorded[i], chorded[j]]);
+      for (let subset = 0; subset < 1 << pairs.length; subset++) out.push({ chorded, links: pairs.filter((_, i) => (subset >> i) & 1) });
+    }
+    return out;
+  }
+
+  // The pass 3 test: every fine chain lies in exactly one coarse chain, and each coarse chain is exactly the union of its fine chains.
+  function refinesExactly(coarse, fine) {
+    const unions = coarse.map(() => new Set());
+    for (const piece of fine) {
+      const owners = coarse.map((chain, c) => c).filter((c) => piece.every((cell) => coarse[c].includes(cell)));
+      if (owners.length !== 1) return false;
+      piece.forEach((cell) => unions[owners[0]].add(cell));
+    }
+    return coarse.every((chain, c) => unions[c].size === chain.length);
+  }
+
+  const chainText = (chains) => chains.map((chain) => "{" + chain.join(",") + "}").join(" ");
+
+  register("pass3", () => {
+    const box = (name, colour, cells) => h("div", { class: "setbox", style: { "--c": colour } }, h("div", { class: "name" }, name), cells.join("  "));
+    const fine = [["x"], ["y"]];
+    const coarse = [["x", "y"]];
+    const charge = fine.length - coarse.length;
+    const futures = allFutures(["x", "y"]).map((future) => {
+      const { chorded, links } = future;
+      const label = chorded.length
+        ? "chord " + chorded.join(" and ") + (chorded.length === 2 ? (links.length ? ", they reveal each other" : ", no link between them") : "")
+        : "no later chords";
+      const a = futureSeeds(fine, chorded, links);
+      const b = futureSeeds(coarse, chorded, links);
+      return [label, a, b, a - b];
+    });
+    const worst = Math.max(...futures.map((f) => f[3]));
+    const leads = [
+      [0, 0],
+      [1, 0],
+      [2, 0],
+      [1, 1],
+      [2, 1],
+    ].map(([lead, penalty]) => [lead, penalty, charge, tick(lead >= penalty + charge)]);
+    return figure(
+      "Pass 3 on the smallest case. The finer state A has two chains that can reach x and y; B has one chain that can reach both. Trying every future over x and y " +
+        `(any chords, any reveal links) the seeds A pays exceed B's by at most ${worst}, which is exactly its charge of ${charge}. ` +
+        "So A dominates B whenever its cost lead covers the factor penalty plus that one seed.",
+      rowCenter(
+        h("div", {}, h("div", { class: "panel-title" }, "A: finer"), box("chain 1", CHAIN_COLOURS[0], fine[0]), h("br"), box("chain 2", CHAIN_COLOURS[1], fine[1])),
+        arrow("vs"),
+        h("div", {}, h("div", { class: "panel-title" }, "B: coarser"), box("chain 1", CHAIN_COLOURS[2], coarse[0]))
+      ),
+      table(["future", "seeds A pays", "seeds B pays", "A \u2212 B"], futures),
+      table(["cost(B) \u2212 cost(A)", "factor penalty", "charge", "A dominates B?"], leads)
+    );
+  });
+
+  register("pass3-exact", () => {
+    const cases = [
+      [[["x", "y", "z"]], [["x"], ["y", "z"]], "one coarse chain, always exact"],
+      [[["x", "y"], ["z"]], [["x"], ["y"], ["z"]], "the fine chains split a coarse chain"],
+      [[["x", "y"], ["y", "z"]], [["x"], ["y", "z"]], "{x,y} is not the union of its pieces"],
+      [[["x", "y"], ["y", "z"]], [["x"], ["y"], ["z"]], "{y} fits inside two coarse chains"],
+    ];
+    const rows = cases.map(([coarse, fine, note]) => {
+      const charge = fine.length - coarse.length;
+      const worst = Math.max(...allFutures(["x", "y", "z"]).map(({ chorded, links }) => futureSeeds(fine, chorded, links) - futureSeeds(coarse, chorded, links)));
+      return [chainText(coarse), chainText(fine), tick(refinesExactly(coarse, fine)), charge, worst, tick(worst <= charge), note];
+    });
+    return figure(
+      "Each row compares a coarse state's chains with a finer state's, over cells x, y and z. The last columns try every future (any chords, any reveal links) and " +
+        "report the most extra seeds the finer state can pay, against the charge pass 3 would use. In the first two rows the split is exact and the bound holds. " +
+        "In the other two it fails, so those pairs must be rejected. The third also has equal chain counts, so a charge of 0 would have been wrong.",
+      table(["coarse chains", "fine chains", "exact split", "charge", "worst extra seeds", "bound holds", "note"], rows)
+    );
+  });
+
   register("layers", () => {
     const { board, order } = running();
     const plain = M.solveDP(board, order, { prune: "none" });
