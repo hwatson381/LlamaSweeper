@@ -233,7 +233,7 @@ impl Lap {
 #[derive(Debug, Default, Clone, Copy)]
 pub struct PruneReport {
     pub removed: usize,
-    /// States pass 3 found dominated, whether or not they were removed.
+    /// States pass 3 removed.
     pub reverse_dominated: usize,
     pub reverse_comparisons: u64,
     pub reverse_limited: bool,
@@ -270,12 +270,11 @@ struct CoarseCandidate {
 
 /// Returns what was removed. `comparison_limit` caps state-to-state comparisons in passes 1 and 2
 /// and `reverse_limit` those in pass 3 (0 turns it off); reaching either only keeps more states, it
-/// never makes the result inexact. With `apply_reverse` false pass 3 runs and counts but removes nothing.
+/// never makes the result inexact.
 pub fn prune_dominated(
     table: &mut StateTable,
     comparison_limit: u64,
     reverse_limit: u64,
-    apply_reverse: bool,
     bbbv_factor_mask: &[u64],
     pool: &ConnectivityPool,
     signature_words: usize,
@@ -612,7 +611,7 @@ pub fn prune_dominated(
     report.times.pass3 = lap.lap();
 
     for position in 0..summaries.len() {
-        if dominated[position] || cross_dominated[position] || (apply_reverse && reverse_dominated[position]) {
+        if dominated[position] || cross_dominated[position] || reverse_dominated[position] {
             table.erase(summaries[position].entry);
             report.removed += 1;
         }

@@ -116,7 +116,7 @@ pub struct DomsStats {
     /// DP children not built because a sibling rule proved the other child no worse.
     pub skipped_by_forced_skip: usize,
     pub skipped_by_exchange: usize,
-    /// Pruning pass 3 (finer dominating coarser): states found dominated, most comparisons used in a
+    /// Pruning pass 3 (finer dominating coarser): states removed, most comparisons used in a
     /// layer, and layers where its budget ran out.
     pub reverse_dominated: usize,
     pub reverse_max_comparisons: u64,

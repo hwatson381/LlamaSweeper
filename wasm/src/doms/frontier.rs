@@ -29,10 +29,8 @@ const MAX_PARTNERS: usize = 64;
 const MAX_EXACT_REVEALS: usize = 24;
 const MAX_CANCEL_FACTORS: usize = 32;
 
-// Pass 3 of pruning (a finer state dominating a coarser one). Budget 0 turns it off; with
-// `APPLY_REVERSE_DOMINANCE` false it still runs and counts but removes nothing, for timing the overhead.
+// Pass 3 of pruning (a finer state dominating a coarser one). A budget of 0 turns it off.
 const REVERSE_DOMINANCE_COMPARISONS: u64 = 500_000;
-const APPLY_REVERSE_DOMINANCE: bool = true;
 
 pub struct FrontierOutcome {
     /// Chorded candidates, as indexes into the original (unordered) model.
@@ -49,7 +47,7 @@ pub struct FrontierOutcome {
     /// Children not built, credited to the first of these rules that proved it.
     pub skipped_by_forced_skip: usize,
     pub skipped_by_exchange: usize,
-    /// States pass 3 found dominated (removed only when `APPLY_REVERSE_DOMINANCE` is set).
+    /// States pass 3 removed.
     pub reverse_dominated: usize,
     /// Most pass 3 comparisons used in any one layer.
     pub reverse_max_comparisons: u64,
@@ -861,7 +859,6 @@ pub fn solve_frontier(
             &mut next,
             dominance_comparisons,
             REVERSE_DOMINANCE_COMPARISONS,
-            APPLY_REVERSE_DOMINANCE,
             &factors.bbbv_factor_mask,
             &next_pool,
             candidate_words,
