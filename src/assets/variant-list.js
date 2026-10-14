@@ -422,12 +422,12 @@ let variantList = [
     popularity: 2,
   },
   {
-    name: "Minesweeper fandom wiki",
-    url: "https://minesweeper.fandom.com/",
-    desc: "A community wiki with information about players, clones, past competitions, strategy and more. It is a bit incomplete.",
-    image: "/img/variants/minesweeper-wiki.png",
+    name: "Minesweeper Wiki",
+    url: "https://minesweeper.wiki.gg/",
+    desc: "A community wiki with information about players, clones, past competitions, strategy and more.",
+    image: "/img/variants/wiki-gg.png",
     tags: ["informational"],
-    rating: 3.3,
+    rating: 3.8,
     popularity: 2,
   },
   {
