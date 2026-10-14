@@ -8,6 +8,8 @@
 //! So `A` dominates `B` when `cost(B) - cost(A)` covers the number of such factors. States with
 //! the same connectivity are compared first; then a state may also be dominated by one whose
 //! chains are a coarser grouping of the same future reach (it can never need more seed clicks).
+//! Finally a state whose chains exactly split a coarser state's chains may dominate it if its cost
+//! lead also covers one click per extra chain (each could need its own seed).
 //! Removing a state is always proven safe, so pruning never makes the answer approximate.
 
 use super::table::{ConnectivityPool, StateTable};
@@ -136,6 +138,44 @@ fn coarsens_general(coarse: &[u64], fine: &[u64], signature_words: usize) -> boo
     true
 }
 
+/// True when every fine chain lies in exactly one coarse chain and each coarse chain is exactly the
+/// union of its fine chains. Any future then leaves the fine side at most `fine - coarse` seeds
+/// worse. Containment in several coarse chains is rejected, since the fine chain could join any.
+fn refines_exactly(coarse: &[u64], fine: &[u64], signature_words: usize, scratch: &mut Vec<u64>) -> bool {
+    scratch.clear();
+    scratch.resize(coarse.len(), 0);
+    for fine_chain in fine.chunks_exact(signature_words) {
+        let mut owner = usize::MAX;
+        for (c, coarse_chain) in coarse.chunks_exact(signature_words).enumerate() {
+            if is_subset(fine_chain, coarse_chain) {
+                if owner != usize::MAX {
+                    return false;
+                }
+                owner = c;
+            }
+        }
+        if owner == usize::MAX {
+            return false;
+        }
+        for (word, &value) in scratch[owner * signature_words..(owner + 1) * signature_words].iter_mut().zip(fine_chain) {
+            *word |= value;
+        }
+    }
+    scratch.as_slice() == coarse
+}
+
+/// What one `prune_dominated` call did. The reverse fields describe pass 3 only.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct PruneReport {
+    pub removed: usize,
+    /// States pass 3 found dominated, whether or not they were removed.
+    pub reverse_dominated: usize,
+    pub reverse_comparisons: u64,
+    pub reverse_limited: bool,
+    /// Pass 1 skipped a state, or pass 2 stopped, because the comparison budget ran out.
+    pub limited: bool,
+}
+
 /// `(cost + bbbv hits, cost, -total hits)`. A dominator's first element never exceeds its
 /// target's, so after sorting only earlier states need to be tried as dominators.
 type DominanceKey = (i32, i32, i32);
@@ -162,17 +202,21 @@ struct CoarseCandidate {
     reach_start: usize,
 }
 
-/// Returns the number of removed states. `comparison_limit` caps state-to-state comparisons;
-/// reaching it only keeps more states, it never makes the result inexact.
+/// Returns what was removed. `comparison_limit` caps state-to-state comparisons in passes 1 and 2,
+/// `reverse_limit` those in pass 3 (0 turns it off); reaching either only keeps more states, it
+/// never makes the result inexact. With `apply_reverse` false pass 3 runs and counts but removes nothing.
 pub fn prune_dominated(
     table: &mut StateTable,
     comparison_limit: u64,
+    reverse_limit: u64,
+    apply_reverse: bool,
     bbbv_factor_mask: &[u64],
     pool: &ConnectivityPool,
     signature_words: usize,
-) -> usize {
+) -> PruneReport {
+    let mut report = PruneReport::default();
     if comparison_limit == 0 || table.len() < 2 {
-        return 0;
+        return report;
     }
     let connectivity_count = pool.len();
     let mut state_counts = vec![0usize; connectivity_count];
@@ -229,8 +273,9 @@ pub fn prune_dominated(
     // `entry` makes keys unique, so this gives the same order a stable sort would.
     summaries.sort_unstable_by_key(|summary| (summary.bucket, summary.key, summary.entry));
 
-    let dominates = |dominator: &StateSummary, target: &StateSummary| -> bool {
-        let allowance = table.cost(target.entry) - table.cost(dominator.entry);
+    // `charge` is the extra clicks the dominator's future may cost; 0 outside pass 3.
+    let dominates = |dominator: &StateSummary, target: &StateSummary, charge: i32| -> bool {
+        let allowance = table.cost(target.entry) - table.cost(dominator.entry) - charge;
         if allowance < 0 {
             return false;
         }
@@ -262,7 +307,9 @@ pub fn prune_dominated(
         let mut is_dominated = false;
         if remaining >= kept.len() as u64 {
             remaining -= kept.len() as u64;
-            is_dominated = kept.iter().any(|&prior| dominates(&summaries[prior], summary));
+            is_dominated = kept.iter().any(|&prior| dominates(&summaries[prior], summary, 0));
+        } else {
+            report.limited = true;
         }
         if is_dominated {
             dominated[position] = true;
@@ -398,10 +445,11 @@ pub fn prune_dominated(
                     }
                     if remaining == 0 {
                         exhausted = true;
+                        report.limited = true;
                         break 'coarse;
                     }
                     remaining -= 1;
-                    if dominates(dominator, target) {
+                    if dominates(dominator, target, 0) {
                         is_dominated = true;
                         break 'coarse;
                     }
@@ -414,14 +462,87 @@ pub fn prune_dominated(
         }
     }
 
-    let mut removed = 0;
+    // Pass 3: finer connectivity dominating coarser connectivity, which also pays one click per
+    // extra chain. Every such edge has a positive charge, so it can't close a dominance cycle.
+    let mut reverse_dominated = vec![false; summaries.len()];
+    if reverse_limit > 0 {
+        let mut reverse_remaining = reverse_limit;
+        let mut finer: Vec<(usize, i32)> = Vec::new();
+        let mut refine_scratch: Vec<u64> = Vec::new();
+        'targets: for coarse_id in 0..connectivity_count {
+            let coarse_count = chain_counts[coarse_id];
+            if coarse_count == 0 || survivors[coarse_id].iter().all(|&position| cross_dominated[position]) {
+                continue;
+            }
+            let coarse_last_key = summaries[*survivors[coarse_id].last().unwrap()].key;
+            finer.clear();
+            let (first_group, end_group) = bucket_groups[connectivity_bucket[coarse_id]];
+            for &(count, start, end) in &count_groups[first_group..end_group] {
+                if count <= coarse_count {
+                    continue;
+                }
+                let charge = (count - coarse_count) as i32;
+                for candidate in &coarse_candidates[start..end] {
+                    if candidate.first_key.0 + charge > coarse_last_key.0 {
+                        break;
+                    }
+                    if candidate.minimum_quasi + charge > maximum_quasi[coarse_id]
+                        || candidate.maximum_reach_size > maximum_reach_size[coarse_id]
+                        || candidate.minimum_reach_size > minimum_reach_size[coarse_id]
+                    {
+                        continue;
+                    }
+                    // Within a bucket, a single coarse chain is exactly the union of every fine chain.
+                    if coarse_count == 1
+                        || refines_exactly(
+                            pool.get(coarse_id as u32),
+                            pool.get(candidate.id as u32),
+                            signature_words,
+                            &mut refine_scratch,
+                        )
+                    {
+                        finer.push((candidate.id, charge));
+                    }
+                }
+            }
+            if finer.is_empty() {
+                continue;
+            }
+            for &position in &survivors[coarse_id] {
+                if cross_dominated[position] {
+                    continue;
+                }
+                let target = &summaries[position];
+                'finer: for &(fine_id, charge) in &finer {
+                    for &prior in &survivors[fine_id] {
+                        let dominator = &summaries[prior];
+                        if dominator.key.0 + charge > target.key.0 {
+                            break;
+                        }
+                        if reverse_remaining == 0 {
+                            report.reverse_limited = true;
+                            break 'targets;
+                        }
+                        reverse_remaining -= 1;
+                        if dominates(dominator, target, charge) {
+                            reverse_dominated[position] = true;
+                            report.reverse_dominated += 1;
+                            break 'finer;
+                        }
+                    }
+                }
+            }
+        }
+        report.reverse_comparisons = reverse_limit - reverse_remaining;
+    }
+
     for position in 0..summaries.len() {
-        if dominated[position] || cross_dominated[position] {
+        if dominated[position] || cross_dominated[position] || (apply_reverse && reverse_dominated[position]) {
             table.erase(summaries[position].entry);
-            removed += 1;
+            report.removed += 1;
         }
     }
-    removed
+    report
 }
 
 #[cfg(test)]
@@ -470,6 +591,93 @@ mod tests {
                 coarsens_general(&coarse, &fine, words)
             );
         }
+    }
+
+    #[test]
+    fn exact_refinement_rejects_overlapping_chains() {
+        let mut scratch = Vec::new();
+        // coarse {x,y},{y,z}; fine {x},{y,z}: same reach and chain count differs, but {x,y} is not covered.
+        assert!(!refines_exactly(&[0b011, 0b110], &[0b001, 0b110], 1, &mut scratch));
+        // A fine chain inside two coarse chains is ambiguous.
+        assert!(!refines_exactly(&[0b011, 0b110], &[0b010, 0b001, 0b100], 1, &mut scratch));
+        assert!(refines_exactly(&[0b111], &[0b001, 0b110], 1, &mut scratch));
+        assert!(refines_exactly(&[0b0011, 0b1100], &[0b0001, 0b0010, 0b1100], 1, &mut scratch));
+    }
+
+    /// Seeds a future costs: connected components of chains and chorded cells, where a chord joins
+    /// every chain whose reach contains it.
+    fn future_seeds(signature: &[u64], chorded: &[usize], edges: &[(usize, usize)]) -> usize {
+        fn find(parent: &mut Vec<usize>, mut node: usize) -> usize {
+            while parent[node] != node {
+                parent[node] = parent[parent[node]];
+                node = parent[node];
+            }
+            node
+        }
+        let chain_count = signature.len();
+        let mut parent: Vec<usize> = (0..chain_count + chorded.len()).collect();
+        let mut components = parent.len();
+        let mut join = |parent: &mut Vec<usize>, a: usize, b: usize| {
+            let (a, b) = (find(parent, a), find(parent, b));
+            if a != b {
+                parent[a] = b;
+                components -= 1;
+            }
+        };
+        for (index, &cell) in chorded.iter().enumerate() {
+            for (chain, &reach) in signature.iter().enumerate() {
+                if (reach >> cell) & 1 == 1 {
+                    join(&mut parent, chain, chain_count + index);
+                }
+            }
+        }
+        for &(a, b) in edges {
+            join(&mut parent, chain_count + a, chain_count + b);
+        }
+        components
+    }
+
+    #[test]
+    fn exact_refinement_costs_at_most_the_extra_chains() {
+        let mut rng = StdRng::seed_from_u64(23);
+        let (mut accepted, mut rejected) = (0, 0);
+        for _ in 0..4000 {
+            let universe = 10;
+            let fine_count = rng.random_range(2..=4);
+            let fine: Vec<u64> = (0..fine_count)
+                .map(|_| (0..rng.random_range(1..=3)).fold(0u64, |chain, _| chain | 1 << rng.random_range(0..universe)))
+                .collect();
+            let mut coarse = vec![0u64; rng.random_range(1..fine_count)];
+            for &chain in &fine {
+                let group = rng.random_range(0..coarse.len());
+                coarse[group] |= chain;
+            }
+            coarse.retain(|&chain| chain != 0);
+            let mut scratch = Vec::new();
+            if !refines_exactly(&coarse, &fine, 1, &mut scratch) {
+                rejected += 1;
+                continue;
+            }
+            accepted += 1;
+            for _ in 0..50 {
+                let chorded: Vec<usize> = (0..universe).filter(|_| rng.random_bool(0.4)).collect();
+                let edges: Vec<(usize, usize)> = (0..rng.random_range(0..4))
+                    .filter(|_| chorded.len() > 1)
+                    .map(|_| (rng.random_range(0..chorded.len()), rng.random_range(0..chorded.len())))
+                    .collect();
+                let fine_seeds = future_seeds(&fine, &chorded, &edges);
+                let coarse_seeds = future_seeds(&coarse, &chorded, &edges);
+                assert!(
+                    fine_seeds <= coarse_seeds + fine.len() - coarse.len(),
+                    "fine {:?} coarse {:?} chorded {:?} edges {:?}",
+                    fine,
+                    coarse,
+                    chorded,
+                    edges
+                );
+            }
+        }
+        assert!(accepted > 100 && rejected > 100, "accepted {} rejected {}", accepted, rejected);
     }
 
     #[test]

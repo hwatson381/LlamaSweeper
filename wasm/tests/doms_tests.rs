@@ -306,6 +306,40 @@ fn benchmark(pttacg: &str, optimal_clicks: usize, max_states: usize, rule: Stati
 
 const RULES: [StaticRule; 2] = [StaticRule::Witness, StaticRule::StrongSwap];
 
+/// Pruning diagnostics summed over a benchmark's boards.
+#[derive(Default)]
+struct PruningTotals {
+    total_states: usize,
+    reverse_dominated: usize,
+    reverse_max_comparisons: u64,
+    reverse_limited_layers: usize,
+    dominance_limited_layers: usize,
+}
+
+impl PruningTotals {
+    fn add(&mut self, stats: &doms::DomsStats) {
+        self.total_states += stats.total_states;
+        self.reverse_dominated += stats.reverse_dominated;
+        self.reverse_max_comparisons = self.reverse_max_comparisons.max(stats.reverse_max_comparisons);
+        self.reverse_limited_layers += stats.reverse_limited_layers;
+        self.dominance_limited_layers += stats.dominance_limited_layers;
+    }
+}
+
+impl std::fmt::Display for PruningTotals {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "total states {}, reverse dominated {}, reverse max comparisons per layer {}, reverse-limited layers {}, pass 1/2-limited layers {}",
+            self.total_states,
+            self.reverse_dominated,
+            self.reverse_max_comparisons,
+            self.reverse_limited_layers,
+            self.dominance_limited_layers
+        )
+    }
+}
+
 // Run with `cargo test --release --test doms_tests -- --ignored --nocapture --test-threads=1`
 #[test]
 #[ignore]
@@ -357,6 +391,7 @@ fn benchmark_random_boards(
     let mut timings = Vec::with_capacity(board_count);
     let mut removed = 0;
     let mut static_seconds = 0.0;
+    let mut pruning = PruningTotals::default();
 
     for _ in 0..board_count {
         let board = random_board(&mut rng, width, height, mine_count);
@@ -366,6 +401,7 @@ fn benchmark_random_boards(
         timings.push(start.elapsed().as_secs_f64());
         removed += result.stats.static_removed;
         static_seconds += result.stats.static_pass_seconds;
+        pruning.add(&result.stats);
     }
 
     timings.sort_by(|a, b| a.partial_cmp(b).unwrap());
@@ -382,6 +418,7 @@ fn benchmark_random_boards(
         timings[board_count - 1],
         removed
     );
+    println!("  pruning: {}", pruning);
 }
 
 /// "Evil 199" board (optimal clicks, 3BV).
@@ -417,6 +454,7 @@ fn benchmark_community_expert_boards_with(rule: StaticRule) {
     let mut timings: Vec<(f64, &str)> = Vec::new();
     let mut static_seconds = 0.0;
     let mut removed = 0;
+    let mut pruning = PruningTotals::default();
     for line in COMMUNITY_EXPERT_BOARDS.lines().filter(|line| !line.trim().is_empty()) {
         let fields: Vec<&str> = line.split_whitespace().collect();
         let (pttacg, optimal_clicks, bbbv): (&str, usize, usize) =
@@ -429,6 +467,7 @@ fn benchmark_community_expert_boards_with(rule: StaticRule) {
         timings.push((start.elapsed().as_secs_f64(), pttacg));
         static_seconds += result.stats.static_pass_seconds;
         removed += result.stats.static_removed;
+        pruning.add(&result.stats);
         assert_eq!(result.total_clicks, optimal_clicks, "optimal clicks for {}", pttacg);
     }
 
@@ -445,6 +484,7 @@ fn benchmark_community_expert_boards_with(rule: StaticRule) {
         median,
         removed
     );
+    println!("  pruning: {}", pruning);
     println!("slowest:");
     for &(seconds, pttacg) in timings.iter().rev().take(5) {
         println!("{:>8.3}s {}", seconds, pttacg);

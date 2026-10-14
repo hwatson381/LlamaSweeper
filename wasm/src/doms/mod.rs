@@ -114,6 +114,15 @@ pub struct DomsStats {
     /// DP children not built because a sibling rule proved the other child no worse.
     pub skipped_by_forced_skip: usize,
     pub skipped_by_exchange: usize,
+    /// Pruning pass 3 (finer dominating coarser): states found dominated, most comparisons used in a
+    /// layer, and layers where its budget ran out.
+    pub reverse_dominated: usize,
+    pub reverse_max_comparisons: u64,
+    pub reverse_limited_layers: usize,
+    /// Layers where the budget for pruning passes 1 or 2 ran out.
+    pub dominance_limited_layers: usize,
+    /// Sum of the state count after pruning over all layers.
+    pub total_states: usize,
 }
 
 pub struct DomsResult {
@@ -189,6 +198,11 @@ pub fn solve_board_with_options(
     result.stats.static_pass_seconds = outcome.static_pass_seconds;
     result.stats.skipped_by_forced_skip = outcome.skipped_by_forced_skip;
     result.stats.skipped_by_exchange = outcome.skipped_by_exchange;
+    result.stats.reverse_dominated = outcome.reverse_dominated;
+    result.stats.reverse_max_comparisons = outcome.reverse_max_comparisons;
+    result.stats.reverse_limited_layers = outcome.reverse_limited_layers;
+    result.stats.dominance_limited_layers = outcome.dominance_limited_layers;
+    result.stats.total_states = outcome.total_states;
     Ok(result)
 }
 

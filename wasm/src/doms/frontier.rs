@@ -29,6 +29,11 @@ const MAX_PARTNERS: usize = 64;
 const MAX_EXACT_REVEALS: usize = 24;
 const MAX_CANCEL_FACTORS: usize = 32;
 
+// Pass 3 of pruning (a finer state dominating a coarser one). Budget 0 turns it off; with
+// `APPLY_REVERSE_DOMINANCE` false it still runs and counts but removes nothing, for timing the overhead.
+const REVERSE_DOMINANCE_COMPARISONS: u64 = 500_000;
+const APPLY_REVERSE_DOMINANCE: bool = true;
+
 pub struct FrontierOutcome {
     /// Chorded candidates, as indexes into the original (unordered) model.
     pub chords: Vec<usize>,
@@ -44,6 +49,15 @@ pub struct FrontierOutcome {
     /// Children not built, credited to the first of these rules that proved it.
     pub skipped_by_forced_skip: usize,
     pub skipped_by_exchange: usize,
+    /// States pass 3 found dominated (removed only when `APPLY_REVERSE_DOMINANCE` is set).
+    pub reverse_dominated: usize,
+    /// Most pass 3 comparisons used in any one layer.
+    pub reverse_max_comparisons: u64,
+    pub reverse_limited_layers: usize,
+    /// Layers where the budget for pass 1 or 2 ran out.
+    pub dominance_limited_layers: usize,
+    /// Sum of the state count after pruning over all layers.
+    pub total_states: usize,
 }
 
 /// Per-candidate factor bitsets. Mine factors come first, then 3BV factors.
@@ -653,6 +667,8 @@ pub fn solve_frontier(
     let mut max_boundary = 0usize;
     let mut max_active_factors = 0usize;
     let (mut skipped_by_forced_skip, mut skipped_by_exchange) = (0usize, 0usize);
+    let (mut reverse_dominated, mut reverse_max_comparisons) = (0usize, 0u64);
+    let (mut reverse_limited_layers, mut dominance_limited_layers, mut total_states) = (0usize, 0usize, 0usize);
 
     let mut scratch = TransitionScratch {
         kept_chains: Vec::new(),
@@ -799,11 +815,24 @@ pub fn solve_frontier(
         drop(std::mem::replace(&mut pool, ConnectivityPool::with_capacity(0)));
         drop(transitions);
 
-        prune_dominated(&mut next, dominance_comparisons, &factors.bbbv_factor_mask, &next_pool, candidate_words);
+        let report = prune_dominated(
+            &mut next,
+            dominance_comparisons,
+            REVERSE_DOMINANCE_COMPARISONS,
+            APPLY_REVERSE_DOMINANCE,
+            &factors.bbbv_factor_mask,
+            &next_pool,
+            candidate_words,
+        );
+        reverse_dominated += report.reverse_dominated;
+        reverse_max_comparisons = reverse_max_comparisons.max(report.reverse_comparisons);
+        reverse_limited_layers += report.reverse_limited as usize;
+        dominance_limited_layers += report.limited as usize;
         table = next;
         pool = next_pool;
 
         peak_states = peak_states.max(table.len());
+        total_states += table.len();
         max_boundary = max_boundary.max(boundary_sizes[candidate] as usize);
         max_active_factors = max_active_factors.max(active.iter().map(|word| word.count_ones() as usize).sum());
         progress(DomsProgress::Layer { processed: candidate + 1, total: candidate_count, states: table.len() });
@@ -864,5 +893,10 @@ pub fn solve_frontier(
         static_pass_seconds,
         skipped_by_forced_skip,
         skipped_by_exchange,
+        reverse_dominated,
+        reverse_max_comparisons,
+        reverse_limited_layers,
+        dominance_limited_layers,
+        total_states,
     })
 }
