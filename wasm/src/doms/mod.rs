@@ -30,7 +30,7 @@ pub use order::SweepOrder;
 pub use prune::PruneTimes;
 
 pub const DEFAULT_MAX_STATES: usize = 2_000_000;
-pub const DEFAULT_DOMINANCE_COMPARISONS: u64 = 1_000_000;
+pub const DEFAULT_DOMINANCE_COMPARISONS: u64 = 10_000_000;
 
 #[derive(Debug)]
 pub enum DomsError {

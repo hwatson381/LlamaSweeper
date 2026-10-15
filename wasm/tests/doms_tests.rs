@@ -306,6 +306,52 @@ fn benchmark(pttacg: &str, optimal_clicks: usize, max_states: usize) -> f64 {
     seconds
 }
 
+/// Solve one board supplied through `DOMS_BOARD` and print the DP progress and diagnostics.
+/// From `wasm/`, run for example:
+/// `DOMS_BOARD='https://llamasweeper.com/#/game/zini-explorer?b=3&m=...' cargo test --release --test doms_tests board_from_env -- --ignored --nocapture --test-threads=1`
+#[test]
+#[ignore]
+fn board_from_env() {
+    let pttacg = match std::env::var("DOMS_BOARD") {
+        Ok(pttacg) if !pttacg.trim().is_empty() => pttacg,
+        _ => {
+            println!("No board supplied. Set DOMS_BOARD to a PTTACG string or board URL to solve one.");
+            return;
+        }
+    };
+    let board = load(&pttacg);
+    println!(
+        "Board: {}x{}, {} mines, {} 3BV\nPTTACG: {}",
+        board.width,
+        board.height,
+        board.mine_count,
+        board.info.bbbv,
+        board.generate_pttacg()
+    );
+
+    let start = std::time::Instant::now();
+    let result = doms::solve_board(&board, 20_000_000, &mut |event| match event {
+        DomsProgress::Plan { cut_widths } => println!("DP plan cut widths: {:?}", cut_widths),
+        DomsProgress::Layer { processed, total, states } => {
+            println!("DP layer {}/{}: {} states", processed, total, states);
+        }
+        DomsProgress::Path { .. } => {}
+    })
+    .expect("DOMS solves the supplied board");
+
+    println!("Solved in {:.3}s", start.elapsed().as_secs_f64());
+    println!("Result: {} clicks; stats: {:?}", result.total_clicks, result.stats);
+    println!("  prune time: {}", result.stats.prune_times);
+    println!("  dp time: {}", result.stats.dp_times);
+    println!("Click sequence (type, x, y):");
+    for click in result.clicks {
+        println!(
+            "  {}: {:?}, {}, {}",
+            click.number, click.c_type, click.square.col, click.square.row
+        );
+    }
+}
+
 /// Pruning diagnostics summed over a benchmark's boards.
 #[derive(Default)]
 struct PruningTotals {

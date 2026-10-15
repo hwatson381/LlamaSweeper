@@ -188,7 +188,7 @@
         <tr><td>exact split test</td><td>the final check, run last</td></tr>
       </table>
       <p>
-        Pass 3 has its own budget of 500,000 comparisons per layer, separate from the 1,000,000 of passes 1 and 2 (<a href="#limits">1.14</a>). It can neither
+        Pass 3 has its own budget of 500,000 comparisons per layer, separate from the 10,000,000 of passes 1 and 2 (<a href="#limits">1.14</a>). It can neither
         use up their budget nor be starved by it. Like theirs, it only affects how many states survive, never the answer.
       </p>
       <p>
@@ -224,7 +224,7 @@
       <h3 id="limits">1.14 State limit and comparison cap</h3>
       <p>
         Two different limits protect the solver from spending unbounded time or memory. The normal defaults are a maximum of <b>2,000,000 live states
-        in one layer</b> and a budget of <b>1,000,000 state-to-state dominance comparisons in one pruning pass</b>. They control resources, not the
+        in one layer</b> and a budget of <b>10,000,000 state-to-state dominance comparisons in one pruning pass</b>. They control resources, not the
         mathematical objective.
       </p>
       <p>

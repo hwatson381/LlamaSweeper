@@ -945,7 +945,7 @@
     return figure(
       "The two limits have different meanings. The comparison budget may reduce pruning; the state limit is an explicit failure rather than an approximate answer.",
       rowCenter(
-        outcome("comparison cap: 1,000,000", "#e08a00", "A comparison is either a sound proof that one state can be deleted or it is not attempted. When the budget is exhausted, unchecked states stay alive."),
+        outcome("comparison cap: 10,000,000", "#e08a00", "A comparison is either a sound proof that one state can be deleted or it is not attempted. When the budget is exhausted, unchecked states stay alive."),
         arrow("→"),
         outcome("more survivors", "#3559c7", "The next layer may be slower or larger. Nothing has been incorrectly discarded, so an eventual completed answer is still optimal."),
         arrow("or"),
