@@ -25,10 +25,10 @@ Face Hitbox (faceHitbox)
   - Just face: Only clicking the face resets.
   - Adaptive: Just the face while a game is in progress (to avoid accidental resets), and the whole bar otherwise.
 
-Keyboard Dig Key (keyboardClickDigKey)
+[obvious] Keyboard Dig Key (keyboardClickDigKey)
   Keyboard key to use as an alternative to the left mouse button. Click the box and press a key to change it.
 
-Keyboard Flag Key (keyboardClickFlagKey)
+[obvious] Keyboard Flag Key (keyboardClickFlagKey)
   Keyboard key to use as an alternative to the right mouse button. Click the box and press a key to change it.
 
 Keyboard Click Reveal On Key Down (keyboardClickOpenOnKeyDown)
@@ -136,7 +136,7 @@ Mode toggle location (flagToggleLocationClass)
 Prevent accidental mobile reset (mobileResetGuard)
   After a game ends, the reset button ignores taps for a moment so a tap meant for the board doesn't immediately start a new game.
 
-Mode toggle size (flagToggleSizeClass)
+[obvious] Mode toggle size (flagToggleSizeClass)
   Size of the mode toggle button.
   - Small: 50px.
   - Normal: 80px.
@@ -158,14 +158,14 @@ Switch to flag mode after start (flagToggleSwitchAfterStart)
   - Touch Start: As soon as your finger touches the button. Fastest.
   - Touch End: When your finger lifts, but only if started and ended on the button.
 
-Make expert boards portrait (verticalExpert)
+[obvious] Make expert boards portrait (verticalExpert)
   The Expert preset becomes 16 wide by 30 tall instead of 30 by 16. Can fit better on some mobile device screens.
 
 Show Quick Stats (showQuickStats)
   Shows a small overlay in the top left after each game with a few stats for quick reference.
   [dev note] Works outside Mobile Mode too.
 
-Quick Stats Font Size (quickStatsFontSize)
+[obvious] Quick Stats Font Size (quickStatsFontSize)
   Text size of the Quick Stats overlay.
 
 
