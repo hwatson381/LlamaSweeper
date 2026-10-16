@@ -530,8 +530,6 @@ random idea (prob won't do): have a mode where you can't fail. It auto-replays w
 Have a setting for an audio timer? It's easy to not look at the timer. So there could be a voice that says the time every 10 seconds? Note - this is similar to the arbiter setting that plays a noise when you are slower than PB.
 Could also experiment with audio signals for pace (e.g. estimated 3bv/s etc, although maybe too non-cheaty)
 
-parallelise deepchain?
-
 8way somehow differs from make_board? Why is this?
 https://llamasweeper.com/#/game/zini-explorer?b=3&m=00g59800n01b280005241ig40a2ho0f51g810g2m4g20104q023o40g4840082g68625j100001300o444000c0g1q0040a1
 
@@ -545,7 +543,7 @@ Llamasweeper takes 10ms to process a mouse input, whereas WoM seems to take arou
 
 NEXT STEPS:
 [done] Mobile scroll protection delay thingy
-parallelise deepchain (really big task...)
+[no longer needed] parallelise deepchain (really big task...)
 [done] nf eff guide?
 zini quality of life stuff (given that wom links to it now...). This is mainly just highlighting squares DURING the replay
 [done] make use of ms-toollib for no guess... Also auto-display hint on blast
@@ -592,12 +590,10 @@ refactoring next (done).
 Bonus board editor stuff can happen after
 
 Possible improvements we may want to do for export image but will probably never get around to:
-High dpi canvas support (we need to do this in the first place), better styling (rounded corners, gradient bg, hairline border around stats panel)
+better styling (rounded corners, gradient bg, hairline border around stats panel)
 Stop flicker on screenshot by cloning nodes to offscreen area instead of hiding .screenshot-hidden in place
 scale images/canvas to be more consistent instead of using size on website
 Have maximum or minimum sizes for things to prevent too large relative size difference between stats panel and board sizes.
-
-Try adding high dpi canvas support? Although after refactoring
 
 Also consider renaming stuff to reduce the amount of BoardX. Could even just rename the property on Board, like how we have board.stats instead of board.boardStats
 
