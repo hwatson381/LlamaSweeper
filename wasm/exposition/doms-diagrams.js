@@ -1951,6 +1951,280 @@
     );
   });
 
+  // ---------- Sections 3.10 and 3.11: the dynamic sibling rules ----------
+
+  // Every parent state (before deciding position k) of the toy DP on a few boards, with the sibling facts for the next candidate.
+  function siblingStates() {
+    if (!cache.sibling) {
+      const boards = [running().board, M.analyse(BOARDS.between), M.analyse(BOARDS.wide), M.analyse(BOARDS.private6)];
+      cache.sibling = boards.map((board) => {
+        const order = M.columnOrder(board);
+        const prep = M.prepare(board, order);
+        const layers = [[M.initialState(prep)]];
+        M.solveDP(board, order, { prune: "basic", onLayer: (k, table) => layers.push([...table.values()]) });
+        const entries = [];
+        for (let k = 0; k < prep.count; k++) {
+          for (const state of layers[k]) entries.push({ board, prep, state, k, facts: M.siblingFacts(prep, state, k) });
+        }
+        return entries;
+      });
+    }
+    return cache.sibling.flat();
+  }
+
+  function findSibling(predicate, score) {
+    let best = null;
+    let bestScore = Infinity;
+    for (const entry of siblingStates()) {
+      if (!predicate(entry)) continue;
+      const value = score ? score(entry) : 0;
+      if (value < bestScore) {
+        best = entry;
+        bestScore = value;
+      }
+    }
+    return best;
+  }
+
+  const posName = (entry, q) => candName(entry.board, entry.prep.order[q]);
+  const factorChips = (entry, list) => chips(list.map((fi) => factorLabel(entry.board, entry.prep.factors[fi])));
+
+  // The parent state on the board, plus its card. `partner` marks an exchange partner d.
+  function siblingPanels(entry, partner) {
+    const { board, prep, state, k, facts } = entry;
+    const view = frontierView(board, prep, k, state.chords);
+    const c = board.candidates[prep.order[k]];
+    const d = partner === undefined ? null : board.candidates[prep.order[partner]];
+    const laterCells = new Set(facts.later.map((q) => board.candidates[prep.order[q]]));
+    const decorate = frontierDecorate(board, prep, view, (cell) =>
+      cell === c
+        ? { label: "c", ring: "#000" }
+        : cell === d
+          ? { label: "d", ring: "#3559c7" }
+          : laterCells.has(cell)
+            ? { badge: "r", badgeColor: "#3559c7" }
+            : null
+    );
+    return [
+      renderBoard(board, { cell: 22, decorate, flagged: frontierFlags(prep, view) }),
+      stateCard(board, prep, state, k, { title: `parent state, cost ${state.cost}` }),
+    ];
+  }
+
+  function siblingLegend(withPartner) {
+    return legend([
+      [{ ring: "#000" }, "c, the candidate being decided"],
+      [{ badge: "r", badgeColor: "#3559c7" }, "later candidate c reveals"],
+      withPartner ? [{ ring: "#3559c7" }, "d, the exchange partner"] : null,
+      [{ ring: CHAIN_COLOURS[0], dashed: true }, "undecided cell a chain can still reveal"],
+      [{ ring: CHAIN_COLOURS[0] }, "chorded (colour = chain)"],
+    ].filter(Boolean));
+  }
+
+  function slackTable(entry, alphaNote) {
+    const { facts } = entry;
+    const signed = (n, sign) => (n === 0 ? "0" : sign + n);
+    return table(
+      ["term of the bound", "in this state", "adds to slack"],
+      [
+        ["chord click on c", "", "+1"],
+        ["c would be a new component of its own", "", "+1"],
+        ["unhit mines no later candidate can flag", factorChips(entry, facts.privateMines), signed(facts.privateMines.length, "+")],
+        ["unhit units c solves, at best all gained", factorChips(entry, facts.unhitUnits), signed(facts.unhitUnits.length, "−")],
+        ["chains that can still reach c, at best all merged", String(facts.reaching.length), signed(facts.reaching.length, "−")],
+        ["α: later reveals of c that could be separate components", alphaNote, signed(facts.alpha, "−")],
+        ["<b>slack</b> (≥ 0 means skip the chord child)", "", `<b>${facts.slack}</b>`],
+      ]
+    );
+  }
+
+  register("sibling-flow", () => {
+    const card = (title, body, colour) =>
+      h("div", { class: "card", style: { "border-top": `4px solid ${colour}`, "min-width": "190px", "max-width": "250px" } }, h("h4", {}, title), h("div", { class: "small", html: body }));
+    return figure(
+      "What happens to one parent state when the DP decides candidate c. The rules are tried in this order and the first that proves its bound stops the search. " +
+        "Only the chorded child is ever dropped, so the skip child is always built and the best answer is never lost.",
+      rowCenter(
+        card("parent state", "cost, chains, factor bits", "#3559c7"),
+        arrow("→"),
+        card("1. forced skip", "slack = 2 + private − unhit units − chains − α ≥ 0", "#e08a00"),
+        arrow("else"),
+        card("2. + cancellation", "slack + matched mine/unit pairs ≥ 0", "#b0607a"),
+        arrow("else"),
+        card("3. exchange", "some later d is never worse than c in this state", "#2e9e57"),
+        arrow("else"),
+        card("build both", "no rule proves anything", "#666")
+      ),
+      table(
+        ["outcome", "children built"],
+        [
+          ["rule 1, 2 or 3 holds", "skip c only (the chord child would never be better)"],
+          ["none holds", "skip c and chord c, as in 1.7"],
+        ]
+      )
+    );
+  });
+
+  register("sibling-components", () => {
+    const futures = allFutures(["x", "y"])
+      .filter((future) => future.links.length === 0)
+      .map(({ chorded }) => {
+        const skipped = futureSeeds([[], []], chorded, []);
+        const chord = futureSeeds([["c"], ["c"]], ["c", ...chorded], chorded.map((x) => ["c", x]));
+        return [chorded.length ? "chord " + chorded.join(" and ") + " later" : "no later chords", skipped, chord, chord - skipped];
+      });
+    const worst = Math.min(...futures.map((f) => f[3]));
+    return figure(
+      "Why chains and α appear in the bound. Two chains A and B can both still reach c, and c reveals two later candidates x and y that don't reveal each other. " +
+        "If c is skipped, A and B are cut off from each other and x, y stay separate. If c is chorded it joins everything it touches into one component. " +
+        `Each future seed is charged once per component, so chording c can save at most chains + α − 1 = 2 + 2 − 1 = ${4 - 1} seeds; the best future here saves ${-worst}.`,
+      rowCenter(
+        h("div", {}, h("div", { class: "panel-title" }, "chains reaching c"), h("div", { class: "setbox", style: { "--c": CHAIN_COLOURS[0] } }, h("div", { class: "name" }, "chain A"), "c"), h("br"), h("div", { class: "setbox", style: { "--c": CHAIN_COLOURS[1] } }, h("div", { class: "name" }, "chain B"), "c")),
+        arrow("+"),
+        h("div", {}, h("div", { class: "panel-title" }, "c reveals"), h("div", { class: "setbox", style: { "--c": "#3559c7" } }, h("div", { class: "name" }, "later candidates"), "x    y"))
+      ),
+      table(["future", "seeds if c is skipped", "seeds if c is chorded", "difference"], futures)
+    );
+  });
+
+  register("forced-skip", () => {
+    const entry = findSibling(
+      (e) => e.facts.verdict === "forced-skip",
+      (e) => (e.facts.reaching.length ? 0 : 2) + (e.facts.unhitUnits.length ? 0 : 1) + (e.facts.privateMines.length ? 0 : 1)
+    );
+    if (!entry) return figure("No example found.");
+    const { facts } = entry;
+    const [boardEl, card] = siblingPanels(entry);
+    return figure(
+      `A real parent state on the toy DP, deciding c = ${posName(entry, entry.k)}. Whatever later chords the solution contains, adding the chord on c would cost at least ` +
+        `${facts.slack} click${facts.slack === 1 ? "" : "s"} more than leaving c out, so the chord child is not built. ` +
+        `(Only the dashed and ringed cells matter here: ${facts.reaching.length} chain${facts.reaching.length === 1 ? "" : "s"} can still reach c, and c reveals ${facts.later.length} later candidate${facts.later.length === 1 ? "" : "s"}.)`,
+      row(boardEl, card),
+      slackTable(entry, `${facts.later.length} reveals, at most ${facts.alpha} separate`),
+      siblingLegend(false)
+    );
+  });
+
+  register("alpha-signature", () => {
+    const entry = findSibling(
+      (e) => e.facts.verdict === "forced-skip" && e.facts.slackBase < 0,
+      (e) => -e.facts.later.filter((q) => e.facts.covered.has(q)).length
+    );
+    if (!entry) return figure("No example found: on these boards the per-signature α never decides a skip.");
+    const { facts } = entry;
+    const coveredLater = facts.later.filter((q) => facts.covered.has(q));
+    const [boardEl, card] = siblingPanels(entry);
+    return figure(
+      `The same bound with α taken from the whole board and from this state's chains. c = ${posName(entry, entry.k)} reveals ${facts.later.length} later candidates, ` +
+        `but ${coveredLater.length} of them (${coveredLater.map((q) => posName(entry, q)).join(", ")}) are already inside the reach of a chain that can reach c. ` +
+        "A later chord there joins that chain whether or not c is chorded, and the chain is already counted in the chains term, so it cannot be a separate component.",
+      row(boardEl, card),
+      table(
+        ["", "later reveals counted for α", "α", "slack"],
+        [
+          ["whole board (the same for every state)", facts.later.map((q) => posName(entry, q)).join(" "), facts.alphaBase, `${facts.slackBase} <span class="fail">✗</span>`],
+          ["this state's chains", facts.later.filter((q) => !facts.covered.has(q)).map((q) => posName(entry, q)).join(" ") || "none", facts.alpha, `${facts.slack} <span class="ok">✓ skip</span>`],
+        ]
+      ),
+      siblingLegend(false)
+    );
+  });
+
+  register("cancel-pair", () => {
+    const entry = findSibling((e) => e.facts.verdict === "forced-skip-cancel", (e) => -e.facts.pairs.length);
+    if (!entry) return figure("No example found.");
+    const { facts, prep } = entry;
+    const [boardEl, card] = siblingPanels(entry);
+    const solvers = (fi) => prep.factors[fi].positions.filter((q) => q > entry.k).map((q) => posName(entry, q)).join(" ") || "none";
+    return figure(
+      `Without cancellation the slack here is ${facts.slack}, so the chord child would be built. But c has ${facts.pairs.length} mine${facts.pairs.length === 1 ? "" : "s"} still active after it ` +
+        "such that every later candidate that could flag the mine also solves a particular unit of c. Collecting the mine for free means collecting the unit as well, " +
+        `so the pair can never be worth the full −1 the plain bound assumed. Each matched pair raises the slack by 1, to ${facts.slack + facts.pairs.length}.`,
+      row(boardEl, card),
+      slackTable(entry, `${facts.later.length} reveals, at most ${facts.alpha} separate`),
+      table(
+        ["mine of c", "later candidates that can flag it", "unit of c", "later candidates that solve it", "every flagger also solves it"],
+        facts.pairs.map(([mine, unit]) => [factorLabel(entry.board, prep.factors[mine]), solvers(mine), factorLabel(entry.board, prep.factors[unit]), solvers(unit), tick(true)])
+      ),
+      siblingLegend(false)
+    );
+  });
+
+  function partnerRows(entry) {
+    const { facts, prep } = entry;
+    return facts.partners.slice(0, 6).map((partner) => [
+      posName(entry, partner.position),
+      tick(partner.reachOk),
+      partner.need.length ? factorChips(entry, partner.need) : "none",
+      tick(partner.needOk),
+      partner.reachOk && partner.needOk ? '<span class="ok">exchange</span>' : '<span class="small">no</span>',
+    ]);
+  }
+
+  const PARTNER_HEADERS = [
+    "partner d",
+    "every chain reaching c also reaches d",
+    "factors d needs already hit<br><span class='small'>mines of d not of c, units of c not of d</span>",
+    "all of them hit",
+    "verdict",
+  ];
+
+  register("exchange-conditions", () => {
+    const entry = findSibling((e) => e.facts.verdict === "exchange", (e) => -e.facts.exchange.need.length * 10 + e.facts.partners.length);
+    if (!entry) return figure("No example found.");
+    const [boardEl, card] = siblingPanels(entry, entry.facts.exchange.position);
+    return figure(
+      `A parent state deciding c = ${posName(entry, entry.k)}. Candidate d = ${posName(entry, entry.facts.exchange.position)} comes later in the sweep and reveals everything c reveals later. ` +
+        "In this state every chain that can reach c can also reach d, and every flag d needs that c doesn't, and every unit c solves that d doesn't, has already been paid for. " +
+        "So whatever the future holds, chording d instead of c is never worse, and the chord child for c is not built. " +
+        "Only the first six partners are listed.",
+      row(boardEl, card),
+      table(PARTNER_HEADERS, partnerRows(entry)),
+      siblingLegend(true)
+    );
+  });
+
+  function findExchangePair() {
+    const all = siblingStates();
+    let best = null;
+    let bestScore = Infinity;
+    for (const pass of all) {
+      if (pass.facts.verdict !== "exchange") continue;
+      const q = pass.facts.exchange.position;
+      for (const fail of all) {
+        if (fail.board !== pass.board || fail.k !== pass.k || fail.facts.verdict !== "both") continue;
+        const partner = fail.facts.partners.find((p) => p.position === q);
+        if (!partner || (partner.reachOk && partner.needOk)) continue;
+        const score = (partner.reachOk ? 0 : 1) + (pass.facts.exchange.need.length ? 0 : 2);
+        if (score < bestScore) {
+          best = { pass, fail, q };
+          bestScore = score;
+        }
+      }
+    }
+    return best;
+  }
+
+  register("exchange-state", () => {
+    const pair = findExchangePair();
+    if (!pair) return figure("No example found.");
+    const { pass, fail, q } = pair;
+    const [passBoard, passCard] = siblingPanels(pass, q);
+    const [failBoard, failCard] = siblingPanels(fail, q);
+    const only = (entry) => entry.facts.partners.filter((p) => p.position === q);
+    const failPartner = only(fail)[0];
+    const reason = failPartner.reachOk ? "a factor d needs has not been hit yet in this state" : "some chain that can reach c cannot reach d";
+    return figure(
+      `The same c = ${posName(pass, pass.k)} and d = ${posName(pass, q)} in two different parent states. The static swap rule (3.2) has to hold for every history; the exchange rule only has to hold for the history this state stands for. ` +
+        `Left: all conditions hold, so the chord child is skipped. Right: ${reason}, so nothing is proven and both children are built.`,
+      row(h("div", {}, h("div", { class: "panel-title" }, "exchange applies"), passBoard), passCard),
+      table(PARTNER_HEADERS, only(pass).map((p) => partnerRows({ ...pass, facts: { ...pass.facts, partners: [p] } })[0])),
+      row(h("div", {}, h("div", { class: "panel-title" }, "exchange does not apply"), failBoard), failCard),
+      table(PARTNER_HEADERS, only(fail).map((p) => partnerRows({ ...fail, facts: { ...fail.facts, partners: [p] } })[0])),
+      siblingLegend(true)
+    );
+  });
+
   register("experiment", (container) => {
     const out = h("div", { class: "small" }, "Not run yet.");
     const seedInput = h("input", { type: "number", value: "1", min: "1", style: { width: "70px" } });

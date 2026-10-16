@@ -1413,6 +1413,71 @@
     return { checked, failures };
   }
 
+  // ---- Dynamic sibling rules: forced skip and exchange (frontier.rs, SiblingRules::verdict) ----
+
+  // Largest subset of `nodes` (positions) in which no two reveal each other.
+  function maxIndependent(nodes, related) {
+    if (!nodes.length) return 0;
+    const [first, ...rest] = nodes;
+    return Math.max(1 + maxIndependent(rest.filter((q) => !related(first, q)), related), maxIndependent(rest, related));
+  }
+
+  // Everything the sibling rules read for `state` (the parent) when deciding the candidate at position `k`.
+  function siblingFacts(prep, state, k) {
+    const hits = new Set(state.hits);
+    const factor = (fi) => prep.factors[fi];
+    const isMine = (fi) => factor(fi).kind === "mine";
+    const related = (p, q) => (p < q ? prep.reveals[p].includes(q) : prep.reveals[q].includes(p));
+    const later = prep.reveals[k];
+    const own = prep.factorsAt[k];
+    const unhit = own.filter((fi) => !hits.has(fi));
+    const unhitUnits = unhit.filter((fi) => !isMine(fi));
+    const privateMines = unhit.filter((fi) => isMine(fi) && factor(fi).last === k);
+    const reaching = state.chains.filter((reach) => reach.includes(k));
+    const covered = new Set(reaching.flat());
+    const alphaBase = maxIndependent(later, related);
+    const alpha = reaching.length ? maxIndependent(later.filter((q) => !covered.has(q)), related) : alphaBase;
+    const slackBase = 2 + privateMines.length - unhitUnits.length - reaching.length - alphaBase;
+    const slack = 2 + privateMines.length - unhitUnits.length - reaching.length - alpha;
+
+    // A mine and a unit still active after k cancel when every later solver of the mine also solves the unit.
+    const remaining = (fi) => factor(fi).positions.filter((q) => q > k);
+    const open = unhit.filter((fi) => factor(fi).last > k);
+    const used = new Set();
+    const pairs = [];
+    for (const mine of open.filter(isMine)) {
+      const unit = open.find((fi) => !isMine(fi) && !used.has(fi) && isSubset(remaining(mine), remaining(fi)));
+      if (unit !== undefined) {
+        used.add(unit);
+        pairs.push([mine, unit]);
+      }
+    }
+
+    // Exchange partners: later candidates within reveal distance 2 that reveal everything `k` reveals later.
+    const partners = [];
+    const mineOf = (p) => prep.factorsAt[p].filter(isMine);
+    const unitOf = (p) => prep.factorsAt[p].filter((fi) => !isMine(fi));
+    for (let q = k + 1; q < prep.count && partners.length < 64; q++) {
+      const near = related(k, q) || prep.order.some((_, r) => r !== k && r !== q && related(k, r) && related(r, q));
+      if (!near || later.some((x) => x !== q && !related(q, x))) continue;
+      const need = [...mineOf(q).filter((fi) => !mineOf(k).includes(fi)), ...unitOf(k).filter((fi) => !unitOf(q).includes(fi))];
+      if (need.some((fi) => factor(fi).first >= k)) continue;
+      partners.push({
+        position: q,
+        need,
+        reachOk: reaching.every((reach) => reach.includes(q)),
+        needOk: need.every((fi) => hits.has(fi)),
+      });
+    }
+    const exchange = partners.find((partner) => partner.reachOk && partner.needOk);
+
+    let verdict = "both";
+    if (slack >= 0) verdict = "forced-skip";
+    else if (slack + pairs.length >= 0) verdict = "forced-skip-cancel";
+    else if (exchange) verdict = "exchange";
+    return { later, unhit, unhitUnits, privateMines, reaching, covered, alphaBase, alpha, slackBase, slack, pairs, partners, exchange, verdict };
+  }
+
   const api = {
     analyse,
     cellName,
@@ -1441,6 +1506,7 @@
     factorPenalty,
     dominates,
     solveDP,
+    siblingFacts,
     swapRule,
     leftClickEquivalentRule,
     witnessCheck,
