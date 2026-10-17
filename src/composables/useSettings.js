@@ -361,6 +361,12 @@ let editBoardUnappliedHeight = ref(9);
 let pttaImportModal = ref(false);
 let mbfImportModal = ref(false);
 let isCurrentlyEditModeDisplay = ref(true); //Lines up with game.board.gameStage = 'edit' - consider making ...gameStage a ref instead.
+let editTool = ref("toggle"); //toggle|rect|lasso
+let editCanUndo = ref(false); //Kept in sync by BoardEdit as undo stacks are per variant
+let editCanRedo = ref(false);
+//{ v: 1, w, h, x, y, tool, mask, mines } - parsed/validated by BoardEdit.parseClipboard
+let editClipboard = useLocalStorage("ls_editClipboard", null);
+let editHasClipboard = computed(() => editClipboard.value !== null);
 
 let flagToggleActive = ref(false); //Whether to swap left and right mouse buttons
 let flagToggleShowReset = ref(false); //Shows after blast/game win to allow easier reset on mobile
@@ -606,6 +612,11 @@ function resetTransientSettings() {
   quickPaintModeDisplay.value = "Guess";
   quickPaintClearable.value = "guesses";
 
+  //Edit mode
+  editTool.value = "toggle";
+  editCanUndo.value = false;
+  editCanRedo.value = false;
+
   //Replay state
   replayIsShown.value = false;
   replayIsPlaying.value = false;
@@ -745,6 +756,11 @@ export {
   pttaImportModal,
   mbfImportModal,
   isCurrentlyEditModeDisplay,
+  editTool,
+  editCanUndo,
+  editCanRedo,
+  editClipboard,
+  editHasClipboard,
   flagToggleActive,
   flagToggleShowReset,
   flagToggleLocationClass,

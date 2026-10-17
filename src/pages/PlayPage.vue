@@ -364,6 +364,19 @@ onUnmounted(() => {
 });
 
 function handleKeyDown(event) {
+  if (event.ctrlKey || event.metaKey) {
+    //Ctrl combos never reach the keyboard click handling below (e.g. Ctrl+Z when z is the dig key)
+    if (game.board?.gameStage === "edit") {
+      const key = event.key.toLowerCase();
+      const isUndo = key === "z" && !event.shiftKey;
+      const isRedo = key === "y" || (key === "z" && event.shiftKey);
+      if ((isUndo || isRedo) && checkFocusForKeyPress(event)) {
+        isUndo ? game.board.boardEdit.undo() : game.board.boardEdit.redo();
+      }
+    }
+    return;
+  }
+
   if (event.key.toLowerCase() === keyboardClickDigKey.value.toLowerCase()) {
     if (!checkFocusForKeyPress(event)) {
       return;

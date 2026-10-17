@@ -69,11 +69,24 @@
         </q-btn-dropdown>
       </div>
       <div class="flex" style="gap: 15px">
-        <q-btn
-          @click="game.board.applyEditBoardWidthHeight()"
+        <q-btn-dropdown
+          @click="game.board.boardEdit.applyEditBoardWidthHeight()"
           color="positive"
           label="new board"
-        />
+          split
+        >
+          <q-list>
+            <q-item
+              clickable
+              v-close-popup
+              @click="game.board.boardEdit.resizeEditBoard()"
+            >
+              <q-item-section>
+                <q-item-label>Resize</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-btn-dropdown>
         <q-btn-toggle
           v-if="variant === 'board editor'"
           v-model="isCurrentlyEditModeDisplay"
@@ -146,6 +159,29 @@
           </q-list>
         </q-btn-dropdown>
       </div>
+      <template v-if="isCurrentlyEditModeDisplay">
+        <q-separator class="q-my-md" />
+        <div class="flex" style="gap: 15px">
+          <q-btn-group>
+            <q-btn
+              color="primary"
+              icon="undo"
+              :disable="!editCanUndo"
+              @click="game.board.boardEdit.undo()"
+            >
+              <q-tooltip>Undo (Ctrl+Z)</q-tooltip>
+            </q-btn>
+            <q-btn
+              color="primary"
+              icon="redo"
+              :disable="!editCanRedo"
+              @click="game.board.boardEdit.redo()"
+            >
+              <q-tooltip>Redo (Ctrl+Y)</q-tooltip>
+            </q-btn>
+          </q-btn-group>
+        </div>
+      </template>
     </q-card-section>
   </q-card>
 </template>
@@ -158,6 +194,8 @@ import {
   pttaImportModal,
   mbfImportModal,
   isCurrentlyEditModeDisplay,
+  editCanUndo,
+  editCanRedo,
   verticalExpert,
 } from "src/composables/useSettings";
 

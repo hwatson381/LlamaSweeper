@@ -18,6 +18,7 @@ import QuickPaint from "src/classes/QuickPaint";
 import MeanOpenings from "src/classes/MeanOpenings";
 import BoardInput from "src/classes/BoardInput";
 import BoardActions from "src/classes/BoardActions";
+import BoardEdit from "src/classes/BoardEdit";
 
 import CONSTANTS from "src/includes/Constants";
 
@@ -76,6 +77,7 @@ class Board {
     this.meanOpenings = new MeanOpenings(this);
     this.boardInput = new BoardInput(this);
     this.boardActions = new BoardActions(this);
+    this.boardEdit = new BoardEdit(this);
 
     this.stopUrlWatch = watch(
       [() => this.route.params.variant, () => this.route.query],
@@ -100,7 +102,7 @@ class Board {
       (this.variant === "board editor" || this.variant === "zini explorer") &&
       this.gameStage === "edit"
     ) {
-      this.promptForClearingEditBoard();
+      this.boardEdit.promptForClearingEditBoard();
       return;
     }
 
@@ -158,11 +160,12 @@ class Board {
     }
 
     this.boardInput.resetInteractionState();
+    this.boardEdit.refreshUndoRedoState();
 
     this.resetTiles();
 
     if (this.gameStage === "edit") {
-      this.openBoardForEdit();
+      this.boardEdit.openBoardForEdit();
     }
 
     this.blasted = false;
@@ -303,125 +306,6 @@ class Board {
     } else if (variant.value === "zini explorer") {
       editBoardUnappliedWidth.value = this.ziniExplorerMines.length;
       editBoardUnappliedHeight.value = this.ziniExplorerMines[0].length;
-    }
-  }
-
-  applyEditBoardWidthHeight() {
-    if (
-      typeof editBoardUnappliedWidth.value !== "number" ||
-      typeof editBoardUnappliedHeight.value !== "number"
-    ) {
-      return;
-    }
-
-    editBoardUnappliedWidth.value = Utils.clamp(
-      Math.floor(editBoardUnappliedWidth.value),
-      1,
-      100
-    );
-    editBoardUnappliedHeight.value = Utils.clamp(
-      Math.floor(editBoardUnappliedHeight.value),
-      1,
-      100
-    );
-
-    this.width = editBoardUnappliedWidth.value;
-    this.height = editBoardUnappliedHeight.value;
-
-    const newBoardMines = new Array(editBoardUnappliedWidth.value)
-      .fill(0)
-      .map(() => new Array(editBoardUnappliedHeight.value).fill(false));
-
-    if (variant.value === "board editor") {
-      this.boardEditorMines = newBoardMines;
-      this.mines = this.boardEditorMines; //set mines as a reference to board editor mines
-    } else if (variant.value === "zini explorer") {
-      this.ziniExplore.killDeepChainZiniRunner(); //Just in case
-      this.ziniExplorerMines = newBoardMines;
-      this.mines = this.ziniExplorerMines; //set mines as a reference to zini explorer mines
-      this.ziniExplore.clearCurrentPath();
-    }
-
-    this.switchToEditMode();
-
-    this.boardRenderer.draw();
-  }
-
-  promptForClearingEditBoard() {
-    //Prompt for clearing the edit board.
-
-    //Check if already empty
-    let isAlreadyEmpty = true;
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
-        if (this.mines[x][y]) {
-          isAlreadyEmpty = false;
-          break;
-        }
-      }
-    }
-    if (isAlreadyEmpty) {
-      //Already empty, do nothing
-      return;
-    }
-
-    Dialog.create({
-      title: "Clear Board?",
-      message: "Are you sure you want to clear the board?",
-      ok: {
-        flat: true,
-        label: "Clear",
-      },
-      cancel: {
-        flat: true,
-        label: "Cancel",
-      },
-      persistent: true,
-    }).onOk(() => {
-      const newBoardMines = new Array(this.width)
-        .fill(0)
-        .map(() => new Array(this.height).fill(false));
-
-      if (variant.value === "board editor") {
-        this.boardEditorMines = newBoardMines;
-        this.mines = this.boardEditorMines; //set mines as a reference to board editor mines
-      } else if (variant.value === "zini explorer") {
-        this.ziniExplorerMines = newBoardMines;
-        this.mines = this.ziniExplorerMines; //set mines as a reference to zini explorer mines
-        this.ziniExplore.clearCurrentPath();
-      }
-
-      this.switchToEditMode();
-
-      this.boardRenderer.draw();
-    });
-  }
-
-  openBoardForEdit() {
-    //Update tilesArray such that it corresponds to an open board with mines as per the appropriate mine board.
-
-    for (let x = 0; x < this.width; x++) {
-      for (let y = 0; y < this.height; y++) {
-        if (this.mines[x][y]) {
-          this.tilesArray[x][y].state = CONSTANTS.MINE;
-          continue;
-        }
-
-        let tileNumber = 0;
-        for (let i = x - 1; i <= x + 1; i++) {
-          for (let j = y - 1; j <= y + 1; j++) {
-            if (!this.checkCoordsInBounds(i, j)) {
-              continue;
-            }
-
-            if (this.mines[i][j]) {
-              tileNumber++;
-            }
-          }
-        }
-
-        this.tilesArray[x][y].state = tileNumber;
-      }
     }
   }
 
@@ -577,23 +461,6 @@ class Board {
       this.stats.calcStats(isWin, this.tilesArray);
     }
     showStatsBlock.value = true;
-  }
-
-  handleEditClick(tileX, tileY) {
-    //Click on the edit board - typically will toggle a mine
-    if (!this.checkCoordsInBounds(tileX, tileY)) {
-      return; //just incase
-    }
-
-    const isAddingMines = !this.mines[tileX][tileY]; //adding a mine or removing it?
-
-    this.mines[tileX][tileY] = !this.mines[tileX][tileY]; //toggle the mine
-
-    this.mineCount += isAddingMines ? 1 : -1;
-    this.unflagged = this.mineCount;
-    analyseLastAlgorithm.value = "Custom";
-
-    this.openBoardForEdit(); //refreshes all numbers. Maybe too inefficient?
   }
 
   handleReplayClick(tileX, tileY) {

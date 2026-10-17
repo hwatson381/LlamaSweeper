@@ -1291,7 +1291,7 @@ class ZiniExplore {
         this.board.mines
       );
     if (this.removeInvalidDigsAndFlags()) {
-      analyseLastAlgorithm.value = "Custom"; //Defensive as this would usually be caught when the board changes in Board.handleEditClick().
+      analyseLastAlgorithm.value = "Custom"; //Defensive as this would usually be caught when the board changes in BoardEdit.handleEditClick().
       if (!skipAskForPathReset) {
         this.promptForPathReset();
       }

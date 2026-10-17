@@ -637,6 +637,10 @@ class BoardInput {
       if (isDown && this.keyboardClickIsDigDown) {
         return;
       }
+      //ignore a lone key up (e.g. from Ctrl+Z when z is the dig key)
+      if (!isDown && !this.keyboardClickIsDigDown) {
+        return;
+      }
       if (isDown) {
         this.keyboardClickIsDigDown = true;
       }
@@ -650,6 +654,9 @@ class BoardInput {
       if (isDown && this.keyboardClickIsFlagDown) {
         return;
       }
+      if (!isDown && !this.keyboardClickIsFlagDown) {
+        return;
+      }
       if (isDown) {
         this.keyboardClickIsFlagDown = true;
       }
@@ -660,12 +667,14 @@ class BoardInput {
 
     //If they have the setting for it, we do digs on key down instead of up
     //We do this by faking a key up input, and blocking the real key up
-    //This is very hacky
-    if (isDigInput && !isDown && keyboardClickOpenOnKeyDown.value) {
+    //This is very hacky. Not applicable in edit mode, where a key down is what toggles a mine.
+    const openOnKeyDown =
+      keyboardClickOpenOnKeyDown.value && this.board.gameStage !== "edit";
+    if (isDigInput && !isDown && openOnKeyDown) {
       //Block key up from doing anything
       return;
     }
-    if (isDigInput && isDown && keyboardClickOpenOnKeyDown.value) {
+    if (isDigInput && isDown && openOnKeyDown) {
       //Convert key down into key up
       isDown = false;
     }
@@ -901,7 +910,10 @@ class BoardInput {
     //handle clicks in edit mode and exit early if nothing to do
     if (this.board.gameStage === "edit") {
       if (mouseDownOrTouchUp && (isDigInput || isFlagInput)) {
-        this.board.handleEditClick(flooredCoords.tileX, flooredCoords.tileY);
+        this.board.boardEdit.handleEditClick(
+          flooredCoords.tileX,
+          flooredCoords.tileY
+        );
         this.board.boardRenderer.draw();
       }
 
