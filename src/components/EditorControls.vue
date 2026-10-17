@@ -162,6 +162,16 @@
       <template v-if="isCurrentlyEditModeDisplay">
         <q-separator class="q-my-md" />
         <div class="flex" style="gap: 15px">
+          <q-btn-toggle
+            v-model="editTool"
+            push
+            glossy
+            toggle-color="primary"
+            :options="[
+              { label: 'Toggle', value: 'toggle', icon: 'edit' },
+              { label: 'Rect', value: 'rect', icon: 'crop_square' },
+            ]"
+          />
           <q-btn-group>
             <q-btn
               color="primary"
@@ -194,6 +204,7 @@ import {
   pttaImportModal,
   mbfImportModal,
   isCurrentlyEditModeDisplay,
+  editTool,
   editCanUndo,
   editCanRedo,
   verticalExpert,

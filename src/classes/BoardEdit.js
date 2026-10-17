@@ -5,6 +5,7 @@ import { Dialog } from "quasar";
 
 import {
   variant,
+  editTool,
   editBoardUnappliedWidth,
   editBoardUnappliedHeight,
   editCanUndo,
@@ -26,6 +27,157 @@ class BoardEdit {
       "board editor": { undo: [], redo: [], undoBytes: 0 },
       "zini explorer": { undo: [], redo: [], undoBytes: 0 },
     };
+
+    //In-progress rect drag: { startX, startY, endX, endY } in tile coords, or null
+    this.drag = null;
+
+    //Current selection, or null. floating is in its own local coords and never clipped:
+    //{ mask[i][j], mines[i][j], w, h, centreX, centreY }, with sourceTool "rect" | "lasso"
+    this.session = null;
+  }
+
+  //---- Selection ----
+
+  getFloatingTopLeft(floating) {
+    //Rounding is chosen once here so all callers agree on where the floating content sits
+    return {
+      x: Math.round(floating.centreX - floating.w / 2),
+      y: Math.round(floating.centreY - floating.h / 2),
+    };
+  }
+
+  refreshSelectedStates() {
+    const tilesArray = this.board.tilesArray;
+    if (!tilesArray) {
+      return;
+    }
+
+    for (const column of tilesArray) {
+      for (const tile of column) {
+        tile.selectedState = "off";
+      }
+    }
+
+    if (this.drag) {
+      const { minX, maxX, minY, maxY } = this.getDragRect();
+      for (let x = minX; x <= maxX; x++) {
+        for (let y = minY; y <= maxY; y++) {
+          tilesArray[x][y].selectedState = "preview";
+        }
+      }
+    } else if (this.session) {
+      const floating = this.session.floating;
+      const topLeft = this.getFloatingTopLeft(floating);
+      for (let i = 0; i < floating.w; i++) {
+        for (let j = 0; j < floating.h; j++) {
+          const x = topLeft.x + i;
+          const y = topLeft.y + j;
+          if (floating.mask[i][j] && this.board.checkCoordsInBounds(x, y)) {
+            tilesArray[x][y].selectedState = "final";
+          }
+        }
+      }
+    }
+  }
+
+  getDragRect() {
+    return {
+      minX: Math.min(this.drag.startX, this.drag.endX),
+      maxX: Math.max(this.drag.startX, this.drag.endX),
+      minY: Math.min(this.drag.startY, this.drag.endY),
+      maxY: Math.max(this.drag.startY, this.drag.endY),
+    };
+  }
+
+  beginDrag(tileX, tileY) {
+    //Returns true if the drag was captured. Caller redraws.
+    if (
+      editTool.value !== "rect" ||
+      !this.board.checkCoordsInBounds(tileX, tileY)
+    ) {
+      return false;
+    }
+
+    this.commitSession();
+    this.drag = { startX: tileX, startY: tileY, endX: tileX, endY: tileY };
+    this.refreshSelectedStates();
+    return true;
+  }
+
+  updateDrag(unflooredCoords) {
+    //Returns true if the preview changed
+    if (!this.drag) {
+      return false;
+    }
+
+    const endX = Utils.clamp(
+      Math.floor(unflooredCoords.tileX),
+      0,
+      this.board.width - 1
+    );
+    const endY = Utils.clamp(
+      Math.floor(unflooredCoords.tileY),
+      0,
+      this.board.height - 1
+    );
+    if (endX === this.drag.endX && endY === this.drag.endY) {
+      return false;
+    }
+
+    this.drag.endX = endX;
+    this.drag.endY = endY;
+    this.refreshSelectedStates();
+    return true;
+  }
+
+  endDrag() {
+    if (!this.drag) {
+      return;
+    }
+
+    const { minX, maxX, minY, maxY } = this.getDragRect();
+    const w = maxX - minX + 1;
+    const h = maxY - minY + 1;
+    const mask = BoardEdit.createEmptyMines(w, h);
+    const mines = BoardEdit.createEmptyMines(w, h);
+    for (let i = 0; i < w; i++) {
+      for (let j = 0; j < h; j++) {
+        mask[i][j] = true;
+        mines[i][j] = this.board.mines[minX + i][minY + j];
+      }
+    }
+
+    this.drag = null;
+    this.session = {
+      floating: {
+        mask,
+        mines,
+        w,
+        h,
+        centreX: minX + w / 2,
+        centreY: minY + h / 2,
+      },
+      sourceTool: editTool.value,
+    };
+    this.refreshSelectedStates();
+  }
+
+  cancelDrag() {
+    this.drag = null;
+    this.refreshSelectedStates();
+  }
+
+  cancelSession() {
+    //Drops any selection/drag without applying it
+    this.drag = null;
+    this.session = null;
+    this.board.boardInput.activeDrag = null;
+    this.refreshSelectedStates();
+  }
+
+  commitSession() {
+    //Selections can't yet alter the floating content, so committing is the same as cancelling
+    this.cancelSession();
   }
 
   //---- Mines helpers ----
@@ -108,6 +260,13 @@ class BoardEdit {
   }
 
   undo() {
+    if (this.board.gameStage === "edit" && (this.session || this.drag)) {
+      //Undo during a selection just abandons the selection
+      this.cancelSession();
+      this.board.boardRenderer.draw();
+      return;
+    }
+
     const stack = this.stacks[variant.value];
     if (this.board.gameStage !== "edit" || !stack || stack.undo.length === 0) {
       return;
@@ -140,6 +299,8 @@ class BoardEdit {
     const newWidth = newMines.length;
     const newHeight = newMines[0].length;
     const sizeChanged = newWidth !== board.width || newHeight !== board.height;
+
+    this.cancelSession();
 
     board.mines = newMines;
     if (board.variant === "board editor") {

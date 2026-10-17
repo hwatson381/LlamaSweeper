@@ -106,6 +106,8 @@ class Board {
       return;
     }
 
+    this.boardEdit.commitSession();
+
     if (
       isVariantChange &&
       (this.variant === "board editor" || this.variant === "zini explorer")
@@ -527,6 +529,7 @@ class Board {
       throw new Error("Analyse mode not available on board editor");
     } else if (this.variant === "zini explorer") {
       this.ziniExplore.killDeepChainZiniRunner(); //just in case
+      this.boardEdit.commitSession();
       this.editingZiniBoard = false;
       this.gameStage = "analyse";
       isCurrentlyEditModeDisplay.value = false;

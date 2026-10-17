@@ -10,6 +10,7 @@ class Tile {
     this.paintColour = null; //values such as red, green, orange, white
     this.paintDots = 0; //values can be 0, 1, 2
     this.unrevealedState = null; //State to draw instead of UNREVEALED (e.g. for drawing transparent tiles)
+    this.selectedState = "off"; //Edit mode selection overlay: off | preview | final
 
     this.revealedTimeForMobileScrollBehaviour = null; //The time that this tile was revealed, for use in mobile scroll behaviour
 
@@ -50,6 +51,14 @@ class Tile {
     }
 
     ctx.drawImage(skinManager.getImage(toDraw), rawX, rawY, size, size);
+
+    if (this.selectedState !== "off") {
+      ctx.fillStyle =
+        this.selectedState === "preview"
+          ? skinManager.getSelectPreviewColour()
+          : skinManager.getSelectFinalColour();
+      ctx.fillRect(rawX, rawY, size, size);
+    }
   }
 
   drawPaint(rawX, rawY, size) {

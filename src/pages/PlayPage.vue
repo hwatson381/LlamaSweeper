@@ -92,31 +92,33 @@
               : gameVerticalPadding,
         }"
       >
-        <canvas
-          ref="main-canvas"
-          id="main-canvas"
-          @contextmenu.prevent
-          @mousedown="game.handleMouseDown($event)"
-          @mouseup="game.handleMouseUp($event)"
-          @mousemove="game.handleMouseMove($event)"
-          @mouseenter="game.handleMouseEnter($event)"
-          @mouseleave="game.handleMouseLeave($event)"
-          @touchstart="game.handleTouchStart($event)"
-          @touchmove="game.handleTouchMove($event)"
-          @touchend="game.handleTouchEnd($event)"
-          @touchcancel="game.handleTouchCancel($event)"
-          :style="{
-            touchAction:
-              touchActionOverride !== 'ignore'
-                ? touchActionOverride
-                : mobileScrollSetting === 'disable'
-                ? 'none'
-                : 'manipulation',
-            marginLeft: 0 /*gameCalculatedMarginLeft*/,
-            filter: filterStyleProperty,
-          }"
-        >
-        </canvas>
+        <div class="canvas-wrapper">
+          <canvas
+            ref="main-canvas"
+            id="main-canvas"
+            @contextmenu.prevent
+            @mousedown="game.handleMouseDown($event)"
+            @mouseup="game.handleMouseUp($event)"
+            @mousemove="game.handleMouseMove($event)"
+            @mouseenter="game.handleMouseEnter($event)"
+            @mouseleave="game.handleMouseLeave($event)"
+            @touchstart="game.handleTouchStart($event)"
+            @touchmove="game.handleTouchMove($event)"
+            @touchend="game.handleTouchEnd($event)"
+            @touchcancel="game.handleTouchCancel($event)"
+            :style="{
+              touchAction:
+                touchActionOverride !== 'ignore'
+                  ? touchActionOverride
+                  : mobileScrollSetting === 'disable'
+                  ? 'none'
+                  : 'manipulation',
+              marginLeft: 0 /*gameCalculatedMarginLeft*/,
+              filter: filterStyleProperty,
+            }"
+          >
+          </canvas>
+        </div>
         <q-resize-observer debounce="30" @resize="game.refreshSize()" />
 
         <StatsPanel v-if="showStatsBlock" class="side-panel" />
@@ -223,11 +225,15 @@
   align-items: flex-start;
 }
 
-#main-canvas {
-  user-select: none;
-  float: left;
+.canvas-wrapper {
+  position: relative;
   margin-right: 10px;
   margin-bottom: 10px;
+}
+
+#main-canvas {
+  user-select: none;
+  display: block;
   touch-action: manipulation;
   -webkit-touch-callout: none;
 }
@@ -327,6 +333,7 @@ import {
   filterStyleProperty,
   resetTransientSettings,
   pixelScale,
+  editTool,
 } from "src/composables/useSettings";
 
 defineOptions({
@@ -341,6 +348,8 @@ onMounted(() => {
   //Capture phase so components that stop propagation can't hide presses/releases
   window.addEventListener("mousedown", handleWindowMouseDown, true);
   window.addEventListener("mouseup", handleWindowMouseUp, true);
+  window.addEventListener("mousemove", handleWindowMouseMove);
+  window.addEventListener("blur", handleWindowBlur);
   skinManager.addCallbackWhenAllPriorityLoaded(() => {
     game.initialise();
   });
@@ -358,6 +367,8 @@ onUnmounted(() => {
   window.removeEventListener("scroll", handlePageScroll);
   window.removeEventListener("mousedown", handleWindowMouseDown, true);
   window.removeEventListener("mouseup", handleWindowMouseUp, true);
+  window.removeEventListener("mousemove", handleWindowMouseMove);
+  window.removeEventListener("blur", handleWindowBlur);
   game.unmount();
   effShuffleManager.deactivateBackgroundGeneration();
   statsWorkerManager.softReset();
@@ -466,6 +477,15 @@ function handleWindowMouseUp(event) {
   }
 
   game.board.boardInput.recordOffCanvasMouseButton(event, false);
+  game.board.boardInput.handleWindowMouseUp(event);
+}
+
+function handleWindowMouseMove(event) {
+  game.board?.boardInput.handleWindowMouseMove(event);
+}
+
+function handleWindowBlur() {
+  game.board?.boardInput.handleWindowBlur();
 }
 
 function checkFocusForKeyPress(event) {
@@ -535,6 +555,14 @@ watch(
 
 watch(pixelScale, () => {
   game.refreshSize();
+});
+
+watch(editTool, () => {
+  if (!game.board) {
+    return;
+  }
+  game.board.boardEdit.commitSession();
+  game.board.boardRenderer.draw();
 });
 
 const vFocus = {
