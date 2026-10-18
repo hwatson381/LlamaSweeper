@@ -168,9 +168,9 @@
             glossy
             toggle-color="primary"
             :options="[
-              { label: 'Toggle', value: 'toggle', icon: 'edit' },
-              { label: 'Rect', value: 'rect', icon: 'crop_square' },
-              { label: 'Lasso', value: 'lasso', icon: 'gesture' },
+              { label: 'Toggle', value: 'toggle', icon: 'sym_o_bomb' },
+              { label: 'Rect', value: 'rect', icon: 'sym_o_select' },
+              { label: 'Lasso', value: 'lasso', icon: 'sym_o_lasso_select' },
             ]"
           />
           <q-btn-group>

@@ -47,6 +47,9 @@ class BoardEdit {
     this.moveDrag = null;
     this.moveMode = false;
 
+    //Tool that was active before a paste switched to the clipboard's tool, restored when the pasted selection is closed
+    this.toolBeforePaste = null;
+
     //While the fill percentage panel is open, a copy of floating.mines from before it was opened (for Back)
     this.fillPanelBackup = null;
   }
@@ -193,6 +196,8 @@ class BoardEdit {
       return false;
     }
 
+    //Starting a new selection means the user is now selecting, so don't revert the tool afterwards
+    this.toolBeforePaste = null;
     this.commitSession();
     this.drag = {
       tool,
@@ -469,7 +474,12 @@ class BoardEdit {
   }
 
   closeSelection() {
+    const priorTool = this.toolBeforePaste;
+    this.toolBeforePaste = null;
     this.commitSession();
+    if (priorTool) {
+      editTool.value = priorTool;
+    }
     this.board.boardRenderer.draw();
   }
 
@@ -478,6 +488,7 @@ class BoardEdit {
     if (this.session && this.session.sourceTool === editTool.value) {
       return;
     }
+    this.toolBeforePaste = null;
     this.closeSelection();
   }
 
@@ -1098,6 +1109,7 @@ class BoardEdit {
       return;
     }
 
+    const priorTool = this.toolBeforePaste ?? editTool.value;
     this.commitSession();
 
     const { w, h } = clip;
@@ -1119,6 +1131,7 @@ class BoardEdit {
       floating: { mask, mines, w, h, centreX: x + w / 2, centreY: y + h / 2 },
       sourceTool: clip.tool,
     };
+    this.toolBeforePaste = priorTool;
     editTool.value = clip.tool;
     this.redisplay();
     this.board.boardRenderer.draw();

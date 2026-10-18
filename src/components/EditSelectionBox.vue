@@ -3,7 +3,7 @@
     <template v-if="!editFillPanelOpen">
       <q-btn
         dense
-        size="sm"
+        size="md"
         :color="editMoveMode ? 'primary' : 'white'"
         :text-color="editMoveMode ? 'white' : 'black'"
         icon="open_with"
@@ -13,7 +13,7 @@
       </q-btn>
       <q-btn
         dense
-        size="sm"
+        size="md"
         color="white"
         text-color="black"
         icon="rotate_left"
@@ -23,7 +23,7 @@
       </q-btn>
       <q-btn
         dense
-        size="sm"
+        size="md"
         color="white"
         text-color="black"
         icon="rotate_right"
@@ -33,7 +33,7 @@
       </q-btn>
       <q-btn
         dense
-        size="sm"
+        size="md"
         color="white"
         text-color="black"
         icon="flip"
@@ -43,7 +43,7 @@
       </q-btn>
       <q-btn
         dense
-        size="sm"
+        size="md"
         color="white"
         text-color="black"
         @click="boardEdit.flipVertical()"
@@ -53,7 +53,7 @@
       </q-btn>
       <q-btn
         dense
-        size="sm"
+        size="md"
         color="white"
         text-color="black"
         icon="format_color_fill"
@@ -63,7 +63,7 @@
       </q-btn>
       <q-btn
         dense
-        size="sm"
+        size="md"
         color="white"
         text-color="black"
         icon="delete"
@@ -73,7 +73,7 @@
       </q-btn>
       <q-btn
         dense
-        size="sm"
+        size="md"
         color="white"
         text-color="black"
         icon="percent"
@@ -83,7 +83,7 @@
       </q-btn>
       <q-btn
         dense
-        size="sm"
+        size="md"
         color="white"
         text-color="black"
         icon="crop"
@@ -93,7 +93,7 @@
       </q-btn>
       <q-btn
         dense
-        size="sm"
+        size="md"
         color="white"
         text-color="black"
         icon="content_copy"
@@ -103,7 +103,7 @@
       </q-btn>
       <q-btn
         dense
-        size="sm"
+        size="md"
         color="white"
         text-color="black"
         icon="content_cut"
@@ -113,7 +113,7 @@
       </q-btn>
       <q-btn
         dense
-        size="sm"
+        size="md"
         color="white"
         text-color="black"
         icon="control_point_duplicate"
@@ -123,7 +123,7 @@
       </q-btn>
       <q-btn
         dense
-        size="sm"
+        size="md"
         color="white"
         text-color="black"
         icon="close"
@@ -149,7 +149,7 @@
       <div class="fill-buttons-row">
         <q-btn
           dense
-          size="sm"
+          size="md"
           color="white"
           text-color="black"
           icon="refresh"
@@ -159,7 +159,7 @@
         </q-btn>
         <q-btn
           dense
-          size="sm"
+          size="md"
           color="white"
           text-color="black"
           icon="check"
@@ -169,7 +169,7 @@
         </q-btn>
         <q-btn
           dense
-          size="sm"
+          size="md"
           color="white"
           text-color="black"
           icon="arrow_back"
@@ -179,18 +179,17 @@
         </q-btn>
       </div>
     </div>
-    <q-resize-observer @resize="(size) => (boxSize = size)" />
+    <q-resize-observer debounce="0" @resize="(size) => (boxSize = size)" />
   </div>
 </template>
 
 <style scoped>
 .edit-selection-box {
   position: absolute;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(6, max-content);
   gap: 4px;
   width: max-content;
-  max-width: 190px;
   background-color: rgba(211, 211, 211, 0.8);
   border-radius: 8px;
   box-shadow: 3px 4px 10px #000000cc;
@@ -203,6 +202,7 @@ body.body--dark .edit-selection-box {
 }
 
 .fill-panel {
+  grid-column: 1 / -1;
   width: 174px;
 }
 
@@ -228,7 +228,7 @@ body.body--dark .edit-selection-box {
 </style>
 
 <script setup>
-import { computed, inject, ref, useTemplateRef } from "vue";
+import { computed, inject, onMounted, ref, useTemplateRef } from "vue";
 
 import {
   editSelectionBox,
@@ -248,6 +248,13 @@ const boardEdit = computed(() => game.board.boardEdit);
 
 const box = useTemplateRef("box");
 const boxSize = ref({ width: 0, height: 0 });
+//Measured synchronously so the first render is already clamped; the resize observer is too late to avoid a horizontal scrollbar
+onMounted(() => {
+  boxSize.value = {
+    width: box.value.offsetWidth,
+    height: box.value.offsetHeight,
+  };
+});
 const fillPercent = ref(20);
 
 const GAP = 6;
