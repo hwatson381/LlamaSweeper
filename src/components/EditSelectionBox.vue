@@ -4,7 +4,7 @@
       <q-btn
         dense
         size="md"
-        color="white"
+        color="light-green-2"
         text-color="black"
         icon="rotate_left"
         @click="boardEdit.rotateLeft()"
@@ -14,7 +14,7 @@
       <q-btn
         dense
         size="md"
-        color="white"
+        color="light-green-2"
         text-color="black"
         icon="rotate_right"
         @click="boardEdit.rotateRight()"
@@ -24,87 +24,7 @@
       <q-btn
         dense
         size="md"
-        color="white"
-        text-color="black"
-        icon="flip"
-        @click="boardEdit.flipHorizontal()"
-      >
-        <q-tooltip>Flip horizontally</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="white"
-        text-color="black"
-        @click="boardEdit.flipVertical()"
-      >
-        <q-icon name="flip" style="transform: rotate(90deg)" />
-        <q-tooltip>Flip vertically</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="white"
-        text-color="black"
-        icon="format_color_fill"
-        @click="boardEdit.setSelectionMines(true)"
-      >
-        <q-tooltip>Fill with mines</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="white"
-        text-color="black"
-        icon="delete"
-        @click="boardEdit.setSelectionMines(false)"
-      >
-        <q-tooltip>Clear mines</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="white"
-        text-color="black"
-        icon="percent"
-        @click="boardEdit.openFillPanel(editFillPercent)"
-      >
-        <q-tooltip>Fill percentage</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="white"
-        text-color="black"
-        icon="crop"
-        @click="boardEdit.cropToSelection()"
-      >
-        <q-tooltip>Crop board to selection</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="white"
-        text-color="black"
-        icon="content_copy"
-        @click="boardEdit.copySelection()"
-      >
-        <q-tooltip>Copy (Ctrl+C)</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="white"
-        text-color="black"
-        icon="content_cut"
-        @click="boardEdit.cutSelection()"
-      >
-        <q-tooltip>Cut (Ctrl+X)</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="white"
+        color="light-blue-2"
         text-color="black"
         icon="control_point_duplicate"
         @click="boardEdit.duplicateSelection()"
@@ -114,8 +34,88 @@
       <q-btn
         dense
         size="md"
-        color="white"
+        color="light-blue-2"
         text-color="black"
+        icon="content_copy"
+        @click="boardEdit.copySelection()"
+      >
+        <q-tooltip>Copy (Ctrl+C)</q-tooltip>
+      </q-btn>
+      <q-btn
+        dense
+        size="md"
+        color="light-blue-2"
+        text-color="black"
+        icon="content_cut"
+        @click="boardEdit.cutSelection()"
+      >
+        <q-tooltip>Cut (Ctrl+X)</q-tooltip>
+      </q-btn>
+      <q-btn
+        dense
+        size="md"
+        color="yellow-3"
+        text-color="black"
+        icon="crop"
+        @click="boardEdit.cropToSelection()"
+      >
+        <q-tooltip>Crop board to selection</q-tooltip>
+      </q-btn>
+      <q-btn
+        dense
+        size="md"
+        color="light-green-2"
+        text-color="black"
+        icon="flip"
+        @click="boardEdit.flipHorizontal()"
+      >
+        <q-tooltip>Flip horizontally</q-tooltip>
+      </q-btn>
+      <q-btn
+        dense
+        size="md"
+        color="light-green-2"
+        text-color="black"
+        @click="boardEdit.flipVertical()"
+      >
+        <q-icon name="flip" style="transform: rotate(90deg)" />
+        <q-tooltip>Flip vertically</q-tooltip>
+      </q-btn>
+      <q-btn
+        dense
+        size="md"
+        color="deep-orange-2"
+        text-color="black"
+        icon="format_color_fill"
+        @click="boardEdit.setSelectionMines(true)"
+      >
+        <q-tooltip>Fill with mines</q-tooltip>
+      </q-btn>
+      <q-btn
+        dense
+        size="md"
+        color="deep-orange-2"
+        text-color="black"
+        icon="delete"
+        @click="boardEdit.setSelectionMines(false)"
+      >
+        <q-tooltip>Clear mines</q-tooltip>
+      </q-btn>
+      <q-btn
+        dense
+        size="md"
+        color="deep-orange-2"
+        text-color="black"
+        icon="percent"
+        @click="boardEdit.openFillPanel(editFillPercent)"
+      >
+        <q-tooltip>Fill percentage</q-tooltip>
+      </q-btn>
+      <q-btn
+        dense
+        size="md"
+        color="grey-10"
+        text-color="white"
         icon="close"
         @click="boardEdit.closeSelection()"
       >
@@ -156,13 +156,13 @@
           icon="refresh"
           @click="boardEdit.fillSelectionPercentage(editFillPercent)"
         >
-          <q-tooltip>Re-randomise</q-tooltip>
+          <q-tooltip>Refresh mines</q-tooltip>
         </q-btn>
         <q-btn
           dense
           size="md"
-          color="white"
-          text-color="black"
+          color="positive"
+          text-color="white"
           icon="check"
           @click="boardEdit.confirmFillPanel()"
         >
