@@ -67,7 +67,7 @@
         color="white"
         text-color="black"
         icon="percent"
-        @click="boardEdit.openFillPanel(fillPercent)"
+        @click="boardEdit.openFillPanel(editFillPercent)"
       >
         <q-tooltip>Fill percentage</q-tooltip>
       </q-btn>
@@ -125,7 +125,7 @@
     <div v-else class="fill-panel">
       <div class="fill-slider-row">
         <q-slider
-          v-model="fillPercent"
+          v-model="editFillPercent"
           :min="0"
           :max="100"
           :step="1"
@@ -134,7 +134,7 @@
           class="q-px-sm"
           @update:model-value="(val) => boardEdit.fillSelectionPercentage(val)"
         />
-        <span class="fill-percent-label">{{ fillPercent }}%</span>
+        <span class="fill-percent-label">{{ editFillPercent }}%</span>
       </div>
       <div class="fill-buttons-row">
         <q-btn
@@ -142,8 +142,19 @@
           size="md"
           color="white"
           text-color="black"
+          icon="arrow_back"
+          @click="boardEdit.cancelFillPanel()"
+        >
+          <q-tooltip>Back (discard)</q-tooltip>
+        </q-btn>
+        <q-space />
+        <q-btn
+          dense
+          size="md"
+          color="white"
+          text-color="black"
           icon="refresh"
-          @click="boardEdit.fillSelectionPercentage(fillPercent)"
+          @click="boardEdit.fillSelectionPercentage(editFillPercent)"
         >
           <q-tooltip>Re-randomise</q-tooltip>
         </q-btn>
@@ -156,16 +167,6 @@
           @click="boardEdit.confirmFillPanel()"
         >
           <q-tooltip>Keep</q-tooltip>
-        </q-btn>
-        <q-btn
-          dense
-          size="md"
-          color="white"
-          text-color="black"
-          icon="arrow_back"
-          @click="boardEdit.cancelFillPanel()"
-        >
-          <q-tooltip>Back (discard)</q-tooltip>
         </q-btn>
       </div>
     </div>
@@ -223,6 +224,7 @@ import { computed, inject, onMounted, ref, useTemplateRef } from "vue";
 import {
   editSelectionBox,
   editFillPanelOpen,
+  editFillPercent,
   effectiveTileSize,
   boardHorizontalPadding,
   boardTopPadding,
@@ -244,7 +246,6 @@ onMounted(() => {
     height: box.value.offsetHeight,
   };
 });
-const fillPercent = ref(20);
 
 const GAP = 6;
 const VIEWPORT_MARGIN = 4;

@@ -24,6 +24,7 @@ import {
   keyboardClickOpenOnKeyDown,
   recordButtonEvents,
   editTool,
+  editDragPaint,
 } from "src/composables/useSettings";
 
 //Edit mode touches on a selection's surroundings only deselect if they look like a tap rather than a scroll attempt
@@ -194,8 +195,8 @@ class BoardInput {
 
     //Adapted from https://developer.mozilla.org/en-US/docs/Web/API/Touch_events
 
-    if (this.board.gameStage === "edit" && editTool.value !== "toggle") {
-      //Touches that don't start a selection are left alone so the page can scroll
+    if (this.board.gameStage === "edit" && this.isEditDragInputActive()) {
+      //Touches that don't start a drag are left alone so the page can scroll
       this.handleEditSelectTouchStart(event);
       return;
     }
@@ -881,6 +882,11 @@ class BoardInput {
     }
   }
 
+  isEditDragInputActive() {
+    //Select tools always drag, the toggle tool only when Drag is on
+    return editTool.value !== "toggle" || editDragPaint.value;
+  }
+
   resolveEditTap(touch, endTimeStamp) {
     const tap = this.editPendingTap;
     const movedTiles =
@@ -1158,10 +1164,10 @@ class BoardInput {
 
     // ########## Check for face click #############
 
-    //A press that starts or ends an edit mode selection drag is never a face click
+    //A press that starts or ends an edit mode drag (selection or mine painting) is never a face click
     if (
       this.board.gameStage === "edit" &&
-      editTool.value !== "toggle" &&
+      this.isEditDragInputActive() &&
       this.handleEditSelectInput(
         isDigInput,
         isFlagInput,

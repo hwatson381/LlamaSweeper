@@ -2,7 +2,7 @@ import CONSTANTS from "src/includes/Constants";
 import Utils from "src/classes/Utils";
 import Algorithms from "src/classes/Algorithms";
 
-import { Dialog } from "quasar";
+import { Dialog, Notify } from "quasar";
 
 import {
   variant,
@@ -16,6 +16,8 @@ import {
   editSelectionBox,
   editFillPanelOpen,
   editDragInProgress,
+  editDragPaint,
+  editOverwrite,
   analyseLastAlgorithm,
 } from "src/composables/useSettings";
 
@@ -44,6 +46,9 @@ class BoardEdit {
 
     //In-progress drag of the floating content: { startX, startY, originCentreX, originCentreY }, or null
     this.moveDrag = null;
+
+    //In-progress toggle tool drag, or null. { isMine, lastX, lastY, undoPushed } where isMine is the value being painted
+    this.paintDrag = null;
 
     //Tool that was active before a paste switched to the clipboard's tool, restored when the pasted selection is closed
     this.toolBeforePaste = null;
@@ -134,11 +139,21 @@ class BoardEdit {
         const x = topLeft.x + i;
         const y = topLeft.y + j;
         if (floating.mask[i][j] && this.board.checkCoordsInBounds(x, y)) {
-          displayed[x][y] = floating.mines[i][j];
+          //Without overwrite, mines already on the board stay
+          displayed[x][y] =
+            floating.mines[i][j] || (!editOverwrite.value && displayed[x][y]);
         }
       }
     }
     return displayed;
+  }
+
+  refreshSessionDisplay() {
+    if (!this.session) {
+      return;
+    }
+    this.redisplay();
+    this.board.boardRenderer.draw();
   }
 
   redisplay() {
@@ -173,11 +188,26 @@ class BoardEdit {
 
   beginDrag(tileX, tileY) {
     //Returns true if the drag was captured. Caller redraws.
-    if (
-      editTool.value === "toggle" ||
-      !this.board.checkCoordsInBounds(tileX, tileY)
-    ) {
+    if (!this.board.checkCoordsInBounds(tileX, tileY)) {
       return false;
+    }
+
+    if (editTool.value === "toggle") {
+      if (!editDragPaint.value) {
+        return false;
+      }
+
+      //Starting on a safe tile paints mines, starting on a mine paints safes
+      this.paintDrag = {
+        isMine: !this.board.mines[tileX][tileY],
+        lastX: tileX,
+        lastY: tileY,
+        undoPushed: false,
+      };
+      if (this.paintTile(tileX, tileY)) {
+        this.openBoardForEdit();
+      }
+      return true;
     }
 
     if (this.isTileInSelection(tileX, tileY)) {
@@ -217,6 +247,28 @@ class BoardEdit {
       this.updateLassoMask();
     }
     this.refreshSelectedStates();
+    return true;
+  }
+
+  paintTile(tileX, tileY) {
+    //Sets a tile to the value being painted by the current paint drag. Returns true if it changed. Caller refreshes the numbers.
+    const drag = this.paintDrag;
+    if (
+      !this.board.checkCoordsInBounds(tileX, tileY) ||
+      this.board.mines[tileX][tileY] === drag.isMine
+    ) {
+      return false;
+    }
+
+    if (!drag.undoPushed) {
+      this.pushUndoSnapshot(); //One undo step for the whole drag
+      drag.undoPushed = true;
+    }
+
+    this.board.mines[tileX][tileY] = drag.isMine;
+    this.board.mineCount += drag.isMine ? 1 : -1;
+    this.board.unflagged = this.board.mineCount;
+    analyseLastAlgorithm.value = "Custom";
     return true;
   }
 
@@ -291,6 +343,43 @@ class BoardEdit {
 
   updateDrag(unflooredCoords) {
     //Returns true if the preview changed
+    if (this.paintDrag) {
+      const drag = this.paintDrag;
+      const tileX = Math.floor(unflooredCoords.tileX);
+      const tileY = Math.floor(unflooredCoords.tileY);
+      if (tileX === drag.lastX && tileY === drag.lastY) {
+        return false;
+      }
+
+      //Bresenham from the last tile so a fast drag doesn't leave gaps
+      const dx = Math.abs(tileX - drag.lastX);
+      const dy = Math.abs(tileY - drag.lastY);
+      const stepX = drag.lastX < tileX ? 1 : -1;
+      const stepY = drag.lastY < tileY ? 1 : -1;
+      let err = dx - dy;
+      let x = drag.lastX;
+      let y = drag.lastY;
+      let changed = false;
+      while (x !== tileX || y !== tileY) {
+        const doubleErr = 2 * err;
+        if (doubleErr > -dy) {
+          err -= dy;
+          x += stepX;
+        }
+        if (doubleErr < dx) {
+          err += dx;
+          y += stepY;
+        }
+        changed = this.paintTile(x, y) || changed;
+      }
+
+      drag.lastX = tileX;
+      drag.lastY = tileY;
+      if (changed) {
+        this.openBoardForEdit();
+      }
+      return changed;
+    }
     if (this.moveDrag) {
       const tileX = Utils.clamp(
         Math.floor(unflooredCoords.tileX),
@@ -377,6 +466,11 @@ class BoardEdit {
   }
 
   endDrag() {
+    if (this.paintDrag) {
+      this.paintDrag = null;
+      return;
+    }
+
     if (this.moveDrag) {
       this.moveDrag = null;
       this.syncSelectionUi();
@@ -442,12 +536,14 @@ class BoardEdit {
   cancelDrag() {
     this.drag = null;
     this.moveDrag = null;
+    this.paintDrag = null;
     this.refreshSelectedStates();
   }
 
   clearSelectionState() {
     this.drag = null;
     this.moveDrag = null;
+    this.paintDrag = null;
     this.session = null;
     this.fillPanelBackup = null;
     this.board.boardInput.activeDrag = null;
@@ -1013,7 +1109,7 @@ class BoardEdit {
 
   //---- Clipboard ----
 
-  copySelection() {
+  copySelection(message = "Selection copied") {
     if (!this.session) {
       return;
     }
@@ -1039,6 +1135,8 @@ class BoardEdit {
       mask,
       mines,
     };
+
+    Notify.create({ message, color: "purple", timeout: 1000 });
   }
 
   cutSelection() {
@@ -1046,7 +1144,7 @@ class BoardEdit {
       return;
     }
 
-    this.copySelection();
+    this.copySelection("Selection cut");
     const floating = this.session.floating;
     for (let i = 0; i < floating.w; i++) {
       for (let j = 0; j < floating.h; j++) {

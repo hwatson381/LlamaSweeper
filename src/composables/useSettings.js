@@ -1,7 +1,7 @@
 //See useCoordssettings, but put EVERYTHING in here.
 
 import { ref, computed, watchEffect } from "vue";
-import { useLocalStorage } from "@vueuse/core";
+import { useLocalStorage, useSessionStorage } from "@vueuse/core";
 import Utils from "src/classes/Utils";
 import { isWasmAvailable, wasmReadySettled } from "src/classes/RustWasm";
 
@@ -368,6 +368,9 @@ let editSelectionActive = ref(false); //Kept in sync by BoardEdit.syncSelectionU
 let editSelectionBox = ref(null); //On-board tile bounds of the selection { minX, minY, maxX, maxY }, for placing the context box
 let editFillPanelOpen = ref(false);
 let editDragInProgress = ref(false);
+let editFillPercent = useSessionStorage("ss_editFillPercent", 20);
+let editDragPaint = useLocalStorage("ls_editDragPaint", false); //Toggle tool paints mines/safes while dragging
+let editOverwrite = useLocalStorage("ls_editOverwrite", true); //Selection replaces the mines below it, rather than merging with them
 //{ v: 1, w, h, x, y, tool, mask, mines } - parsed/validated by BoardEdit.parseClipboard
 //Explicit serializer as a null default would otherwise be stored with String(), giving "[object Object]"
 let editClipboard = useLocalStorage("ls_editClipboard", null, {
@@ -783,6 +786,9 @@ export {
   editSelectionBox,
   editFillPanelOpen,
   editDragInProgress,
+  editFillPercent,
+  editDragPaint,
+  editOverwrite,
   editClipboard,
   editHasClipboard,
   flagToggleActive,

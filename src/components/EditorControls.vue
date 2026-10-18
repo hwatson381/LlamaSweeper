@@ -199,6 +199,28 @@
           >
             <q-tooltip>Paste (Ctrl+V)</q-tooltip>
           </q-btn>
+          <q-toggle
+            v-if="editTool === 'toggle'"
+            v-model="editDragPaint"
+            label="Drag"
+            dense
+          >
+            <q-tooltip max-width="250px">
+              Allow mouse drag for editing mines
+            </q-tooltip>
+          </q-toggle>
+          <q-toggle
+            v-if="editTool === 'rect' || editTool === 'lasso'"
+            v-model="editOverwrite"
+            label="Overwrite"
+            dense
+            @update:model-value="game.board.boardEdit.refreshSessionDisplay()"
+          >
+            <q-tooltip max-width="250px">
+              Whether moving a selection should overwrite existing mines or
+              merge with them
+            </q-tooltip>
+          </q-toggle>
         </div>
       </template>
     </q-card-section>
@@ -217,6 +239,8 @@ import {
   editCanUndo,
   editCanRedo,
   editHasClipboard,
+  editDragPaint,
+  editOverwrite,
   verticalExpert,
 } from "src/composables/useSettings";
 
