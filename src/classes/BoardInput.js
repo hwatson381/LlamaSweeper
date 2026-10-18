@@ -26,6 +26,10 @@ import {
   editTool,
 } from "src/composables/useSettings";
 
+//Edit mode touches on a selection's surroundings only deselect if they look like a tap rather than a scroll attempt
+const EDIT_TAP_MAX_TIME = 750;
+const EDIT_TAP_MAX_TILES = 3;
+
 class BoardInput {
   constructor(board) {
     this.board = board;
@@ -49,6 +53,10 @@ class BoardInput {
 
     //Edit mode select drag in progress: null | { pointerId: "mouse" | touchIdentifier, source: "mouseButton" | "keyboard" | "touch", isDig }
     this.activeDrag = null;
+
+    //Edit mode touch that started off the selection (so it may scroll), which deselects if it ends as a tap:
+    //null | { identifier, startTime, startScreenX, startScreenY, scrolled, valid }
+    this.editPendingTap = null;
   }
 
   resetInteractionState() {
@@ -134,6 +142,10 @@ class BoardInput {
     //Update coords as would be used by keyboard clicks
     this.lastClientCoords.clientX = event.clientX;
     this.lastClientCoords.clientY = event.clientY;
+
+    if (this.board.gameStage === "edit") {
+      this.setEditMoveCursor(!isLeave && this.isEventOverEditSelection(event));
+    }
 
     if (
       this.board.gameStage !== "pregame" &&
@@ -343,6 +355,15 @@ class BoardInput {
     }
 
     for (let touch of touches) {
+      if (this.editPendingTap?.identifier === touch.identifier) {
+        if (this.editPendingTap.valid) {
+          this.resolveEditTap(touch, event.timeStamp);
+        } else {
+          this.editPendingTap = null;
+        }
+        continue;
+      }
+
       if (
         this.activeDrag?.source === "touch" &&
         this.activeDrag.pointerId === touch.identifier
@@ -618,6 +639,12 @@ class BoardInput {
     }
 
     for (let touch of touches) {
+      if (this.editPendingTap?.identifier === touch.identifier) {
+        this.editPendingTap.valid = false;
+        this.editPendingTap = null;
+        continue;
+      }
+
       if (
         this.activeDrag?.source === "touch" &&
         this.activeDrag.pointerId === touch.identifier
@@ -764,6 +791,10 @@ class BoardInput {
     //On mobile, if the page starts scrolling, we should cancel all active touches.
     //Try keep this function fast as page scroll gets called a lot
 
+    if (this.editPendingTap) {
+      this.editPendingTap.scrolled = true;
+    }
+
     let redrawRequired = false;
 
     for (let touch of this.ongoingTouches.values()) {
@@ -794,6 +825,14 @@ class BoardInput {
   }
 
   handleEditSelectTouchStart(event) {
+    if (this.editPendingTap) {
+      this.editPendingTap.valid = false;
+      if (event.touches.length !== event.changedTouches.length) {
+        return; //Another finger is down, e.g. a pinch, so neither touch is a tap
+      }
+      this.editPendingTap = null; //Left over from a touch that already finished
+    }
+
     if (this.activeDrag) {
       return; //Other touches are ignored while a selection is being dragged
     }
@@ -804,6 +843,25 @@ class BoardInput {
         flooredCoords: this.eventToFlooredTileCoords(touch),
         unflooredCoords: this.eventToUnflooredTileCoords(touch),
       };
+
+      if (
+        this.board.boardEdit.session &&
+        !this.board.boardEdit.isTileInSelection(
+          coordsData.flooredCoords.tileX,
+          coordsData.flooredCoords.tileY
+        )
+      ) {
+        //Not grabbing the selection, so let the page scroll. If it ends as a tap it deselects instead.
+        this.editPendingTap = {
+          identifier: touch.identifier,
+          startTime: event.timeStamp,
+          startScreenX: touch.screenX,
+          startScreenY: touch.screenY,
+          scrolled: false,
+          valid: event.touches.length === 1,
+        };
+        return;
+      }
 
       this.handlePointerInput(
         true,
@@ -820,6 +878,52 @@ class BoardInput {
         event.preventDefault(); //Stops the drag scrolling the page
         return;
       }
+    }
+  }
+
+  resolveEditTap(touch, endTimeStamp) {
+    const tap = this.editPendingTap;
+    const movedTiles =
+      Math.hypot(
+        touch.screenX - tap.startScreenX,
+        touch.screenY - tap.startScreenY
+      ) / this.board.tileSize;
+
+    if (
+      endTimeStamp - tap.startTime >= EDIT_TAP_MAX_TIME ||
+      movedTiles >= EDIT_TAP_MAX_TILES
+    ) {
+      this.editPendingTap = null;
+      return;
+    }
+
+    //Scroll events are dispatched before animation frame callbacks, so by then a scroll that began before the touch ended is flagged
+    requestAnimationFrame(() => {
+      if (this.editPendingTap === tap) {
+        this.editPendingTap = null;
+      }
+      if (tap.valid && !tap.scrolled && this.board.boardEdit.session) {
+        this.board.boardEdit.closeSelection();
+      }
+    });
+  }
+
+  handleViewportScroll() {
+    //Panning while pinch-zoomed moves the visual viewport without firing a window scroll
+    if (this.editPendingTap) {
+      this.editPendingTap.scrolled = true;
+    }
+  }
+
+  isEventOverEditSelection(event) {
+    const { tileX, tileY } = this.eventToFlooredTileCoords(event);
+    return this.board.boardEdit.isTileInSelection(tileX, tileY);
+  }
+
+  setEditMoveCursor(isOverSelection) {
+    const canvas = this.board.mainCanvas?.value;
+    if (canvas) {
+      canvas.style.cursor = isOverSelection ? "move" : "";
     }
   }
 

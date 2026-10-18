@@ -14,7 +14,6 @@ import {
   editClipboard,
   editSelectionActive,
   editSelectionBox,
-  editMoveMode,
   editFillPanelOpen,
   editDragInProgress,
   analyseLastAlgorithm,
@@ -43,9 +42,8 @@ class BoardEdit {
     //base is the committed board with the selected cells cleared. Committed mines stay in board.mines until commitSession.
     this.session = null;
 
-    //In-progress drag of the floating content in move mode: { startX, startY, originCentreX, originCentreY }, or null
+    //In-progress drag of the floating content: { startX, startY, originCentreX, originCentreY }, or null
     this.moveDrag = null;
-    this.moveMode = false;
 
     //Tool that was active before a paste switched to the clipboard's tool, restored when the pasted selection is closed
     this.toolBeforePaste = null;
@@ -104,12 +102,12 @@ class BoardEdit {
 
   syncSelectionUi() {
     editSelectionActive.value = Boolean(this.session);
-    editMoveMode.value = this.moveMode;
     editFillPanelOpen.value = Boolean(this.fillPanelBackup);
     editDragInProgress.value = Boolean(this.drag || this.moveDrag);
 
     if (!this.session) {
       editSelectionBox.value = null;
+      this.board.boardInput?.setEditMoveCursor(false);
       return;
     }
 
@@ -165,6 +163,14 @@ class BoardEdit {
     };
   }
 
+  isTileInSelection(tileX, tileY) {
+    return (
+      Boolean(this.session) &&
+      this.board.checkCoordsInBounds(tileX, tileY) &&
+      this.board.tilesArray[tileX][tileY].selectedState === "final"
+    );
+  }
+
   beginDrag(tileX, tileY) {
     //Returns true if the drag was captured. Caller redraws.
     if (
@@ -174,12 +180,7 @@ class BoardEdit {
       return false;
     }
 
-    if (this.session && this.moveMode) {
-      //Move mode only grabs the selection itself
-      if (this.board.tilesArray[tileX][tileY].selectedState !== "final") {
-        return false;
-      }
-
+    if (this.isTileInSelection(tileX, tileY)) {
       const floating = this.session.floating;
       this.moveDrag = {
         startX: tileX,
@@ -196,8 +197,6 @@ class BoardEdit {
       return false;
     }
 
-    //Starting a new selection means the user is now selecting, so don't revert the tool afterwards
-    this.toolBeforePaste = null;
     this.commitSession();
     this.drag = {
       tool,
@@ -393,6 +392,20 @@ class BoardEdit {
     }
 
     const { minX, maxX, minY, maxY } = this.getDragRect();
+    if (minX === maxX && minY === maxY) {
+      //A drag that stays on one tile is a click/tap, which deselects rather than selecting a single tile
+      this.drag = null;
+      const priorTool = this.toolBeforePaste;
+      this.toolBeforePaste = null;
+      this.refreshSelectedStates();
+      if (priorTool) {
+        editTool.value = priorTool;
+      }
+      return;
+    }
+
+    //A real selection means the user is now selecting, so don't revert the tool afterwards
+    this.toolBeforePaste = null;
     const w = maxX - minX + 1;
     const h = maxY - minY + 1;
     const mask = BoardEdit.createEmptyMines(w, h);
@@ -436,7 +449,6 @@ class BoardEdit {
     this.drag = null;
     this.moveDrag = null;
     this.session = null;
-    this.moveMode = false;
     this.fillPanelBackup = null;
     this.board.boardInput.activeDrag = null;
     this.refreshSelectedStates();
@@ -490,15 +502,6 @@ class BoardEdit {
     }
     this.toolBeforePaste = null;
     this.closeSelection();
-  }
-
-  toggleMoveMode() {
-    if (!this.session) {
-      return;
-    }
-
-    this.moveMode = !this.moveMode;
-    this.syncSelectionUi();
   }
 
   transformFloating(newW, newH, mapCoords) {
@@ -578,7 +581,6 @@ class BoardEdit {
       return;
     }
 
-    this.moveMode = false;
     this.fillPanelBackup = this.session.floating.mines.map((column) =>
       column.slice()
     );

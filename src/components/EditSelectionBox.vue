@@ -4,16 +4,6 @@
       <q-btn
         dense
         size="md"
-        :color="editMoveMode ? 'primary' : 'white'"
-        :text-color="editMoveMode ? 'white' : 'black'"
-        icon="open_with"
-        @click="boardEdit.toggleMoveMode()"
-      >
-        <q-tooltip>Move selection</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
         color="white"
         text-color="black"
         icon="rotate_left"
@@ -232,7 +222,6 @@ import { computed, inject, onMounted, ref, useTemplateRef } from "vue";
 
 import {
   editSelectionBox,
-  editMoveMode,
   editFillPanelOpen,
   effectiveTileSize,
   boardHorizontalPadding,

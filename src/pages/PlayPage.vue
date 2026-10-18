@@ -350,6 +350,7 @@ onMounted(() => {
   document.body.addEventListener("keydown", handleKeyDown, true);
   document.body.addEventListener("keyup", handleKeyUp, true);
   window.addEventListener("scroll", handlePageScroll);
+  window.visualViewport?.addEventListener("scroll", handleViewportScroll);
   //Capture phase so components that stop propagation can't hide presses/releases
   window.addEventListener("mousedown", handleWindowMouseDown, true);
   window.addEventListener("mouseup", handleWindowMouseUp, true);
@@ -370,6 +371,7 @@ onUnmounted(() => {
   document.body.removeEventListener("keydown", handleKeyDown, true);
   document.body.removeEventListener("keyup", handleKeyUp, true);
   window.removeEventListener("scroll", handlePageScroll);
+  window.visualViewport?.removeEventListener("scroll", handleViewportScroll);
   window.removeEventListener("mousedown", handleWindowMouseDown, true);
   window.removeEventListener("mouseup", handleWindowMouseUp, true);
   window.removeEventListener("mousemove", handleWindowMouseMove);
@@ -558,6 +560,10 @@ function checkFocusForKeyPress(event) {
   event.stopPropagation();
 
   return true;
+}
+
+function handleViewportScroll() {
+  game.board?.boardInput.handleViewportScroll();
 }
 
 function handlePageScroll(event) {
