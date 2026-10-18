@@ -118,6 +118,7 @@
             }"
           >
           </canvas>
+          <EditSelectionBox v-if="editSelectionActive && !editDragInProgress" />
         </div>
         <q-resize-observer debounce="30" @resize="game.refreshSize()" />
 
@@ -279,6 +280,7 @@ import EffBoardsConfig from "src/components/EffBoardsConfig.vue";
 import MobileFlagButton from "src/components/MobileFlagButton.vue";
 import QuickStatsBox from "src/components/QuickStatsBox.vue";
 import EditorControls from "src/components/EditorControls.vue";
+import EditSelectionBox from "src/components/EditSelectionBox.vue";
 import BoardConfigBar from "src/components/BoardConfigBar.vue";
 import MeanOpeningsConfig from "src/components/MeanOpeningsConfig.vue";
 import EffBoardsStatusBar from "src/components/EffBoardsStatusBar.vue";
@@ -334,6 +336,8 @@ import {
   resetTransientSettings,
   pixelScale,
   editTool,
+  editSelectionActive,
+  editDragInProgress,
 } from "src/composables/useSettings";
 
 defineOptions({

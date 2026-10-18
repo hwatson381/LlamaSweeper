@@ -1,5 +1,6 @@
 import CONSTANTS from "src/includes/Constants";
 import Utils from "src/classes/Utils";
+import Algorithms from "src/classes/Algorithms";
 
 import { Dialog } from "quasar";
 
@@ -11,6 +12,11 @@ import {
   editCanUndo,
   editCanRedo,
   editClipboard,
+  editSelectionActive,
+  editSelectionBox,
+  editMoveMode,
+  editFillPanelOpen,
+  editDragInProgress,
   analyseLastAlgorithm,
 } from "src/composables/useSettings";
 
@@ -32,8 +38,16 @@ class BoardEdit {
     this.drag = null;
 
     //Current selection, or null. floating is in its own local coords and never clipped:
-    //{ mask[i][j], mines[i][j], w, h, centreX, centreY }, with sourceTool "rect" | "lasso"
+    //{ base[x][y], floating: { mask[i][j], mines[i][j], w, h, centreX, centreY }, sourceTool }
+    //base is the committed board with the selected cells cleared. Committed mines stay in board.mines until commitSession.
     this.session = null;
+
+    //In-progress drag of the floating content in move mode: { startX, startY, originCentreX, originCentreY }, or null
+    this.moveDrag = null;
+    this.moveMode = false;
+
+    //While the fill percentage panel is open, a copy of floating.mines from before it was opened (for Back)
+    this.fillPanelBackup = null;
   }
 
   //---- Selection ----
@@ -47,6 +61,8 @@ class BoardEdit {
   }
 
   refreshSelectedStates() {
+    this.syncSelectionUi();
+
     const tilesArray = this.board.tilesArray;
     if (!tilesArray) {
       return;
@@ -80,6 +96,57 @@ class BoardEdit {
     }
   }
 
+  syncSelectionUi() {
+    editSelectionActive.value = Boolean(this.session);
+    editMoveMode.value = this.moveMode;
+    editFillPanelOpen.value = Boolean(this.fillPanelBackup);
+    editDragInProgress.value = Boolean(this.drag || this.moveDrag);
+
+    if (!this.session) {
+      editSelectionBox.value = null;
+      return;
+    }
+
+    //Bounds of the floating rectangle clipped to the board
+    const floating = this.session.floating;
+    const topLeft = this.getFloatingTopLeft(floating);
+    const maxTileX = this.board.width - 1;
+    const maxTileY = this.board.height - 1;
+    editSelectionBox.value = {
+      minX: Utils.clamp(topLeft.x, 0, maxTileX),
+      minY: Utils.clamp(topLeft.y, 0, maxTileY),
+      maxX: Utils.clamp(topLeft.x + floating.w - 1, 0, maxTileX),
+      maxY: Utils.clamp(topLeft.y + floating.h - 1, 0, maxTileY),
+    };
+  }
+
+  getDisplayedMines() {
+    //Base with the floating content overlaid, clipped to the board
+    const { base, floating } = this.session;
+    const displayed = base.map((column) => column.slice());
+    const topLeft = this.getFloatingTopLeft(floating);
+    for (let i = 0; i < floating.w; i++) {
+      for (let j = 0; j < floating.h; j++) {
+        const x = topLeft.x + i;
+        const y = topLeft.y + j;
+        if (floating.mask[i][j] && this.board.checkCoordsInBounds(x, y)) {
+          displayed[x][y] = floating.mines[i][j];
+        }
+      }
+    }
+    return displayed;
+  }
+
+  redisplay() {
+    //Show the session's current content on the tiles (or the committed mines if there is no session). Caller redraws.
+    const mines = this.session ? this.getDisplayedMines() : this.board.mines;
+    this.openBoardForEdit(mines);
+    const mineCount = mines.flat().filter((val) => val).length;
+    this.board.mineCount = mineCount;
+    this.board.unflagged = mineCount;
+    this.refreshSelectedStates();
+  }
+
   getDragRect() {
     return {
       minX: Math.min(this.drag.startX, this.drag.endX),
@@ -92,9 +159,30 @@ class BoardEdit {
   beginDrag(tileX, tileY) {
     //Returns true if the drag was captured. Caller redraws.
     if (
-      editTool.value !== "rect" ||
+      editTool.value === "toggle" ||
       !this.board.checkCoordsInBounds(tileX, tileY)
     ) {
+      return false;
+    }
+
+    if (this.session && this.moveMode) {
+      //Move mode only grabs the selection itself
+      if (this.board.tilesArray[tileX][tileY].selectedState !== "final") {
+        return false;
+      }
+
+      const floating = this.session.floating;
+      this.moveDrag = {
+        startX: tileX,
+        startY: tileY,
+        originCentreX: floating.centreX,
+        originCentreY: floating.centreY,
+      };
+      this.syncSelectionUi();
+      return true;
+    }
+
+    if (editTool.value !== "rect") {
       return false;
     }
 
@@ -106,6 +194,32 @@ class BoardEdit {
 
   updateDrag(unflooredCoords) {
     //Returns true if the preview changed
+    if (this.moveDrag) {
+      const tileX = Utils.clamp(
+        Math.floor(unflooredCoords.tileX),
+        0,
+        this.board.width - 1
+      );
+      const tileY = Utils.clamp(
+        Math.floor(unflooredCoords.tileY),
+        0,
+        this.board.height - 1
+      );
+      const floating = this.session.floating;
+      const centreX =
+        this.moveDrag.originCentreX + tileX - this.moveDrag.startX;
+      const centreY =
+        this.moveDrag.originCentreY + tileY - this.moveDrag.startY;
+      if (centreX === floating.centreX && centreY === floating.centreY) {
+        return false;
+      }
+
+      floating.centreX = centreX;
+      floating.centreY = centreY;
+      this.redisplay();
+      return true;
+    }
+
     if (!this.drag) {
       return false;
     }
@@ -131,6 +245,12 @@ class BoardEdit {
   }
 
   endDrag() {
+    if (this.moveDrag) {
+      this.moveDrag = null;
+      this.syncSelectionUi();
+      return;
+    }
+
     if (!this.drag) {
       return;
     }
@@ -140,15 +260,18 @@ class BoardEdit {
     const h = maxY - minY + 1;
     const mask = BoardEdit.createEmptyMines(w, h);
     const mines = BoardEdit.createEmptyMines(w, h);
+    const base = this.board.mines.map((column) => column.slice());
     for (let i = 0; i < w; i++) {
       for (let j = 0; j < h; j++) {
         mask[i][j] = true;
         mines[i][j] = this.board.mines[minX + i][minY + j];
+        base[minX + i][minY + j] = false;
       }
     }
 
     this.drag = null;
     this.session = {
+      base,
       floating: {
         mask,
         mines,
@@ -164,20 +287,247 @@ class BoardEdit {
 
   cancelDrag() {
     this.drag = null;
+    this.moveDrag = null;
     this.refreshSelectedStates();
   }
 
-  cancelSession() {
-    //Drops any selection/drag without applying it
+  clearSelectionState() {
     this.drag = null;
+    this.moveDrag = null;
     this.session = null;
+    this.moveMode = false;
+    this.fillPanelBackup = null;
     this.board.boardInput.activeDrag = null;
     this.refreshSelectedStates();
   }
 
+  cancelSession() {
+    //Drops any selection/drag without applying it. Caller redraws.
+    const hadSession = Boolean(this.session);
+    this.clearSelectionState();
+    if (hadSession) {
+      this.redisplay();
+    }
+  }
+
   commitSession() {
-    //Selections can't yet alter the floating content, so committing is the same as cancelling
-    this.cancelSession();
+    //Applies the selection to the board (as one undo step if it changed anything) and deselects. Caller redraws unless the board changed.
+    if (!this.session) {
+      this.clearSelectionState();
+      return;
+    }
+
+    const displayed = this.getDisplayedMines();
+    const committed = this.board.mines;
+    const changed = displayed.some((column, x) =>
+      column.some((val, y) => val !== committed[x][y])
+    );
+    if (!changed) {
+      this.cancelSession();
+      return;
+    }
+
+    //board.variant rather than variant.value as this can run while switching variant
+    this.pushUndoSnapshot(this.board.variant);
+    this.replaceMines(displayed);
+  }
+
+  closeSelection() {
+    this.commitSession();
+    this.board.boardRenderer.draw();
+  }
+
+  toggleMoveMode() {
+    if (!this.session) {
+      return;
+    }
+
+    this.moveMode = !this.moveMode;
+    this.syncSelectionUi();
+  }
+
+  transformFloating(newW, newH, mapCoords) {
+    //mapCoords(i, j) gives the new local coords of the cell at local coords (i, j). Centre is kept.
+    const floating = this.session.floating;
+    const mask = BoardEdit.createEmptyMines(newW, newH);
+    const mines = BoardEdit.createEmptyMines(newW, newH);
+    for (let i = 0; i < floating.w; i++) {
+      for (let j = 0; j < floating.h; j++) {
+        const [newI, newJ] = mapCoords(i, j);
+        mask[newI][newJ] = floating.mask[i][j];
+        mines[newI][newJ] = floating.mines[i][j];
+      }
+    }
+
+    floating.mask = mask;
+    floating.mines = mines;
+    floating.w = newW;
+    floating.h = newH;
+    this.redisplay();
+    this.board.boardRenderer.draw();
+  }
+
+  rotateRight() {
+    if (!this.session) {
+      return;
+    }
+    const { w, h } = this.session.floating;
+    this.transformFloating(h, w, (i, j) => [h - 1 - j, i]);
+  }
+
+  rotateLeft() {
+    if (!this.session) {
+      return;
+    }
+    const { w, h } = this.session.floating;
+    this.transformFloating(h, w, (i, j) => [j, w - 1 - i]);
+  }
+
+  flipHorizontal() {
+    if (!this.session) {
+      return;
+    }
+    const { w, h } = this.session.floating;
+    this.transformFloating(w, h, (i, j) => [w - 1 - i, j]);
+  }
+
+  flipVertical() {
+    if (!this.session) {
+      return;
+    }
+    const { w, h } = this.session.floating;
+    this.transformFloating(w, h, (i, j) => [i, h - 1 - j]);
+  }
+
+  setSelectionMines(isMine) {
+    //Fill or clear every selected cell
+    if (!this.session) {
+      return;
+    }
+
+    const floating = this.session.floating;
+    for (let i = 0; i < floating.w; i++) {
+      for (let j = 0; j < floating.h; j++) {
+        if (floating.mask[i][j]) {
+          floating.mines[i][j] = isMine;
+        }
+      }
+    }
+    this.redisplay();
+    this.board.boardRenderer.draw();
+  }
+
+  openFillPanel(percent) {
+    if (!this.session) {
+      return;
+    }
+
+    this.moveMode = false;
+    this.fillPanelBackup = this.session.floating.mines.map((column) =>
+      column.slice()
+    );
+    this.fillSelectionPercentage(percent);
+  }
+
+  fillSelectionPercentage(percent) {
+    //Re-randomises every time, so the mines move around as the percentage changes
+    if (!this.session) {
+      return;
+    }
+
+    const floating = this.session.floating;
+    const cells = [];
+    for (let i = 0; i < floating.w; i++) {
+      for (let j = 0; j < floating.h; j++) {
+        if (floating.mask[i][j]) {
+          cells.push([i, j]);
+        }
+      }
+    }
+
+    Algorithms.fisherYatesArrayShuffle(cells);
+    const mineCount = Math.round((cells.length * percent) / 100);
+    cells.forEach(([i, j], index) => {
+      floating.mines[i][j] = index < mineCount;
+    });
+
+    this.redisplay();
+    this.board.boardRenderer.draw();
+  }
+
+  confirmFillPanel() {
+    this.fillPanelBackup = null;
+    this.syncSelectionUi();
+  }
+
+  cancelFillPanel() {
+    if (!this.session || !this.fillPanelBackup) {
+      return;
+    }
+
+    this.session.floating.mines = this.fillPanelBackup;
+    this.fillPanelBackup = null;
+    this.redisplay();
+    this.board.boardRenderer.draw();
+  }
+
+  cropToSelection() {
+    //Shrinks the board to the on-board bounding rectangle of the selection, after confirmation
+    if (!this.session) {
+      return;
+    }
+
+    const floating = this.session.floating;
+    const topLeft = this.getFloatingTopLeft(floating);
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (let i = 0; i < floating.w; i++) {
+      for (let j = 0; j < floating.h; j++) {
+        const x = topLeft.x + i;
+        const y = topLeft.y + j;
+        if (floating.mask[i][j] && this.board.checkCoordsInBounds(x, y)) {
+          minX = Math.min(minX, x);
+          maxX = Math.max(maxX, x);
+          minY = Math.min(minY, y);
+          maxY = Math.max(maxY, y);
+        }
+      }
+    }
+    if (minX === Infinity) {
+      return; //Nothing of the selection is on the board
+    }
+
+    const displayed = this.getDisplayedMines();
+
+    Dialog.create({
+      title: "Crop Board?",
+      message:
+        "Crop the board to the selection? Everything outside of it will be removed.",
+      ok: {
+        flat: true,
+        label: "Crop",
+      },
+      cancel: {
+        flat: true,
+        label: "Cancel",
+      },
+      persistent: true,
+    }).onOk(() => {
+      const cropped = BoardEdit.createEmptyMines(
+        maxX - minX + 1,
+        maxY - minY + 1
+      );
+      for (let x = minX; x <= maxX; x++) {
+        for (let y = minY; y <= maxY; y++) {
+          cropped[x - minX][y - minY] = displayed[x][y];
+        }
+      }
+
+      //Undoes the whole selection session in one step as it snapshots the committed board
+      this.replaceMinesWithUndo(cropped, { clearPath: true });
+    });
   }
 
   //---- Mines helpers ----
@@ -292,6 +642,26 @@ class BoardEdit {
 
   //---- Editing ----
 
+  static minesEqual(minesA, minesB) {
+    if (
+      minesA.length !== minesB.length ||
+      minesA[0].length !== minesB[0].length
+    ) {
+      return false;
+    }
+    return minesA.every((column, x) =>
+      column.every((val, y) => val === minesB[x][y])
+    );
+  }
+
+  replaceMinesWithUndo(newMines, options) {
+    //Only adds an undo entry if the board actually differs, otherwise the entry would be a confusing no-op
+    if (!BoardEdit.minesEqual(newMines, this.board.mines)) {
+      this.pushUndoSnapshot();
+    }
+    this.replaceMines(newMines, options);
+  }
+
   replaceMines(newMines, { clearPath = false } = {}) {
     //Single routine for swapping in a whole new mine array while in edit mode.
     //Does not push undo (callers do that) and does not update the URL (that happens on mode switch).
@@ -300,7 +670,7 @@ class BoardEdit {
     const newHeight = newMines[0].length;
     const sizeChanged = newWidth !== board.width || newHeight !== board.height;
 
-    this.cancelSession();
+    this.clearSelectionState();
 
     board.mines = newMines;
     if (board.variant === "board editor") {
@@ -412,10 +782,11 @@ class BoardEdit {
       this.board.switchToEditMode();
     }
 
-    this.pushUndoSnapshot();
-    this.replaceMines(BoardEdit.createEmptyMines(size.width, size.height), {
-      clearPath: true,
-    });
+    this.commitSession();
+    this.replaceMinesWithUndo(
+      BoardEdit.createEmptyMines(size.width, size.height),
+      { clearPath: true }
+    );
   }
 
   resizeEditBoard() {
@@ -429,7 +800,17 @@ class BoardEdit {
       this.board.switchToEditMode();
     }
 
+    this.commitSession();
     const oldMines = this.board.mines;
+
+    if (size.width === oldMines.length && size.height === oldMines[0].length) {
+      Dialog.create({
+        title: "Board unchanged",
+        message: "Please choose a different width/height before resizing.",
+      });
+      return;
+    }
+
     const newMines = BoardEdit.createEmptyMines(size.width, size.height);
     const overlapWidth = Math.min(size.width, oldMines.length);
     const overlapHeight = Math.min(size.height, oldMines[0].length);
@@ -439,12 +820,13 @@ class BoardEdit {
       }
     }
 
-    this.pushUndoSnapshot();
-    this.replaceMines(newMines, { clearPath: true });
+    this.replaceMinesWithUndo(newMines, { clearPath: true });
   }
 
   promptForClearingEditBoard() {
     //Prompt for clearing the edit board.
+
+    this.commitSession();
 
     //Check if already empty
     if (!this.board.mines.some((column) => column.some((val) => val))) {
@@ -464,8 +846,7 @@ class BoardEdit {
       },
       persistent: true,
     }).onOk(() => {
-      this.pushUndoSnapshot();
-      this.replaceMines(
+      this.replaceMinesWithUndo(
         BoardEdit.createEmptyMines(this.board.width, this.board.height),
         { clearPath: true }
       );

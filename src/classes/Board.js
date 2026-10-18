@@ -511,6 +511,7 @@ class Board {
 
   switchToPlayMode() {
     if (this.variant === "board editor") {
+      this.boardEdit.commitSession();
       this.editingEditBoard = false;
       this.gameStage = "pregame";
       isCurrentlyEditModeDisplay.value = false;

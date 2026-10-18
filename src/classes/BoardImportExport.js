@@ -178,6 +178,7 @@ class BoardImportExport {
 
     let pttMines = BoardGenerator.readFromPtta(pttaUrl);
 
+    this.board.boardEdit.commitSession();
     this.board.boardEdit.pushUndoSnapshot();
 
     if (this.board.variant === "board editor") {
@@ -217,6 +218,7 @@ class BoardImportExport {
       return false;
     }
 
+    this.board.boardEdit.commitSession();
     this.board.boardEdit.pushUndoSnapshot();
 
     if (this.board.variant === "board editor") {

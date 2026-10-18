@@ -364,6 +364,11 @@ let isCurrentlyEditModeDisplay = ref(true); //Lines up with game.board.gameStage
 let editTool = ref("toggle"); //toggle|rect|lasso
 let editCanUndo = ref(false); //Kept in sync by BoardEdit as undo stacks are per variant
 let editCanRedo = ref(false);
+let editSelectionActive = ref(false); //Kept in sync by BoardEdit.syncSelectionUi
+let editSelectionBox = ref(null); //On-board tile bounds of the selection { minX, minY, maxX, maxY }, for placing the context box
+let editMoveMode = ref(false);
+let editFillPanelOpen = ref(false);
+let editDragInProgress = ref(false);
 //{ v: 1, w, h, x, y, tool, mask, mines } - parsed/validated by BoardEdit.parseClipboard
 let editClipboard = useLocalStorage("ls_editClipboard", null);
 let editHasClipboard = computed(() => editClipboard.value !== null);
@@ -616,6 +621,11 @@ function resetTransientSettings() {
   editTool.value = "toggle";
   editCanUndo.value = false;
   editCanRedo.value = false;
+  editSelectionActive.value = false;
+  editSelectionBox.value = null;
+  editMoveMode.value = false;
+  editFillPanelOpen.value = false;
+  editDragInProgress.value = false;
 
   //Replay state
   replayIsShown.value = false;
@@ -759,6 +769,11 @@ export {
   editTool,
   editCanUndo,
   editCanRedo,
+  editSelectionActive,
+  editSelectionBox,
+  editMoveMode,
+  editFillPanelOpen,
+  editDragInProgress,
   editClipboard,
   editHasClipboard,
   flagToggleActive,
