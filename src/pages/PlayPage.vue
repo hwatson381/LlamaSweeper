@@ -336,6 +336,7 @@ import {
   resetTransientSettings,
   pixelScale,
   editTool,
+  editHasClipboard,
   editSelectionActive,
   editDragInProgress,
 } from "src/composables/useSettings";
@@ -387,8 +388,40 @@ function handleKeyDown(event) {
       const isRedo = key === "y" || (key === "z" && event.shiftKey);
       if ((isUndo || isRedo) && checkFocusForKeyPress(event)) {
         isUndo ? game.board.boardEdit.undo() : game.board.boardEdit.redo();
+      } else if (
+        key === "c" &&
+        game.board.boardEdit.session &&
+        checkEditShortcutAllowed(event)
+      ) {
+        game.board.boardEdit.copySelection();
+      } else if (
+        key === "x" &&
+        game.board.boardEdit.session &&
+        checkEditShortcutAllowed(event)
+      ) {
+        game.board.boardEdit.cutSelection();
+      } else if (
+        key === "v" &&
+        editHasClipboard.value &&
+        checkEditShortcutAllowed(event)
+      ) {
+        game.board.boardEdit.pasteClipboard();
       }
     }
+    return;
+  }
+
+  if (
+    game.board?.gameStage === "edit" &&
+    game.board.boardEdit.session &&
+    (event.key === "Escape" ||
+      event.key === "Delete" ||
+      event.key === "Backspace") &&
+    checkEditShortcutAllowed(event)
+  ) {
+    event.key === "Escape"
+      ? game.board.boardEdit.closeSelection()
+      : game.board.boardEdit.setSelectionMines(false);
     return;
   }
 
@@ -492,6 +525,14 @@ function handleWindowBlur() {
   game.board?.boardInput.handleWindowBlur();
 }
 
+function checkEditShortcutAllowed(event) {
+  //Don't act under an open dialog (e.g. the crop confirmation)
+  if (document.querySelector(".q-dialog")) {
+    return false;
+  }
+  return checkFocusForKeyPress(event);
+}
+
 function checkFocusForKeyPress(event) {
   if (
     document.activeElement?.nodeName === "INPUT" &&
@@ -565,8 +606,7 @@ watch(editTool, () => {
   if (!game.board) {
     return;
   }
-  game.board.boardEdit.commitSession();
-  game.board.boardRenderer.draw();
+  game.board.boardEdit.handleToolChange();
 });
 
 const vFocus = {

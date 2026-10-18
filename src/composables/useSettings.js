@@ -370,7 +370,19 @@ let editMoveMode = ref(false);
 let editFillPanelOpen = ref(false);
 let editDragInProgress = ref(false);
 //{ v: 1, w, h, x, y, tool, mask, mines } - parsed/validated by BoardEdit.parseClipboard
-let editClipboard = useLocalStorage("ls_editClipboard", null);
+//Explicit serializer as a null default would otherwise be stored with String(), giving "[object Object]"
+let editClipboard = useLocalStorage("ls_editClipboard", null, {
+  serializer: {
+    read: (rawValue) => {
+      try {
+        return JSON.parse(rawValue);
+      } catch {
+        return null;
+      }
+    },
+    write: (value) => JSON.stringify(value),
+  },
+});
 let editHasClipboard = computed(() => editClipboard.value !== null);
 
 let flagToggleActive = ref(false); //Whether to swap left and right mouse buttons

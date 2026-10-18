@@ -34,7 +34,8 @@ class BoardEdit {
       "zini explorer": { undo: [], redo: [], undoBytes: 0 },
     };
 
-    //In-progress rect drag: { startX, startY, endX, endY } in tile coords, or null
+    //In-progress rect/lasso drag, or null. { tool, startX, startY, endX, endY } in tile coords.
+    //A lasso drag also has { originX, originY, lastX, lastY (unfloored), marked[x][y], mask[x][y], bounds }
     this.drag = null;
 
     //Current selection, or null. floating is in its own local coords and never clipped:
@@ -78,7 +79,9 @@ class BoardEdit {
       const { minX, maxX, minY, maxY } = this.getDragRect();
       for (let x = minX; x <= maxX; x++) {
         for (let y = minY; y <= maxY; y++) {
-          tilesArray[x][y].selectedState = "preview";
+          if (!this.drag.mask || this.drag.mask[x][y]) {
+            tilesArray[x][y].selectedState = "preview";
+          }
         }
       }
     } else if (this.session) {
@@ -148,6 +151,9 @@ class BoardEdit {
   }
 
   getDragRect() {
+    if (this.drag.bounds) {
+      return this.drag.bounds; //lasso
+    }
     return {
       minX: Math.min(this.drag.startX, this.drag.endX),
       maxX: Math.max(this.drag.startX, this.drag.endX),
@@ -182,14 +188,101 @@ class BoardEdit {
       return true;
     }
 
-    if (editTool.value !== "rect") {
+    const tool = editTool.value;
+    if (tool !== "rect" && tool !== "lasso") {
       return false;
     }
 
     this.commitSession();
-    this.drag = { startX: tileX, startY: tileY, endX: tileX, endY: tileY };
+    this.drag = {
+      tool,
+      startX: tileX,
+      startY: tileY,
+      endX: tileX,
+      endY: tileY,
+    };
+    if (tool === "lasso") {
+      //The true pointer position is unknown here, so start from the middle of the tile
+      this.drag.originX = this.drag.lastX = tileX + 0.5;
+      this.drag.originY = this.drag.lastY = tileY + 0.5;
+      this.drag.marked = BoardEdit.createEmptyMines(
+        this.board.width,
+        this.board.height
+      );
+      this.drag.marked[tileX][tileY] = true;
+      this.updateLassoMask();
+    }
     this.refreshSelectedStates();
     return true;
+  }
+
+  static markSegment(grid, x0, y0, x1, y1) {
+    //Marks the tiles a line between two unfloored tile coords passes through. Sampled at least every quarter tile so
+    //consecutive marks are 8-connected, which is enough to stop a 4-connected flood fill leaking through.
+    const steps = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 0.25));
+    const maxX = grid.length - 1;
+    const maxY = grid[0].length - 1;
+    for (let s = 0; s <= steps; s++) {
+      const x = Utils.clamp(Math.floor(x0 + ((x1 - x0) * s) / steps), 0, maxX);
+      const y = Utils.clamp(Math.floor(y0 + ((y1 - y0) * s) / steps), 0, maxY);
+      grid[x][y] = true;
+    }
+  }
+
+  updateLassoMask() {
+    //Selects everything enclosed by the path, with the path closed by a line from the pointer back to the start.
+    //Overlapping loops are a union, not XOR: anything the flood fill from outside the board can't reach is selected.
+    const drag = this.drag;
+    const width = this.board.width;
+    const height = this.board.height;
+
+    const boundary = drag.marked.map((column) => column.slice());
+    BoardEdit.markSegment(
+      boundary,
+      drag.lastX,
+      drag.lastY,
+      drag.originX,
+      drag.originY
+    );
+
+    const outside = BoardEdit.createEmptyMines(width, height);
+    const stack = [];
+    const visit = (x, y) => {
+      if (!boundary[x][y] && !outside[x][y]) {
+        outside[x][y] = true;
+        stack.push([x, y]);
+      }
+    };
+    for (let x = 0; x < width; x++) {
+      visit(x, 0);
+      visit(x, height - 1);
+    }
+    for (let y = 0; y < height; y++) {
+      visit(0, y);
+      visit(width - 1, y);
+    }
+    while (stack.length > 0) {
+      const [x, y] = stack.pop();
+      if (x > 0) visit(x - 1, y);
+      if (x < width - 1) visit(x + 1, y);
+      if (y > 0) visit(x, y - 1);
+      if (y < height - 1) visit(x, y + 1);
+    }
+
+    const bounds = { minX: Infinity, maxX: -1, minY: Infinity, maxY: -1 };
+    drag.mask = outside.map((column, x) =>
+      column.map((isOutside, y) => {
+        if (isOutside) {
+          return false;
+        }
+        bounds.minX = Math.min(bounds.minX, x);
+        bounds.maxX = Math.max(bounds.maxX, x);
+        bounds.minY = Math.min(bounds.minY, y);
+        bounds.maxY = Math.max(bounds.maxY, y);
+        return true;
+      })
+    );
+    drag.bounds = bounds;
   }
 
   updateDrag(unflooredCoords) {
@@ -224,6 +317,41 @@ class BoardEdit {
       return false;
     }
 
+    if (this.drag.tool === "lasso") {
+      //Just under the board edge so the floor stays on the board
+      const pointX = Utils.clamp(
+        unflooredCoords.tileX,
+        0,
+        this.board.width - 1e-6
+      );
+      const pointY = Utils.clamp(
+        unflooredCoords.tileY,
+        0,
+        this.board.height - 1e-6
+      );
+      BoardEdit.markSegment(
+        this.drag.marked,
+        this.drag.lastX,
+        this.drag.lastY,
+        pointX,
+        pointY
+      );
+      this.drag.lastX = pointX;
+      this.drag.lastY = pointY;
+
+      const tileX = Math.floor(pointX);
+      const tileY = Math.floor(pointY);
+      if (tileX === this.drag.endX && tileY === this.drag.endY) {
+        return false;
+      }
+
+      this.drag.endX = tileX;
+      this.drag.endY = tileY;
+      this.updateLassoMask();
+      this.refreshSelectedStates();
+      return true;
+    }
+
     const endX = Utils.clamp(
       Math.floor(unflooredCoords.tileX),
       0,
@@ -255,6 +383,10 @@ class BoardEdit {
       return;
     }
 
+    if (this.drag.tool === "lasso") {
+      this.updateLassoMask(); //The last move may not have refreshed it
+    }
+
     const { minX, maxX, minY, maxY } = this.getDragRect();
     const w = maxX - minX + 1;
     const h = maxY - minY + 1;
@@ -263,12 +395,16 @@ class BoardEdit {
     const base = this.board.mines.map((column) => column.slice());
     for (let i = 0; i < w; i++) {
       for (let j = 0; j < h; j++) {
+        if (this.drag.mask && !this.drag.mask[minX + i][minY + j]) {
+          continue;
+        }
         mask[i][j] = true;
         mines[i][j] = this.board.mines[minX + i][minY + j];
         base[minX + i][minY + j] = false;
       }
     }
 
+    const sourceTool = this.drag.tool;
     this.drag = null;
     this.session = {
       base,
@@ -280,7 +416,7 @@ class BoardEdit {
         centreX: minX + w / 2,
         centreY: minY + h / 2,
       },
-      sourceTool: editTool.value,
+      sourceTool,
     };
     this.refreshSelectedStates();
   }
@@ -335,6 +471,14 @@ class BoardEdit {
   closeSelection() {
     this.commitSession();
     this.board.boardRenderer.draw();
+  }
+
+  handleToolChange() {
+    //Pasting changes the tool to match the clipboard, which must not commit the pasted selection
+    if (this.session && this.session.sourceTool === editTool.value) {
+      return;
+    }
+    this.closeSelection();
   }
 
   toggleMoveMode() {
@@ -405,6 +549,7 @@ class BoardEdit {
       return;
     }
 
+    this.fillPanelBackup = null; //Reachable by shortcut while the percentage panel is open
     const floating = this.session.floating;
     for (let i = 0; i < floating.w; i++) {
       for (let j = 0; j < floating.h; j++) {
@@ -854,6 +999,130 @@ class BoardEdit {
   }
 
   //---- Clipboard ----
+
+  copySelection() {
+    if (!this.session) {
+      return;
+    }
+
+    const { floating, sourceTool } = this.session;
+    const topLeft = this.getFloatingTopLeft(floating);
+    let mask = "";
+    let mines = "";
+    for (let i = 0; i < floating.w; i++) {
+      for (let j = 0; j < floating.h; j++) {
+        mask += floating.mask[i][j] ? "1" : "0";
+        mines += floating.mines[i][j] ? "1" : "0";
+      }
+    }
+
+    editClipboard.value = {
+      v: 1,
+      w: floating.w,
+      h: floating.h,
+      x: topLeft.x,
+      y: topLeft.y,
+      tool: sourceTool,
+      mask,
+      mines,
+    };
+  }
+
+  cutSelection() {
+    if (!this.session) {
+      return;
+    }
+
+    this.copySelection();
+    const floating = this.session.floating;
+    for (let i = 0; i < floating.w; i++) {
+      for (let j = 0; j < floating.h; j++) {
+        if (floating.mask[i][j]) {
+          floating.mines[i][j] = false;
+        }
+      }
+    }
+    this.closeSelection();
+  }
+
+  duplicateSelection() {
+    //Commits the selection in place, then selects a copy beside it (right, else below, else offset diagonally)
+    if (!this.session) {
+      return;
+    }
+
+    const { floating, sourceTool } = this.session;
+    const { w, h } = floating;
+    const copy = {
+      mask: floating.mask.map((column) => column.slice()),
+      mines: floating.mines.map((column) => column.slice()),
+      w,
+      h,
+    };
+
+    const topLeft = this.getFloatingTopLeft(floating);
+    const fitsOnBoard = (x, y) =>
+      x >= 0 &&
+      y >= 0 &&
+      x + w <= this.board.width &&
+      y + h <= this.board.height;
+    let newX = topLeft.x + w;
+    let newY = topLeft.y;
+    if (!fitsOnBoard(newX, newY)) {
+      newX = topLeft.x;
+      newY = topLeft.y + h;
+      if (!fitsOnBoard(newX, newY)) {
+        newX = topLeft.x + 1;
+        newY = topLeft.y + 1;
+      }
+    }
+
+    this.commitSession();
+
+    this.session = {
+      base: this.board.mines.map((column) => column.slice()),
+      floating: { ...copy, centreX: newX + w / 2, centreY: newY + h / 2 },
+      sourceTool,
+    };
+    this.redisplay();
+    this.board.boardRenderer.draw();
+  }
+
+  pasteClipboard() {
+    if (this.board.gameStage !== "edit") {
+      return;
+    }
+
+    const clip = this.parseClipboard();
+    if (!clip) {
+      return;
+    }
+
+    this.commitSession();
+
+    const { w, h } = clip;
+    const mask = BoardEdit.createEmptyMines(w, h);
+    const mines = BoardEdit.createEmptyMines(w, h);
+    for (let i = 0; i < w; i++) {
+      for (let j = 0; j < h; j++) {
+        mask[i][j] = clip.mask[i * h + j] === "1";
+        mines[i][j] = clip.mines[i * h + j] === "1";
+      }
+    }
+
+    //Keeps the top left on the board, but content bigger than the board can hang off
+    const x = Utils.clamp(clip.x, 0, this.board.width - 1);
+    const y = Utils.clamp(clip.y, 0, this.board.height - 1);
+
+    this.session = {
+      base: this.board.mines.map((column) => column.slice()),
+      floating: { mask, mines, w, h, centreX: x + w / 2, centreY: y + h / 2 },
+      sourceTool: clip.tool,
+    };
+    editTool.value = clip.tool;
+    this.redisplay();
+    this.board.boardRenderer.draw();
+  }
 
   parseClipboard() {
     //Returns the stored clipboard, or null if missing/corrupt/unknown version

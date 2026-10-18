@@ -170,6 +170,7 @@
             :options="[
               { label: 'Toggle', value: 'toggle', icon: 'edit' },
               { label: 'Rect', value: 'rect', icon: 'crop_square' },
+              { label: 'Lasso', value: 'lasso', icon: 'gesture' },
             ]"
           />
           <q-btn-group>
@@ -190,6 +191,14 @@
               <q-tooltip>Redo (Ctrl+Y)</q-tooltip>
             </q-btn>
           </q-btn-group>
+          <q-btn
+            color="primary"
+            icon="content_paste"
+            :disable="!editHasClipboard"
+            @click="game.board.boardEdit.pasteClipboard()"
+          >
+            <q-tooltip>Paste (Ctrl+V)</q-tooltip>
+          </q-btn>
         </div>
       </template>
     </q-card-section>
@@ -207,6 +216,7 @@ import {
   editTool,
   editCanUndo,
   editCanRedo,
+  editHasClipboard,
   verticalExpert,
 } from "src/composables/useSettings";
 

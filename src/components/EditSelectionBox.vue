@@ -96,6 +96,36 @@
         size="sm"
         color="white"
         text-color="black"
+        icon="content_copy"
+        @click="boardEdit.copySelection()"
+      >
+        <q-tooltip>Copy (Ctrl+C)</q-tooltip>
+      </q-btn>
+      <q-btn
+        dense
+        size="sm"
+        color="white"
+        text-color="black"
+        icon="content_cut"
+        @click="boardEdit.cutSelection()"
+      >
+        <q-tooltip>Cut (Ctrl+X)</q-tooltip>
+      </q-btn>
+      <q-btn
+        dense
+        size="sm"
+        color="white"
+        text-color="black"
+        icon="control_point_duplicate"
+        @click="boardEdit.duplicateSelection()"
+      >
+        <q-tooltip>Duplicate</q-tooltip>
+      </q-btn>
+      <q-btn
+        dense
+        size="sm"
+        color="white"
+        text-color="black"
         icon="close"
         @click="boardEdit.closeSelection()"
       >
