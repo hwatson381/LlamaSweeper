@@ -1,0 +1,11 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" id="fragment">
+<circle cx="12" cy="12" r="5" fill="currentColor" stroke="currentColor" stroke-width="2.5"/>
+<path d="M12 6.49829L12 1.50317" stroke-width="2.5" stroke="currentColor"/>
+<path d="M12 22.4973L12 17.5" stroke-width="2.5" stroke="currentColor"/>
+<path d="M6.49707 12L1.4978 12" stroke-width="2.5" stroke="currentColor"/>
+<path d="M22.4998 12H17.5" stroke-width="2.5" stroke="currentColor"/>
+<path d="M8.10928 8.1102L5.99136 5.99228" stroke-width="2.5" stroke="currentColor"/>
+<path d="M18.0095 18.0105L15.8889 15.8899" stroke-width="2.5" stroke="currentColor"/>
+<path d="M8.10849 15.8917L5.98557 18.0146" stroke-width="2.5" stroke="currentColor"/>
+<path d="M18.0082 5.99082L15.8888 8.11021" stroke-width="2.5" stroke="currentColor"/>
+</svg>

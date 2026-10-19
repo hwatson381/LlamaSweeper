@@ -168,7 +168,11 @@
             glossy
             toggle-color="primary"
             :options="[
-              { label: 'Toggle', value: 'toggle', icon: 'sym_o_bomb' },
+              {
+                label: 'Toggle',
+                value: 'toggle',
+                icon: 'svguse:/icons/mine_icon.svg#fragment',
+              },
               { label: 'Rect', value: 'rect', icon: 'sym_o_select' },
               { label: 'Lasso', value: 'lasso', icon: 'sym_o_lasso_select' },
             ]"
