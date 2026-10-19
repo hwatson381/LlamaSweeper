@@ -1,7 +1,6 @@
 Just some random things I need to do
 
 Improve OthersPage to use masonary layout instead of grid
-Move project files over to WSL2 (this is needed for hot-reload to work?)
 
 stuff for play page:
 have board-history for exploring past replays (and replays of same game get grouped up)

@@ -9,11 +9,13 @@
     "build:wasm": "cd wasm && wasm-pack build --target web",
     "dev:wasm": "cd wasm && wasm-pack build --target web",
     "dev:js": "quasar dev",
+    "dev:js:poll": "LLAMASWEEPER_USE_POLLING=1 quasar dev",
     "build:js": "quasar build && cp CNAME dist/spa",
     "lint": "eslint --ext .js,.vue ./",
     "format": "prettier --write \"**/*.{js,vue,css,html,md,json}\"",
     "test": "echo \"No test specified\" && exit 0",
     "dev": "npm run dev:wasm && quasar dev",
+    "dev:poll": "npm run dev:wasm && LLAMASWEEPER_USE_POLLING=1 quasar dev",
     "build": "npm run build:wasm && quasar build && cp CNAME dist/spa",
     "deploy": "push-dir --dir=dist/spa --remote=gh-pages --branch=main"
   },

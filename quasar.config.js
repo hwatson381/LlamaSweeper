@@ -61,7 +61,16 @@ module.exports = configure(function (/* ctx */) {
       // polyfillModulePreload: true,
       // distDir
 
-      // extendViteConf (viteConf) {},
+      extendViteConf(viteConf) {
+        if (process.env.LLAMASWEEPER_USE_POLLING !== "1") return;
+
+        viteConf.server ??= {};
+        viteConf.server.watch = {
+          ...viteConf.server.watch,
+          usePolling: true,
+          interval: 1000,
+        };
+      },
       // viteVuePluginOptions: {},
 
       vitePlugins: [
