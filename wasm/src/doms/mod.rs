@@ -13,6 +13,8 @@
 //! * `table` / `prune`: DP state storage and exact dominance pruning.
 //! * `solution`: turning the chosen chords into a validated click sequence.
 
+#[cfg(feature = "analysis")]
+pub mod analysis;
 mod frontier;
 pub mod model;
 mod order;

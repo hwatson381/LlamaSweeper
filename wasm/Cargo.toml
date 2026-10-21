@@ -9,6 +9,12 @@ crate-type = ["cdylib", "rlib"]
 
 [features]
 default = ["console_error_panic_hook"]
+# Layer hook for offline DOMS state analysis (see examples/doms_analysis.rs).
+analysis = []
+
+[[example]]
+name = "doms_analysis"
+required-features = ["analysis"]
 
 [dependencies]
 wasm-bindgen = "0.2.84"

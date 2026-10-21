@@ -855,6 +855,8 @@ pub fn solve_frontier(
         drop(std::mem::replace(&mut pool, ConnectivityPool::with_capacity(0)));
         drop(transitions);
 
+        #[cfg(feature = "analysis")]
+        let states_before_pruning = next.len();
         let report = prune_dominated(
             &mut next,
             dominance_comparisons,
@@ -870,6 +872,20 @@ pub fn solve_frontier(
         dominance_limited_layers += report.limited as usize;
         table = next;
         pool = next_pool;
+
+        #[cfg(feature = "analysis")]
+        super::analysis::layer_done(&super::analysis::LayerView {
+            layer: candidate,
+            layers: candidate_count,
+            states_before_pruning,
+            table: &table,
+            pool: &pool,
+            model: &model,
+            mine_factor_mask: &factors.mine_factor_mask,
+            bbbv_factor_mask: &factors.bbbv_factor_mask,
+            active_factors: active,
+            candidate_words,
+        });
 
         peak_states = peak_states.max(table.len());
         total_states += table.len();
