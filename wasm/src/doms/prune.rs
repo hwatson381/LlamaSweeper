@@ -236,10 +236,7 @@ pub struct PruneReport {
     /// States pass 3 removed.
     pub reverse_dominated: usize,
     pub reverse_comparisons: u64,
-    pub reverse_limited: bool,
     pub times: PruneTimes,
-    /// Pass 1 skipped a state, or pass 2 stopped, because the comparison budget ran out.
-    pub limited: bool,
 }
 
 /// `(cost + bbbv hits, cost, -total hits)`. A dominator's first element never exceeds its
@@ -268,19 +265,15 @@ struct CoarseCandidate {
     reach_start: usize,
 }
 
-/// Returns what was removed. `comparison_limit` caps state-to-state comparisons in passes 1 and 2
-/// and `reverse_limit` those in pass 3 (0 turns it off); reaching either only keeps more states, it
-/// never makes the result inexact.
+/// Returns what was removed. State-to-state comparisons are uncapped in all three passes.
 pub fn prune_dominated(
     table: &mut StateTable,
-    comparison_limit: u64,
-    reverse_limit: u64,
     bbbv_factor_mask: &[u64],
     pool: &ConnectivityPool,
     signature_words: usize,
 ) -> PruneReport {
     let mut report = PruneReport::default();
-    if comparison_limit == 0 || table.len() < 2 {
+    if table.len() < 2 {
         return report;
     }
     let mut lap = Lap::start();
@@ -361,7 +354,6 @@ pub fn prune_dominated(
         )
     };
 
-    let mut remaining = comparison_limit;
     let mut dominated = vec![false; summaries.len()];
     let mut survivors: Vec<Vec<usize>> = state_counts.iter().map(|&count| Vec::with_capacity(count)).collect();
     let mut minimum_quasi = vec![i32::MAX; connectivity_count];
@@ -372,13 +364,7 @@ pub fn prune_dominated(
         let summary = &summaries[position];
         let connectivity_id = table.connectivity_id(summary.entry) as usize;
         let kept = &survivors[connectivity_id];
-        let mut is_dominated = false;
-        if remaining >= kept.len() as u64 {
-            remaining -= kept.len() as u64;
-            is_dominated = kept.iter().any(|&prior| dominates(&summaries[prior], summary, 0));
-        } else {
-            report.limited = true;
-        }
+        let is_dominated = kept.iter().any(|&prior| dominates(&summaries[prior], summary, 0));
         if is_dominated {
             dominated[position] = true;
         } else {
@@ -454,11 +440,7 @@ pub fn prune_dominated(
     // available as dominators until the scan finishes.
     let mut cross_dominated = vec![false; summaries.len()];
     let mut coarser: Vec<usize> = Vec::new();
-    let mut exhausted = false;
     for fine_id in 0..connectivity_count {
-        if exhausted {
-            break;
-        }
         if survivors[fine_id].is_empty() {
             continue;
         }
@@ -514,12 +496,6 @@ pub fn prune_dominated(
                     if dominator.key > target.key {
                         break;
                     }
-                    if remaining == 0 {
-                        exhausted = true;
-                        report.limited = true;
-                        break 'coarse;
-                    }
-                    remaining -= 1;
                     if dominates(dominator, target, 0) {
                         is_dominated = true;
                         break 'coarse;
@@ -527,9 +503,6 @@ pub fn prune_dominated(
                 }
             }
             cross_dominated[position] = is_dominated;
-            if exhausted {
-                break;
-            }
         }
     }
 
@@ -538,11 +511,10 @@ pub fn prune_dominated(
     // Pass 3: finer connectivity dominating coarser connectivity, which also pays one click per
     // extra chain. Every such edge has a positive charge, so it can't close a dominance cycle.
     let mut reverse_dominated = vec![false; summaries.len()];
-    if reverse_limit > 0 {
-        let mut reverse_remaining = reverse_limit;
+    {
         let mut finer: Vec<(usize, i32)> = Vec::new();
         let mut refine_scratch: Vec<u64> = Vec::new();
-        'targets: for coarse_id in 0..connectivity_count {
+        for coarse_id in 0..connectivity_count {
             let coarse_count = chain_counts[coarse_id];
             if coarse_count == 0 || survivors[coarse_id].iter().all(|&position| cross_dominated[position]) {
                 continue;
@@ -592,11 +564,7 @@ pub fn prune_dominated(
                         if dominator.key.0 + charge > target.key.0 {
                             break;
                         }
-                        if reverse_remaining == 0 {
-                            report.reverse_limited = true;
-                            break 'targets;
-                        }
-                        reverse_remaining -= 1;
+                        report.reverse_comparisons += 1;
                         if dominates(dominator, target, charge) {
                             reverse_dominated[position] = true;
                             report.reverse_dominated += 1;
@@ -606,7 +574,6 @@ pub fn prune_dominated(
                 }
             }
         }
-        report.reverse_comparisons = reverse_limit - reverse_remaining;
     }
     report.times.pass3 = lap.lap();
 

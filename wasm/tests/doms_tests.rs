@@ -358,8 +358,6 @@ struct PruningTotals {
     total_states: usize,
     reverse_dominated: usize,
     reverse_max_comparisons: u64,
-    reverse_limited_layers: usize,
-    dominance_limited_layers: usize,
     prune_times: doms::PruneTimes,
     dp_times: doms::DpTimes,
 }
@@ -369,8 +367,6 @@ impl PruningTotals {
         self.total_states += stats.total_states;
         self.reverse_dominated += stats.reverse_dominated;
         self.reverse_max_comparisons = self.reverse_max_comparisons.max(stats.reverse_max_comparisons);
-        self.reverse_limited_layers += stats.reverse_limited_layers;
-        self.dominance_limited_layers += stats.dominance_limited_layers;
         self.prune_times.add(&stats.prune_times);
         self.dp_times.add(&stats.dp_times);
     }
@@ -380,12 +376,10 @@ impl std::fmt::Display for PruningTotals {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "total states {}, reverse dominated {}, reverse max comparisons per layer {}, reverse-limited layers {}, pass 1/2-limited layers {}\n  prune time: {}\n  dp time: {}",
+            "total states {}, reverse dominated {}, reverse max comparisons per layer {}\n  prune time: {}\n  dp time: {}",
             self.total_states,
             self.reverse_dominated,
             self.reverse_max_comparisons,
-            self.reverse_limited_layers,
-            self.dominance_limited_layers,
             self.prune_times,
             self.dp_times
         )

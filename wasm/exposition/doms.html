@@ -192,8 +192,9 @@
         <tr><td>exact split test</td><td>the final check, run last</td></tr>
       </table>
       <p>
-        Pass 3 has its own budget of 500,000 comparisons per layer, separate from the 10,000,000 of passes 1 and 2 (<a href="#limits">1.14</a>). It can neither
-        use up their budget nor be starved by it. Like theirs, it only affects how many states survive, never the answer.
+        <b>Note: the comparison caps have since been lifted.</b> Pass 3 used to have its own budget of 500,000 comparisons per layer, separate from the 10,000,000 of passes 1 and 2
+        (<a href="#limits">1.14</a>). The solver now has no comparison budgets and every pass runs to completion. Either way, a budget only affected how many
+        states survived, never the answer.
       </p>
       <p>
         <b>What it buys.</b> These numbers were measured in the Rust solver with the default static rule, with pass 3 off and on. This page's toy DP has
@@ -227,8 +228,9 @@
 
       <h3 id="limits">1.14 State limit and comparison cap</h3>
       <p>
-        Two different limits protect the solver from spending unbounded time or memory. The normal defaults are a maximum of <b>2,000,000 live states
-        in one layer</b> and a budget of <b>10,000,000 state-to-state dominance comparisons in one pruning pass</b>. They control resources, not the
+        <b>Note: the comparison caps have been lifted.</b> The solver no longer limits comparisons in any pass; the description below explains what the caps
+        used to do. The normal default of the state limit is a maximum of <b>2,000,000 live states in one layer</b>. The former comparison budgets were
+        <b>10,000,000 state-to-state dominance comparisons in one pruning pass</b> for passes 1 and 2 and 500,000 per layer for pass 3. Limits control resources, not the
         mathematical objective.
       </p>
       <p>
@@ -236,13 +238,13 @@
         layer where it happened. It does not choose the best state seen so far and call that an answer, because that could discard the true optimum.
       </p>
       <p>
-        The comparison cap is different. Every comparison it does make uses the same sound dominance proof described above. When the budget runs out,
+        The (former) comparison cap is different. Every comparison it did make used the same sound dominance proof described above. When the budget ran out,
         the solver simply stops attempting more comparisons and keeps the states it has not checked. That can leave more states for later layers and make
         the solve slower or reach the state limit sooner, but it cannot remove a state that might be better. A completed solve therefore remains exact;
         the cap limits pruning work, not answer quality.
       </p>
       <p>
-        Pass 3 (<a href="#pass3">1.10b</a>) has its own separate budget, so it cannot use up the one for passes 1 and 2. It too only affects how many states survive.
+        Pass 3 (<a href="#pass3">1.10b</a>) had its own separate budget, so it could not use up the one for passes 1 and 2. It too only affected how many states survived.
       </p>
       <div data-diagram="limits"></div>
 

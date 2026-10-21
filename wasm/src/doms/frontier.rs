@@ -29,9 +29,6 @@ const MAX_PARTNERS: usize = 64;
 const MAX_EXACT_REVEALS: usize = 24;
 const MAX_CANCEL_FACTORS: usize = 32;
 
-// Pass 3 of pruning (a finer state dominating a coarser one). A budget of 0 turns it off.
-const REVERSE_DOMINANCE_COMPARISONS: u64 = 500_000;
-
 pub struct FrontierOutcome {
     /// Chorded candidates, as indexes into the original (unordered) model.
     pub chords: Vec<usize>,
@@ -51,9 +48,6 @@ pub struct FrontierOutcome {
     pub reverse_dominated: usize,
     /// Most pass 3 comparisons used in any one layer.
     pub reverse_max_comparisons: u64,
-    pub reverse_limited_layers: usize,
-    /// Layers where the budget for pass 1 or 2 ran out.
-    pub dominance_limited_layers: usize,
     /// Sum of the state count after pruning over all layers.
     pub total_states: usize,
     pub prune_times: PruneTimes,
@@ -647,7 +641,6 @@ pub fn solve_frontier(
     original: &ChordModel,
     rule: StaticRule,
     max_states: usize,
-    dominance_comparisons: u64,
     options: &DomsOptions,
     progress: &mut dyn FnMut(DomsProgress),
 ) -> Result<FrontierOutcome, DomsError> {
@@ -698,7 +691,7 @@ pub fn solve_frontier(
     let mut max_active_factors = 0usize;
     let (mut skipped_by_forced_skip, mut skipped_by_exchange) = (0usize, 0usize);
     let (mut reverse_dominated, mut reverse_max_comparisons) = (0usize, 0u64);
-    let (mut reverse_limited_layers, mut dominance_limited_layers, mut total_states) = (0usize, 0usize, 0usize);
+    let mut total_states = 0usize;
     let mut prune_times = PruneTimes::default();
     let mut dp_times = DpTimes::default();
 
@@ -859,8 +852,6 @@ pub fn solve_frontier(
         let states_before_pruning = next.len();
         let report = prune_dominated(
             &mut next,
-            dominance_comparisons,
-            REVERSE_DOMINANCE_COMPARISONS,
             &factors.bbbv_factor_mask,
             &next_pool,
             candidate_words,
@@ -868,8 +859,6 @@ pub fn solve_frontier(
         prune_times.add(&report.times);
         reverse_dominated += report.reverse_dominated;
         reverse_max_comparisons = reverse_max_comparisons.max(report.reverse_comparisons);
-        reverse_limited_layers += report.reverse_limited as usize;
-        dominance_limited_layers += report.limited as usize;
         table = next;
         pool = next_pool;
 
@@ -951,8 +940,6 @@ pub fn solve_frontier(
         skipped_by_exchange,
         reverse_dominated,
         reverse_max_comparisons,
-        reverse_limited_layers,
-        dominance_limited_layers,
         total_states,
         prune_times,
         dp_times,

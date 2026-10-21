@@ -32,7 +32,6 @@ pub use order::SweepOrder;
 pub use prune::PruneTimes;
 
 pub const DEFAULT_MAX_STATES: usize = 2_000_000;
-pub const DEFAULT_DOMINANCE_COMPARISONS: u64 = 10_000_000;
 
 #[derive(Debug)]
 pub enum DomsError {
@@ -118,13 +117,10 @@ pub struct DomsStats {
     /// DP children not built because a sibling rule proved the other child no worse.
     pub skipped_by_forced_skip: usize,
     pub skipped_by_exchange: usize,
-    /// Pruning pass 3 (finer dominating coarser): states removed, most comparisons used in a
-    /// layer, and layers where its budget ran out.
+    /// Pruning pass 3 (finer dominating coarser): states removed and most comparisons used in a
+    /// layer.
     pub reverse_dominated: usize,
     pub reverse_max_comparisons: u64,
-    pub reverse_limited_layers: usize,
-    /// Layers where the budget for pruning passes 1 or 2 ran out.
-    pub dominance_limited_layers: usize,
     /// Sum of the state count after pruning over all layers.
     pub total_states: usize,
     pub prune_times: PruneTimes,
@@ -193,7 +189,7 @@ pub fn solve_board_with_options(
 ) -> Result<DomsResult, DomsError> {
     let model = ChordModel::from_board(board);
     let outcome =
-        frontier::solve_frontier(&model, rule, max_states, DEFAULT_DOMINANCE_COMPARISONS, options, progress)?;
+        frontier::solve_frontier(&model, rule, max_states, options, progress)?;
     let solution = solution::construct_solution(&model, &outcome.chords, Some(outcome.total_clicks))?;
     let mut result = to_result(board, &model, solution);
     result.stats.sweep_order = outcome.sweep_order;
@@ -206,8 +202,6 @@ pub fn solve_board_with_options(
     result.stats.skipped_by_exchange = outcome.skipped_by_exchange;
     result.stats.reverse_dominated = outcome.reverse_dominated;
     result.stats.reverse_max_comparisons = outcome.reverse_max_comparisons;
-    result.stats.reverse_limited_layers = outcome.reverse_limited_layers;
-    result.stats.dominance_limited_layers = outcome.dominance_limited_layers;
     result.stats.total_states = outcome.total_states;
     result.stats.prune_times = outcome.prune_times;
     result.stats.dp_times = outcome.dp_times;

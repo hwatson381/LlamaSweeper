@@ -1,3 +1,5 @@
+Note - this readme comes from a related project written in C++, but the projects have since diverged, so it will not be accurate.
+
 # Deterministically Optimal Minesweeper Solver (DOMS)
 
 DOMS is based on an idea by **qqwref** and was implemented and optimized by
