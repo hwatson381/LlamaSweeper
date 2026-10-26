@@ -65,6 +65,21 @@
       >
         <EditorControls class="margin-centreable" />
       </div>
+      <div
+        v-if="
+          (variant === 'board editor' || variant === 'zini explorer') &&
+          isCurrentlyEditModeDisplay
+        "
+        class="q-mx-md q-mt-sm"
+      >
+        <EditorToolbar
+          v-for="design in editorToolbarDesigns"
+          :key="design.appearance"
+          :appearance="design.appearance"
+          :label="design.label"
+          class="margin-centreable"
+        />
+      </div>
       <EffBoardsStatusBar
         v-if="variant === 'eff boards'"
         class="text-centreable"
@@ -280,6 +295,7 @@ import EffBoardsConfig from "src/components/EffBoardsConfig.vue";
 import MobileFlagButton from "src/components/MobileFlagButton.vue";
 import QuickStatsBox from "src/components/QuickStatsBox.vue";
 import EditorControls from "src/components/EditorControls.vue";
+import EditorToolbar from "src/components/EditorToolbar.vue";
 import EditSelectionBox from "src/components/EditSelectionBox.vue";
 import BoardConfigBar from "src/components/BoardConfigBar.vue";
 import MeanOpeningsConfig from "src/components/MeanOpeningsConfig.vue";
@@ -344,6 +360,13 @@ import {
 defineOptions({
   name: "PlayPage",
 });
+
+const editorToolbarDesigns = [
+  { appearance: "reference", label: "Reference — current design" },
+  { appearance: "quasar", label: "Quasar card" },
+  { appearance: "replay", label: "ReplayBar-inspired" },
+  { appearance: "minimal", label: "Minimal strip" },
+];
 
 onMounted(() => {
   resetTransientSettings();

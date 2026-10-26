@@ -159,74 +159,6 @@
           </q-list>
         </q-btn-dropdown>
       </div>
-      <template v-if="isCurrentlyEditModeDisplay">
-        <q-separator class="q-my-md" />
-        <div class="flex" style="gap: 15px">
-          <q-btn-toggle
-            v-model="editTool"
-            push
-            glossy
-            toggle-color="primary"
-            :options="[
-              {
-                label: 'Toggle',
-                value: 'toggle',
-                icon: 'svguse:/icons/mine_icon.svg#fragment',
-              },
-              { label: 'Rect', value: 'rect', icon: 'sym_o_select' },
-              { label: 'Lasso', value: 'lasso', icon: 'sym_o_lasso_select' },
-            ]"
-          />
-          <q-btn-group>
-            <q-btn
-              color="primary"
-              icon="undo"
-              :disable="!editCanUndo"
-              @click="game.board.boardEdit.undo()"
-            >
-              <q-tooltip>Undo (Ctrl+Z)</q-tooltip>
-            </q-btn>
-            <q-btn
-              color="primary"
-              icon="redo"
-              :disable="!editCanRedo"
-              @click="game.board.boardEdit.redo()"
-            >
-              <q-tooltip>Redo (Ctrl+Y)</q-tooltip>
-            </q-btn>
-          </q-btn-group>
-          <q-btn
-            color="primary"
-            icon="content_paste"
-            :disable="!editHasClipboard"
-            @click="game.board.boardEdit.pasteClipboard()"
-          >
-            <q-tooltip>Paste (Ctrl+V)</q-tooltip>
-          </q-btn>
-          <q-toggle
-            v-if="editTool === 'toggle'"
-            v-model="editDragPaint"
-            label="Drag"
-            dense
-          >
-            <q-tooltip max-width="250px">
-              Allow mouse drag for editing mines
-            </q-tooltip>
-          </q-toggle>
-          <q-toggle
-            v-if="editTool === 'rect' || editTool === 'lasso'"
-            v-model="editOverwrite"
-            label="Overwrite"
-            dense
-            @update:model-value="game.board.boardEdit.refreshSessionDisplay()"
-          >
-            <q-tooltip max-width="250px">
-              Whether moving a selection should overwrite existing mines or
-              merge with them
-            </q-tooltip>
-          </q-toggle>
-        </div>
-      </template>
     </q-card-section>
   </q-card>
 </template>
@@ -239,12 +171,6 @@ import {
   pttaImportModal,
   mbfImportModal,
   isCurrentlyEditModeDisplay,
-  editTool,
-  editCanUndo,
-  editCanRedo,
-  editHasClipboard,
-  editDragPaint,
-  editOverwrite,
   verticalExpert,
 } from "src/composables/useSettings";
 
