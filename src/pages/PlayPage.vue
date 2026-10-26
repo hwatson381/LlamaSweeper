@@ -72,13 +72,7 @@
         "
         class="q-mx-md q-mt-sm"
       >
-        <EditorToolbar
-          v-for="design in editorToolbarDesigns"
-          :key="design.appearance"
-          :appearance="design.appearance"
-          :label="design.label"
-          class="margin-centreable"
-        />
+        <EditorToolbar class="margin-centreable" />
       </div>
       <EffBoardsStatusBar
         v-if="variant === 'eff boards'"
@@ -360,13 +354,6 @@ import {
 defineOptions({
   name: "PlayPage",
 });
-
-const editorToolbarDesigns = [
-  { appearance: "reference", label: "Reference — current design" },
-  { appearance: "quasar", label: "Quasar card" },
-  { appearance: "replay", label: "ReplayBar-inspired" },
-  { appearance: "minimal", label: "Minimal strip" },
-];
 
 onMounted(() => {
   resetTransientSettings();
