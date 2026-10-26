@@ -22,7 +22,7 @@
         >
           <q-icon :name="tool.icon" />
           <span class="edit-toolbar-label">{{ tool.label }}</span>
-          <q-tooltip>{{ tool.tooltip }}</q-tooltip>
+          <q-tooltip delay="500">{{ tool.tooltip }}</q-tooltip>
         </q-btn>
       </div>
       <div class="edit-toolbar-section" role="group" aria-label="Edit history">
@@ -36,7 +36,7 @@
           :disable="!editCanUndo"
           @click="game.board.boardEdit.undo()"
         >
-          <q-tooltip>Undo (Ctrl+Z)</q-tooltip>
+          <q-tooltip delay="500">Undo (Ctrl+Z)</q-tooltip>
         </q-btn>
         <q-btn
           flat
@@ -48,7 +48,7 @@
           :disable="!editCanRedo"
           @click="game.board.boardEdit.redo()"
         >
-          <q-tooltip>Redo (Ctrl+Y)</q-tooltip>
+          <q-tooltip delay="500">Redo (Ctrl+Y)</q-tooltip>
         </q-btn>
       </div>
       <div class="edit-toolbar-section" role="group" aria-label="Clipboard">
@@ -62,7 +62,7 @@
           :disable="!editHasClipboard"
           @click="game.board.boardEdit.pasteClipboard()"
         >
-          <q-tooltip>Paste (Ctrl+V)</q-tooltip>
+          <q-tooltip delay="500">Paste (Ctrl+V)</q-tooltip>
         </q-btn>
       </div>
       <div class="edit-toolbar-section" role="group" aria-label="Tool options">
@@ -72,7 +72,7 @@
           label="Drag"
           dense
         >
-          <q-tooltip max-width="250px">
+          <q-tooltip delay="500" max-width="250px">
             Allow mouse drag for editing mines
           </q-tooltip>
         </q-toggle>
@@ -83,7 +83,7 @@
           dense
           @update:model-value="game.board.boardEdit.refreshSessionDisplay()"
         >
-          <q-tooltip max-width="250px">
+          <q-tooltip delay="500" max-width="250px">
             Whether moving a selection should overwrite existing mines or merge
             with them
           </q-tooltip>

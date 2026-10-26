@@ -9,7 +9,7 @@
         icon="rotate_left"
         @click="boardEdit.rotateLeft()"
       >
-        <q-tooltip>Rotate left</q-tooltip>
+        <q-tooltip delay="500">Rotate left</q-tooltip>
       </q-btn>
       <q-btn
         dense
@@ -19,7 +19,7 @@
         icon="rotate_right"
         @click="boardEdit.rotateRight()"
       >
-        <q-tooltip>Rotate right</q-tooltip>
+        <q-tooltip delay="500">Rotate right</q-tooltip>
       </q-btn>
       <q-btn
         dense
@@ -29,7 +29,7 @@
         icon="control_point_duplicate"
         @click="boardEdit.duplicateSelection()"
       >
-        <q-tooltip>Duplicate</q-tooltip>
+        <q-tooltip delay="500">Duplicate</q-tooltip>
       </q-btn>
       <q-btn
         dense
@@ -39,7 +39,7 @@
         icon="content_copy"
         @click="boardEdit.copySelection()"
       >
-        <q-tooltip>Copy (Ctrl+C)</q-tooltip>
+        <q-tooltip delay="500">Copy (Ctrl+C)</q-tooltip>
       </q-btn>
       <q-btn
         dense
@@ -49,7 +49,7 @@
         icon="content_cut"
         @click="boardEdit.cutSelection()"
       >
-        <q-tooltip>Cut (Ctrl+X)</q-tooltip>
+        <q-tooltip delay="500">Cut (Ctrl+X)</q-tooltip>
       </q-btn>
       <q-btn
         dense
@@ -59,7 +59,7 @@
         icon="crop"
         @click="boardEdit.cropToSelection()"
       >
-        <q-tooltip>Crop board to selection</q-tooltip>
+        <q-tooltip delay="500">Crop board to selection</q-tooltip>
       </q-btn>
       <q-btn
         dense
@@ -69,7 +69,7 @@
         icon="flip"
         @click="boardEdit.flipHorizontal()"
       >
-        <q-tooltip>Flip horizontally</q-tooltip>
+        <q-tooltip delay="500">Flip horizontally</q-tooltip>
       </q-btn>
       <q-btn
         dense
@@ -79,7 +79,7 @@
         @click="boardEdit.flipVertical()"
       >
         <q-icon name="flip" style="transform: rotate(90deg)" />
-        <q-tooltip>Flip vertically</q-tooltip>
+        <q-tooltip delay="500">Flip vertically</q-tooltip>
       </q-btn>
       <q-btn
         dense
@@ -89,7 +89,7 @@
         icon="format_color_fill"
         @click="boardEdit.setSelectionMines(true)"
       >
-        <q-tooltip>Fill with mines</q-tooltip>
+        <q-tooltip delay="500">Fill with mines</q-tooltip>
       </q-btn>
       <q-btn
         dense
@@ -99,7 +99,7 @@
         icon="delete"
         @click="boardEdit.setSelectionMines(false)"
       >
-        <q-tooltip>Clear mines</q-tooltip>
+        <q-tooltip delay="500">Clear mines</q-tooltip>
       </q-btn>
       <q-btn
         dense
@@ -109,7 +109,7 @@
         icon="percent"
         @click="boardEdit.openFillPanel(editFillPercent)"
       >
-        <q-tooltip>Fill percentage</q-tooltip>
+        <q-tooltip delay="500">Fill percentage</q-tooltip>
       </q-btn>
       <q-btn
         dense
@@ -119,7 +119,7 @@
         icon="close"
         @click="boardEdit.closeSelection()"
       >
-        <q-tooltip>Deselect</q-tooltip>
+        <q-tooltip delay="500">Deselect</q-tooltip>
       </q-btn>
     </template>
     <div v-else class="fill-panel">
@@ -145,7 +145,7 @@
           icon="arrow_back"
           @click="boardEdit.cancelFillPanel()"
         >
-          <q-tooltip>Back (discard)</q-tooltip>
+          <q-tooltip delay="500">Back (discard)</q-tooltip>
         </q-btn>
         <q-space />
         <q-btn
@@ -156,7 +156,7 @@
           icon="refresh"
           @click="boardEdit.fillSelectionPercentage(editFillPercent)"
         >
-          <q-tooltip>Refresh mines</q-tooltip>
+          <q-tooltip delay="500">Refresh mines</q-tooltip>
         </q-btn>
         <q-btn
           dense
@@ -166,7 +166,7 @@
           icon="check"
           @click="boardEdit.confirmFillPanel()"
         >
-          <q-tooltip>Keep</q-tooltip>
+          <q-tooltip delay="500">Keep</q-tooltip>
         </q-btn>
       </div>
     </div>
