@@ -53,6 +53,9 @@ class BoardEdit {
     //Tool that was active before a paste switched to the clipboard's tool, restored when the pasted selection is closed
     this.toolBeforePaste = null;
 
+    //Top left of the last paste or duplicate, used to spot a selection that shouldn't be pasted over
+    this.lastPlacedTopLeft = null;
+
     //While the fill percentage panel is open, a copy of floating.mines from before it was opened (for Back)
     this.fillPanelBackup = null;
   }
@@ -1172,21 +1175,12 @@ class BoardEdit {
     };
 
     const topLeft = this.getFloatingTopLeft(floating);
-    const fitsOnBoard = (x, y) =>
-      x >= 0 &&
-      y >= 0 &&
-      x + w <= this.board.width &&
-      y + h <= this.board.height;
-    let newX = topLeft.x + w;
-    let newY = topLeft.y;
-    if (!fitsOnBoard(newX, newY)) {
-      newX = topLeft.x;
-      newY = topLeft.y + h;
-      if (!fitsOnBoard(newX, newY)) {
-        newX = topLeft.x + 1;
-        newY = topLeft.y + 1;
-      }
-    }
+    const { x: newX, y: newY } = this.findAdjacentSpot(
+      topLeft.x,
+      topLeft.y,
+      w,
+      h
+    );
 
     this.commitSession();
 
@@ -1195,11 +1189,58 @@ class BoardEdit {
       floating: { ...copy, centreX: newX + w / 2, centreY: newY + h / 2 },
       sourceTool,
     };
+    this.lastPlacedTopLeft = { x: newX, y: newY };
     this.redisplay();
     this.board.boardRenderer.draw();
   }
 
-  pasteClipboard() {
+  findAdjacentSpot(x, y, w, h) {
+    //Right of the rect, else below, else offset diagonally
+    const fits = (px, py) =>
+      px >= 0 &&
+      py >= 0 &&
+      px + w <= this.board.width &&
+      py + h <= this.board.height;
+    if (fits(x + w, y)) {
+      return { x: x + w, y };
+    }
+    if (fits(x, y + h)) {
+      return { x, y: y + h };
+    }
+    return { x: x + 1, y: y + 1 };
+  }
+
+  getPastePosition(clip, atPointer) {
+    //Must run before commitSession clears the selection
+    if (atPointer) {
+      const input = this.board.boardInput;
+      const { tileX, tileY } = input.eventToFlooredTileCoords(
+        input.lastClientCoords
+      );
+      if (this.board.checkCoordsInBounds(tileX, tileY)) {
+        return { x: tileX, y: tileY };
+      }
+    }
+    if (this.session) {
+      const floating = this.session.floating;
+      const topLeft = this.getFloatingTopLeft(floating);
+      const matches = (spot) =>
+        spot && spot.x === topLeft.x && spot.y === topLeft.y;
+      //A selection that is the copy source or the last paste/duplicate would just be pasted over
+      if (matches(clip) || matches(this.lastPlacedTopLeft)) {
+        return this.findAdjacentSpot(
+          topLeft.x,
+          topLeft.y,
+          floating.w,
+          floating.h
+        );
+      }
+      return topLeft;
+    }
+    return this.findAdjacentSpot(clip.x, clip.y, clip.w, clip.h);
+  }
+
+  pasteClipboard({ atPointer = false } = {}) {
     if (this.board.gameStage !== "edit") {
       return;
     }
@@ -1209,6 +1250,7 @@ class BoardEdit {
       return;
     }
 
+    const pos = this.getPastePosition(clip, atPointer);
     const priorTool = this.toolBeforePaste ?? editTool.value;
     this.commitSession();
 
@@ -1222,15 +1264,18 @@ class BoardEdit {
       }
     }
 
-    //Keeps the top left on the board, but content bigger than the board can hang off
-    const x = Utils.clamp(clip.x, 0, this.board.width - 1);
-    const y = Utils.clamp(clip.y, 0, this.board.height - 1);
+    //Content bigger than the board on an axis is pinned to 0 there (clipped when the paste is applied)
+    const x =
+      w >= this.board.width ? 0 : Utils.clamp(pos.x, 0, this.board.width - w);
+    const y =
+      h >= this.board.height ? 0 : Utils.clamp(pos.y, 0, this.board.height - h);
 
     this.session = {
       base: this.board.mines.map((column) => column.slice()),
       floating: { mask, mines, w, h, centreX: x + w / 2, centreY: y + h / 2 },
       sourceTool: clip.tool,
     };
+    this.lastPlacedTopLeft = { x, y };
     this.toolBeforePaste = priorTool;
     editTool.value = clip.tool;
     this.redisplay();

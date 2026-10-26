@@ -417,7 +417,7 @@ function handleKeyDown(event) {
         editHasClipboard.value &&
         checkEditShortcutAllowed(event)
       ) {
-        game.board.boardEdit.pasteClipboard();
+        game.board.boardEdit.pasteClipboard({ atPointer: true });
       }
     }
     return;
