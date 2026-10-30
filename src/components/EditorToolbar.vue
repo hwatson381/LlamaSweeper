@@ -4,7 +4,7 @@
     bordered
     class="edit-toolbar"
     :class="$q.dark.isActive ? 'edit-toolbar--dark' : 'bg-grey-2'"
-    style="max-width: 550px"
+    style="max-width: 550px; touch-action: manipulation"
   >
     <q-card-section class="edit-toolbar-content">
       <div class="edit-toolbar-section" role="group" aria-label="Editing tools">
@@ -19,8 +19,8 @@
           :aria-pressed="editTool === tool.value"
           :aria-label="tool.ariaLabel"
           @click="editTool = tool.value"
+          :icon="tool.icon"
         >
-          <q-icon :name="tool.icon" />
           <span class="edit-toolbar-label">{{ tool.label }}</span>
           <q-tooltip delay="500">{{ tool.tooltip }}</q-tooltip>
         </q-btn>
@@ -152,6 +152,7 @@ function toolTextColor(tool) {
   align-items: center;
   gap: 4px;
   padding: 5px 7px;
+  touch-action: manipulation;
 }
 
 .edit-toolbar-section {
@@ -174,6 +175,7 @@ function toolTextColor(tool) {
 .edit-toolbar-button {
   min-height: 34px;
   border-radius: 5px;
+  touch-action: manipulation;
 }
 
 .edit-toolbar-icon-button {
