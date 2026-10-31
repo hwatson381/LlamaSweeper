@@ -38,6 +38,7 @@ import {
   quickPaintModeDisplay,
   editBoardUnappliedWidth,
   editBoardUnappliedHeight,
+  editTool,
   isCurrentlyEditModeDisplay,
   flagToggleActive,
   flagToggleShowReset,
@@ -66,6 +67,9 @@ class Board {
     this.ziniExplorerMines = new Array(9)
       .fill(0)
       .map(() => new Array(9).fill(false));
+    //Board editor tiles marked as the starting position, always the same size as boardEditorMines
+    this.boardEditorStart = BoardEdit.createEmptyMines(9, 9);
+    this.startMarks = null; //Refers to boardEditorStart on the board editor, otherwise null
     this.editingEditBoard = true;
     this.editingZiniBoard = true;
 
@@ -132,12 +136,19 @@ class Board {
     //This way it gets saved when we switch variants
     if (this.variant === "board editor") {
       this.mines = this.boardEditorMines;
+      this.startMarks = this.boardEditorStart;
     } else if (this.variant === "zini explorer") {
       this.mines = this.ziniExplorerMines;
+      this.startMarks = null;
     } else {
       this.meanOpenings.unprocessedMeanZeros = [];
       this.meanOpenings.meanMineStates = null; //Only matters for mean openings variant
       this.mines = null;
+      this.startMarks = null;
+    }
+
+    if (!this.startMarks && editTool.value === "start") {
+      editTool.value = "toggle"; //Start tool only exists on the board editor
     }
 
     //board editor/zini explorer use different width/height/mines
@@ -296,6 +307,15 @@ class Board {
     console.log("saving game (need to implement)");
 
     //TODO - code to serialise this game and save to boardHistory
+  }
+
+  setBoardEditorMines(mines) {
+    //Start markings aren't in the URL or imports yet, so a replaced board has none
+    this.boardEditorMines = mines;
+    this.boardEditorStart = BoardEdit.createEmptyMines(
+      mines.length,
+      mines[0].length
+    );
   }
 
   revertUnappliedWidthHeightSetting() {
@@ -922,7 +942,7 @@ class Board {
       return false;
     }
 
-    this.boardEditorMines = pttMines;
+    this.setBoardEditorMines(pttMines);
 
     this.revertUnappliedWidthHeightSetting();
 

@@ -213,6 +213,7 @@ class SkinManager {
       highlight: "#2FEF00",
       selectPreview: "rgba(60, 120, 255, 0.35)",
       selectFinal: "rgba(90, 90, 90, 0.4)",
+      startMark: "#FF7F00",
       hint: {
         safe: {
           hue: 120,
@@ -249,6 +250,7 @@ class SkinManager {
       highlight: "#2FEF00",
       selectPreview: "rgba(90, 150, 255, 0.4)",
       selectFinal: "rgba(200, 200, 200, 0.3)",
+      startMark: "#f0ff78",
       hint: {
         safe: {
           hue: 120,
@@ -419,6 +421,10 @@ class SkinManager {
 
   getSelectFinalColour() {
     return this.colours[boardSkin.value].selectFinal;
+  }
+
+  getStartMarkColour() {
+    return this.colours[boardSkin.value].startMark;
   }
 
   getHintColour(colourScale, isFloating) {

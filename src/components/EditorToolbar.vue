@@ -9,7 +9,7 @@
     <q-card-section class="edit-toolbar-content">
       <div class="edit-toolbar-section" role="group" aria-label="Editing tools">
         <q-btn
-          v-for="tool in tools"
+          v-for="tool in availableTools"
           :key="tool.value"
           flat
           dense
@@ -22,7 +22,7 @@
           :icon="tool.icon"
         >
           <span class="edit-toolbar-label">{{ tool.label }}</span>
-          <q-tooltip delay="500">{{ tool.tooltip }}</q-tooltip>
+          <q-tooltip :delay="500">{{ tool.tooltip }}</q-tooltip>
         </q-btn>
       </div>
       <div class="edit-toolbar-section" role="group" aria-label="Edit history">
@@ -36,7 +36,7 @@
           :disable="!editCanUndo"
           @click="game.board.boardEdit.undo()"
         >
-          <q-tooltip delay="500">Undo (Ctrl+Z)</q-tooltip>
+          <q-tooltip :delay="500">Undo (Ctrl+Z)</q-tooltip>
         </q-btn>
         <q-btn
           flat
@@ -48,7 +48,7 @@
           :disable="!editCanRedo"
           @click="game.board.boardEdit.redo()"
         >
-          <q-tooltip delay="500">Redo (Ctrl+Y)</q-tooltip>
+          <q-tooltip :delay="500">Redo (Ctrl+Y)</q-tooltip>
         </q-btn>
       </div>
       <div class="edit-toolbar-section" role="group" aria-label="Clipboard">
@@ -62,18 +62,18 @@
           :disable="!editHasClipboard"
           @click="game.board.boardEdit.pasteClipboard()"
         >
-          <q-tooltip delay="500">Paste (Ctrl+V)</q-tooltip>
+          <q-tooltip :delay="500">Paste (Ctrl+V)</q-tooltip>
         </q-btn>
       </div>
       <div class="edit-toolbar-section" role="group" aria-label="Tool options">
         <q-toggle
-          v-if="editTool === 'toggle'"
+          v-if="editTool === 'toggle' || editTool === 'start'"
           v-model="editDragPaint"
           label="Drag"
           dense
         >
-          <q-tooltip delay="500" max-width="250px">
-            Allow mouse drag for editing mines
+          <q-tooltip :delay="500" max-width="250px">
+            Allow mouse drag for editing mines or initial reveals
           </q-tooltip>
         </q-toggle>
         <q-toggle
@@ -83,9 +83,9 @@
           dense
           @update:model-value="game.board.boardEdit.refreshSessionDisplay()"
         >
-          <q-tooltip delay="500" max-width="250px">
-            Whether moving a selection should overwrite existing mines or merge
-            with them
+          <q-tooltip :delay="500" max-width="250px">
+            Whether selections should overwrite the existing board or merge with
+            it
           </q-tooltip>
         </q-toggle>
       </div>
@@ -103,6 +103,7 @@ import {
   editHasClipboard,
   editDragPaint,
   editOverwrite,
+  variant,
 } from "src/composables/useSettings";
 
 defineOptions({
@@ -115,7 +116,7 @@ const game = inject("game");
 const tools = [
   {
     value: "toggle",
-    label: "Toggle",
+    label: "Mine",
     icon: "svguse:/icons/mine_icon.svg#fragment",
     ariaLabel: "Toggle mines",
     tooltip: "Toggle mines",
@@ -134,7 +135,21 @@ const tools = [
     ariaLabel: "Lasso selection tool",
     tooltip: "Lasso selection",
   },
+  {
+    value: "start",
+    label: "Reveal",
+    icon: "sym_o_visibility",
+    ariaLabel: "Toggle initial reveals",
+    tooltip: "Toggle start revealed",
+  },
 ];
+
+//Start markings only exist on the board editor
+const availableTools = computed(() =>
+  tools.filter(
+    (tool) => tool.value !== "start" || variant.value === "board editor"
+  )
+);
 
 const buttonTextColor = computed(() =>
   $q.dark.isActive ? "grey-2" : "grey-9"
@@ -186,7 +201,7 @@ function toolTextColor(tool) {
   gap: 6px;
 }
 
-@media (max-width: 540px) {
+@media (max-width: 600px) {
   .edit-toolbar-label {
     display: none;
   }

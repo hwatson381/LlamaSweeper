@@ -1,125 +1,24 @@
 <template>
-  <div ref="box" class="edit-selection-box q-pa-xs" :style="boxStyle">
+  <div
+    ref="box"
+    class="edit-selection-box q-pa-xs"
+    :style="[
+      boxStyle,
+      { gridTemplateColumns: `repeat(${columns}, max-content)` },
+    ]"
+  >
     <template v-if="!editFillPanelOpen">
       <q-btn
+        v-for="button in buttons"
+        :key="button.key"
         dense
         size="md"
-        color="light-green-2"
-        text-color="black"
-        icon="rotate_left"
-        @click="boardEdit.rotateLeft()"
+        :color="button.color"
+        :text-color="button.textColor ?? 'black'"
+        @click="button.action()"
       >
-        <q-tooltip delay="500">Rotate left</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="light-green-2"
-        text-color="black"
-        icon="rotate_right"
-        @click="boardEdit.rotateRight()"
-      >
-        <q-tooltip delay="500">Rotate right</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="light-blue-2"
-        text-color="black"
-        icon="control_point_duplicate"
-        @click="boardEdit.duplicateSelection()"
-      >
-        <q-tooltip delay="500">Duplicate</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="light-blue-2"
-        text-color="black"
-        icon="content_copy"
-        @click="boardEdit.copySelection()"
-      >
-        <q-tooltip delay="500">Copy (Ctrl+C)</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="light-blue-2"
-        text-color="black"
-        icon="content_cut"
-        @click="boardEdit.cutSelection()"
-      >
-        <q-tooltip delay="500">Cut (Ctrl+X)</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="yellow-3"
-        text-color="black"
-        icon="crop"
-        @click="boardEdit.cropToSelection()"
-      >
-        <q-tooltip delay="500">Crop board to selection</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="light-green-2"
-        text-color="black"
-        icon="flip"
-        @click="boardEdit.flipHorizontal()"
-      >
-        <q-tooltip delay="500">Flip horizontally</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="light-green-2"
-        text-color="black"
-        @click="boardEdit.flipVertical()"
-      >
-        <q-icon name="flip" style="transform: rotate(90deg)" />
-        <q-tooltip delay="500">Flip vertically</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="deep-orange-2"
-        text-color="black"
-        icon="format_color_fill"
-        @click="boardEdit.setSelectionMines(true)"
-      >
-        <q-tooltip delay="500">Fill with mines</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="deep-orange-2"
-        text-color="black"
-        icon="delete"
-        @click="boardEdit.setSelectionMines(false)"
-      >
-        <q-tooltip delay="500">Clear mines</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="deep-orange-2"
-        text-color="black"
-        icon="percent"
-        @click="boardEdit.openFillPanel(editFillPercent)"
-      >
-        <q-tooltip delay="500">Fill percentage</q-tooltip>
-      </q-btn>
-      <q-btn
-        dense
-        size="md"
-        color="grey-10"
-        text-color="white"
-        icon="close"
-        @click="boardEdit.closeSelection()"
-      >
-        <q-tooltip delay="500">Deselect</q-tooltip>
+        <q-icon :name="button.icon" :style="button.iconStyle" />
+        <q-tooltip :delay="500">{{ button.tooltip }}</q-tooltip>
       </q-btn>
     </template>
     <div v-else class="fill-panel">
@@ -145,7 +44,7 @@
           icon="arrow_back"
           @click="boardEdit.cancelFillPanel()"
         >
-          <q-tooltip delay="500">Back (discard)</q-tooltip>
+          <q-tooltip :delay="500">Back (discard)</q-tooltip>
         </q-btn>
         <q-space />
         <q-btn
@@ -156,7 +55,7 @@
           icon="refresh"
           @click="boardEdit.fillSelectionPercentage(editFillPercent)"
         >
-          <q-tooltip delay="500">Refresh mines</q-tooltip>
+          <q-tooltip :delay="500">Refresh mines</q-tooltip>
         </q-btn>
         <q-btn
           dense
@@ -166,7 +65,7 @@
           icon="check"
           @click="boardEdit.confirmFillPanel()"
         >
-          <q-tooltip delay="500">Keep</q-tooltip>
+          <q-tooltip :delay="500">Keep</q-tooltip>
         </q-btn>
       </div>
     </div>
@@ -225,6 +124,7 @@ import {
   editSelectionBox,
   editFillPanelOpen,
   editFillPercent,
+  variant,
   effectiveTileSize,
   boardHorizontalPadding,
   boardTopPadding,
@@ -236,6 +136,140 @@ defineOptions({
 
 const game = inject("game");
 const boardEdit = computed(() => game.board.boardEdit);
+
+const GREEN = "light-green-2";
+const BLUE = "light-blue-2";
+const ORANGE = "deep-orange-2";
+const YELLOW = "yellow-3";
+
+const allButtons = computed(() => ({
+  rotateLeft: {
+    color: GREEN,
+    icon: "rotate_left",
+    tooltip: "Rotate left",
+    action: () => boardEdit.value.rotateLeft(),
+  },
+  rotateRight: {
+    color: GREEN,
+    icon: "rotate_right",
+    tooltip: "Rotate right",
+    action: () => boardEdit.value.rotateRight(),
+  },
+  flipHorizontal: {
+    color: GREEN,
+    icon: "flip",
+    tooltip: "Flip horizontally",
+    action: () => boardEdit.value.flipHorizontal(),
+  },
+  flipVertical: {
+    color: GREEN,
+    icon: "flip",
+    iconStyle: "transform: rotate(90deg)",
+    tooltip: "Flip vertically",
+    action: () => boardEdit.value.flipVertical(),
+  },
+  duplicate: {
+    color: BLUE,
+    icon: "control_point_duplicate",
+    tooltip: "Duplicate",
+    action: () => boardEdit.value.duplicateSelection(),
+  },
+  copy: {
+    color: BLUE,
+    icon: "content_copy",
+    tooltip: "Copy (Ctrl+C)",
+    action: () => boardEdit.value.copySelection(),
+  },
+  cut: {
+    color: BLUE,
+    icon: "content_cut",
+    tooltip: "Cut (Ctrl+X)",
+    action: () => boardEdit.value.cutSelection(),
+  },
+  fillMines: {
+    color: ORANGE,
+    icon: "format_color_fill",
+    tooltip: "Fill with mines",
+    action: () => boardEdit.value.setSelectionMines(true),
+  },
+  clearMines: {
+    color: ORANGE,
+    icon: "delete",
+    tooltip: "Clear mines",
+    action: () => boardEdit.value.setSelectionMines(false),
+  },
+  fillPercent: {
+    color: ORANGE,
+    icon: "percent",
+    tooltip: "Fill percentage",
+    action: () => boardEdit.value.openFillPanel(editFillPercent.value),
+  },
+  markStart: {
+    color: YELLOW,
+    icon: "sym_o_visibility",
+    tooltip: "Fill start revealed",
+    action: () => boardEdit.value.setSelectionStart(true),
+  },
+  clearStart: {
+    color: YELLOW,
+    icon: "sym_o_visibility_off",
+    tooltip: "Clear start revealed",
+    action: () => boardEdit.value.setSelectionStart(false),
+  },
+  crop: {
+    color: "purple-2",
+    icon: "crop",
+    tooltip: "Crop board to selection",
+    action: () => boardEdit.value.cropToSelection(),
+  },
+  deselect: {
+    color: "grey-10",
+    textColor: "white",
+    icon: "close",
+    tooltip: "Deselect",
+    action: () => boardEdit.value.closeSelection(),
+  },
+}));
+
+//Board editor has start markings, so gets 7 columns with the transforms on one row. Zini explorer keeps 6.
+const buttonOrder = computed(() =>
+  variant.value === "board editor"
+    ? [
+        "rotateLeft",
+        "rotateRight",
+        "flipHorizontal",
+        "flipVertical",
+        "duplicate",
+        "copy",
+        "cut",
+        "fillMines",
+        "clearMines",
+        "fillPercent",
+        "markStart",
+        "clearStart",
+        "crop",
+        "deselect",
+      ]
+    : [
+        "rotateLeft",
+        "rotateRight",
+        "duplicate",
+        "copy",
+        "cut",
+        "crop",
+        "flipHorizontal",
+        "flipVertical",
+        "fillMines",
+        "clearMines",
+        "fillPercent",
+        "deselect",
+      ]
+);
+
+const buttons = computed(() =>
+  buttonOrder.value.map((key) => ({ key, ...allButtons.value[key] }))
+);
+const columns = computed(() => (variant.value === "board editor" ? 7 : 6));
 
 const box = useTemplateRef("box");
 const boxSize = ref({ width: 0, height: 0 });

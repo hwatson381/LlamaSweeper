@@ -28,7 +28,8 @@ class BoardEdit {
   constructor(board) {
     this.board = board;
 
-    //Undo/redo stacks are per variant. Snapshots are { w, h, data } where bit (x * h + y) of data is 1 for a mine
+    //Undo/redo stacks are per variant. Snapshots are { w, h, data, startData } where bit (x * h + y) of data is 1 for a mine
+    //startData is the same for start markings, or null on variants without them.
     //undoBytes is the running total size of the snapshots in undo.
     this.stacks = {
       "board editor": { undo: [], redo: [], undoBytes: 0 },
@@ -40,14 +41,15 @@ class BoardEdit {
     this.drag = null;
 
     //Current selection, or null. floating is in its own local coords and never clipped:
-    //{ base[x][y], floating: { mask[i][j], mines[i][j], w, h, centreX, centreY }, sourceTool }
-    //base is the committed board with the selected cells cleared. Committed mines stay in board.mines until commitSession.
+    //{ base[x][y], baseStart[x][y], floating: { mask[i][j], mines[i][j], start[i][j], w, h, centreX, centreY }, sourceTool }
+    //base/baseStart are the committed board with the selected cells cleared. Committed mines stay in board.mines until commitSession.
+    //start is tracked even where start markings aren't used (zini explorer) and just discarded on commit.
     this.session = null;
 
     //In-progress drag of the floating content: { startX, startY, originCentreX, originCentreY }, or null
     this.moveDrag = null;
 
-    //In-progress toggle tool drag, or null. { isMine, lastX, lastY, undoPushed } where isMine is the value being painted
+    //In-progress toggle/start tool drag, or null. { tool, value, lastX, lastY, undoPushed } where value is what is being painted
     this.paintDrag = null;
 
     //Tool that was active before a paste switched to the clipboard's tool, restored when the pasted selection is closed
@@ -132,23 +134,44 @@ class BoardEdit {
     };
   }
 
-  getDisplayedMines() {
+  getDisplayedLayer(baseLayer, floatingLayer) {
     //Base with the floating content overlaid, clipped to the board
-    const { base, floating } = this.session;
-    const displayed = base.map((column) => column.slice());
+    const floating = this.session.floating;
+    const displayed = baseLayer.map((column) => column.slice());
     const topLeft = this.getFloatingTopLeft(floating);
     for (let i = 0; i < floating.w; i++) {
       for (let j = 0; j < floating.h; j++) {
         const x = topLeft.x + i;
         const y = topLeft.y + j;
         if (floating.mask[i][j] && this.board.checkCoordsInBounds(x, y)) {
-          //Without overwrite, mines already on the board stay
+          //Without overwrite, values already on the board stay
           displayed[x][y] =
-            floating.mines[i][j] || (!editOverwrite.value && displayed[x][y]);
+            floatingLayer[i][j] || (!editOverwrite.value && displayed[x][y]);
         }
       }
     }
     return displayed;
+  }
+
+  getDisplayedMines() {
+    return this.getDisplayedLayer(
+      this.session.base,
+      this.session.floating.mines
+    );
+  }
+
+  getDisplayedStart() {
+    return this.getDisplayedLayer(
+      this.session.baseStart,
+      this.session.floating.start
+    );
+  }
+
+  getStartGrid() {
+    return (
+      this.board.startMarks ??
+      BoardEdit.createEmptyMines(this.board.width, this.board.height)
+    );
   }
 
   refreshSessionDisplay() {
@@ -162,7 +185,10 @@ class BoardEdit {
   redisplay() {
     //Show the session's current content on the tiles (or the committed mines if there is no session). Caller redraws.
     const mines = this.session ? this.getDisplayedMines() : this.board.mines;
-    this.openBoardForEdit(mines);
+    const start = this.session
+      ? this.getDisplayedStart()
+      : this.board.startMarks;
+    this.openBoardForEdit(mines, start);
     const mineCount = mines.flat().filter((val) => val).length;
     this.board.mineCount = mineCount;
     this.board.unflagged = mineCount;
@@ -195,14 +221,17 @@ class BoardEdit {
       return false;
     }
 
-    if (editTool.value === "toggle") {
+    const tool = editTool.value;
+    if (tool === "toggle" || tool === "start") {
       if (!editDragPaint.value) {
         return false;
       }
 
-      //Starting on a safe tile paints mines, starting on a mine paints safes
+      //Starting on an unset tile paints the value on, starting on a set tile paints it off
+      const grid = tool === "start" ? this.board.startMarks : this.board.mines;
       this.paintDrag = {
-        isMine: !this.board.mines[tileX][tileY],
+        tool,
+        value: !grid[tileX][tileY],
         lastX: tileX,
         lastY: tileY,
         undoPushed: false,
@@ -225,7 +254,6 @@ class BoardEdit {
       return true;
     }
 
-    const tool = editTool.value;
     if (tool !== "rect" && tool !== "lasso") {
       return false;
     }
@@ -256,9 +284,11 @@ class BoardEdit {
   paintTile(tileX, tileY) {
     //Sets a tile to the value being painted by the current paint drag. Returns true if it changed. Caller refreshes the numbers.
     const drag = this.paintDrag;
+    const grid =
+      drag.tool === "start" ? this.board.startMarks : this.board.mines;
     if (
       !this.board.checkCoordsInBounds(tileX, tileY) ||
-      this.board.mines[tileX][tileY] === drag.isMine
+      grid[tileX][tileY] === drag.value
     ) {
       return false;
     }
@@ -268,10 +298,12 @@ class BoardEdit {
       drag.undoPushed = true;
     }
 
-    this.board.mines[tileX][tileY] = drag.isMine;
-    this.board.mineCount += drag.isMine ? 1 : -1;
-    this.board.unflagged = this.board.mineCount;
-    analyseLastAlgorithm.value = "Custom";
+    grid[tileX][tileY] = drag.value;
+    if (drag.tool === "toggle") {
+      this.board.mineCount += drag.value ? 1 : -1;
+      this.board.unflagged = this.board.mineCount;
+      analyseLastAlgorithm.value = "Custom";
+    }
     return true;
   }
 
@@ -507,7 +539,10 @@ class BoardEdit {
     const h = maxY - minY + 1;
     const mask = BoardEdit.createEmptyMines(w, h);
     const mines = BoardEdit.createEmptyMines(w, h);
+    const start = BoardEdit.createEmptyMines(w, h);
+    const startGrid = this.getStartGrid();
     const base = this.board.mines.map((column) => column.slice());
+    const baseStart = startGrid.map((column) => column.slice());
     for (let i = 0; i < w; i++) {
       for (let j = 0; j < h; j++) {
         if (this.drag.mask && !this.drag.mask[minX + i][minY + j]) {
@@ -515,7 +550,9 @@ class BoardEdit {
         }
         mask[i][j] = true;
         mines[i][j] = this.board.mines[minX + i][minY + j];
+        start[i][j] = startGrid[minX + i][minY + j];
         base[minX + i][minY + j] = false;
+        baseStart[minX + i][minY + j] = false;
       }
     }
 
@@ -523,9 +560,11 @@ class BoardEdit {
     this.drag = null;
     this.session = {
       base,
+      baseStart,
       floating: {
         mask,
         mines,
+        start,
         w,
         h,
         centreX: minX + w / 2,
@@ -570,10 +609,11 @@ class BoardEdit {
     }
 
     const displayed = this.getDisplayedMines();
-    const committed = this.board.mines;
-    const changed = displayed.some((column, x) =>
-      column.some((val, y) => val !== committed[x][y])
-    );
+    const displayedStart = this.getDisplayedStart();
+    const changed =
+      !BoardEdit.minesEqual(displayed, this.board.mines) ||
+      (this.board.startMarks !== null &&
+        !BoardEdit.minesEqual(displayedStart, this.board.startMarks));
     if (!changed) {
       this.cancelSession();
       return;
@@ -581,7 +621,7 @@ class BoardEdit {
 
     //board.variant rather than variant.value as this can run while switching variant
     this.pushUndoSnapshot(this.board.variant);
-    this.replaceMines(displayed);
+    this.replaceMines(displayed, { newStart: displayedStart });
   }
 
   closeSelection() {
@@ -601,6 +641,10 @@ class BoardEdit {
     }
     this.toolBeforePaste = null;
     this.closeSelection();
+    if (this.board.gameStage === "edit") {
+      this.redisplay(); //The Start tool changes how the board is shown
+      this.board.boardRenderer.draw();
+    }
   }
 
   transformFloating(newW, newH, mapCoords) {
@@ -608,16 +652,19 @@ class BoardEdit {
     const floating = this.session.floating;
     const mask = BoardEdit.createEmptyMines(newW, newH);
     const mines = BoardEdit.createEmptyMines(newW, newH);
+    const start = BoardEdit.createEmptyMines(newW, newH);
     for (let i = 0; i < floating.w; i++) {
       for (let j = 0; j < floating.h; j++) {
         const [newI, newJ] = mapCoords(i, j);
         mask[newI][newJ] = floating.mask[i][j];
         mines[newI][newJ] = floating.mines[i][j];
+        start[newI][newJ] = floating.start[i][j];
       }
     }
 
     floating.mask = mask;
     floating.mines = mines;
+    floating.start = start;
     floating.w = newW;
     floating.h = newH;
     this.redisplay();
@@ -668,6 +715,24 @@ class BoardEdit {
       for (let j = 0; j < floating.h; j++) {
         if (floating.mask[i][j]) {
           floating.mines[i][j] = isMine;
+        }
+      }
+    }
+    this.redisplay();
+    this.board.boardRenderer.draw();
+  }
+
+  setSelectionStart(isStart) {
+    //Mark or unmark every selected cell as starting position
+    if (!this.session) {
+      return;
+    }
+
+    const floating = this.session.floating;
+    for (let i = 0; i < floating.w; i++) {
+      for (let j = 0; j < floating.h; j++) {
+        if (floating.mask[i][j]) {
+          floating.start[i][j] = isStart;
         }
       }
     }
@@ -757,6 +822,7 @@ class BoardEdit {
     }
 
     const displayed = this.getDisplayedMines();
+    const displayedStart = this.getDisplayedStart();
 
     Dialog.create({
       title: "Crop Board?",
@@ -776,14 +842,22 @@ class BoardEdit {
         maxX - minX + 1,
         maxY - minY + 1
       );
+      const croppedStart = BoardEdit.createEmptyMines(
+        maxX - minX + 1,
+        maxY - minY + 1
+      );
       for (let x = minX; x <= maxX; x++) {
         for (let y = minY; y <= maxY; y++) {
           cropped[x - minX][y - minY] = displayed[x][y];
+          croppedStart[x - minX][y - minY] = displayedStart[x][y];
         }
       }
 
       //Undoes the whole selection session in one step as it snapshots the committed board
-      this.replaceMinesWithUndo(cropped, { clearPath: true });
+      this.replaceMinesWithUndo(cropped, {
+        clearPath: true,
+        newStart: this.board.startMarks ? croppedStart : undefined,
+      });
     });
   }
 
@@ -798,35 +872,61 @@ class BoardEdit {
     return null;
   }
 
+  getStartForVariant(variantName) {
+    return variantName === "board editor" ? this.board.boardEditorStart : null;
+  }
+
   static createEmptyMines(width, height) {
     return new Array(width).fill(0).map(() => new Array(height).fill(false));
   }
 
-  static packMines(mines) {
-    const w = mines.length;
-    const h = mines[0].length;
+  static packGrid(grid) {
+    const w = grid.length;
+    const h = grid[0].length;
     const data = new Uint8Array(Math.ceil((w * h) / 8)); //Final byte may have unused bits
     for (let x = 0; x < w; x++) {
       for (let y = 0; y < h; y++) {
-        if (mines[x][y]) {
+        if (grid[x][y]) {
           const bitIndex = x * h + y;
           data[bitIndex >> 3] |= 1 << (bitIndex & 7);
         }
       }
     }
-    return { w, h, data };
+    return data;
   }
 
-  static unpackMines(snapshot) {
-    const { w, h, data } = snapshot;
-    const mines = BoardEdit.createEmptyMines(w, h);
+  static unpackGrid(data, w, h) {
+    const grid = BoardEdit.createEmptyMines(w, h);
     for (let x = 0; x < w; x++) {
       for (let y = 0; y < h; y++) {
         const bitIndex = x * h + y;
-        mines[x][y] = (data[bitIndex >> 3] & (1 << (bitIndex & 7))) !== 0;
+        grid[x][y] = (data[bitIndex >> 3] & (1 << (bitIndex & 7))) !== 0;
       }
     }
-    return mines;
+    return grid;
+  }
+
+  static packMines(mines, start) {
+    return {
+      w: mines.length,
+      h: mines[0].length,
+      data: BoardEdit.packGrid(mines),
+      startData: start ? BoardEdit.packGrid(start) : null,
+    };
+  }
+
+  static unpackMines(snapshot) {
+    return BoardEdit.unpackGrid(snapshot.data, snapshot.w, snapshot.h);
+  }
+
+  static unpackStart(snapshot) {
+    return snapshot.startData
+      ? BoardEdit.unpackGrid(snapshot.startData, snapshot.w, snapshot.h)
+      : null;
+  }
+
+  static snapshotBytes(snapshot) {
+    return snapshot.data.byteLength + (snapshot.startData?.byteLength ?? 0);
   }
 
   //---- Undo/redo ----
@@ -845,24 +945,27 @@ class BoardEdit {
       return;
     }
 
-    this.pushOntoUndo(stack, BoardEdit.packMines(mines));
+    this.pushOntoUndo(
+      stack,
+      BoardEdit.packMines(mines, this.getStartForVariant(variantName))
+    );
     stack.redo = [];
     this.refreshUndoRedoState();
   }
 
   pushOntoUndo(stack, snapshot) {
     stack.undo.push(snapshot);
-    stack.undoBytes += snapshot.data.byteLength;
+    stack.undoBytes += BoardEdit.snapshotBytes(snapshot);
 
     //Drop oldest entries until under the cap, but always keep the newest
     while (stack.undoBytes > MAX_UNDO_BYTES && stack.undo.length > 1) {
-      stack.undoBytes -= stack.undo.shift().data.byteLength;
+      stack.undoBytes -= BoardEdit.snapshotBytes(stack.undo.shift());
     }
   }
 
   popFromUndo(stack) {
     const snapshot = stack.undo.pop();
-    stack.undoBytes -= snapshot.data.byteLength;
+    stack.undoBytes -= BoardEdit.snapshotBytes(snapshot);
     return snapshot;
   }
 
@@ -879,9 +982,13 @@ class BoardEdit {
       return;
     }
 
-    stack.redo.push(BoardEdit.packMines(this.board.mines));
+    stack.redo.push(
+      BoardEdit.packMines(this.board.mines, this.board.startMarks)
+    );
     const snapshot = this.popFromUndo(stack);
-    this.replaceMines(BoardEdit.unpackMines(snapshot));
+    this.replaceMines(BoardEdit.unpackMines(snapshot), {
+      newStart: BoardEdit.unpackStart(snapshot),
+    });
     this.refreshUndoRedoState();
   }
 
@@ -891,9 +998,14 @@ class BoardEdit {
       return;
     }
 
-    this.pushOntoUndo(stack, BoardEdit.packMines(this.board.mines));
+    this.pushOntoUndo(
+      stack,
+      BoardEdit.packMines(this.board.mines, this.board.startMarks)
+    );
     const snapshot = stack.redo.pop();
-    this.replaceMines(BoardEdit.unpackMines(snapshot));
+    this.replaceMines(BoardEdit.unpackMines(snapshot), {
+      newStart: BoardEdit.unpackStart(snapshot),
+    });
     this.refreshUndoRedoState();
   }
 
@@ -913,13 +1025,16 @@ class BoardEdit {
 
   replaceMinesWithUndo(newMines, options) {
     //Only adds an undo entry if the board actually differs, otherwise the entry would be a confusing no-op
-    if (!BoardEdit.minesEqual(newMines, this.board.mines)) {
+    const startChanged =
+      options?.newStart &&
+      !BoardEdit.minesEqual(options.newStart, this.board.startMarks);
+    if (!BoardEdit.minesEqual(newMines, this.board.mines) || startChanged) {
       this.pushUndoSnapshot();
     }
     this.replaceMines(newMines, options);
   }
 
-  replaceMines(newMines, { clearPath = false } = {}) {
+  replaceMines(newMines, { clearPath = false, newStart } = {}) {
     //Single routine for swapping in a whole new mine array while in edit mode.
     //Does not push undo (callers do that) and does not update the URL (that happens on mode switch).
     const board = this.board;
@@ -932,6 +1047,9 @@ class BoardEdit {
     board.mines = newMines;
     if (board.variant === "board editor") {
       board.boardEditorMines = newMines;
+      board.boardEditorStart =
+        newStart ?? BoardEdit.createEmptyMines(newWidth, newHeight);
+      board.startMarks = board.boardEditorStart;
     } else if (board.variant === "zini explorer") {
       board.ziniExplorerMines = newMines;
     }
@@ -962,6 +1080,13 @@ class BoardEdit {
 
     this.pushUndoSnapshot();
 
+    if (editTool.value === "start") {
+      this.board.startMarks[tileX][tileY] =
+        !this.board.startMarks[tileX][tileY];
+      this.openBoardForEdit();
+      return;
+    }
+
     const isAddingMines = !this.board.mines[tileX][tileY]; //adding a mine or removing it?
 
     this.board.mines[tileX][tileY] = !this.board.mines[tileX][tileY]; //toggle the mine
@@ -973,9 +1098,13 @@ class BoardEdit {
     this.openBoardForEdit(); //refreshes all numbers. Maybe too inefficient?
   }
 
-  openBoardForEdit(mines = this.board.mines) {
+  openBoardForEdit(mines = this.board.mines, start = this.board.startMarks) {
     //Update tilesArray such that it corresponds to an open board with mines as per the given mine board.
+    //start (optional) is the start markings, which are drawn as a corner marker and previewed while the Start tool is active.
     const board = this.board;
+    if (!board.startMarks) {
+      start = null;
+    }
 
     for (let x = 0; x < board.width; x++) {
       for (let y = 0; y < board.height; y++) {
@@ -1000,6 +1129,71 @@ class BoardEdit {
         board.tilesArray[x][y].state = tileNumber;
       }
     }
+
+    this.applyStartMarks(mines, start);
+  }
+
+  applyStartMarks(mines, start) {
+    const board = this.board;
+    const isPreview = Boolean(start) && editTool.value === "start";
+    const revealed = isPreview ? this.getStartRevealed(mines, start) : null;
+
+    for (let x = 0; x < board.width; x++) {
+      for (let y = 0; y < board.height; y++) {
+        const tile = board.tilesArray[x][y];
+        tile.startMarked = Boolean(start) && start[x][y];
+        tile.unrevealedState = null;
+        if (!isPreview) {
+          continue;
+        }
+
+        //Preview what the player would see: marked mines flagged, marked safe tiles (and their openings) revealed, the rest faded
+        if (mines[x][y]) {
+          if (start[x][y]) {
+            tile.state = CONSTANTS.FLAG;
+          } else {
+            tile.state = CONSTANTS.UNREVEALED;
+            tile.unrevealedState = "tr2_mine";
+          }
+        } else if (!revealed[x][y]) {
+          tile.unrevealedState = "tr2_" + tile.state;
+          tile.state = CONSTANTS.UNREVEALED;
+        }
+      }
+    }
+  }
+
+  getStartRevealed(mines, start) {
+    //Safe tiles opened by the start markings, including the openings spreading from marked zeros. Needs tile numbers to be up to date.
+    const board = this.board;
+    const revealed = BoardEdit.createEmptyMines(board.width, board.height);
+    const stack = [];
+    const reveal = (x, y) => {
+      if (!board.checkCoordsInBounds(x, y) || mines[x][y] || revealed[x][y]) {
+        return;
+      }
+      revealed[x][y] = true;
+      if (board.tilesArray[x][y].state === 0) {
+        stack.push([x, y]);
+      }
+    };
+
+    for (let x = 0; x < board.width; x++) {
+      for (let y = 0; y < board.height; y++) {
+        if (start[x][y]) {
+          reveal(x, y);
+        }
+      }
+    }
+    while (stack.length > 0) {
+      const [x, y] = stack.pop();
+      for (let i = x - 1; i <= x + 1; i++) {
+        for (let j = y - 1; j <= y + 1; j++) {
+          reveal(i, j);
+        }
+      }
+    }
+    return revealed;
   }
 
   readUnappliedSize() {
@@ -1042,7 +1236,12 @@ class BoardEdit {
     this.commitSession();
     this.replaceMinesWithUndo(
       BoardEdit.createEmptyMines(size.width, size.height),
-      { clearPath: true }
+      {
+        clearPath: true,
+        newStart: this.board.startMarks
+          ? BoardEdit.createEmptyMines(size.width, size.height)
+          : undefined,
+      }
     );
   }
 
@@ -1069,15 +1268,22 @@ class BoardEdit {
     }
 
     const newMines = BoardEdit.createEmptyMines(size.width, size.height);
+    const oldStart = this.board.startMarks;
+    const newStart = oldStart
+      ? BoardEdit.createEmptyMines(size.width, size.height)
+      : undefined;
     const overlapWidth = Math.min(size.width, oldMines.length);
     const overlapHeight = Math.min(size.height, oldMines[0].length);
     for (let x = 0; x < overlapWidth; x++) {
       for (let y = 0; y < overlapHeight; y++) {
         newMines[x][y] = oldMines[x][y];
+        if (oldStart) {
+          newStart[x][y] = oldStart[x][y];
+        }
       }
     }
 
-    this.replaceMinesWithUndo(newMines, { clearPath: true });
+    this.replaceMinesWithUndo(newMines, { clearPath: true, newStart });
   }
 
   promptForClearingEditBoard() {
@@ -1086,7 +1292,10 @@ class BoardEdit {
     this.commitSession();
 
     //Check if already empty
-    if (!this.board.mines.some((column) => column.some((val) => val))) {
+    if (
+      !this.board.mines.some((column) => column.some((val) => val)) &&
+      !this.board.startMarks?.some((column) => column.some((val) => val))
+    ) {
       return;
     }
 
@@ -1105,7 +1314,12 @@ class BoardEdit {
     }).onOk(() => {
       this.replaceMinesWithUndo(
         BoardEdit.createEmptyMines(this.board.width, this.board.height),
-        { clearPath: true }
+        {
+          clearPath: true,
+          newStart: this.board.startMarks
+            ? BoardEdit.createEmptyMines(this.board.width, this.board.height)
+            : undefined,
+        }
       );
     });
   }
@@ -1121,10 +1335,12 @@ class BoardEdit {
     const topLeft = this.getFloatingTopLeft(floating);
     let mask = "";
     let mines = "";
+    let start = "";
     for (let i = 0; i < floating.w; i++) {
       for (let j = 0; j < floating.h; j++) {
         mask += floating.mask[i][j] ? "1" : "0";
         mines += floating.mines[i][j] ? "1" : "0";
+        start += floating.start[i][j] ? "1" : "0";
       }
     }
 
@@ -1137,6 +1353,7 @@ class BoardEdit {
       tool: sourceTool,
       mask,
       mines,
+      start,
     };
 
     Notify.create({ message, color: "purple", timeout: 1000 });
@@ -1153,6 +1370,7 @@ class BoardEdit {
       for (let j = 0; j < floating.h; j++) {
         if (floating.mask[i][j]) {
           floating.mines[i][j] = false;
+          floating.start[i][j] = false;
         }
       }
     }
@@ -1170,6 +1388,7 @@ class BoardEdit {
     const copy = {
       mask: floating.mask.map((column) => column.slice()),
       mines: floating.mines.map((column) => column.slice()),
+      start: floating.start.map((column) => column.slice()),
       w,
       h,
     };
@@ -1186,6 +1405,7 @@ class BoardEdit {
 
     this.session = {
       base: this.board.mines.map((column) => column.slice()),
+      baseStart: this.getStartGrid().map((column) => column.slice()),
       floating: { ...copy, centreX: newX + w / 2, centreY: newY + h / 2 },
       sourceTool,
     };
@@ -1257,10 +1477,12 @@ class BoardEdit {
     const { w, h } = clip;
     const mask = BoardEdit.createEmptyMines(w, h);
     const mines = BoardEdit.createEmptyMines(w, h);
+    const start = BoardEdit.createEmptyMines(w, h);
     for (let i = 0; i < w; i++) {
       for (let j = 0; j < h; j++) {
         mask[i][j] = clip.mask[i * h + j] === "1";
         mines[i][j] = clip.mines[i * h + j] === "1";
+        start[i][j] = clip.start[i * h + j] === "1";
       }
     }
 
@@ -1272,7 +1494,16 @@ class BoardEdit {
 
     this.session = {
       base: this.board.mines.map((column) => column.slice()),
-      floating: { mask, mines, w, h, centreX: x + w / 2, centreY: y + h / 2 },
+      baseStart: this.getStartGrid().map((column) => column.slice()),
+      floating: {
+        mask,
+        mines,
+        start,
+        w,
+        h,
+        centreX: x + w / 2,
+        centreY: y + h / 2,
+      },
       sourceTool: clip.tool,
     };
     this.lastPlacedTopLeft = { x, y };
@@ -1289,7 +1520,7 @@ class BoardEdit {
       return null;
     }
 
-    const { w, h, x, y, tool, mask, mines } = raw;
+    const { w, h, x, y, tool, mask, mines, start } = raw;
     if (
       !Number.isInteger(w) ||
       !Number.isInteger(h) ||
@@ -1300,15 +1531,18 @@ class BoardEdit {
       (tool !== "rect" && tool !== "lasso") ||
       typeof mask !== "string" ||
       typeof mines !== "string" ||
+      typeof start !== "string" ||
       mask.length !== w * h ||
       mines.length !== w * h ||
+      start.length !== w * h ||
       !/^[01]+$/.test(mask) ||
-      !/^[01]+$/.test(mines)
+      !/^[01]+$/.test(mines) ||
+      !/^[01]+$/.test(start)
     ) {
       return null;
     }
 
-    return { w, h, x, y, tool, mask, mines };
+    return { w, h, x, y, tool, mask, mines, start };
   }
 }
 

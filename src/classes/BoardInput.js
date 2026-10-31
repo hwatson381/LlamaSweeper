@@ -883,8 +883,10 @@ class BoardInput {
   }
 
   isEditDragInputActive() {
-    //Select tools always drag, the toggle tool only when Drag is on
-    return editTool.value !== "toggle" || editDragPaint.value;
+    //Select tools always drag, the toggle and start tools only when Drag is on
+    const isPaintTool =
+      editTool.value === "toggle" || editTool.value === "start";
+    return !isPaintTool || editDragPaint.value;
   }
 
   resolveEditTap(touch, endTimeStamp) {
@@ -1223,7 +1225,7 @@ class BoardInput {
     if (this.board.gameStage === "edit") {
       //Select tools never toggle mines
       if (
-        editTool.value === "toggle" &&
+        (editTool.value === "toggle" || editTool.value === "start") &&
         mouseDownOrTouchUp &&
         (isDigInput || isFlagInput)
       ) {

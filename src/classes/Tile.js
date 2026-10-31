@@ -11,6 +11,7 @@ class Tile {
     this.paintDots = 0; //values can be 0, 1, 2
     this.unrevealedState = null; //State to draw instead of UNREVEALED (e.g. for drawing transparent tiles)
     this.selectedState = "off"; //Edit mode selection overlay: off | preview | final
+    this.startMarked = false; //Board editor: tile is marked as part of the starting position
 
     this.revealedTimeForMobileScrollBehaviour = null; //The time that this tile was revealed, for use in mobile scroll behaviour
 
@@ -51,6 +52,17 @@ class Tile {
     }
 
     ctx.drawImage(skinManager.getImage(toDraw), rawX, rawY, size, size);
+
+    if (this.startMarked) {
+      const triangleSize = size * 0.25;
+      ctx.beginPath();
+      ctx.moveTo(rawX + size, rawY + size);
+      ctx.lineTo(rawX + size - triangleSize, rawY + size);
+      ctx.lineTo(rawX + size, rawY + size - triangleSize);
+      ctx.closePath();
+      ctx.fillStyle = skinManager.getStartMarkColour();
+      ctx.fill();
+    }
 
     if (this.selectedState !== "off") {
       ctx.fillStyle =

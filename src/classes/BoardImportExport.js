@@ -23,7 +23,7 @@ class BoardImportExport {
     }
 
     this.board.boardEdit.pushUndoSnapshot("board editor");
-    this.board.boardEditorMines = this.board.mines;
+    this.board.setBoardEditorMines(this.board.mines);
     variant.value = "board editor";
     this.board.editingEditBoard = true;
 
@@ -182,7 +182,7 @@ class BoardImportExport {
     this.board.boardEdit.pushUndoSnapshot();
 
     if (this.board.variant === "board editor") {
-      this.board.boardEditorMines = pttMines;
+      this.board.setBoardEditorMines(pttMines);
     } else if (this.board.variant === "zini explorer") {
       this.board.ziniExplore.killDeepChainZiniRunner(); //just in case
       this.board.ziniExplorerMines = pttMines;
@@ -222,7 +222,7 @@ class BoardImportExport {
     this.board.boardEdit.pushUndoSnapshot();
 
     if (this.board.variant === "board editor") {
-      this.board.boardEditorMines = mbfMines;
+      this.board.setBoardEditorMines(mbfMines);
     } else if (this.board.variant === "zini explorer") {
       this.board.ziniExplore.killDeepChainZiniRunner(); //just in case
       this.board.ziniExplorerMines = mbfMines;

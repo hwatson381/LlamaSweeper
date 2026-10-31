@@ -361,7 +361,7 @@ let editBoardUnappliedHeight = ref(9);
 let pttaImportModal = ref(false);
 let mbfImportModal = ref(false);
 let isCurrentlyEditModeDisplay = ref(true); //Lines up with game.board.gameStage = 'edit' - consider making ...gameStage a ref instead.
-let editTool = ref("toggle"); //toggle|rect|lasso
+let editTool = ref("toggle"); //toggle|rect|lasso|start
 let editCanUndo = ref(false); //Kept in sync by BoardEdit as undo stacks are per variant
 let editCanRedo = ref(false);
 let editSelectionActive = ref(false); //Kept in sync by BoardEdit.syncSelectionUi
