@@ -105,6 +105,16 @@
             }
           "
         />
+        <q-toggle
+          v-if="
+            variant === 'board editor' &&
+            !isCurrentlyEditModeDisplay &&
+            boardEditorHasStart
+          "
+          v-model="boardEditorUseStart"
+          label="Use start squares"
+          dense
+        />
         <q-btn-toggle
           v-if="variant === 'zini explorer'"
           v-model="isCurrentlyEditModeDisplay"
@@ -171,6 +181,8 @@ import {
   pttaImportModal,
   mbfImportModal,
   isCurrentlyEditModeDisplay,
+  boardEditorUseStart,
+  boardEditorHasStart,
   verticalExpert,
 } from "src/composables/useSettings";
 

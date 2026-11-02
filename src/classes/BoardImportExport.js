@@ -176,13 +176,14 @@ class BoardImportExport {
       return false;
     }
 
-    let pttMines = BoardGenerator.readFromPtta(pttaUrl);
+    let { mines: pttMines, start: pttStart } =
+      BoardGenerator.readFromPttaWithStart(pttaUrl);
 
     this.board.boardEdit.commitSession();
     this.board.boardEdit.pushUndoSnapshot();
 
     if (this.board.variant === "board editor") {
-      this.board.setBoardEditorMines(pttMines);
+      this.board.setBoardEditorMines(pttMines, pttStart);
     } else if (this.board.variant === "zini explorer") {
       this.board.ziniExplore.killDeepChainZiniRunner(); //just in case
       this.board.ziniExplorerMines = pttMines;
@@ -329,19 +330,55 @@ class BoardImportExport {
         m: Algorithms.getPttaMinesString(this.board.boardEditorMines),
       };
 
-      let href = this.board.router.resolve({
-        name: "play",
-        params: { variant: urlVariant },
-        query: query,
-      }).href;
+      const startString = Algorithms.encodeStartMarks(
+        this.board.boardEditorStart
+      );
 
-      let fullUrl = window.location.origin + "/" + href;
+      const items = [
+        {
+          label: "Open in play mode",
+          value: "play-mode",
+          color: "secondary",
+        },
+      ];
+      const defaultModel = [];
+      if (startString !== "") {
+        items.push({
+          label: "Include start squares",
+          value: "start-squares",
+          color: "secondary",
+        });
+        defaultModel.push("start-squares");
+      }
 
-      copyToClipboard(fullUrl);
-      Notify.create({
-        message: "Copied.",
-        color: "purple",
-        timeout: 700,
+      Dialog.create({
+        title: "Copy Board Link",
+        options: {
+          type: "checkbox",
+          model: defaultModel,
+          items,
+        },
+        cancel: true,
+        persistent: true,
+      }).onOk((data) => {
+        const linkQuery = { ...query };
+        if (data.includes("start-squares")) {
+          linkQuery.s = startString;
+        }
+        if (data.includes("play-mode")) {
+          linkQuery.p = "1";
+        }
+        const linkHref = this.board.router.resolve({
+          name: "play",
+          params: { variant: urlVariant },
+          query: linkQuery,
+        }).href;
+        copyToClipboard(window.location.origin + "/" + linkHref);
+        Notify.create({
+          message: "Copied.",
+          color: "purple",
+          timeout: 700,
+        });
       });
     } else {
       throw new Error("Copying URL not implemented for this variant");

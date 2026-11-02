@@ -73,6 +73,11 @@ class BoardGenerator {
   }
 
   static readFromPtta(pttaUrl) {
+    return this.readFromPttaWithStart(pttaUrl).mines;
+  }
+
+  static readFromPttaWithStart(pttaUrl) {
+    //Returns { mines, start } where start is the s= start squares grid, or null if absent or invalid
     //VERY HACKY. REDO LATER
     //Mostly lifted from ptta code...
     let b = "";
@@ -87,7 +92,7 @@ class BoardGenerator {
     }
 
     //Special case, if only search params are provided, we prepend the ptt part so it works
-    if (/^\??b=\d+&m=\w+(?:&d=1)?$/.test(pttaUrl)) {
+    if (/^\??b=\d+&m=\w+(?:&s=[\w-]+)?(?:&p=1)?(?:&d=1)?$/.test(pttaUrl)) {
       if (pttaUrl.charAt(0) !== "?") {
         pttaUrl = "?" + pttaUrl;
       }
@@ -122,8 +127,14 @@ class BoardGenerator {
     const pttaAsURL = new URL(pttaUrl);
     b = pttaAsURL.searchParams.get("b");
     s = pttaAsURL.searchParams.get("m");
+    const startString = pttaAsURL.searchParams.get("s");
 
-    return this.readFromPttaSearchParams(b, s);
+    const mines = this.readFromPttaSearchParams(b, s);
+    const start = startString
+      ? Algorithms.decodeStartMarks(startString, mines.length, mines[0].length)
+      : null;
+
+    return { mines, start: start || null };
   }
 
   static readFromPttaSearchParams(b, s, suppressDialogsAndErrors = false) {
@@ -190,30 +201,7 @@ class BoardGenerator {
       throw new Error("Bad width height from PTT URL");
     }
 
-    const minesArray = new Array(width)
-      .fill(0)
-      .map(() => new Array(height).fill(false));
-
-    for (var i = 0; i < width * height; i += 5) {
-      var tempN = parseInt(s.charAt(i / 5), 32);
-
-      if (isNaN(tempN)) continue;
-
-      for (var j = i + 4; j >= i; j--) {
-        if (j >= width * height) {
-          tempN >>= 1;
-          continue;
-        }
-
-        //$scope.mines += tempN & 1;
-        if ((tempN & 1) === 1) {
-          minesArray[j % width][Math.floor(j / width)] = true;
-        }
-        tempN >>= 1;
-      }
-    }
-
-    return minesArray;
+    return Algorithms.decodeMinesBitmap(s, width, height);
   }
 
   static readFromMbfString(mbfString) {

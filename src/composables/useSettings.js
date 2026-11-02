@@ -362,6 +362,8 @@ let pttaImportModal = ref(false);
 let mbfImportModal = ref(false);
 let isCurrentlyEditModeDisplay = ref(true); //Lines up with game.board.gameStage = 'edit' - consider making ...gameStage a ref instead.
 let editTool = ref("toggle"); //toggle|rect|lasso|start
+let boardEditorUseStart = ref(true); //Transient, whether play mode applies the start squares on the first click
+let boardEditorHasStart = ref(false); //Kept in sync by Board.resetBoard, whether the board editor has any start squares
 let editCanUndo = ref(false); //Kept in sync by BoardEdit as undo stacks are per variant
 let editCanRedo = ref(false);
 let editSelectionActive = ref(false); //Kept in sync by BoardEdit.syncSelectionUi
@@ -779,6 +781,8 @@ export {
   pttaImportModal,
   mbfImportModal,
   isCurrentlyEditModeDisplay,
+  boardEditorUseStart,
+  boardEditorHasStart,
   editTool,
   editCanUndo,
   editCanRedo,

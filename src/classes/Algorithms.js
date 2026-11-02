@@ -1726,6 +1726,98 @@ class Algorithms {
     return boardDimensions;
   }
 
+  static decodeMinesBitmap(s, width, height) {
+    const grid = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(false));
+
+    for (let i = 0; i < width * height; i += 5) {
+      let tempN = parseInt(s.charAt(i / 5), 32);
+
+      if (isNaN(tempN)) continue;
+
+      for (let j = i + 4; j >= i; j--) {
+        if (j < width * height && (tempN & 1) === 1) {
+          grid[j % width][Math.floor(j / width)] = true;
+        }
+        tempN >>= 1;
+      }
+    }
+
+    return grid;
+  }
+
+  static encodeStartMarks(start) {
+    //Returns "" if nothing is marked. First char picks the format: l = bit-packed index list, m = bitmap as in the m param
+    const width = start.length;
+    const height = start[0].length;
+    const indices = [];
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        if (start[x][y]) {
+          indices.push(x * height + y);
+        }
+      }
+    }
+    if (indices.length === 0) {
+      return "";
+    }
+
+    const bitsForOrder = Math.max(1, Math.ceil(Math.log2(width * height)));
+    const bitPacker = new BitPacker();
+    bitPacker.writeBits(indices.length, 14); //Boards are at most 100x100 = 10000 tiles
+    indices.forEach((index) => bitPacker.writeBits(index, bitsForOrder));
+    const listString =
+      "l" +
+      btoa(String.fromCharCode(...bitPacker.getBytes()))
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/, "");
+
+    const bitmapString = "m" + Algorithms.getPttaMinesString(start);
+
+    return listString.length <= bitmapString.length ? listString : bitmapString;
+  }
+
+  static decodeStartMarks(encoded, width, height) {
+    //Returns a width x height boolean grid, or false if invalid
+    try {
+      const format = encoded.charAt(0);
+      const body = encoded.substring(1);
+
+      if (format === "m" && /^[a-zA-Z0-9]+$/.test(body)) {
+        return Algorithms.decodeMinesBitmap(body, width, height);
+      }
+
+      if (format === "l" && /^[A-Za-z0-9_-]+$/.test(body)) {
+        const padded = body + "===".slice((body.length + 3) % 4);
+        const binaryStr = atob(padded.replace(/-/g, "+").replace(/_/g, "/"));
+        const bytes = Uint8Array.from(binaryStr, (c) => c.charCodeAt(0));
+        const bitUnpacker = new BitUnpacker(bytes);
+        const bitsForOrder = Math.max(1, Math.ceil(Math.log2(width * height)));
+        const count = bitUnpacker.readBits(14);
+        if (count * bitsForOrder + 14 > bytes.length * 8) {
+          return false;
+        }
+
+        const grid = new Array(width)
+          .fill(0)
+          .map(() => new Array(height).fill(false));
+        for (let i = 0; i < count; i++) {
+          const order = bitUnpacker.readBits(bitsForOrder);
+          if (order >= width * height) {
+            return false;
+          }
+          grid[Math.floor(order / height)][order % height] = true;
+        }
+        return grid;
+      }
+    } catch {
+      //fall through
+    }
+    return false;
+  }
+
   static encodeClicks(clicks, boardWidth, boardHeight) {
     const bitPacker = new BitPacker();
 

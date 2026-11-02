@@ -124,6 +124,10 @@ Raise a concern before introducing state, rendering, or replay designs that woul
 - Aim-trainer visuals drawn over the board must respect tile size, board padding, skins, dark/light mode, visual filters, and screenshot capture.
 - Do not persist aim-trainer runs or create variant-specific history storage without discussing the future game-history design first.
 
+## Common mistakes
+
+- Occasionally, I paste context into the chat but it does not come through. When this is spotted, please exit the chat early instead of continuing with the missing context.
+
 ## Maintaining these instructions
 
 If work reveals a durable project convention, architectural constraint, validation requirement, or common environment pitfall that would help future contributors, mention a concise proposed update to this file in the final response. Do not edit `AGENTS.md` unless the user asks.

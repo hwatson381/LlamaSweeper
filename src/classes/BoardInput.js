@@ -1343,6 +1343,7 @@ class BoardInput {
     // ############### Section for mostly mouse up stuff #################
 
     //Do first click on board
+    let firstClickUsedStart = false;
     if (this.board.gameStage === "pregame" && !isDown && isDigInput) {
       const generationResult = this.board.generateBoard(
         flooredCoords.tileX,
@@ -1360,6 +1361,18 @@ class BoardInput {
         }
         if (mobileModeEnabled.value && flagToggleSwitchAfterStart.value) {
           flagToggleActive.value = true;
+        }
+        if (generationResult.useStart) {
+          //The clicked tile is ignored; the start squares are applied instead of any release action below
+          firstClickUsedStart = true;
+          this.updateDepressedSquares(
+            flooredCoords.tileX,
+            flooredCoords.tileY,
+            false,
+            touchIdentifier
+          );
+          this.board.boardActions.applyStartReveal(true);
+          isDrawRequired = true;
         }
       } else {
         this.updateDepressedSquares(
@@ -1390,9 +1403,14 @@ class BoardInput {
 
     let needToCheckForWinOrLoss = false;
 
+    if (firstClickUsedStart) {
+      needToCheckForWinOrLoss = true;
+    }
+
     //Try to chord or open square with left click (e.g. mouse left click)
     if (
       this.board.gameStage === "running" &&
+      !firstClickUsedStart &&
       !isDown &&
       isDigInput &&
       !(touchIdentifier === "mouse" && chordingButtons.value === "l+r")
@@ -1411,6 +1429,7 @@ class BoardInput {
     //Lifting up either left click or right click when both were down
     if (
       this.board.gameStage === "running" &&
+      !firstClickUsedStart &&
       !isDown &&
       ((isDigInput && this.lrChordingState.rightDown) || //Lift up left whilst right down
         (isFlagInput && this.lrChordingState.leftDown)) && //Or lift up right whilst left down
@@ -1430,6 +1449,7 @@ class BoardInput {
     //Lifting up left click when only left click was down, and also a chord was not spent
     if (
       this.board.gameStage === "running" &&
+      !firstClickUsedStart &&
       !isDown &&
       isDigInput &&
       !this.lrChordingState.rightDown &&
@@ -1450,6 +1470,7 @@ class BoardInput {
     //Try to flag or chord (when the flag toggle is active on mobile)
     if (
       this.board.gameStage === "running" &&
+      !firstClickUsedStart &&
       isFlagInput &&
       !isDown &&
       isTouchInput

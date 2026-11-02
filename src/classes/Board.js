@@ -39,6 +39,8 @@ import {
   editBoardUnappliedWidth,
   editBoardUnappliedHeight,
   editTool,
+  boardEditorUseStart,
+  boardEditorHasStart,
   isCurrentlyEditModeDisplay,
   flagToggleActive,
   flagToggleShowReset,
@@ -150,6 +152,10 @@ class Board {
     if (!this.startMarks && editTool.value === "start") {
       editTool.value = "toggle"; //Start tool only exists on the board editor
     }
+
+    boardEditorHasStart.value = Boolean(
+      this.startMarks?.some((column) => column.some(Boolean))
+    );
 
     //board editor/zini explorer use different width/height/mines
     if (this.variant === "board editor" || this.variant === "zini explorer") {
@@ -309,13 +315,11 @@ class Board {
     //TODO - code to serialise this game and save to boardHistory
   }
 
-  setBoardEditorMines(mines) {
-    //Start markings aren't in the URL or imports yet, so a replaced board has none
+  setBoardEditorMines(mines, start = null) {
+    //start is optional; without it the replaced board has no start squares
     this.boardEditorMines = mines;
-    this.boardEditorStart = BoardEdit.createEmptyMines(
-      mines.length,
-      mines[0].length
-    );
+    this.boardEditorStart =
+      start ?? BoardEdit.createEmptyMines(mines.length, mines[0].length);
   }
 
   revertUnappliedWidthHeightSetting() {
@@ -450,7 +454,15 @@ class Board {
       100
     );
 
-    return { success: true, rewrittenFirstClick: rewrittenFirstClick };
+    return {
+      success: true,
+      rewrittenFirstClick: rewrittenFirstClick,
+      useStart:
+        this.variant === "board editor" &&
+        this.gameStage !== "edit" &&
+        boardEditorUseStart.value &&
+        boardEditorHasStart.value,
+    };
   }
 
   getTime() {
@@ -925,7 +937,7 @@ class Board {
 
   updateForBoardEditorQueryPossibleChange(newQuery) {
     if (!newQuery.b || !newQuery.m) {
-      return false;
+      return { changed: false, consumePlayParam: false };
     }
 
     let pttMines = BoardGenerator.readFromPttaSearchParams(
@@ -935,19 +947,42 @@ class Board {
     );
 
     if (!pttMines) {
-      return false;
+      return { changed: false, consumePlayParam: false };
     }
 
-    if (Utils.shallow2DArrayEquals(pttMines, this.boardEditorMines)) {
-      return false;
+    //An invalid s only drops the start squares, not the whole board
+    //p=1 opens in play mode. Absence of p never forces edit mode.
+    const switchedToPlay = newQuery.p === "1" && this.editingEditBoard;
+    if (switchedToPlay) {
+      this.editingEditBoard = false;
+    }
+    const pttStart = newQuery.s
+      ? Algorithms.decodeStartMarks(
+          newQuery.s,
+          pttMines.length,
+          pttMines[0].length
+        )
+      : false;
+    const newStart =
+      pttStart ||
+      BoardEdit.createEmptyMines(pttMines.length, pttMines[0].length);
+
+    if (
+      Utils.shallow2DArrayEquals(pttMines, this.boardEditorMines) &&
+      Utils.shallow2DArrayEquals(newStart, this.boardEditorStart)
+    ) {
+      return {
+        changed: switchedToPlay,
+        consumePlayParam: newQuery.p === "1",
+      };
     }
 
-    this.setBoardEditorMines(pttMines);
+    this.setBoardEditorMines(pttMines, newStart);
 
     this.revertUnappliedWidthHeightSetting();
 
     //this.switchToEditMode(); //Is just reseting the board enough?
-    return true;
+    return { changed: true, consumePlayParam: newQuery.p === "1" };
   }
 
   updateForUrlChange(newUrlVariant, newQuery, oldUrlVariant, oldQuery) {
@@ -962,6 +997,7 @@ class Board {
     //Watcher function which is called whenever query part of URL changes or variant part of path changes
     //TODO, if these are different from expected, then update relevant data and force board reset.
     let resetNeeded = false;
+    let consumeBoardEditorPlayParam = false;
 
     let newVariant = Utils.routeNameToVariant(newUrlVariant);
     if (newVariant !== variant.value) {
@@ -976,15 +1012,27 @@ class Board {
           resetNeeded = true;
         }
         break;
-      case "board editor":
-        if (this.updateForBoardEditorQueryPossibleChange(newQuery)) {
-          resetNeeded = true;
-        }
+      case "board editor": {
+        const boardEditorQueryUpdate =
+          this.updateForBoardEditorQueryPossibleChange(newQuery);
+        resetNeeded = boardEditorQueryUpdate.changed || resetNeeded;
+        consumeBoardEditorPlayParam = boardEditorQueryUpdate.consumePlayParam;
         break;
+      }
     }
 
     if (resetNeeded) {
       this.resetBoard(true);
+    }
+
+    if (consumeBoardEditorPlayParam && this.route.query.p === "1") {
+      const queryWithoutPlayParam = { ...this.route.query };
+      delete queryWithoutPlayParam.p;
+      this.router.replace({
+        name: "play",
+        params: { variant: newUrlVariant },
+        query: queryWithoutPlayParam,
+      });
     }
   }
 
@@ -1018,9 +1066,20 @@ class Board {
         m: Algorithms.getPttaMinesString(this.boardEditorMines),
       };
 
+      const startString = Algorithms.encodeStartMarks(this.boardEditorStart);
+      if (startString !== "") {
+        newQuery.s = startString;
+      }
+      //Preserve a copied play-mode instruction until the URL handler consumes it.
+      if (this.route.query.p === "1") {
+        newQuery.p = "1";
+      }
+
       if (
         this.route.query.b !== newQuery.b ||
-        this.route.query.m !== newQuery.m
+        this.route.query.m !== newQuery.m ||
+        this.route.query.s !== newQuery.s ||
+        this.route.query.p !== newQuery.p
       ) {
         urlPushNeeded = true;
       }

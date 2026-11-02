@@ -350,6 +350,28 @@ class BoardActions {
     }
   }
 
+  applyStartReveal(hasSoundEffect = false) {
+    //Marked safe tiles are opened (openings expand) and marked mines flagged. Not recorded as player clicks.
+    const startMarks = this.board.startMarks;
+    hasSoundEffect && soundEffectsEnabled.value && playSound("dig");
+
+    for (let x = 0; x < this.board.width; x++) {
+      for (let y = 0; y < this.board.height; y++) {
+        if (!startMarks[x][y]) {
+          continue;
+        }
+        if (this.board.mines[x][y]) {
+          if (this.board.tilesArray[x][y].state === CONSTANTS.UNREVEALED) {
+            this.board.tilesArray[x][y].state = CONSTANTS.FLAG;
+            this.board.unflagged--;
+          }
+        } else {
+          this.openTile(x, y);
+        }
+      }
+    }
+  }
+
   openTile(x, y, hasSoundEffect = false, deferZeroExpansion = false) {
     if (!this.board.checkCoordsInBounds(x, y)) {
       return; //ignore squares outside board
