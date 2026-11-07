@@ -13,7 +13,7 @@ class Tile {
     this.selectedState = "off"; //Edit mode selection overlay: off | preview | final
     this.startMarked = false; //Board editor: tile is marked as part of the starting position
 
-    this.revealedTimeForMobileScrollBehaviour = null; //The time that this tile was revealed, for use in mobile scroll behaviour
+    this.revealedTimeForMobileGuardedBehaviour = null; //The time that this tile was revealed, for use in mobile scroll behaviour
 
     this.ziniDelta = {
       loss: false,
@@ -595,11 +595,12 @@ class Tile {
     newTile.paintColour = this.paintColour;
     newTile.paintDots = this.paintDots;
     newTile.unrevealedState = this.unrevealedState;
+    newTile.startMarked = this.startMarked;
     newTile.ziniDelta = { ...this.ziniDelta };
     newTile.explore = { ...this.explore };
     newTile.hint = { ...this.hint };
 
-    //Note: We deliberately don't copy across this.revealedTimeForMobileScrollBehaviour
+    //Note: We deliberately don't copy across this.revealedTimeForMobileGuardedBehaviour
 
     return newTile;
   }

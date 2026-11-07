@@ -403,6 +403,14 @@ let flagToggleSwitchAfterStart = useLocalStorage(
   "ls_flagToggleSwitchAfterStart",
   false
 );
+let flagToggleWithOpenings = useLocalStorage(
+  "ls_flagToggleWithOpenings",
+  false
+);
+let mobileDelayForOpeningFlagToggle = useLocalStorage(
+  "ls_mobileDelayForOpeningFlagToggle",
+  300
+);
 let flagToggleEvent = useLocalStorage("ls_flagToggleEvent", "click");
 let mobileResetGuard = useLocalStorage(
   //delay before the reset button works
@@ -417,12 +425,13 @@ let mobileScrollSetting = useLocalStorage("ls_mobileScrollSetting", "enable"); /
 let mobileEnclosedScrollLetThrough = useLocalStorage(
   "ls_mobileEnclosedScrollLetThrough",
   true
-); //Whether clicks can still affect the board on enclosed setting (typically placing flags)
+); //Whether clicks can still affect the board on enclosed setting (typically placing flags, but also applies if the flag toggle with openings setting is active with scroll on zeros)
 let scrollLetThroughActive = computed(
   () =>
-    (mobileScrollSetting.value === "enclosed nf" ||
+    ((mobileScrollSetting.value === "enclosed nf" ||
       mobileScrollSetting.value === "enclosed flag") &&
-    mobileEnclosedScrollLetThrough.value
+      mobileEnclosedScrollLetThrough.value) ||
+    (mobileScrollSetting.value === "zero" && flagToggleWithOpenings.value)
 );
 let mobileDelayForEnableScroll = useLocalStorage(
   "ls_mobileDelayForEnableScroll",
@@ -800,6 +809,8 @@ export {
   flagToggleLocationClass,
   flagToggleSizeClass,
   flagToggleSwitchAfterStart,
+  flagToggleWithOpenings,
+  mobileDelayForOpeningFlagToggle,
   mobileResetGuard,
   flagToggleEvent,
   mobileModeEnabled,

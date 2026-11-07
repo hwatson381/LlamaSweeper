@@ -9,6 +9,8 @@ import {
   chordingButtons,
   flagToggleActive,
   flagToggleSwitchAfterStart,
+  flagToggleWithOpenings,
+  mobileDelayForOpeningFlagToggle,
   mobileModeEnabled,
   mobileScrollSetting,
   scrollLetThroughActive,
@@ -236,7 +238,7 @@ class BoardInput {
         this.board.gameStage === "running" &&
         this.board.tilesArray[flooredCoords.tileX]?.[flooredCoords.tileY]
           ?.state === 0 &&
-        this.canTileBeUsedForMobileScrollConditions(
+        this.canTileBeUsedForMobileGuardedConditions(
           flooredCoords.tileX,
           flooredCoords.tileY
         )
@@ -798,7 +800,7 @@ class BoardInput {
 
     let redrawRequired = false;
 
-    for (let touch of this.ongoingTouches.values()) {
+    for (let [touchIdentifier, touch] of this.ongoingTouches.entries()) {
       if (!touch.active) {
         continue; //Touch already cancelled, so skip it
       }
@@ -806,7 +808,6 @@ class BoardInput {
       touch.active = false;
 
       const isDown = false;
-      const touchIdentifier = touch.identifier;
 
       let thisTouchNeededRedraw = this.updateDepressedSquares(
         null,
@@ -1340,6 +1341,26 @@ class BoardInput {
       isDrawRequired = true;
     }
 
+    // When the user has the setting that allows toggling flag mode by tapping zeros
+    //We need to check for this
+    let isTapCancelledFromModeToggle = false;
+    if (
+      isTouchInput &&
+      this.board.gameStage === "running" &&
+      !isDown &&
+      flagToggleWithOpenings.value
+    ) {
+      if (
+        this.checkTapUsableForOpeningModeToggle(
+          flooredCoords.tileX,
+          flooredCoords.tileY
+        )
+      ) {
+        this.board.boardActions.switchModeFromOpeningTap();
+        isTapCancelledFromModeToggle = true;
+      }
+    }
+
     // ############### Section for mostly mouse up stuff #################
 
     //Do first click on board
@@ -1413,7 +1434,8 @@ class BoardInput {
       !firstClickUsedStart &&
       !isDown &&
       isDigInput &&
-      !(touchIdentifier === "mouse" && chordingButtons.value === "l+r")
+      !(touchIdentifier === "mouse" && chordingButtons.value === "l+r") &&
+      !isTapCancelledFromModeToggle
     ) {
       this.board.boardActions.attemptChordOrDig(
         unflooredCoords.tileX,
@@ -1473,7 +1495,8 @@ class BoardInput {
       !firstClickUsedStart &&
       isFlagInput &&
       !isDown &&
-      isTouchInput
+      isTouchInput &&
+      !isTapCancelledFromModeToggle
     ) {
       this.board.boardActions.attemptFlagOrChord(
         unflooredCoords.tileX,
@@ -1934,7 +1957,7 @@ class BoardInput {
 
         if (
           (typeof this.board.tilesArray[x][y].state !== "number" ||
-            !this.canTileBeUsedForMobileScrollConditions(x, y)) &&
+            !this.canTileBeUsedForMobileGuardedConditions(x, y)) &&
           !isNormalOrMeanMine
         ) {
           //Found square in 3x3 block that is unrevealed (see next comment) and safe. So return false as the centre square is not enclosed by known mines
@@ -1960,7 +1983,7 @@ class BoardInput {
         if (typeof this.board.tilesArray[x][y].state !== "number") {
           continue;
         }
-        if (!this.canTileBeUsedForMobileScrollConditions(x, y)) {
+        if (!this.canTileBeUsedForMobileGuardedConditions(x, y)) {
           continue;
         }
 
@@ -2060,7 +2083,7 @@ class BoardInput {
           potentiallyConfirmedMines.push({ x, y });
         } else if (
           (typeof this.board.tilesArray[x][y].state !== "number" ||
-            !this.canTileBeUsedForMobileScrollConditions(x, y)) &&
+            !this.canTileBeUsedForMobileGuardedConditions(x, y)) &&
           !isNormalOrMeanMine
         ) {
           //Neighbour is unrevealed and safe. Therefore the centre square is NOT maxed out
@@ -2077,20 +2100,47 @@ class BoardInput {
   }
 
   //Check if tile was revealed a while ago
-  canTileBeUsedForMobileScrollConditions(tileX, tileY) {
+  canTileBeUsedForMobileGuardedConditions(
+    tileX,
+    tileY,
+    useModeToggleThresholdInstead = false
+  ) {
     if (!this.board.checkCoordsInBounds(tileX, tileY)) {
       return false; //Defensive
     }
 
+    const timingThresholdSeconds =
+      (useModeToggleThresholdInstead
+        ? mobileDelayForOpeningFlagToggle.value
+        : mobileDelayForEnableScroll.value) / 1000;
+
     let tileRevealedSufficientlyLongAgo =
       this.board.tilesArray[tileX][tileY]
-        ?.revealedTimeForMobileScrollBehaviour === null ||
+        ?.revealedTimeForMobileGuardedBehaviour === null ||
       this.board.getTime() -
         this.board.tilesArray[tileX][tileY]
-          ?.revealedTimeForMobileScrollBehaviour >=
-        mobileDelayForEnableScroll.value / 1000;
+          ?.revealedTimeForMobileGuardedBehaviour >=
+        timingThresholdSeconds;
 
     return tileRevealedSufficientlyLongAgo;
+  }
+
+  //Check if tile can be used for opening mode toggle
+  checkTapUsableForOpeningModeToggle(tileX, tileY) {
+    if (!this.board.checkCoordsInBounds(tileX, tileY)) {
+      return false; //Defensive
+    }
+
+    if (this.board.tilesArray[tileX][tileY].state !== 0) {
+      //Tile not a zero, can't be mode toggled on
+      return false;
+    }
+
+    if (mobileDelayForOpeningFlagToggle.value === 0) {
+      return true;
+    }
+
+    return this.canTileBeUsedForMobileGuardedConditions(tileX, tileY, true);
   }
 }
 

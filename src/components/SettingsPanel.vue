@@ -615,6 +615,51 @@
                 />
               </div>
               <div class="setting-row">
+                <div class="setting-content-grouped">
+                  <q-checkbox
+                    v-model="flagToggleWithOpenings"
+                    label="Toggle flag mode with openings"
+                    style="flex-shrink: 0"
+                    class="q-mr-md"
+                  />
+                  <div
+                    v-if="
+                      flagToggleWithOpenings &&
+                      !mobileEnclosedScrollLetThrough &&
+                      (mobileScrollSetting === 'enclosed nf' ||
+                        mobileScrollSetting === 'enclosed flag')
+                    "
+                    class="text-negative"
+                    style="flex: 1 1 240px"
+                  >
+                    <b>Danger:</b> please either change Touch Scroll Behaviour
+                    setting or tick the Let interior clicks through setting.
+                    Otherwise this will have no effect.
+                  </div>
+                </div>
+
+                <SettingHelp
+                  title="Toggle flag mode with openings"
+                  description="Tapping on an opening (zero tile) switches between flag and dig mode."
+                />
+              </div>
+              <div v-if="flagToggleWithOpenings" class="setting-row q-mb-sm">
+                <q-input
+                  debounce="100"
+                  v-model.number="mobileDelayForOpeningFlagToggle"
+                  label="Opening Toggle Delay (0-500ms)"
+                  type="number"
+                  dense
+                  min="0"
+                  max="500"
+                  style="width: 170px"
+                />
+                <SettingHelp
+                  title="Opening Toggle Delay (0-500ms)"
+                  description="How long to wait before newly revealed zeros can be used to switch mode. This helps prevent surprise openings from unexpectedly switching the mode."
+                />
+              </div>
+              <div class="setting-row">
                 <q-select
                   class="q-mx-md q-mb-md"
                   outlined
@@ -986,6 +1031,8 @@ import {
   flagToggleLocationClass,
   flagToggleSizeClass,
   flagToggleSwitchAfterStart,
+  flagToggleWithOpenings,
+  mobileDelayForOpeningFlagToggle,
   mobileResetGuard,
   flagToggleEvent,
   mobileModeEnabled,
@@ -1296,7 +1343,6 @@ function openHelpDialog(help) {
 <style scoped>
 .setting-row {
   display: flex;
-  flex-wrap: wrap;
   align-items: flex-start;
   gap: 8px;
 }

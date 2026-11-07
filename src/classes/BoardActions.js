@@ -10,6 +10,8 @@ import {
   mobileModeEnabled,
   mobileScrollSetting,
   mobileDelayForEnableScroll,
+  flagToggleWithOpenings,
+  mobileDelayForOpeningFlagToggle,
   soundEffectsEnabled,
   meanMineClickBehaviour,
 } from "src/composables/useSettings";
@@ -133,9 +135,11 @@ class BoardActions {
       //Attempt chord tile
       this.attemptChordOnly(unflooredTileX, unflooredTileY, touchIdentifier);
     } else if (
-      this.board.tilesArray[tileX][tileY].state === CONSTANTS.UNREVEALED
+      this.board.tilesArray[tileX][tileY].state === CONSTANTS.UNREVEALED ||
+      this.board.tilesArray[tileX][tileY].state === CONSTANTS.FLAG
     ) {
       //Attempt to dig tile
+      //We also take this path for flags as otherwise the square won't get undepressed on mobile
       this.attemptDigOnly(
         unflooredTileX,
         unflooredTileY,
@@ -143,6 +147,7 @@ class BoardActions {
         eventTimestamp
       );
     } else {
+      //Note - this possibly doesn't get hit since flags are handled in previous condition
       this.board.stats.addWastedLeft(
         tileX,
         tileY,
@@ -397,14 +402,17 @@ class BoardActions {
       this.board.tilesArray[x][y].state = number;
       if (
         mobileModeEnabled.value &&
-        (mobileScrollSetting.value === "enclosed nf" ||
+        (((mobileScrollSetting.value === "enclosed nf" ||
           mobileScrollSetting.value === "enclosed flag" ||
           mobileScrollSetting.value === "zero") &&
-        mobileDelayForEnableScroll.value !== 0
+          mobileDelayForEnableScroll.value !== 0) ||
+          (flagToggleWithOpenings.value &&
+            mobileDelayForOpeningFlagToggle.value !== 0))
       ) {
         //Track timestamp of when a tile was revealed as they only become scrollable after a delay for the relevant mobile settings
         //We probably don't need all these if conditions, but I've left them in for clarity as to when this applies.
-        this.board.tilesArray[x][y].revealedTimeForMobileScrollBehaviour =
+        //This is also used in a similar way for flag toggling by tapping openings
+        this.board.tilesArray[x][y].revealedTimeForMobileGuardedBehaviour =
           this.board.getTime();
       }
       this.board.openedTiles++;
@@ -729,6 +737,22 @@ class BoardActions {
         this.temporarilyDisableMobileResetButton = false;
       }, delay);
     }
+  }
+
+  switchModeFromOpeningTap() {
+    //Have slight delay to prevent possible bugs with changing mode half-way through handlePointerInput
+    setTimeout(() => {
+      this.board.toggleFlagButton();
+      //Opening taps aren't super visible, so give some visual feedback as well
+      this.flashBoard();
+    }, 0);
+  }
+
+  flashBoard() {
+    this.board.gameContainerDiv.value.style.filter = "brightness(1.4)";
+    setTimeout(() => {
+      this.board.gameContainerDiv.value.style.filter = "";
+    }, 70);
   }
 }
 
