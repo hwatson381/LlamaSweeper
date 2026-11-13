@@ -407,6 +407,7 @@ let flagToggleWithOpenings = useLocalStorage(
   "ls_flagToggleWithOpenings",
   false
 );
+let flagToggleOpeningFlash = useLocalStorage("ls_flagToggleOpeningFlash", true);
 let mobileDelayForOpeningFlagToggle = useLocalStorage(
   "ls_mobileDelayForOpeningFlagToggle",
   300
@@ -810,6 +811,7 @@ export {
   flagToggleSizeClass,
   flagToggleSwitchAfterStart,
   flagToggleWithOpenings,
+  flagToggleOpeningFlash,
   mobileDelayForOpeningFlagToggle,
   mobileResetGuard,
   flagToggleEvent,

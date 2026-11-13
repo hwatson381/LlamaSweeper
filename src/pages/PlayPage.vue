@@ -101,7 +101,13 @@
               : gameVerticalPadding,
         }"
       >
-        <div class="canvas-wrapper">
+        <div
+          class="canvas-wrapper"
+          :style="{
+            '--mode-flash-flag-color': skinManager.getModeFlashFlagColour(),
+            '--mode-flash-dig-color': skinManager.getModeFlashDigColour(),
+          }"
+        >
           <canvas
             ref="main-canvas"
             id="main-canvas"
@@ -239,6 +245,22 @@
   position: relative;
   margin-right: 10px;
   margin-bottom: 10px;
+}
+
+.canvas-wrapper::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.canvas-wrapper.mode-flash-flag::after {
+  background: var(--mode-flash-flag-color);
+}
+
+.canvas-wrapper.mode-flash-dig::after {
+  background: var(--mode-flash-dig-color);
 }
 
 #main-canvas {

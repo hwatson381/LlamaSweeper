@@ -659,6 +659,16 @@
                   description="How long to wait before newly revealed zeros can be used to switch mode. This helps prevent surprise openings from unexpectedly switching the mode."
                 />
               </div>
+              <div v-if="flagToggleWithOpenings" class="setting-row">
+                <q-checkbox
+                  v-model="flagToggleOpeningFlash"
+                  label="Opening toggle flash"
+                />
+                <SettingHelp
+                  title="Opening toggle flash"
+                  description="When enabled, toggling flag mode via tapping an opening will cause the board to flash a colour to indiciate which mode is now active."
+                />
+              </div>
               <div class="setting-row">
                 <q-select
                   class="q-mx-md q-mb-md"
@@ -1032,6 +1042,7 @@ import {
   flagToggleSizeClass,
   flagToggleSwitchAfterStart,
   flagToggleWithOpenings,
+  flagToggleOpeningFlash,
   mobileDelayForOpeningFlagToggle,
   mobileResetGuard,
   flagToggleEvent,

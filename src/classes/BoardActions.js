@@ -6,11 +6,13 @@ import {
   chordingButtons,
   flagToggleShowReset,
   flagToggleLocationClass,
+  flagToggleActive,
   mobileResetGuard,
   mobileModeEnabled,
   mobileScrollSetting,
   mobileDelayForEnableScroll,
   flagToggleWithOpenings,
+  flagToggleOpeningFlash,
   mobileDelayForOpeningFlagToggle,
   soundEffectsEnabled,
   meanMineClickBehaviour,
@@ -21,6 +23,7 @@ class BoardActions {
     this.board = board;
 
     this.temporarilyDisableMobileResetButton = false;
+    this.modeFlashTimeout = null;
   }
 
   attemptFlag(
@@ -743,16 +746,33 @@ class BoardActions {
     //Have slight delay to prevent possible bugs with changing mode half-way through handlePointerInput
     setTimeout(() => {
       this.board.toggleFlagButton();
-      //Opening taps aren't super visible, so give some visual feedback as well
-      this.flashBoard();
+      if (flagToggleOpeningFlash.value) {
+        this.flashBoardWithModeColour(flagToggleActive.value);
+      }
     }, 0);
   }
 
-  flashBoard() {
-    this.board.gameContainerDiv.value.style.filter = "brightness(1.4)";
-    setTimeout(() => {
-      this.board.gameContainerDiv.value.style.filter = "";
-    }, 70);
+  flashBoardWithModeColour(isFlagMode) {
+    this.clearModeFlash();
+    const wrapper = this.board.mainCanvas.value?.parentElement;
+    if (!wrapper) {
+      return;
+    }
+
+    wrapper.classList.add(isFlagMode ? "mode-flash-flag" : "mode-flash-dig");
+    this.modeFlashTimeout = setTimeout(() => {
+      wrapper.classList.remove("mode-flash-flag", "mode-flash-dig");
+      this.modeFlashTimeout = null;
+    }, 100);
+  }
+
+  clearModeFlash() {
+    clearTimeout(this.modeFlashTimeout);
+    this.modeFlashTimeout = null;
+    this.board.mainCanvas.value?.parentElement?.classList.remove(
+      "mode-flash-flag",
+      "mode-flash-dig"
+    );
   }
 }
 

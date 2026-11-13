@@ -214,6 +214,8 @@ class SkinManager {
       selectPreview: "rgba(60, 120, 255, 0.35)",
       selectFinal: "rgba(90, 90, 90, 0.4)",
       startMark: "#FF7F00",
+      modeFlashFlag: "rgba(219, 22, 22, 0.53)", //"rgba(235, 25, 25, 0.4)",
+      modeFlashDig: "rgba(22, 22, 219, 0.53)", //"rgba(25, 25, 235, 0.4)"
       hint: {
         safe: {
           hue: 120,
@@ -251,6 +253,8 @@ class SkinManager {
       selectPreview: "rgba(90, 150, 255, 0.4)",
       selectFinal: "rgba(200, 200, 200, 0.3)",
       startMark: "#f0ff78",
+      modeFlashFlag: "rgba(235, 25, 25, 0.4)",
+      modeFlashDig: "rgba(25, 25, 235, 0.4)",
       hint: {
         safe: {
           hue: 120,
@@ -425,6 +429,14 @@ class SkinManager {
 
   getStartMarkColour() {
     return this.colours[boardSkin.value].startMark;
+  }
+
+  getModeFlashFlagColour() {
+    return this.colours[boardSkin.value].modeFlashFlag;
+  }
+
+  getModeFlashDigColour() {
+    return this.colours[boardSkin.value].modeFlashDig;
   }
 
   getHintColour(colourScale, isFloating) {
