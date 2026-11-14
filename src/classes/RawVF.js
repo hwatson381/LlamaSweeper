@@ -1,5 +1,6 @@
 import { exportFile } from "quasar";
 import Utils from "./Utils.js";
+import Algorithms from "./Algorithms.js";
 import { recordButtonEvents } from "src/composables/useSettings";
 
 const RAWVF_SQUARE_SIZE = 64; //Keep this high to make things smoother even though real square size may differ
@@ -65,9 +66,7 @@ class RawVF {
     //Touch games have no raw button events, so fall back to paired clicks
     const useButtonEvents =
       recordButtonEvents.value && boardStats.buttonEvents.length > 0;
-    const clicks = useButtonEvents
-      ? boardStats.buttonEvents
-      : boardStats.clicks;
+    const clicks = this.getClicksOrButtonEvents(boardStats, useButtonEvents);
     const moves = boardStats.moves;
 
     //Since llamasweeper tracks clicks and moves separately we iterate through both together taking the earlier timestamped event from each
@@ -118,6 +117,45 @@ class RawVF {
     rawVfText += events;
 
     return rawVfText;
+  }
+
+  static getClicksOrButtonEvents(boardStats, useButtonEvents) {
+    //multi_open start squares are backported as ordinary clicks just before time 0 so viewers see them as the opening moves
+    const START_TIME = -0.001;
+    const isMultiOpen = (click) =>
+      click.type === "special" && click.subType === "multi_open";
+
+    if (!useButtonEvents) {
+      return boardStats.clicks.flatMap((click) =>
+        isMultiOpen(click)
+          ? Algorithms.expandMultiOpen(click, boardStats.mines).map((c) => ({
+              ...c,
+              time: START_TIME,
+            }))
+          : [click]
+      );
+    }
+
+    const multiOpen = boardStats.clicks.find(isMultiOpen);
+    if (!multiOpen) {
+      return boardStats.buttonEvents;
+    }
+
+    const startEvents = Algorithms.expandMultiOpen(
+      multiOpen,
+      boardStats.mines
+    ).flatMap((c) => {
+      const button = c.type === "left" ? "left" : "right";
+      return [true, false].map((isDown) => ({
+        button,
+        isDown,
+        xRaw: c.xRaw,
+        yRaw: c.yRaw,
+        time: START_TIME,
+      }));
+    });
+
+    return [...startEvents, ...boardStats.buttonEvents];
   }
 
   static downloadRawVf(boardStats) {

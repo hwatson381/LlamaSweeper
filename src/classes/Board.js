@@ -454,14 +454,29 @@ class Board {
       100
     );
 
+    let useStart = false;
+    let startData = null;
+    if (
+      this.variant === "board editor" &&
+      this.gameStage !== "edit" &&
+      boardEditorUseStart.value &&
+      boardEditorHasStart.value
+    ) {
+      startData = Algorithms.resolveStartMarks(this.startMarks, this.mines);
+      this.stats.addStartSquaresUsedAttribute();
+      if (startData.digs.length === 1 && startData.flags.length === 0) {
+        //If the start squares are just a single dig then it's simpler to just treat it as a rewritten first click, like how eff boards does it.
+        rewrittenFirstClick = startData.digs[0];
+      } else {
+        useStart = true;
+      }
+    }
+
     return {
       success: true,
       rewrittenFirstClick: rewrittenFirstClick,
-      useStart:
-        this.variant === "board editor" &&
-        this.gameStage !== "edit" &&
-        boardEditorUseStart.value &&
-        boardEditorHasStart.value,
+      useStart,
+      startData: useStart ? startData : null,
     };
   }
 

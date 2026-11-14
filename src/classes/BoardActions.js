@@ -358,26 +358,37 @@ class BoardActions {
     }
   }
 
-  applyStartReveal(hasSoundEffect = false) {
-    //Marked safe tiles are opened (openings expand) and marked mines flagged. Not recorded as player clicks.
-    const startMarks = this.board.startMarks;
+  applyStartReveal(data, hasSoundEffect = false) {
+    //Opens the digs and flags the mines. Doesn't touch stats, so safe to reuse in replays.
     hasSoundEffect && soundEffectsEnabled.value && playSound("dig");
 
-    for (let x = 0; x < this.board.width; x++) {
-      for (let y = 0; y < this.board.height; y++) {
-        if (!startMarks[x][y]) {
-          continue;
-        }
-        if (this.board.mines[x][y]) {
-          if (this.board.tilesArray[x][y].state === CONSTANTS.UNREVEALED) {
-            this.board.tilesArray[x][y].state = CONSTANTS.FLAG;
-            this.board.unflagged--;
-          }
-        } else {
-          this.openTile(x, y);
-        }
+    for (const flag of data.flags) {
+      if (
+        this.board.tilesArray[flag.x][flag.y].state === CONSTANTS.UNREVEALED
+      ) {
+        this.board.tilesArray[flag.x][flag.y].state = CONSTANTS.FLAG;
+        this.board.unflagged--;
       }
     }
+
+    for (const dig of data.digs) {
+      this.openTile(dig.x, dig.y);
+    }
+  }
+
+  doStartMultiOpen(data, tileX, tileY, xRaw, yRaw) {
+    this.applyStartReveal(data, true);
+    this.board.stats.addSpecial(
+      "multi_open",
+      "none",
+      data,
+      tileX,
+      tileY,
+      xRaw,
+      yRaw,
+      this.board.getTime()
+    );
+    this.board.stats.setInitialState(this.board.tilesArray);
   }
 
   openTile(x, y, hasSoundEffect = false, deferZeroExpansion = false) {

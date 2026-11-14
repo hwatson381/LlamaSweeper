@@ -1818,6 +1818,78 @@ class Algorithms {
     return false;
   }
 
+  static resolveStartMarks(startMarks, mines) {
+    //Marked mines become flags, marked safe squares become digs
+    const digs = [];
+    const flags = [];
+    for (let x = 0; x < startMarks.length; x++) {
+      for (let y = 0; y < startMarks[0].length; y++) {
+        if (!startMarks[x][y]) {
+          continue;
+        }
+        if (mines[x][y]) {
+          flags.push({ x, y });
+        } else {
+          digs.push({ x, y });
+        }
+      }
+    }
+    return { digs, flags };
+  }
+
+  static expandMultiOpen(click, mines) {
+    //Converts a multi_open special click into the plain left/right clicks that are equivalent
+    const { numbersArray, openingLabels, preprocessedOpenings } =
+      this.getNumbersArrayAndOpeningLabelsAndPreprocessedOpenings(mines);
+
+    const revealed = new Array(mines.length)
+      .fill(0)
+      .map(() => new Array(mines[0].length).fill(false));
+    const flagged = new Array(mines.length)
+      .fill(0)
+      .map(() => new Array(mines[0].length).fill(false));
+
+    const expanded = [];
+    const makeClick = (type, x, y) => ({
+      type,
+      x,
+      y,
+      xRaw: x + 0.5,
+      yRaw: y + 0.5,
+      time: click.time,
+    });
+
+    //Digs inside an opening an earlier dig already expanded would be redundant clicks, so skip them
+    for (const dig of click.data.digs) {
+      if (revealed[dig.x][dig.y]) {
+        continue;
+      }
+      revealed[dig.x][dig.y] = true;
+      expanded.push(makeClick("left", dig.x, dig.y));
+
+      if (numbersArray[dig.x][dig.y] === 0) {
+        const opening = preprocessedOpenings.get(openingLabels[dig.x][dig.y]);
+        for (const zero of opening.zeros) {
+          revealed[zero.x][zero.y] = true;
+        }
+        for (const edge of opening.edges) {
+          revealed[edge.x][edge.y] = true;
+        }
+      }
+    }
+
+    //Duplicate flags shouldn't occur, but would be a wasted click if they did
+    for (const flag of click.data.flags) {
+      if (flagged[flag.x][flag.y]) {
+        continue;
+      }
+      flagged[flag.x][flag.y] = true;
+      expanded.push(makeClick("right", flag.x, flag.y));
+    }
+
+    return expanded;
+  }
+
   static encodeClicks(clicks, boardWidth, boardHeight) {
     const bitPacker = new BitPacker();
 

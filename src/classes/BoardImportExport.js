@@ -42,9 +42,13 @@ class BoardImportExport {
     this.board.ziniExplore.clearCurrentPath();
     variant.value = "zini explorer";
 
-    let pathWithoutWasted = this.board.stats.clicks.filter(
-      (click) => !click.type.includes("wasted")
-    );
+    let pathWithoutWasted = this.board.stats.clicks
+      .flatMap((click) =>
+        click.type === "special" && click.subType === "multi_open"
+          ? Algorithms.expandMultiOpen(click, this.board.mines)
+          : [click]
+      )
+      .filter((click) => !click.type.includes("wasted"));
 
     if (this.board.variant === "mean openings") {
       //Remove flags which were place on mean mines

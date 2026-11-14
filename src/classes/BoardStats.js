@@ -1,6 +1,7 @@
 import Algorithms from "./Algorithms";
 import ChainZini from "./ChainZini";
 import DeepChainZiniRunner from "./DeepChainZiniRunner";
+import CONSTANTS from "src/includes/Constants";
 
 import {
   statsObject,
@@ -31,7 +32,9 @@ class BoardStats {
       hintsUsed: false,
       variant: null,
       superClick: false, //superClick is the term used in rawvf for l-chord
+      startSquaresUsed: false,
     };
+    this.initialState = null; //Board state after any start squares were applied (null if none), so stats needn't search clicks for it
     this.statsWorkerManager = statsWorkerManager;
     this.gZini = null;
     this.gZiniPath = null;
@@ -105,6 +108,50 @@ class BoardStats {
     });
   }
 
+  //Generic event that isn't a normal click. countAs decides which stats bucket it falls into: left/right/chord/none
+  addSpecial(subType, countAs, data, x, y, xRaw, yRaw, time) {
+    this.clicks.push({
+      type: "special",
+      subType,
+      countAs,
+      data,
+      x,
+      y,
+      xRaw,
+      yRaw,
+      time,
+    });
+  }
+
+  setInitialState(tilesArray) {
+    const width = tilesArray.length;
+    const height = tilesArray[0].length;
+    const revealed = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(false));
+    const flagged = new Array(width)
+      .fill(0)
+      .map(() => new Array(height).fill(false));
+
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        const state = tilesArray[x][y].state;
+        revealed[x][y] = typeof state === "number";
+        flagged[x][y] = state === CONSTANTS.FLAG;
+      }
+    }
+
+    this.initialState = {
+      revealed,
+      flagged,
+      solved3bv: Algorithms.calc3bv(this.mines, tilesArray).solved3bv,
+    };
+  }
+
+  addStartSquaresUsedAttribute() {
+    this.attributes.startSquaresUsed = true;
+  }
+
   addButtonEvent(button, isDown, xRaw, yRaw, time) {
     //Synthesize the missing transition (e.g. first click press in pregame) so presses and releases stay paired
     if (this.buttonsDown[button] === isDown) {
@@ -162,9 +209,16 @@ class BoardStats {
     //If someone flags a correct square, unflags and then reflags
     // only the first flag should be "effective" and the reflag should be wasted
 
+    //Performance note: this rescans the flags for every flag, so could be made faster with a grid of seen flags
     let onlyEffectiveFlags = this.clicks.filter(
       (click) => click.type === "right"
     );
+
+    //Start flags are always correct, so any later flag on them is a repeat
+    const startFlags =
+      this.clicks.find(
+        (click) => click.type === "special" && click.subType === "multi_open"
+      )?.data.flags ?? [];
 
     for (let i = onlyEffectiveFlags.length - 1; i >= 0; i--) {
       const thisFlag = onlyEffectiveFlags[i];
@@ -173,7 +227,10 @@ class BoardStats {
         (click) => click.x === thisFlag.x && click.y === thisFlag.y
       );
 
-      if (firstFlagOccurenceOnSameSquare !== i) {
+      if (
+        firstFlagOccurenceOnSameSquare !== i ||
+        startFlags.some((f) => f.x === thisFlag.x && f.y === thisFlag.y)
+      ) {
         thisFlag.type = "wasted_right";
       }
     }
@@ -268,26 +325,46 @@ class BoardStats {
     this.cWomHzini = null;
     this.cWomHziniPath = null;
 
-    const totalClicks = this.clicks.length;
-    const totalEffectiveClicks = this.clicks.filter(
-      (c) => c.type === "left" || c.type === "right" || c.type === "chord"
-    ).length;
+    //Counted per bucket rather than as clicks.length, since special clicks with countAs "none" aren't player clicks
+    const counts = {
+      left: 0,
+      leftWasted: 0,
+      chord: 0,
+      chordWasted: 0,
+      right: 0,
+      rightWasted: 0,
+    };
+    const typeToCount = {
+      left: "left",
+      wasted_left: "leftWasted",
+      chord: "chord",
+      wasted_chord: "chordWasted",
+      right: "right",
+      wasted_right: "rightWasted",
+    };
+    for (const c of this.clicks) {
+      const bucket =
+        c.type === "special" ? typeToCount[c.countAs] : typeToCount[c.type];
+      if (bucket !== undefined) {
+        counts[bucket]++;
+      }
+    }
+
+    const totalEffectiveClicks = counts.left + counts.chord + counts.right;
+    const totalWastedClicks =
+      counts.leftWasted + counts.chordWasted + counts.rightWasted;
+    const totalClicks = totalEffectiveClicks + totalWastedClicks;
 
     const clicksObject = {
       total: totalClicks,
       effective: totalEffectiveClicks,
-      wasted: this.clicks.filter(
-        (c) =>
-          c.type === "wasted_left" ||
-          c.type === "wasted_right" ||
-          c.type === "wasted_chord"
-      ).length,
-      left: this.clicks.filter((c) => c.type === "left").length,
-      leftWasted: this.clicks.filter((c) => c.type === "wasted_left").length,
-      chord: this.clicks.filter((c) => c.type === "chord").length,
-      chordWasted: this.clicks.filter((c) => c.type === "wasted_chord").length,
-      right: this.clicks.filter((c) => c.type === "right").length,
-      rightWasted: this.clicks.filter((c) => c.type === "wasted_right").length,
+      wasted: totalWastedClicks,
+      left: counts.left,
+      leftWasted: counts.leftWasted,
+      chord: counts.chord,
+      chordWasted: counts.chordWasted,
+      right: counts.right,
+      rightWasted: counts.rightWasted,
       clicksPerSecond: (totalClicks / time).toFixed(3),
       effectiveClicksPerSecond: (totalEffectiveClicks / time).toFixed(3),
     };
@@ -369,6 +446,7 @@ class BoardStats {
     statsObject.value.attributes = {
       noGuess: this.attributes.noGuess,
       hintsUsed: this.attributes.hintsUsed,
+      startSquaresUsed: this.attributes.startSquaresUsed,
     };
 
     if (statsShowGZini.value) {

@@ -165,6 +165,18 @@ class Replay {
             needToPlaySound
           );
           break;
+        case "special":
+          switch (clickToDo.subType) {
+            case "multi_open":
+              this.board.boardActions.applyStartReveal(
+                clickToDo.data,
+                needToPlaySound
+              );
+              break;
+            default:
+              throw new Error("Unknown special click subType in replay");
+          }
+          break;
         default:
           throw new Error("Disallowed click type seen in replay");
       }
@@ -739,6 +751,38 @@ class Replay {
 
     for (let i = 0; i < this.clicks.length; i++) {
       const thisClick = this.clicks[i];
+
+      if (thisClick.type === "special" && thisClick.subType === "multi_open") {
+        //Check the digs and flags directly with the same rules as left/right clicks below, avoiding expanding the click
+        const { digs, flags } = thisClick.data;
+
+        if (flags.some((f) => f.x === x && f.y === y)) {
+          clickIndex = i;
+          break;
+        }
+
+        if (
+          digs.some((d) => d.x === x && d.y === y && numbersArray[x][y] !== 0)
+        ) {
+          clickIndex = i;
+          break;
+        }
+
+        if (
+          digs.some(
+            (d) =>
+              numbersArray[d.x][d.y] === 0 &&
+              openingsLabelsTouched.includes(openingLabels[d.x][d.y])
+          )
+        ) {
+          if (revealedByOpeningIndex === null) {
+            revealedByOpeningIndex = i;
+          }
+          break;
+        }
+
+        continue;
+      }
 
       if (
         thisClick.type === "left" &&

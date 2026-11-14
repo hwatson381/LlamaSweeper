@@ -1392,7 +1392,13 @@ class BoardInput {
             false,
             touchIdentifier
           );
-          this.board.boardActions.applyStartReveal(true);
+          this.board.boardActions.doStartMultiOpen(
+            generationResult.startData,
+            flooredCoords.tileX,
+            flooredCoords.tileY,
+            unflooredCoords.tileX,
+            unflooredCoords.tileY
+          );
           isDrawRequired = true;
         }
       } else {
@@ -1408,9 +1414,11 @@ class BoardInput {
     }
 
     //Must stay after first-click handling (so the first release is recorded) and before win/loss checks
+    //Skipped when start squares were used, as that release isn't a real click
     if (
       touchIdentifier === "mouse" &&
       this.board.gameStage === "running" &&
+      !firstClickUsedStart &&
       (isDigInput || isFlagInput)
     ) {
       this.board.stats.addButtonEvent(

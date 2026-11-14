@@ -24,6 +24,15 @@
         >
           <q-tooltip> Hints used </q-tooltip>
         </q-badge>
+        <q-badge
+          rounded
+          color="teal"
+          label="S"
+          v-if="statsObject.attributes.startSquaresUsed"
+          class="q-mr-xs"
+        >
+          <q-tooltip> Start squares used </q-tooltip>
+        </q-badge>
       </div>
       <div>Time: {{ statsObject.time }}s</div>
       <div v-if="!statsObject.isWonGame">
