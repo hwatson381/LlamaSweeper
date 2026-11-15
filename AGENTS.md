@@ -127,6 +127,7 @@ Raise a concern before introducing state, rendering, or replay designs that woul
 ## Common mistakes
 
 - Occasionally, I paste context into the chat but it does not come through. When this is spotted, please exit the chat early instead of continuing with the missing context.
+- Occasionally, I may ask for changes/planning whilst being in the wrong mode (ask/plan/agent), if so immediately exit the chat early instead of continuing with it.
 
 ## Maintaining these instructions
 

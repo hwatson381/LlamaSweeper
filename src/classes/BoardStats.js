@@ -123,7 +123,7 @@ class BoardStats {
     });
   }
 
-  setInitialState(tilesArray) {
+  setInitialState(tilesArray, startData) {
     const width = tilesArray.length;
     const height = tilesArray[0].length;
     const revealed = new Array(width)
@@ -145,11 +145,83 @@ class BoardStats {
       revealed,
       flagged,
       solved3bv: Algorithms.calc3bv(this.mines, tilesArray).solved3bv,
+      //Stored on top of revealed/flagged because those can't say which squares were dug rather than revealed by an
+      //opening. Chain ZiNi needs the digs as fixed seeds, and the stats subtract their click count from whole-board totals.
+      startClicks: Algorithms.expandMultiOpen(
+        { data: startData, time: 0 },
+        this.mines
+      ),
     };
   }
 
   addStartSquaresUsedAttribute() {
     this.attributes.startSquaresUsed = true;
+  }
+
+  //Chain input where each start dig is a fixed seed and each start flag is a placed flag
+  getStartChainInput() {
+    return ChainZini.convertClickPathToChainInput(
+      this.initialState.startClicks,
+      this.mines,
+      false
+    );
+  }
+
+  //Removes the clicks of a whole-board chain path that the start squares already account for
+  filterChainPathForStart(clicks) {
+    const startDigs = this.initialState.startClicks.filter(
+      (c) => c.type === "left"
+    );
+    return clicks.filter((c) => {
+      if (c.type === "right") {
+        return !this.initialState.flagged[c.x][c.y];
+      }
+      if (c.type === "left") {
+        return !startDigs.some((d) => d.x === c.x && d.y === c.y);
+      }
+      return true;
+    });
+  }
+
+  //Synthetic start click used to put the start squares in front of a ZiNi replay path
+  buildStartMultiOpen() {
+    const startClicks = this.initialState.startClicks;
+    const digs = startClicks
+      .filter((c) => c.type === "left")
+      .map((c) => ({ x: c.x, y: c.y }));
+    const flags = startClicks
+      .filter((c) => c.type === "right")
+      .map((c) => ({ x: c.x, y: c.y }));
+    const first = startClicks[0];
+
+    return {
+      type: "special",
+      subType: "multi_open",
+      countAs: "none",
+      data: { digs, flags },
+      x: first.x,
+      y: first.y,
+      xRaw: first.xRaw,
+      yRaw: first.yRaw,
+      time: 0,
+    };
+  }
+
+  //Converts a whole-board chain/deepchain result into the remaining ZiNi after the start squares
+  adjustChainResultForStart(name, result) {
+    if (this.initialState === null) {
+      return result;
+    }
+
+    const remaining = result.total - this.initialState.startClicks.length;
+    const clicks = this.filterChainPathForStart(result.clicks);
+    if (remaining !== clicks.length) {
+      console.warn(
+        `[partial zini] ${name}: remaining ${remaining} != path length ${clicks.length}`
+      );
+    }
+
+    return { total: remaining, clicks };
   }
 
   addButtonEvent(button, isDown, xRaw, yRaw, time) {
@@ -244,28 +316,46 @@ class BoardStats {
   }
 
   lateCalcForceZinis() {
-    let eightZiniResult = Algorithms.calcEightWayZini(this.mines);
+    const partial = this.initialState !== null;
+
+    let eightZiniResult = Algorithms.calcEightWayZini(
+      this.mines,
+      false,
+      partial ? this.initialState.revealed : false,
+      partial ? this.initialState.flagged : false
+    );
     let chainZiniResult = ChainZini.calcNWayChainZini({
       mines: this.mines,
       numberOfIterations: 100,
       includeClickPath: true,
+      ...(partial ? this.getStartChainInput() : {}),
     });
+    if (partial) {
+      chainZiniResult = this.adjustChainResultForStart(
+        "100chain",
+        chainZiniResult
+      );
+    }
 
-    //wom zini without correction
-    let { womZini, womHzini } = Algorithms.calcWomZiniAndHZini(
-      this.mines,
-      false
-    );
-    //wom zini with correction
-    let { womZini: cWomZini, womHzini: cWomHzini } =
-      Algorithms.calcWomZiniAndHZini(this.mines, true);
+    //WomZini can't take a starting state
+    let womZiniResult = null;
+    if (!partial) {
+      //wom zini without correction
+      let { womZini, womHzini } = Algorithms.calcWomZiniAndHZini(
+        this.mines,
+        false
+      );
+      //wom zini with correction
+      let { womZini: cWomZini, womHzini: cWomHzini } =
+        Algorithms.calcWomZiniAndHZini(this.mines, true);
 
-    let womZiniResult = {
-      womZini,
-      womHzini,
-      cWomZini,
-      cWomHzini,
-    };
+      womZiniResult = {
+        womZini,
+        womHzini,
+        cWomZini,
+        cWomHzini,
+      };
+    }
 
     this.extractZiniResults(eightZiniResult, chainZiniResult, womZiniResult);
     this.updateMaxEffAndZiniDisplay();
@@ -310,9 +400,15 @@ class BoardStats {
     this.calc3bv(tilesArray);
     const solved3bv = this.solved3bv;
     const bbbv = this.bbbv;
-    const bbbvs = solved3bv / time;
+    //With start squares, stats only count the board that was left for the player (initial3bv is 0 otherwise)
+    const initial3bv =
+      this.initialState !== null ? this.initialState.solved3bv : 0;
+    const partialSolved3bv = solved3bv - initial3bv;
+    const partialTotal3bv = bbbv - initial3bv;
+    this.partial3bv = partialTotal3bv;
+    const bbbvs = partialSolved3bv / time;
 
-    const estTime = bbbv / bbbvs;
+    const estTime = partialTotal3bv / bbbvs;
 
     this.deepZini = null;
     this.deepZiniPath = null;
@@ -369,13 +465,13 @@ class BoardStats {
       effectiveClicksPerSecond: (totalEffectiveClicks / time).toFixed(3),
     };
 
-    const eff = (100 * solved3bv) / totalClicks;
+    const eff = (100 * partialSolved3bv) / totalClicks;
 
-    let stnb = null;
+    //STNB is calibrated for whole standard boards
+    const stnb =
+      this.initialState !== null ? null : this.calcStnb(time, solved3bv, bbbv);
 
-    stnb = this.calcStnb(time, solved3bv, bbbv);
-
-    const thrp = Math.round((100 * solved3bv) / totalEffectiveClicks);
+    const thrp = Math.round((100 * partialSolved3bv) / totalEffectiveClicks);
 
     let rqp = null;
     if (isWin) {
@@ -394,7 +490,7 @@ class BoardStats {
     if (isWin) {
       statsObject.value.isWonGame = true;
       statsObject.value.time = time.toFixed(3);
-      statsObject.value.total3bv = bbbv;
+      statsObject.value.total3bv = partialTotal3bv;
       statsObject.value.bbbvs = bbbvs.toFixed(3);
       statsObject.value.eff = Math.round(eff);
       statsObject.value.maxEff = null;
@@ -419,8 +515,8 @@ class BoardStats {
       statsObject.value.isWonGame = false;
       statsObject.value.time = time.toFixed(3);
       statsObject.value.estTime = estTime.toFixed(3);
-      statsObject.value.solved3bv = solved3bv;
-      statsObject.value.total3bv = bbbv;
+      statsObject.value.solved3bv = partialSolved3bv;
+      statsObject.value.total3bv = partialTotal3bv;
       statsObject.value.bbbvs = bbbvs.toFixed(3);
       statsObject.value.eff = Math.round(eff);
       statsObject.value.maxEff = null;
@@ -447,6 +543,7 @@ class BoardStats {
       noGuess: this.attributes.noGuess,
       hintsUsed: this.attributes.hintsUsed,
       startSquaresUsed: this.attributes.startSquaresUsed,
+      partialBoard: this.initialState !== null,
     };
 
     if (statsShowGZini.value) {
@@ -461,14 +558,26 @@ class BoardStats {
 
   //G ZiNi and H ZiNi are display only and are not used for max eff
   calcGreedyZini() {
-    const gZiniResult = Algorithms.calcGreedyZini(this.mines);
+    const partial = this.initialState !== null;
+    const gZiniResult = Algorithms.calcGreedyZini(
+      this.mines,
+      false,
+      partial ? this.initialState.revealed : false,
+      partial ? this.initialState.flagged : false
+    );
     this.gZini = gZiniResult.total;
     this.gZiniPath = gZiniResult.clicks;
     statsObject.value.gZini = this.gZini;
   }
 
   calcHumanZini() {
-    const hZiniResult = Algorithms.calcHumanZini(this.mines);
+    const partial = this.initialState !== null;
+    const hZiniResult = Algorithms.calcHumanZini(
+      this.mines,
+      false,
+      partial ? this.initialState.revealed : false,
+      partial ? this.initialState.flagged : false
+    );
     this.hZini = hZiniResult.total;
     this.hZiniPath = hZiniResult.clicks;
     statsObject.value.hZini = this.hZini;
@@ -481,14 +590,16 @@ class BoardStats {
         analysisType: "separate",
         deepIterations: 5,
         progressType: "text",
+        ...(this.initialState !== null ? this.getStartChainInput() : {}),
       },
       {
         onPercentageProgress: (percent) => {
           ziniRunnerPercentageProgress.value = `${percent}%`;
         },
         onCompleteRun: (result) => {
-          this.deepZini = result.total;
-          this.deepZiniPath = result.clicks;
+          const adjusted = this.adjustChainResultForStart("deepchain", result);
+          this.deepZini = adjusted.total;
+          this.deepZiniPath = adjusted.clicks;
 
           this.updateMaxEffAndZiniDisplay();
 
@@ -504,11 +615,15 @@ class BoardStats {
   async calcZinisForStatsPanel() {
     if (!this.statsWorkerManager) return;
 
+    const partial = this.initialState !== null;
     const includeEightWay = statsShowMaxEff.value || statsShow8Way.value;
     const include100Chain = statsShowMaxEff.value || statsShowChain.value;
     //Note womzini only shown by default for 3bv < 500, if this threshold changes also remember to update in PlayPage.vue.
+    //WomZini can't take a starting state, so is skipped for partial boards
     const includeWomZini =
-      (statsShowMaxEff.value || statsShowWomZini.value) && this.bbbv < 500;
+      !partial &&
+      (statsShowMaxEff.value || statsShowWomZini.value) &&
+      this.bbbv < 500;
 
     let eightZiniResult = null;
     let chainZiniResult = null;
@@ -518,14 +633,23 @@ class BoardStats {
       //try-catch required because await might throw error if it rejects
       if (includeEightWay) {
         eightZiniResult = await this.statsWorkerManager.calc8WayZiniInWorker(
-          this.mines
+          this.mines,
+          partial ? this.initialState.revealed : false,
+          partial ? this.initialState.flagged : false
         );
       }
 
       if (include100Chain) {
         chainZiniResult = await this.statsWorkerManager.calc100ChainInWorker(
-          this.mines
+          this.mines,
+          partial ? this.initialState.startClicks : false
         );
+        if (partial) {
+          chainZiniResult = this.adjustChainResultForStart(
+            "100chain",
+            chainZiniResult
+          );
+        }
       }
 
       if (includeWomZini) {
@@ -586,7 +710,7 @@ class BoardStats {
 
     let maxEff;
     if (bestZini !== null) {
-      maxEff = ((100 * this.bbbv) / bestZini).toFixed(0);
+      maxEff = ((100 * this.partial3bv) / bestZini).toFixed(0);
     } else {
       maxEff = null;
     }
@@ -605,7 +729,7 @@ class BoardStats {
     if (this.deepZini != null) {
       statsObject.value.deepZini = this.deepZini;
       statsObject.value.deepMaxEff = (
-        (100 * this.bbbv) /
+        (100 * this.partial3bv) /
         this.deepZini
       ).toFixed(0);
     }

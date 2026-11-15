@@ -240,6 +240,7 @@ class ChainZini {
         mines: mines,
         chainSquareInfo: chainSquareInfo,
         preprocessedOpenings: preprocessedOpenings,
+        initialFlagStates: initialFlagStates,
       });
     }
 
@@ -1363,6 +1364,7 @@ class ChainZini {
     mines,
     chainSquareInfo,
     preprocessedOpenings,
+    initialFlagStates = false,
   }) {
     let clickPath = [];
 
@@ -1474,6 +1476,19 @@ class ChainZini {
         //Remove played chords from the list of chords left to do
         chordsToDo = chordsToDo.filter((cd) => !playableChords.includes(cd));
       }
+    }
+
+    //Initial flags that no chord touches would otherwise be dropped from the path
+    if (initialFlagStates) {
+      const orphanFlags = [];
+      for (let x = 0; x < width; x++) {
+        for (let y = 0; y < height; y++) {
+          if (initialFlagStates[x][y] && !flagsPlaced[x][y]) {
+            orphanFlags.push({ type: "right", x, y });
+          }
+        }
+      }
+      clickPath = orphanFlags.concat(clickPath);
     }
 
     return clickPath;
@@ -2207,6 +2222,7 @@ class ChainZini {
             mines: mines,
             chainSquareInfo: chainSquareInfo,
             preprocessedOpenings: preprocessedOpenings,
+            initialFlagStates: initialFlagStates,
           });
 
           progressUpdateFunction("board-progress", clicksAtThisStage);
@@ -2828,6 +2844,7 @@ class ChainZini {
             mines: mines,
             chainSquareInfo: chainSquareInfo,
             preprocessedOpenings: preprocessedOpenings,
+            initialFlagStates: initialFlagStates,
           });
           progressUpdateFunction("board-progress", clicksAtThisStage);
         } else if (progressType === "text") {

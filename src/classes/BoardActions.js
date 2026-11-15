@@ -388,7 +388,7 @@ class BoardActions {
       yRaw,
       this.board.getTime()
     );
-    this.board.stats.setInitialState(this.board.tilesArray);
+    this.board.stats.setInitialState(this.board.tilesArray, data);
   }
 
   openTile(x, y, hasSoundEffect = false, deferZeroExpansion = false) {

@@ -1859,8 +1859,15 @@ class Algorithms {
       time: click.time,
     });
 
-    //Digs inside an opening an earlier dig already expanded would be redundant clicks, so skip them
-    for (const dig of click.data.digs) {
+    //Digs on zeros go first so that digs they reveal are dropped, as they would be redundant clicks.
+    //A dig on an opening's edge doesn't expand it, so it only counts as redundant if a zero dig reveals it.
+    const zeroDigs = click.data.digs.filter(
+      (dig) => numbersArray[dig.x][dig.y] === 0
+    );
+    const nonZeroDigs = click.data.digs.filter(
+      (dig) => numbersArray[dig.x][dig.y] !== 0
+    );
+    for (const dig of [...zeroDigs, ...nonZeroDigs]) {
       if (revealed[dig.x][dig.y]) {
         continue;
       }

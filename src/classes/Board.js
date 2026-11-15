@@ -464,9 +464,14 @@ class Board {
     ) {
       startData = Algorithms.resolveStartMarks(this.startMarks, this.mines);
       this.stats.addStartSquaresUsedAttribute();
-      if (startData.digs.length === 1 && startData.flags.length === 0) {
-        //If the start squares are just a single dig then it's simpler to just treat it as a rewritten first click, like how eff boards does it.
-        rewrittenFirstClick = startData.digs[0];
+      //expandMultiOpen expects a multi_open click, so wrap the data in one (only data is used here)
+      const startClicks = Algorithms.expandMultiOpen(
+        { data: startData, time: 0 },
+        this.mines
+      );
+      if (startClicks.length === 1 && startClicks[0].type === "left") {
+        //If the start squares amount to a single dig then it's simpler to just treat it as a rewritten first click, like how eff boards does it.
+        rewrittenFirstClick = { x: startClicks[0].x, y: startClicks[0].y };
       } else {
         useStart = true;
       }
@@ -708,7 +713,8 @@ class Board {
         let compareReplay = CompareReplay.generate(
           this.mines,
           this.stats.clicks,
-          this.stats.isWin
+          this.stats.isWin,
+          this.stats.initialState?.startClicks ?? null
         );
         if (compareReplay.ziniDeltas.size === 0) {
           Dialog.create({
@@ -747,6 +753,20 @@ class Board {
         replayParams.clicks,
         this.mines
       );
+    }
+
+    //Stats ZiNi paths only cover the board left after the start squares, so show the start first
+    //(done after reordering as that drops special clicks)
+    if (
+      this.stats.initialState !== null &&
+      ["8-way", "gzini", "hzini", "chainzini", "deepchain"].includes(
+        replayToInit
+      )
+    ) {
+      replayParams.clicks = [
+        this.stats.buildStartMultiOpen(),
+        ...replayParams.clicks,
+      ];
     }
 
     //Track info about state we need to return to if exiting replay

@@ -142,15 +142,30 @@ function processJob() {
   }
 }
 
-function compute8Way({ mines }) {
-  return Algorithms.calcEightWayZini(mines);
+function compute8Way({
+  mines,
+  initialRevealedStates = false,
+  initialFlagStates = false,
+}) {
+  return Algorithms.calcEightWayZini(
+    mines,
+    false,
+    initialRevealedStates,
+    initialFlagStates
+  );
 }
 
-function compute100Chain({ mines }) {
+function compute100Chain({ mines, startClicks = false }) {
+  //Chain input is built here as Chain objects would lose their prototype crossing the worker boundary
+  const chainInput = startClicks
+    ? ChainZini.convertClickPathToChainInput(startClicks, mines, false)
+    : {};
+
   const { total, clicks } = ChainZini.calcNWayChainZini({
     mines: mines,
     numberOfIterations: 100,
     includeClickPath: true,
+    ...chainInput,
   });
 
   //Only return total and clicks as other properties e.g. solution will lose prototypes when serialising and sending across worker boundary

@@ -8,11 +8,13 @@ class CompareReplay {
     );
   }
 
-  static generate(mines, clicks, isWin) {
+  //startClicks are the expanded start squares (if any), which the projections treat as already played
+  static generate(mines, clicks, isWin, startClicks = null) {
     const width = mines.length;
     const height = mines[0].length;
 
     clicks = structuredClone(this.stripWasted(clicks));
+    const prefixClicks = startClicks ?? [];
 
     let projectedZinis = []; //Array of what zinis would be assuming the game was continued
 
@@ -20,13 +22,21 @@ class CompareReplay {
     //these are the zinis at each point of the game if we were to play the rest of the board using 100chain zini
 
     //Projected zinis with 100chain
+    //The start squares' clicks are part of every projection, so deltas stay comparable
     let ziniAtStart = ChainZini.calcNWayChainZini({
       mines: mines,
       numberOfIterations: 100,
+      ...(prefixClicks.length > 0
+        ? ChainZini.convertClickPathToChainInput(prefixClicks, mines, false)
+        : {}),
     }).total;
 
     for (let i = 0; i < clicks.length; i++) {
-      let reducedClicks = clicks.slice(0, i + 1); //click path upto index i
+      //click path upto index i, special clicks (the start) are covered by prefixClicks
+      let reducedClicks = [
+        ...prefixClicks,
+        ...clicks.slice(0, i + 1).filter((c) => c.type !== "special"),
+      ];
 
       const {
         initialRevealedStates,

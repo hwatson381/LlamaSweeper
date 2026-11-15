@@ -58,6 +58,8 @@ let statsObject = ref({
     //Maybe another name would work for this or maybe need to restructure it?
     noGuess: false,
     hintsUsed: false,
+    startSquaresUsed: false,
+    partialBoard: false, //Stats are for the board remaining after start squares
   },
 });
 let statsShow8Way = useLocalStorage("ls_statsShow8Way", true);

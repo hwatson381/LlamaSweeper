@@ -38,9 +38,31 @@
       <div v-if="!statsObject.isWonGame">
         Est. Time: {{ statsObject.estTime }}s
       </div>
-      <div v-if="statsObject.isWonGame">3bv: {{ statsObject.total3bv }}</div>
+      <div v-if="statsObject.isWonGame">
+        3bv: {{ statsObject.total3bv }}
+        <q-icon
+          v-if="statsObject.attributes.partialBoard"
+          name="sym_o_help"
+          size="xs"
+          class="screenshot-hidden text-info"
+        >
+          <q-tooltip
+            >Game stats have been adjusted to exclude start squares</q-tooltip
+          >
+        </q-icon>
+      </div>
       <div v-else>
         3bv: {{ statsObject.solved3bv }}/{{ statsObject.total3bv }}
+        <q-icon
+          v-if="statsObject.attributes.partialBoard"
+          name="sym_o_help"
+          size="xs"
+          class="screenshot-hidden text-info"
+        >
+          <q-tooltip
+            >Game stats have been adjusted to exclude start squares</q-tooltip
+          >
+        </q-icon>
       </div>
       <div>3bv/s: {{ statsObject.bbbvs }}</div>
       <div
@@ -172,7 +194,7 @@
       <div v-if="statsShowChain">
         ZiNi (100chain): {{ statsObject.chainZini ?? "-" }}
       </div>
-      <div v-if="statsShowWomZini">
+      <div v-if="statsShowWomZini && !statsObject.attributes.partialBoard">
         L ZiNi (WoM):
         <template v-if="statsObject.womZini !== null">
           {{ statsObject.womZini }}
@@ -189,7 +211,7 @@
           >run</span
         >
       </div>
-      <div v-if="statsShowWomZini">
+      <div v-if="statsShowWomZini && !statsObject.attributes.partialBoard">
         H.ZiNi (WoM):
         <template v-if="statsObject.womHzini !== null">
           {{ statsObject.womHzini }}
@@ -401,6 +423,7 @@
             </q-item>
 
             <q-item
+              v-if="!statsObject.attributes.partialBoard"
               clickable
               v-close-popup
               @click="game.board.initReplay('womzini')"
@@ -411,6 +434,7 @@
             </q-item>
 
             <q-item
+              v-if="!statsObject.attributes.partialBoard"
               clickable
               v-close-popup
               @click="game.board.initReplay('womzinifix')"
@@ -421,6 +445,7 @@
             </q-item>
 
             <q-item
+              v-if="!statsObject.attributes.partialBoard"
               clickable
               v-close-popup
               @click="game.board.initReplay('womhzini')"

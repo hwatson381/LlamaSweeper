@@ -76,10 +76,14 @@ class StatsWorkerManager {
     this.jobsMap.delete(msg.id);
   }
 
-  calc8WayZiniInWorker(mines) {
+  calc8WayZiniInWorker(
+    mines,
+    initialRevealedStates = false,
+    initialFlagStates = false
+  ) {
     let jobPromise = this.createJobPromise(
       "8-way-zini",
-      { mines },
+      { mines, initialRevealedStates, initialFlagStates },
       true,
       false
     );
@@ -87,8 +91,13 @@ class StatsWorkerManager {
     return jobPromise;
   }
 
-  calc100ChainInWorker(mines) {
-    let jobPromise = this.createJobPromise("100-chain", { mines }, true, false);
+  calc100ChainInWorker(mines, startClicks = false) {
+    let jobPromise = this.createJobPromise(
+      "100-chain",
+      { mines, startClicks },
+      true,
+      false
+    );
 
     return jobPromise;
   }
